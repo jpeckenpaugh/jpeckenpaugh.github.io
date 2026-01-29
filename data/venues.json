@@ -1,0 +1,432 @@
+{
+  "town_shop": {
+    "name": "Town Shop",
+    "scene_id": "shop",
+    "npc_ids": [
+      "shopkeeper_1"
+    ],
+    "actions": [
+      "buy",
+      "leave"
+    ],
+    "welcome_message": "Welcome to the shop.",
+    "leave_message": "You leave the shop.",
+    "commands": [
+      {
+        "key": "1",
+        "label": "Buy Rations",
+        "command": "NUM1"
+      },
+      {
+        "key": "2",
+        "label": "Buy Herbal Tea",
+        "command": "NUM2"
+      },
+      {
+        "key": "3",
+        "label": "Buy Elixir",
+        "command": "NUM3"
+      },
+      {
+        "key": "B",
+        "label": "Back",
+        "command": "B_KEY"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ],
+    "info_sections": [
+      {
+        "key": "opponents",
+        "label": "Opponents",
+        "source": "opponents",
+        "command": "NUM1",
+        "message": "Viewing opponent info."
+      },
+      {
+        "key": "items",
+        "label": "Items",
+        "source": "items",
+        "command": "NUM2",
+        "message": "Viewing item info."
+      }
+    ],
+    "narrative": [
+      "Choose an item to purchase."
+    ],
+    "objects": [
+      {
+        "id": "water",
+        "repeat": 2
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      },
+      {
+        "id": "roof",
+        "mode": "span_until",
+        "target": "house_wall_right"
+      },
+      {
+        "id": "space",
+        "width": 1
+      },
+      {
+        "id": "table_shop",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "npc",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "bookshelf",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 4
+      },
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "flower_box",
+        "repeat": 1
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      }
+    ],
+    "inventory_items": [
+      {
+        "command": "NUM1",
+        "item_id": "rations",
+        "label": "Rations (+5 HP/MP)"
+      },
+      {
+        "command": "NUM2",
+        "item_id": "herbal_tea",
+        "label": "Herbal Tea (+10 HP/MP)"
+      },
+      {
+        "command": "NUM3",
+        "item_id": "elixir",
+        "label": "Elixir (+20 HP/MP)"
+      }
+    ],
+    "inventory_source": "basic"
+  },
+  "town_hall": {
+    "name": "Town Hall",
+    "scene_id": "hall",
+    "npc_ids": [
+      "mayor_1"
+    ],
+    "actions": [
+      "info_opponents",
+      "info_items",
+      "leave"
+    ],
+    "welcome_message": "Welcome to the hall.",
+    "leave_message": "You leave the hall.",
+    "commands": [
+      {
+        "key": "1",
+        "label": "Opponents",
+        "command": "NUM1"
+      },
+      {
+        "key": "2",
+        "label": "Items",
+        "command": "NUM2"
+      },
+      {
+        "key": "B",
+        "label": "Back",
+        "command": "B_KEY"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ],
+    "info_sections": [
+      {
+        "key": "opponents",
+        "label": "Opponents",
+        "source": "opponents",
+        "command": "NUM1",
+        "message": "Viewing opponent info."
+      },
+      {
+        "key": "items",
+        "label": "Items",
+        "source": "items",
+        "command": "NUM2",
+        "message": "Viewing item info."
+      }
+    ],
+    "narrative": [],
+    "objects": [
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "flower_box"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "house_wall_left"
+      },
+      {
+        "id": "roof",
+        "mode": "span_until",
+        "target": "house_wall_right"
+      },
+      {
+        "id": "chair",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 1
+      },
+      {
+        "id": "table"
+      },
+      {
+        "id": "space",
+        "width": 4
+      },
+      {
+        "id": "npc",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 7
+      },
+      {
+        "id": "lamp",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 1
+      },
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "sign"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "house_wall_left"
+      }
+    ]
+  },
+  "town_inn": {
+    "name": "Town Inn",
+    "scene_id": "inn",
+    "npc_ids": [
+      "innkeeper_1"
+    ],
+    "actions": [
+      "rest",
+      "leave"
+    ],
+    "welcome_message": "Warm lights and quiet rooms await.",
+    "leave_message": "You step back into the street.",
+    "commands": [
+      {
+        "key": "R",
+        "label": "Rest (10 GP)",
+        "command": "USE_SERVICE",
+        "target": "town_inn",
+        "service_id": "rest"
+      },
+      {
+        "key": "M",
+        "label": "Hot meal (3 GP)",
+        "command": "USE_SERVICE",
+        "target": "town_inn",
+        "service_id": "meal"
+      },
+      {
+        "key": "B",
+        "label": "Back",
+        "command": "B_KEY"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ],
+    "info_sections": [
+      {
+        "key": "opponents",
+        "label": "Opponents",
+        "source": "opponents",
+        "command": "NUM1",
+        "message": "Viewing opponent info."
+      },
+      {
+        "key": "items",
+        "label": "Items",
+        "source": "items",
+        "command": "NUM2",
+        "message": "Viewing item info."
+      }
+    ],
+    "narrative": [
+      "Rest by the hearth for the night.",
+      "A bed costs 10 GP. A hot meal is 3 GP."
+    ],
+    "objects": [
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "sign"
+      },
+      {
+        "id": "grass",
+        "repeat": 3
+      },
+      {
+        "id": "house_wall_left"
+      },
+      {
+        "id": "roof",
+        "mode": "span_until",
+        "target": "house_wall_right"
+      },
+      {
+        "id": "bed",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 3
+      },
+      {
+        "id": "house_wall_interior"
+      },
+      {
+        "id": "space",
+        "width": 2
+      },
+      {
+        "id": "npc",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 2
+      },
+      {
+        "id": "table",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 2
+      },
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass"
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "water",
+        "repeat": 2
+      }
+    ],
+    "services": {
+      "rest": {
+        "type": "rest",
+        "cost": 10,
+        "heal_full": true,
+        "full_message": "You're already fully rested.",
+        "message": "You rest at the inn and feel fully restored.",
+        "insufficient_message": "Not enough GP to rest at the inn.",
+        "location_message": "The inn is only in town."
+      },
+      "meal": {
+        "type": "meal",
+        "item_id": "hot_meal",
+        "cost": 3,
+        "full_message": "You're already fully rested.",
+        "message": "You enjoy a hot meal and feel refreshed.",
+        "insufficient_message": "Not enough GP for a hot meal.",
+        "location_message": "The inn is only in town."
+      }
+    }
+  }
+}

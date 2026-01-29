@@ -1,0 +1,90 @@
+{
+  "slime": {
+    "name": "Slime",
+    "level": 2,
+    "hp": 10,
+    "atk": 5,
+    "defense": 5,
+    "action_chance": 0.8,
+    "arrival": "oozes into view",
+    "desc": "A wobbling blob that absorbs weak blows.",
+    "art": [
+      " o____o",
+      " / oo \\",
+      "|  ..  |",
+      "|      |",
+      " \\____/",
+      " (_)(_)"
+    ],
+    "color_map": [
+      " gGGGGg",
+      " g XX g",
+      "g  xx  g",
+      "g      g",
+      " gGGGGg",
+      " gxggxg"
+    ],
+    "variation": 0.06,
+    "jitter_stability": false
+  },
+  "rat": {
+    "name": "Rat",
+    "level": 1,
+    "hp": 8,
+    "atk": 4,
+    "defense": 3,
+    "action_chance": 0.6,
+    "arrival": "scurries into view",
+    "desc": "A quick scavenger with a nasty bite.",
+    "art": [
+      " /\\__/\\",
+      "( o..o )",
+      " >[==]< ",
+      "}=/  \\={",
+      " |    |",
+      " \\____/",
+      " =+  +="
+    ],
+    "color_map": [
+      " dddddd",
+      "d cDDc d",
+      " dDHHDd",
+      "hdD  Ddh",
+      " d    d",
+      " dDddDd",
+      " hD  Dh "
+    ],
+    "variation": 0.06,
+    "jitter_stability": false
+  },
+  "ant": {
+    "name": "Ant",
+    "level": 1,
+    "hp": 6,
+    "atk": 3,
+    "defense": 2,
+    "action_chance": 0.7,
+    "arrival": "scurries in",
+    "desc": "A skittering ant with sharp mandibles.",
+    "art": [
+      "*}  {*",
+      " (oo) ",
+      "  \\/",
+      "\\/  \\/",
+      "/\\__/\\",
+      "\\/  \\/",
+      "/\\__/\\"
+    ],
+    "color_map": [
+      "lL  Ll",
+      " xXXx",
+      "  AA",
+      "Xx  xX",
+      "xxxxxx",
+      "Xx  xX",
+      "xxxxxx"
+    ],
+    "variation": 0.06,
+    "jitter_stability": false
+  }
+}

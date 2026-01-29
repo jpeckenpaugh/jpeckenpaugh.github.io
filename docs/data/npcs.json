@@ -1,0 +1,71 @@
+{
+  "shopkeeper_1": {
+    "name": "Kara",
+    "role": "Shopkeeper",
+    "greeting": "Welcome in. Take your time.",
+    "color": "cyan",
+    "parts": [
+      {
+        "id": "hat_shopkeeper"
+      },
+      {
+        "id": "face_shopkeeper"
+      },
+      {
+        "id": "torso_shopkeeper"
+      },
+      {
+        "id": "legs_dress_shopkeeper"
+      },
+      {
+        "id": "shoes_shopkeeper"
+      }
+    ]
+  },
+  "mayor_1": {
+    "name": "Mayor",
+    "role": "Town Hall",
+    "greeting": "Stay informed. The board is up to date.",
+    "color": "cyan",
+    "parts": [
+      {
+        "id": "hat_mayor"
+      },
+      {
+        "id": "face_mayor"
+      },
+      {
+        "id": "torso_mayor"
+      },
+      {
+        "id": "legs_mayor"
+      },
+      {
+        "id": "shoes_basic"
+      }
+    ]
+  },
+  "innkeeper_1": {
+    "name": "Mira",
+    "role": "Innkeeper",
+    "greeting": "Rooms are warm and quiet.",
+    "color": "cyan",
+    "parts": [
+      {
+        "id": "hat_innkeeper"
+      },
+      {
+        "id": "face_innkeeper"
+      },
+      {
+        "id": "torso_innkeeper"
+      },
+      {
+        "id": "legs_dress"
+      },
+      {
+        "id": "shoes_innkeeper"
+      }
+    ]
+  }
+}

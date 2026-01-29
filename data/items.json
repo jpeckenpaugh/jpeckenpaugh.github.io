@@ -1,0 +1,34 @@
+{
+  "hot_meal": {
+    "name": "Hot Meal",
+    "type": "healing",
+    "hp": 3,
+    "mp": 3,
+    "price": 3,
+    "desc": "A warm plate that restores a little strength."
+  },
+  "rations": {
+    "name": "Rations",
+    "type": "healing",
+    "hp": 5,
+    "mp": 5,
+    "price": 6,
+    "desc": "A small meal that restores a bit of strength."
+  },
+  "herbal_tea": {
+    "name": "Herbal Tea",
+    "type": "healing",
+    "hp": 10,
+    "mp": 10,
+    "price": 12,
+    "desc": "A soothing tea that restores body and mind."
+  },
+  "elixir": {
+    "name": "Elixir",
+    "type": "healing",
+    "hp": 20,
+    "mp": 20,
+    "price": 20,
+    "desc": "A strong tonic that revitalizes body and mind."
+  }
+}

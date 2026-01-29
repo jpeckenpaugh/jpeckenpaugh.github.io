@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lokarta Web Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.29.2/full/pyodide.js"></script>
+    <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <header class="masthead">
+        <div class="title">Lokarta</div>
+        <div class="subtitle">ASCII RPG Web Demo</div>
+        <a class="repo-link" href="https://github.com/jpeckenpaugh/lokarta" target="_blank" rel="noopener noreferrer">
+          GitHub: jpeckenpaugh/lokarta
+        </a>
+      </header>
+      <section class="terminal-shell">
+        <div id="terminal" class="terminal"></div>
+        <div id="status" class="status">Loading runtime...</div>
+      </section>
+    </main>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

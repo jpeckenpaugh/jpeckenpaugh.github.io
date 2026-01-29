@@ -1,0 +1,103 @@
+:root {
+  --bg: #0c0d0f;
+  --panel: #15181c;
+  --panel-glow: rgba(255, 255, 255, 0.05);
+  --text: #e8e4dc;
+  --muted: #9aa1ab;
+  --accent: #7dd0ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: radial-gradient(circle at top, #1a1f26 0%, var(--bg) 60%);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.page {
+  width: min(1100px, 100%);
+  display: grid;
+  gap: 16px;
+}
+
+.masthead {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.title {
+  font-size: clamp(28px, 5vw, 40px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.repo-link {
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.repo-link:hover,
+.repo-link:focus-visible {
+  text-decoration: underline;
+}
+
+.terminal-shell {
+  background: linear-gradient(145deg, #121418, #0d0e11);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px var(--panel-glow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.terminal {
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #050607;
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(125, 208, 255, 0.6);
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 16px;
+  }
+}

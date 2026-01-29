@@ -1,0 +1,64 @@
+{
+  "healing": {
+    "name": "Healing",
+    "command_id": "HEAL",
+    "menu_key": "NUM1",
+    "anim": "heal",
+    "mp_cost": 2,
+    "boosted_mp_cost": 4,
+    "boost_prompt_seconds": 3,
+    "boost_default": "N",
+    "boost_prompt_text": "Boost {name}? (Y/N)",
+    "requires_target": false,
+    "heal": 10,
+    "boosted_heal": 20,
+    "desc": "Restore HP."
+  },
+  "spark": {
+    "name": "Spark",
+    "command_id": "SPARK",
+    "menu_key": "NUM2",
+    "anim": "flash_melt",
+    "mp_cost": 2,
+    "boosted_mp_cost": 4,
+    "boost_prompt_seconds": 3,
+    "boost_default": "N",
+    "boost_prompt_text": "Boost {name}? (Y/N)",
+    "requires_target": true,
+    "atk_bonus": 2,
+    "boosted_multiplier": 2,
+    "stun_chance": 0.4,
+    "boosted_stun_chance": 0.8,
+    "desc": "Arcane damage with a chance to stun.",
+    "effect": {
+      "type": "overlay",
+      "frames": [
+        [
+          "<>"
+        ],
+        [
+          " **",
+          "<oo>",
+          " **"
+        ],
+        [
+          "  /\\",
+          "<<oo>>",
+          "  \\/"
+        ],
+        [
+          "   /\\",
+          "  /  \\",
+          "<<o--o>>",
+          "  \\  /",
+          "   \\/"
+        ]
+      ],
+      "color_key": "y",
+      "variation": 0.12,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.06
+    }
+  }
+}

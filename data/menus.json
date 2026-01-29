@@ -1,0 +1,52 @@
+{
+  "inventory": {
+    "title": "Inventory",
+    "open_message": "Choose an item to use.",
+    "close_message": "Closed inventory.",
+    "empty": "Inventory is empty.",
+    "actions": [
+      {
+        "key": "1-9",
+        "label": "Use item",
+        "command": "NUM"
+      },
+      {
+        "key": "B",
+        "label": "Back",
+        "command": "B_KEY"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ]
+  },
+  "spellbook": {
+    "title": "Spellbook",
+    "open_message": "Open spellbook.",
+    "close_message": "Closed spellbook.",
+    "actions": [
+      {
+        "key": "1",
+        "label": "{heal_name}",
+        "command": "NUM1"
+      },
+      {
+        "key": "2",
+        "label": "{spark_name}",
+        "command": "NUM2"
+      },
+      {
+        "key": "B",
+        "label": "Back",
+        "command": "B_KEY"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ]
+  }
+}

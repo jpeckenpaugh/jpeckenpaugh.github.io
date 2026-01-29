@@ -1,0 +1,612 @@
+{
+  "flower_box": {
+    "art": [
+      "  (O)",
+      " (O*O)",
+      "  (O)",
+      "   |)",
+      "  (|",
+      "  _|_",
+      " [###]",
+      "=[###]="
+    ],
+    "color_mask": [
+      "  fif",
+      " fidif",
+      "  fif",
+      "   gG",
+      "  Gg",
+      "  dgd",
+      " zzzzz",
+      "ZzzzzzZ"
+    ],
+    "align": 0
+  },
+  "flower_box_small": {
+    "art": [
+      " (o)",
+      "(o*o)",
+      " (o)",
+      "  |)",
+      " (|",
+      "=[#]="
+    ],
+    "color_mask": [
+      " fif",
+      "fidif",
+      " fif",
+      "  gG",
+      " Gg",
+      "ZzzzZ"
+    ],
+    "align": 0
+  },
+  "house_wall_left": {
+    "art": [
+      "  /",
+      " /",
+      "/_",
+      " |",
+      " |",
+      " |",
+      " |",
+      " |",
+      " |",
+      "~|"
+    ],
+    "color_mask": [
+      "  d",
+      " d",
+      "dD",
+      " d",
+      " d",
+      " d",
+      " d",
+      " d",
+      " d",
+      "gd"
+    ],
+    "align": 0,
+    "variation": 0.08,
+    "jitter_stability": true
+  },
+  "house_wall_right": {
+    "art": [
+      "\\",
+      " \\",
+      " _\\",
+      " |",
+      " |",
+      " |o",
+      " |----o",
+      " |    |",
+      " |    |",
+      " |====="
+    ],
+    "color_mask": [
+      "d",
+      " d",
+      " Dd",
+      " d",
+      " d",
+      " dL",
+      " dqqqqQ",
+      " d    q",
+      " d    q",
+      " dQQQQQQ"
+    ],
+    "align": 0,
+    "variation": 0.08,
+    "jitter_stability": true
+  },
+  "house_wall_interior": {
+    "art": [
+      "=",
+      "|",
+      "|",
+      "|",
+      "|o",
+      "|",
+      "|",
+      "|",
+      "|"
+    ],
+    "color_mask": [
+      "D",
+      "d",
+      "d",
+      "d",
+      "dw",
+      "d",
+      "d",
+      "d",
+      "d"
+    ],
+    "align": 0,
+    "variation": 0.08,
+    "jitter_stability": true
+  },
+  "chair": {
+    "art": [
+      "o",
+      "|",
+      "|",
+      "|",
+      "o===o",
+      "|   |",
+      "|   |",
+      "o   o"
+    ],
+    "color_mask": [
+      "s",
+      "d",
+      "d",
+      "d",
+      "sttts",
+      "d   d",
+      "d   d",
+      "s   s"
+    ],
+    "align": 0
+  },
+  "sign": {
+    "art": [
+      " ___",
+      "/===\\",
+      "\\===/",
+      " |^|",
+      " |^|",
+      " |^|",
+      " |^|",
+      "[|=|]"
+    ],
+    "color_mask": [
+      " sss",
+      "sXxXs",
+      "sxXxs",
+      " szS",
+      " Szs",
+      " szS",
+      " Szs",
+      "dSzSd"
+    ],
+    "align": 0
+  },
+  "sign_small": {
+    "art": [
+      " __",
+      "/==\\",
+      "\\==/",
+      " ||",
+      " ||",
+      " ||",
+      "[||]"
+    ],
+    "color_mask": [
+      " ss",
+      "sXxs",
+      "sxXs",
+      " sS",
+      " Ss",
+      " sS",
+      "dSSd"
+    ],
+    "align": 0
+  },
+  "lamp": {
+    "art": [
+      "  __",
+      " /##\\",
+      "/_##_\\",
+      "  ||",
+      "  ||",
+      "  ||",
+      "  ||",
+      "  ||",
+      " /[]\\"
+    ],
+    "color_mask": [
+      "  yy",
+      " yYYy",
+      "yYYYYy",
+      "  ss",
+      "  ss",
+      "  ss",
+      "  ss",
+      "  ss",
+      " xXXx"
+    ],
+    "align": 0
+  },
+  "grass": {
+    "art": [
+      "~~~"
+    ],
+    "color_mask": [
+      "gGg"
+    ],
+    "align": 0
+  },
+  "grass_1": {
+    "art": [
+      "~"
+    ],
+    "color_mask": [
+      "g"
+    ],
+    "align": 0
+  },
+  "table": {
+    "art": [
+      "      o",
+      " ____(O)____",
+      "|___________|",
+      "|           |",
+      "|           |",
+      "|           |",
+      "o           o"
+    ],
+    "color_mask": [
+      "      r",
+      " xXxXRpRXxXx",
+      "xXXXXXXXXXXXx",
+      "x           x",
+      "x           x",
+      "x           x",
+      "w           w"
+    ],
+    "align": 0
+  },
+  "bed": {
+    "art": [
+      "o",
+      "|",
+      "|_____________o",
+      "|#############|",
+      "|             |",
+      "o             o"
+    ],
+    "color_mask": [
+      "w",
+      "x",
+      "XbBbBbBbBbBbBbw",
+      "xBbBbBbBbBbBbBx",
+      "x             x",
+      "w             w"
+    ],
+    "align": 0
+  },
+  "table_shop": {
+    "art": [
+      "  ^      o",
+      " _O__[]_(O)_",
+      "|___________|",
+      "|           |",
+      "|           |",
+      "|           |",
+      "o           o"
+    ],
+    "color_mask": [
+      "  a  mm  i",
+      " xaxxMMxIIIx",
+      "xXXXXXXXXXXXx",
+      "x           x",
+      "x           x",
+      "x           x",
+      "w           w"
+    ],
+    "align": 0
+  },
+  "bush_small": {
+    "art": [
+      " _--_",
+      "/####\\",
+      "\\####/",
+      "~|##|~"
+    ],
+    "color_mask": [
+      " gGGg",
+      "gGGGGg",
+      "gGGGGg",
+      "gdDDdg"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
+  "bush_large": {
+    "art": [
+      "  __----__",
+      " /########\\",
+      "/##########\\",
+      "|##########|",
+      "\\##########/",
+      " \\########/",
+      "~~|######|~~"
+    ],
+    "color_mask": [
+      "  ggGgGGgg",
+      " gGGGGGgGGg",
+      "gGGGgGeGgGGg",
+      "gGGGgGGGgEGg",
+      "gGgEGGGGgGGg",
+      " gGGGgGeGGg",
+      "GgdDDDDDDdGg"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
+  "tree_small": {
+    "art": [
+      "  /\\",
+      " /##\\",
+      "/####\\",
+      "~~||~~ "
+    ],
+    "color_mask": [
+      "  gg",
+      " gGGg",
+      "gGGGGg",
+      "  dd",
+      "gGddgG"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
+  "tree_large": {
+    "art": [
+      "      /\\",
+      "     /##\\",
+      "    /####\\",
+      "   /######\\",
+      "  /########\\",
+      " /##########\\",
+      "/############\\",
+      "~~~~~/||\\~~~~~"
+    ],
+    "color_mask": [
+      "      gg",
+      "     gGGg",
+      "    gGdGGg",
+      "   gGgGdGgg",
+      "  gGGdgGGgdg",
+      " ggGGGgdGggGg",
+      "ggGgGdGgGdGgGg",
+      "gGgGgDddDGgGgG"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
+  "bookshelf": {
+    "art": [
+      "o==========o",
+      "| [] [] [] |",
+      "|----------|",
+      "| [] [] [] |",
+      "|----------|",
+      "|   o||o   |",
+      "|__________|",
+      "O          O"
+    ],
+    "color_mask": [
+      "QDDDDDDDDDDQ",
+      "d 66 77 NN d",
+      "ddDDDDDDDDDdd",
+      "d RR 99 77 d",
+      "ddDDDDDDDDdd",
+      "dDDDDDDDDDDd",
+      "DddddddddddD",
+      "Q          Q"
+    ],
+    "align": 0
+  },
+  "roof": {
+    "art": [
+      "="
+    ],
+    "color_mask": [
+      "d"
+    ],
+    "align": 1
+  },
+  "tree_large_2": {
+    "art": [
+      "      __",
+      "     /##\\",
+      "    /####\\",
+      "   /######\\",
+      "  /########\\",
+      "  \\########/",
+      "   \\######/",
+      "~~~~~/||\\~~~~~"
+    ],
+    "color_mask": [
+      "      gg",
+      "     gGGg",
+      "    gGdGGg",
+      "   gGeGdJgg",
+      "  gGJdgGGgdg",
+      "  gGGGgEGjgg",
+      "   gGdGgGdG",
+      "gGgGgDddDGgGgG"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
+  "tree_large_3": {
+    "art": [
+      "      /\\",
+      "     /##\\",
+      "    /####\\",
+      "   /######\\",
+      "  /########\\",
+      " /##########\\",
+      " \\##########/",
+      "~~~~~/||\\~~~~~"
+    ],
+    "color_mask": [
+      "      gg",
+      "     gGGg",
+      "    g8dGGg",
+      "   gGgGd8gg",
+      "  gGG8gGGgdg",
+      " ggGGGgd8ggGg",
+      " gGg8dGgG8GgG",
+      "gGgGgDddDGgGgG"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
+  "bush_large_2": {
+    "art": [
+      "  __-_--_-__",
+      " /##o######o\\",
+      "/############\\",
+      "|##o####o####|",
+      "|############|",
+      "\\#########o##/",
+      " \\#o########/",
+      "~~~|######|~~~"
+    ],
+    "color_mask": [
+      "  ggGgGgGGgg",
+      " gGGrGGgGgGrg",
+      "gGGGgGGgGGgGGg",
+      "gGgrGGgGRGgGGg",
+      "gGGGgGGgGGgGGg",
+      "gGgGGGgGGgrgGg",
+      " gGRGGggGGGGg",
+      "GgGdDDDDDDdGgG"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
+  "house": {
+    "art": [
+      "     [==]",
+      "  /===================\\",
+      " / # # # # # # # # # # \\",
+      "/_#_#_#_#_#_#_#_#_#_#_#_\\",
+      "|   __    _____    __   |",
+      "|  [##]  |     |  [##]  |",
+      "|  [__]  |     |  [__]  |",
+      "|        |o    |        |",
+      "|        |     |        |",
+      "|________=======________|"
+    ],
+    "color_mask": [
+      "    DddD",
+      "  ddddddddddddddddddddd",
+      " d D d D d D d D d D d d",
+      "ddDdddddddddddddddddddddd",
+      "d   SS    ddddd    SS   d",
+      "d  sSSs  d     d  sSss  d",
+      "d  sSSs  d     d  sSSs  d",
+      "d        dL    d        d",
+      "d        d     d        d",
+      "dDdDdDdDdQqQqQqQdDdDdDdDd"
+    ],
+    "align": 0,
+    "variation": 0.08,
+    "jitter_stability": true
+  },
+  "town_wall": {
+    "art": [
+      "|##|",
+      "|##|",
+      "|##|",
+      "|##|",
+      "|##|",
+      "|##|",
+      "|##|",
+      "|##|",
+      "|##|",
+      "===="
+    ],
+    "color_mask": [
+      "ZXxZ",
+      "ZxXZ",
+      "ZXxZ",
+      "zxXz",
+      "zXxz",
+      "zxXz",
+      "ZXxZ",
+      "ZxXZ",
+      "ZXxZ",
+      "XXXX"
+    ],
+    "align": 0,
+    "variation": 0.12,
+    "jitter_stability": true
+  },
+  "water": {
+    "art": [
+      "~~"
+    ],
+    "color_mask": [
+      "bB"
+    ],
+    "align": 0,
+    "variation": 0.10
+  },
+  "pebble": {
+    "dynamic": {
+      "mode": "scatter",
+      "glyphs": [
+        "o",
+        "O"
+      ],
+      "color_keys": [
+        "Z",
+        "z",
+        "X",
+        "x",
+        "L",
+        "l"
+      ],
+      "scatter_chance": 0.2
+    }
+  },
+  "lokarta_logo": {
+    "blocking_space": "#",
+    "art": [
+      "    __          __              __       ",
+      "   /#/   ____  /#/______ ______/#/_____ _",
+      "  /#/   /#__#\\/#//_/#__#`/#___/#__/#__#`/",
+      " /#/___/#/_/#/#,< /#/_/#/#/  /#/_/#/_/#/ ",
+      "/_____/\\____/_/|_|\\__,_/_/   \\__/\\__,_/  "
+    ],
+    "color_mask": [
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+    ],
+    "align": 0
+  },
+  "battle_ground": {
+    "dynamic": {
+      "mode": "scatter",
+      "glyphs": [
+        "o",
+        "O"
+      ],
+      "color_keys": [
+        "Z",
+        "z",
+        "X",
+        "x",
+        "L",
+        "l"
+      ],
+      "scatter_chance": 0.25
+    }
+  }
+}

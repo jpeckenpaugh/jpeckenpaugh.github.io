@@ -1,0 +1,224 @@
+{
+  "town": {
+    "color": "yellow",
+    "min_height": 10,
+    "objects": [
+      {
+        "id": "water",
+        "repeat": 5
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house",
+        "label": "Shop",
+        "label_row": 2,
+        "label_key": "o"
+      },
+      {
+        "id": "grass"
+      },
+      {
+        "id": "flower_box_small"
+      },
+      {
+        "id": "grass"
+      },
+      {
+        "id": "house",
+        "label": "Hall",
+        "label_row": 2,
+        "label_key": "B"
+      },
+      {
+        "id": "grass"
+      },
+      {
+        "id": "sign_small"
+      },
+      {
+        "id": "grass"
+      },
+      {
+        "id": "house",
+        "label": "Inn",
+        "label_row": 2,
+        "label_key": "f",
+        "label_variation": 0.05,
+        "label_jitter_stability": true
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "water",
+        "repeat": 5
+      }
+    ],
+    "narrative": [
+      "You arrive in town, safe behind sturdy wooden walls.",
+      "",
+      "A local shop can provide you with basic items.",
+      "If you are lost, check the town hall for instructions.",
+      "The inn's lantern glows warmly in the evening light."
+    ],
+    "commands": [
+      {
+        "key": "F",
+        "label": "Set out for the Forest",
+        "command": "ENTER_SCENE",
+        "target": "forest",
+        "anim": "battle_start"
+      },
+      {
+        "key": "S",
+        "label": "Shop",
+        "command": "ENTER_VENUE",
+        "target": "town_shop"
+      },
+      {
+        "key": "H",
+        "label": "Hall",
+        "command": "ENTER_VENUE",
+        "target": "town_hall"
+      },
+      {
+        "key": "I",
+        "label": "Inn",
+        "command": "ENTER_VENUE",
+        "target": "town_inn"
+      }
+    ]
+  },
+  "forest": {
+    "color": "green",
+    "gap_min": 0,
+    "gap_ground": [
+      "grass",
+      "grass",
+      "grass"
+    ],
+    "gap_ground_scatter": "battle_ground",
+    "objects_bottom": [
+      {
+        "id": "grass",
+        "scatter": "pebble"
+      },
+      {
+        "id": "grass",
+        "scatter": "pebble"
+      }
+    ],
+    "narrative": [
+      "All is quiet. No enemies in sight."
+    ],
+    "commands": [
+      {
+        "key": "A",
+        "label": "Attack",
+        "command": "ATTACK",
+        "type": "combat",
+        "anim": "flash_melt",
+        "when": "has_opponents"
+      },
+      {
+        "key": "F",
+        "label": "Find an opponent to fight",
+        "command": "ENTER_SCENE",
+        "target": "forest",
+        "anim": "battle_start",
+        "when": "no_opponents"
+      },
+      {
+        "key": "T",
+        "label": "Return to Town",
+        "command": "ENTER_SCENE",
+        "target": "town"
+      }
+    ]
+  },
+  "title": {
+    "color": "cyan",
+    "scroll": {
+      "height": 10,
+      "speed": 1,
+      "forest_width_scale": 0.5
+    },
+    "objects": [
+      {
+        "id": "lokarta_logo"
+      }
+    ],
+    "narrative": [
+      "Lokarta - World Maker",
+      "",
+      "A modular engine for world creation"
+    ],
+    "commands": [
+      {
+        "key": "C",
+        "label": "Continue",
+        "command": "TITLE_CONTINUE",
+        "when": "has_save"
+      },
+      {
+        "key": "N",
+        "label": "New Game",
+        "command": "TITLE_NEW"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ],
+    "confirm_narrative": [
+      "Lokarta - World Maker",
+      "",
+      "Overwrite existing save?",
+      "",
+      "[Y] Yes, start new",
+      "[N] No, go back"
+    ],
+    "confirm_commands": [
+      {
+        "key": "Y",
+        "label": "Yes, start new",
+        "command": "TITLE_CONFIRM_YES"
+      },
+      {
+        "key": "N",
+        "label": "No, go back",
+        "command": "TITLE_CONFIRM_NO"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ]
+  }
+}

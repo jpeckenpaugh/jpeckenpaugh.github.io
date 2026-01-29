@@ -1,0 +1,210 @@
+{
+  "a": {
+    "name": "amber",
+    "hex": "#FFCD38"
+  },
+  "A": {
+    "name": "bright amber",
+    "hex": "#FFE038"
+  },
+  "b": {
+    "name": "blue",
+    "hex": "#3838FF"
+  },
+  "B": {
+    "name": "bright blue",
+    "hex": "#7474FF"
+  },
+  "c": {
+    "name": "cyan",
+    "hex": "#38FFFF"
+  },
+  "C": {
+    "name": "bright cyan",
+    "hex": "#74FFFF"
+  },
+  "d": {
+    "name": "drab",
+    "hex": "#967117"
+  },
+  "D": {
+    "name": "bright drab",
+    "hex": "#B58E23"
+  },
+  "e": {
+    "name": "emerald",
+    "hex": "#76D496"
+  },
+  "E": {
+    "name": "bright emerald",
+    "hex": "#8BF8AF"
+  },
+  "f": {
+    "name": "fuchsia",
+    "hex": "#FF38FF"
+  },
+  "F": {
+    "name": "bright fuchsia",
+    "hex": "#FF74FF"
+  },
+  "g": {
+    "name": "green",
+    "hex": "#389C38"
+  },
+  "G": {
+    "name": "bright green",
+    "hex": "#38B738"
+  },
+  "h": {
+    "name": "honey",
+    "hex": "#E8BC82"
+  },
+  "H": {
+    "name": "bright honey",
+    "hex": "#F5CFA0"
+  },
+  "i": {
+    "name": "indigo",
+    "hex": "#73389E"
+  },
+  "I": {
+    "name": "bright indigo",
+    "hex": "#8B38C5"
+  },
+  "j": {
+    "name": "jade",
+    "hex": "#38BB8C"
+  },
+  "J": {
+    "name": "bright jade",
+    "hex": "#38DFA2"
+  },
+  "k": {
+    "name": "black",
+    "hex": "#2B2B2B"
+  },
+  "K": {
+    "name": "bright black",
+    "hex": "#4A4A4A"
+  },
+  "l": {
+    "name": "lavender",
+    "hex": "#E6E6FA"
+  },
+  "L": {
+    "name": "bright lavender",
+    "hex": "#F5F5FF"
+  },
+  "m": {
+    "name": "lime",
+    "hex": "#7AC943"
+  },
+  "M": {
+    "name": "bright lime",
+    "hex": "#9BE15D"
+  },
+  "n": {
+    "name": "navy",
+    "hex": "#38389C"
+  },
+  "N": {
+    "name": "bright navy",
+    "hex": "#3838B7"
+  },
+  "o": {
+    "name": "orange",
+    "hex": "#FFB938"
+  },
+  "O": {
+    "name": "bright orange",
+    "hex": "#FFC860"
+  },
+  "p": {
+    "name": "pink",
+    "hex": "#FFCED6"
+  },
+  "q": {
+    "name": "brown",
+    "hex": "#8B5A2B"
+  },
+  "Q": {
+    "name": "bright brown",
+    "hex": "#A06B33"
+  },
+  "r": {
+    "name": "red",
+    "hex": "#FF3838"
+  },
+  "R": {
+    "name": "bright red",
+    "hex": "#FF7474"
+  },
+  "s": {
+    "name": "silver",
+    "hex": "#C0C0C0"
+  },
+  "S": {
+    "name": "bright silver",
+    "hex": "#D9D9D9"
+  },
+  "t": {
+    "name": "teal",
+    "hex": "#389C9C"
+  },
+  "T": {
+    "name": "bright teal",
+    "hex": "#38B7B7"
+  },
+  "u": {
+    "name": "azure",
+    "hex": "#3A8CD5"
+  },
+  "U": {
+    "name": "bright azure",
+    "hex": "#63A8F2"
+  },
+  "V": {
+    "name": "bright violet",
+    "hex": "#F7BCF7"
+  },
+  "w": {
+    "name": "white",
+    "hex": "#FFFFFF"
+  },
+  "x": {
+    "name": "xanadu",
+    "hex": "#738678"
+  },
+  "X": {
+    "name": "bright xanadu",
+    "hex": "#8FA193"
+  },
+  "y": {
+    "name": "yellow",
+    "hex": "#FFFF38"
+  },
+  "Y": {
+    "name": "bright yellow",
+    "hex": "#FFFF74"
+  },
+  "z": {
+    "name": "zucchini",
+    "hex": "#474A33"
+  },
+  "Z": {
+    "name": "bright zucchini",
+    "hex": "#616644"
+  },
+  "@": {
+    "name": "gradient"
+  },
+  "random": {
+    "mode": "hsl",
+    "s_min": 0.4,
+    "s_max": 0.9,
+    "l_bright_min": 0.75,
+    "l_bright_max": 0.95,
+    "l_dark_min": 0.18,
+    "l_dark_max": 0.45
+  }
+}
