@@ -69,6 +69,122 @@ body {
   align-items: center;
 }
 
+.keyboard-shell {
+  background: linear-gradient(145deg, #121418, #0d0e11);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 1px var(--panel-glow);
+  display: grid;
+  gap: 12px;
+}
+
+.keyboard-title {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.keyboard-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.key {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #1a1e24;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.08s ease, border-color 0.2s ease, color 0.2s ease;
+  touch-action: manipulation;
+}
+
+.key:active {
+  transform: translateY(1px);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.qwerty {
+  display: grid;
+  gap: 8px;
+}
+
+.key-row {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.key-row.offset-1 {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  margin-left: 5%;
+  margin-right: 5%;
+}
+
+.key-row.offset-2 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-left: 12%;
+  margin-right: 12%;
+}
+
+.keypad {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+.num-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.key-zero {
+  grid-column: span 3;
+}
+
+.pad-controls {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.key-enter {
+  height: 100%;
+  min-width: 70px;
+}
+
+.arrow-pad {
+  display: grid;
+  gap: 8px;
+}
+
+.arrow-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  justify-items: center;
+}
+
+.arrow-row-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.key-arrow {
+  min-width: 44px;
+}
+}
+
 .terminal {
   width: 100%;
   height: 100%;

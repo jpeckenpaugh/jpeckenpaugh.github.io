@@ -1,5 +1,6 @@
 const statusEl = document.getElementById("status");
 const termEl = document.getElementById("terminal");
+const keyboardEl = document.getElementById("virtual-keyboard");
 const manifestUrl = new URL("asset-manifest.json", window.location.href);
 const rootUrl = new URL(".", window.location.href);
 
@@ -18,6 +19,7 @@ const term = new Terminal({
 });
 
 initTerminal();
+setupVirtualKeyboard();
 
 async function initTerminal() {
   await waitForFonts();
@@ -213,6 +215,7 @@ async function bootPyodide() {
     ].join("\n")
   );
   const enqueueKey = pyodide.globals.get("enqueue_key");
+  window.enqueueKey = enqueueKey;
 
   term.onKey(({ domEvent }) => {
     const mapped = mapKeyEvent(domEvent);
@@ -228,5 +231,17 @@ async function bootPyodide() {
     writeToTerminal(`\x1b[31mRuntime error: ${err}\x1b[0m\r\n`);
     setStatus("Runtime error. Check console.");
     console.error(err);
+  });
+}
+
+function setupVirtualKeyboard() {
+  if (!keyboardEl) return;
+  keyboardEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-key]");
+    if (!button) return;
+    const key = button.getAttribute("data-key") || "";
+    if (window.enqueueKey) {
+      window.enqueueKey(key);
+    }
   });
 }
