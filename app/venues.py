@@ -31,12 +31,45 @@ def _append_leave(commands: list[dict]) -> list[dict]:
     return commands
 
 
-def _color_code_for_key(colors: dict, key: str) -> str:
-    if not colors:
+def _truecolor(hex_code: str) -> str:
+    value = hex_code.lstrip("#")
+    if len(value) != 6:
         return ""
-    entry = colors.get(key, {})
-    if isinstance(entry, dict) and entry.get("ansi"):
-        return str(entry["ansi"])
+    try:
+        r = int(value[0:2], 16)
+        g = int(value[2:4], 16)
+        b = int(value[4:6], 16)
+    except ValueError:
+        return ""
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def _color_code_for_key(colors: dict, key: str) -> str:
+    if not key:
+        return ""
+    entry = colors.get(key)
+    if isinstance(entry, dict):
+        hex_code = entry.get("hex", "") if isinstance(entry.get("hex"), str) else ""
+        name = entry.get("name", "") if isinstance(entry.get("name"), str) else ""
+    elif isinstance(entry, str):
+        hex_code = ""
+        name = entry
+    else:
+        return ""
+    name = name.strip()
+    hex_code = hex_code.strip()
+    if not hex_code:
+        hex_start = name.find("#")
+        hex_code = name[hex_start:] if hex_start != -1 else ""
+    if hex_code:
+        code = _truecolor(hex_code)
+        if code:
+            return code
+    lowered = name.lower()
+    if lowered == "brown":
+        return ANSI.FG_YELLOW + ANSI.DIM
+    if lowered in ("gray", "grey"):
+        return ANSI.FG_WHITE + ANSI.DIM
     return ""
 
 
