@@ -87,12 +87,6 @@
     ],
     "commands": [
       {
-        "label": "Hunting",
-        "command": "ENTER_SCENE",
-        "target": "forest",
-        "anim": "battle_start"
-      },
-      {
         "label": "Shop",
         "command": "ENTER_VENUE",
         "target": "town_shop"
@@ -123,9 +117,10 @@
         "target": "town_smithy"
       },
       {
-        "label": "Elements",
-        "command": "ELEMENTS",
-        "enabled_when": "has_elements"
+        "label": "Hunting",
+        "command": "ENTER_SCENE",
+        "target": "forest",
+        "anim": "battle_start"
       },
       {
         "label": "Portal",
