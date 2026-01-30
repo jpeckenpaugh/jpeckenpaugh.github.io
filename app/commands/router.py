@@ -249,7 +249,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         return False
 
     if command_id == "B_KEY" and (
-        state.hall_mode
+        state.current_venue_id
+        or state.hall_mode
         or state.inn_mode
         or state.shop_mode
         or state.alchemist_mode
@@ -257,21 +258,22 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         or state.smithy_mode
         or state.portal_mode
     ):
-        venue_id = None
-        if state.hall_mode:
-            venue_id = "town_hall"
-        elif state.inn_mode:
-            venue_id = "town_inn"
-        elif state.shop_mode:
-            venue_id = "town_shop"
-        elif state.alchemist_mode:
-            venue_id = "town_alchemist"
-        elif state.temple_mode:
-            venue_id = "town_temple"
-        elif state.smithy_mode:
-            venue_id = "town_smithy"
-        elif state.portal_mode:
-            venue_id = "town_portal"
+        venue_id = state.current_venue_id
+        if not venue_id:
+            if state.hall_mode:
+                venue_id = "town_hall"
+            elif state.inn_mode:
+                venue_id = "town_inn"
+            elif state.shop_mode:
+                venue_id = "town_shop"
+            elif state.alchemist_mode:
+                venue_id = "town_alchemist"
+            elif state.temple_mode:
+                venue_id = "town_temple"
+            elif state.smithy_mode:
+                venue_id = "town_smithy"
+            elif state.portal_mode:
+                venue_id = "town_portal"
         venue = ctx.venues.get(venue_id, {}) if venue_id else {}
         state.hall_mode = False
         state.inn_mode = False

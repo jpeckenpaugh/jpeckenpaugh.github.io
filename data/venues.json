@@ -1,13 +1,12 @@
 {
   "town_shop": {
-    "name": "Town Shop",
+    "name": "Shop",
     "scene_id": "shop",
     "npc_ids": [
       "shopkeeper_1"
     ],
     "actions": [
-      "buy",
-      "leave"
+      "buy"
     ],
     "welcome_message": "Welcome to the shop.",
     "leave_message": "You leave the shop.",
@@ -283,15 +282,14 @@
     }
   },
   "town_hall": {
-    "name": "Town Hall",
+    "name": "Hall",
     "scene_id": "hall",
     "npc_ids": [
       "mayor_1"
     ],
     "actions": [
       "info_opponents",
-      "info_items",
-      "leave"
+      "info_items"
     ],
     "welcome_message": "Welcome to the hall.",
     "leave_message": "You leave the hall.",
@@ -396,14 +394,13 @@
     ]
   },
   "town_inn": {
-    "name": "Town Inn",
+    "name": "Inn",
     "scene_id": "inn",
     "npc_ids": [
       "innkeeper_1"
     ],
     "actions": [
-      "rest",
-      "leave"
+      "rest"
     ],
     "welcome_message": "Warm lights and quiet rooms await.",
     "leave_message": "You step back into the street.",
@@ -544,8 +541,7 @@
       "shopkeeper_1"
     ],
     "actions": [
-      "fuse",
-      "leave"
+      "fuse"
     ],
     "welcome_message": "Welcome to the alchemist.",
     "leave_message": "You leave the alchemist.",
@@ -635,8 +631,7 @@
       "mayor_1"
     ],
     "actions": [
-      "overcharge",
-      "leave"
+      "overcharge"
     ],
     "welcome_message": "You enter the temple.",
     "leave_message": "You leave the temple.",
@@ -741,9 +736,7 @@
     "npc_ids": [
       "shopkeeper_1"
     ],
-    "actions": [
-      "leave"
-    ],
+    "actions": [],
     "welcome_message": "You enter the smithy.",
     "leave_message": "You leave the smithy.",
     "commands": [],
@@ -832,8 +825,7 @@
       "mayor_1"
     ],
     "actions": [
-      "teleport",
-      "leave"
+      "teleport"
     ],
     "welcome_message": "The portal hums with distant lands.",
     "leave_message": "You step away from the portal.",

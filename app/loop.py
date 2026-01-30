@@ -334,7 +334,16 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if action is None:
         return None, None
 
-    if action == "BACK" and state.current_venue_id:
+    if action == "BACK" and (
+        state.current_venue_id
+        or state.shop_mode
+        or state.hall_mode
+        or state.inn_mode
+        or state.alchemist_mode
+        or state.temple_mode
+        or state.smithy_mode
+        or state.portal_mode
+    ):
         return "B_KEY", None
 
     if action in ("START", "SELECT"):

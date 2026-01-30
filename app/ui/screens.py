@@ -238,6 +238,15 @@ def _venue_commands_with_back(venue: dict) -> list[dict]:
     return cmds
 
 
+def _menu_with_back(menu_data: dict) -> dict:
+    menu = dict(menu_data) if isinstance(menu_data, dict) else {}
+    actions = list(menu.get("actions", [])) if isinstance(menu.get("actions"), list) else []
+    if not any(cmd.get("command") == "B_KEY" for cmd in actions):
+        actions.append({"label": "Back", "command": "B_KEY"})
+    menu["actions"] = actions
+    return menu
+
+
 def _spell_preview_lines(
     frame_art: List[str],
     effect: Optional[dict],
@@ -426,6 +435,8 @@ def generate_frame(
                 return f"{continent_prefix} {name[len('Town '):]}"
             if name.startswith("Town"):
                 return f"{continent_prefix}{name[len('Town'):]}"
+            if not name.startswith(continent_prefix):
+                return f"{continent_prefix} {name}"
         return name
     location_gradient = None
     portal_desc = None
@@ -558,7 +569,7 @@ def generate_frame(
         else:
             art_lines, art_color = render_venue_art(venue, npc, color_map_override)
     elif alchemist_mode:
-        alchemy_menu = ctx.menus.get("alchemist", {})
+        alchemy_menu = _menu_with_back(ctx.menus.get("alchemist", {}))
         title = alchemy_menu.get("title", "Alchemist")
         body = [title, ""]
         gear_items = [g for g in player.gear_inventory if isinstance(g, dict)]
@@ -719,7 +730,7 @@ def generate_frame(
         )
         art_color = ANSI.FG_WHITE
     elif element_mode:
-        elements_menu = ctx.menus.get("elements", {})
+        elements_menu = _menu_with_back(ctx.menus.get("elements", {}))
         elements = list(getattr(player, "elements", []) or [])
         if hasattr(ctx, "continents"):
             order = list(ctx.continents.order() or [])
@@ -742,7 +753,7 @@ def generate_frame(
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif portal_mode:
-        portal_menu = ctx.menus.get("portal", {})
+        portal_menu = _menu_with_back(ctx.menus.get("portal", {}))
         elements = list(getattr(player, "elements", []) or [])
         if hasattr(ctx, "continents"):
             order = list(ctx.continents.order() or [])
