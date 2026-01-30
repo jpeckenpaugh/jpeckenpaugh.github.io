@@ -310,7 +310,12 @@ def _spell_effect_with_art(ctx: ScreenContext, spell: dict) -> Optional[dict]:
     return effect_override
 
 
-def _colorize_atlas_line(line: str, digit_colors: Optional[dict] = None) -> str:
+def _colorize_atlas_line(
+    line: str,
+    digit_colors: Optional[dict] = None,
+    flicker_digit: Optional[str] = None,
+    flicker_on: bool = True,
+) -> str:
     if not line:
         return line
     out = []
@@ -318,7 +323,11 @@ def _colorize_atlas_line(line: str, digit_colors: Optional[dict] = None) -> str:
         if digit_colors and ch in digit_colors:
             code = digit_colors.get(ch, "")
             if code:
-                out.append(f"{code}*{ANSI.RESET}")
+                if flicker_digit and ch == flicker_digit:
+                    flicker_code = code if flicker_on else f"{ANSI.FG_WHITE}{ANSI.DIM}"
+                    out.append(f"{flicker_code}*{ANSI.RESET}")
+                else:
+                    out.append(f"{code}*{ANSI.RESET}")
                 continue
         if ch == "o":
             out.append(f"{ANSI.FG_WHITE}{ANSI.DIM}{ch}{ANSI.RESET}")
@@ -707,6 +716,8 @@ def generate_frame(
                 if right_width and len(right) > right_width:
                     right = right[:right_width]
                 digit_colors = {}
+                flicker_digit = None
+                flicker_on = True
                 if hasattr(ctx, "elements"):
                     colors = ctx.colors.all()
                     elem_colors = {
@@ -723,7 +734,27 @@ def generate_frame(
                     for digit, palette in elem_colors.items():
                         if palette:
                             digit_colors[digit] = _color_code_for_key(colors, palette[0])
-                colored_right = _colorize_atlas_line(right, digit_colors)
+                    selected = None
+                    if elements and 0 <= menu_cursor < len(elements):
+                        selected = elements[menu_cursor]
+                    if selected is None:
+                        selected = getattr(player, "current_element", None)
+                    selected_map = {
+                        "base": "1",
+                        "earth": "2",
+                        "wind": "3",
+                        "air": "3",
+                        "fire": "4",
+                        "water": "5",
+                        "light": "6",
+                        "lightning": "7",
+                        "dark": "8",
+                        "ice": "9",
+                    }
+                    if selected in selected_map:
+                        flicker_digit = selected_map[selected]
+                        flicker_on = int(time.time() / 0.35) % 2 == 0
+                colored_right = _colorize_atlas_line(right, digit_colors, flicker_digit, flicker_on)
                 line = line + (" " * gap) + colored_right
             body.append(line)
         actions = format_menu_actions(portal_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)

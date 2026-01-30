@@ -110,7 +110,7 @@ def read_boost_prompt_input(ctx, render_frame, state: GameState, generate_frame,
 
 
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
-    if state.spell_mode:
+    if state.spell_mode or state.portal_mode:
         ch = read_keypress_timeout(0.2)
         return ch or ""
     return read_keypress()
