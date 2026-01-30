@@ -14,7 +14,6 @@ if os.name != 'nt' and not WEB_MODE:
 from app.bootstrap import create_app
 from app.config import DATA_DIR
 from app.loop import (
-    apply_boost_confirm,
     apply_router_command,
     handle_battle_end,
     handle_offensive_action,
@@ -74,7 +73,6 @@ def main():
         loot_bank={"xp": 0, "gold": 0},
         last_message="",
         leveling_mode=False,
-        boost_prompt=None,
         shop_mode=False,
         inventory_mode=False,
         inventory_items=[],
@@ -116,12 +114,7 @@ def main():
         action_cmd = None
         command_meta = None
         handled_by_router = False
-        handled_boost, action_cmd, should_continue = apply_boost_confirm(APP, state, ch, action_cmd)
-        if should_continue:
-            continue
-        cmd = None
-        if not handled_boost:
-            cmd, command_meta = map_input_to_command(APP, state, ch)
+        cmd, command_meta = map_input_to_command(APP, state, ch)
 
         if cmd == "QUIT":
             if state.title_mode or state.player.location == "Title":
@@ -162,7 +155,6 @@ def main():
             state.player.location = "Title"
             state.player.title_confirm = False
             state.leveling_mode = False
-            state.boost_prompt = None
             state.shop_mode = False
             state.shop_view = "menu"
             state.inventory_mode = False
@@ -219,10 +211,10 @@ def main():
             animate_art_transition(pre_frame, post_frame, state.player, pause_ticks=2)
             continue
 
-        if cmd is None and not handled_boost:
+        if cmd is None:
             continue
 
-        if state.leveling_mode and not handled_boost:
+        if state.leveling_mode:
             state.last_message, leveling_done = state.player.handle_level_up_input(cmd)
             if leveling_done:
                 state.leveling_mode = False
@@ -382,11 +374,8 @@ def main():
             cmd,
             command_meta,
             action_cmd,
-            handled_boost,
             handled_by_router,
         )
-        if state.boost_prompt:
-            continue
         if state.player.needs_level_up() and not any(opponent.hp > 0 for opponent in state.opponents):
             state.leveling_mode = True
 

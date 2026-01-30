@@ -5,7 +5,7 @@ import time
 from typing import Optional
 
 from app.commands.registry import CommandContext, dispatch_command
-from app.commands.router import CommandState, handle_boost_confirm, handle_command
+from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage
 from app.state import GameState
@@ -92,21 +92,6 @@ def render_battle_pause(ctx, render_frame, state: GameState, generate_frame, mes
     log_message = "\n".join(state.battle_log) if state.battle_log else message
     render_frame_state(ctx, render_frame, state, generate_frame, message=log_message, suppress_actions=True)
     time.sleep(battle_action_delay(state.player))
-
-
-def read_boost_prompt_input(ctx, render_frame, state: GameState, generate_frame, read_keypress_timeout) -> str:
-    spell_id = state.boost_prompt
-    spell_data = ctx.spells.get(spell_id, {})
-    prompt_seconds = int(spell_data.get("boost_prompt_seconds", 3))
-    default_choice = str(spell_data.get("boost_default", "N")).lower()
-    choice = None
-    for remaining in range(prompt_seconds, 0, -1):
-        countdown_message = f"{state.last_message} ({remaining})"
-        render_frame_state(ctx, render_frame, state, generate_frame, message=countdown_message)
-        choice = read_keypress_timeout(1.0)
-        if choice and choice.lower() in ("y", "n"):
-            break
-    return choice if choice else default_choice
 
 
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
@@ -213,7 +198,6 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
             state.hall_mode,
             state.inn_mode,
             state.spell_mode,
-            state.boost_prompt,
         )
     ):
         scene_id = "town" if state.player.location == "Town" else "forest"
@@ -588,10 +572,6 @@ def element_unlock_notes(ctx, player, prev_level: int, new_level: int) -> list[s
     return notes
 
 
-def apply_boost_confirm(ctx, state: GameState, ch: str, action_cmd: Optional[str]) -> tuple[bool, Optional[str], bool]:
-    return False, action_cmd, False
-
-
 def apply_router_command(
     ctx,
     state: GameState,
@@ -714,10 +694,9 @@ def resolve_player_action(
     cmd: Optional[str],
     command_meta: Optional[dict],
     action_cmd: Optional[str],
-    handled_boost: bool,
     handled_by_router: bool,
 ) -> Optional[str]:
-    if handled_boost or handled_by_router:
+    if handled_by_router:
         return action_cmd
     if cmd != "DEFEND":
         state.defend_active = False
@@ -755,7 +734,6 @@ def resolve_player_action(
             state.last_message = "Your HP is already full."
             return None
         mp_cost = int(spell.get("mp_cost", 2))
-        boosted_mp_cost = int(spell.get("boosted_mp_cost", mp_cost))
         element = spell.get("element")
         has_charge = False
         if element:
@@ -764,13 +742,10 @@ def resolve_player_action(
         if state.player.mp < mp_cost and not has_charge:
             state.last_message = f"Not enough MP to cast {name}."
             return None
-        if state.player.mp >= boosted_mp_cost:
-            pass
         message = cast_spell(
             state.player,
             state.opponents,
             spell_id,
-            boosted=False,
             loot=state.loot_bank,
             spells_data=ctx.spells,
             target_index=state.target_index,

@@ -513,25 +513,6 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
     return False
 
 
-def handle_boost_confirm(
-    state: CommandState,
-    ctx: RouterContext,
-    spell_id: str,
-    boosted: bool
-) -> None:
-    state.last_message = cast_spell(
-        state.player,
-        state.opponents,
-        spell_id,
-        boosted,
-        state.loot_bank,
-        ctx.spells,
-        target_index=state.target_index,
-    )
-    spell = ctx.spells.get(spell_id, {})
-    state.action_cmd = spell.get("command_id")
-
-
 def _command_target(
     scenes_data: ScenesData,
     commands_data: CommandsData,

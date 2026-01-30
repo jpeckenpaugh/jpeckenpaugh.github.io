@@ -64,7 +64,6 @@ def cast_spell(
     player: Player,
     opponents: List[Opponent],
     spell_id: str,
-    boosted: bool,
     loot: dict,
     spells_data: SpellsData,
     target_index: Optional[int] = None,
@@ -72,9 +71,7 @@ def cast_spell(
 ) -> str:
     spell = spells_data.get(spell_id, {})
     name = spell.get("name", spell_id.title())
-    mp_cost = int(spell.get("boosted_mp_cost", 4 if boosted else 2))
-    if not boosted:
-        mp_cost = int(spell.get("mp_cost", 2))
+    mp_cost = int(spell.get("mp_cost", 2))
     element = spell.get("element")
     used_charge = False
     if element:
@@ -87,9 +84,7 @@ def cast_spell(
             return "Your HP is already full."
         if not used_charge:
             player.mp -= mp_cost
-        heal_amount = int(spell.get("boosted_heal", 20 if boosted else 10))
-        if not boosted:
-            heal_amount = int(spell.get("heal", 10))
+        heal_amount = int(spell.get("heal", 10))
         if rank >= 2:
             heal_amount = int(heal_amount * 1.25)
         if rank >= 3:
@@ -124,8 +119,6 @@ def cast_spell(
         messages = []
         for opponent in targets:
             damage, crit, miss = roll_damage(player.total_atk() + atk_bonus, opponent.defense)
-            if boosted:
-                damage *= int(spell.get("boosted_multiplier", 2))
             damage = int(damage * damage_mult)
             if miss:
                 messages.append(f"Your {name} misses the {opponent.name}.")
@@ -138,9 +131,7 @@ def cast_spell(
                 opponent.melted = False
                 messages.append(f"Your {name} fells the {opponent.name}.")
                 continue
-            stun_chance = float(spell.get("boosted_stun_chance", 0.8 if boosted else 0.4))
-            if not boosted:
-                stun_chance = float(spell.get("stun_chance", 0.4))
+            stun_chance = float(spell.get("stun_chance", 0.4))
             if rank >= 3:
                 stun_chance = min(0.95, stun_chance + float(spell.get("rank3_stun_bonus", 0.1)))
             stunned_turns = try_stun(opponent, stun_chance)

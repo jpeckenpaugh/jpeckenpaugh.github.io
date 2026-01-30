@@ -13,7 +13,6 @@ class GameState:
     loot_bank: dict
     last_message: str
     leveling_mode: bool
-    boost_prompt: Optional[str]
     shop_mode: bool
     inventory_mode: bool
     inventory_items: List[tuple[str, str]]
