@@ -310,6 +310,27 @@ def _spell_effect_with_art(ctx: ScreenContext, spell: dict) -> Optional[dict]:
     return effect_override
 
 
+def _colorize_atlas_line(line: str, digit_colors: Optional[dict] = None) -> str:
+    if not line:
+        return line
+    out = []
+    for ch in line:
+        if digit_colors and ch in digit_colors:
+            code = digit_colors.get(ch, "")
+            if code:
+                out.append(f"{code}*{ANSI.RESET}")
+                continue
+        if ch == "o":
+            out.append(f"{ANSI.FG_WHITE}{ANSI.DIM}{ch}{ANSI.RESET}")
+        elif ch == "w":
+            out.append(f"{ANSI.FG_BLUE}~{ANSI.RESET}")
+        elif ch in ("|", "-", "/", "\\"):
+            out.append(f"{ANSI.FG_YELLOW}{ch}{ANSI.RESET}")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 def generate_frame(
     ctx: ScreenContext,
     player: Player,
@@ -670,7 +691,7 @@ def generate_frame(
         left_width = max((len(line) for line in left_lines), default=0)
         right_width = max((len(r) for r in right_lines), default=0)
         content_width = max(0, SCREEN_WIDTH - 2)
-        right_margin = 4
+        right_margin = 14
         right_width = min(right_width, 24)
         right_width = min(right_width, max(0, content_width - right_margin))
         for i in range(total_lines):
@@ -685,7 +706,25 @@ def generate_frame(
             if right:
                 if right_width and len(right) > right_width:
                     right = right[:right_width]
-                line = line + (" " * gap) + right
+                digit_colors = {}
+                if hasattr(ctx, "elements"):
+                    colors = ctx.colors.all()
+                    elem_colors = {
+                        "1": ctx.elements.colors_for("base"),
+                        "2": ctx.elements.colors_for("earth"),
+                        "3": ctx.elements.colors_for("wind"),
+                        "4": ctx.elements.colors_for("fire"),
+                        "5": ctx.elements.colors_for("water"),
+                        "6": ctx.elements.colors_for("light"),
+                        "7": ctx.elements.colors_for("lightning"),
+                        "8": ctx.elements.colors_for("dark"),
+                        "9": ctx.elements.colors_for("ice"),
+                    }
+                    for digit, palette in elem_colors.items():
+                        if palette:
+                            digit_colors[digit] = _color_code_for_key(colors, palette[0])
+                colored_right = _colorize_atlas_line(right, digit_colors)
+                line = line + (" " * gap) + colored_right
             body.append(line)
         actions = format_menu_actions(portal_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
