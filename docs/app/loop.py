@@ -519,6 +519,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     clamp_action_cursor(state, commands)
     if action in ("UP", "DOWN", "LEFT", "RIGHT"):
         state.action_cursor = move_action_cursor(state.action_cursor, action, commands)
+        if state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents):
+            state.battle_cursor = state.action_cursor
         return None, None
     if action == "BACK":
         cmd = "B_KEY"
@@ -531,6 +533,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if command_meta.get("_disabled"):
             return None, None
         cmd = command_meta.get("command")
+        if state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents):
+            state.battle_cursor = state.action_cursor
         return cmd, command_meta
     return None, None
 
@@ -666,6 +670,9 @@ def apply_router_command(
         state.battle_log = []
     if post_in_forest and post_alive and not pre_alive:
         state.battle_log = []
+        commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
+        state.action_cursor = state.battle_cursor
+        clamp_action_cursor(state, commands)
     push_battle_message(state, cmd_state.last_message)
     state.shop_mode = cmd_state.shop_mode
     state.shop_view = cmd_state.shop_view
@@ -1027,6 +1034,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         )
     state.opponents = []
     state.battle_log = []
+    state.battle_cursor = state.action_cursor
     if state.loot_bank["xp"] or state.loot_bank["gold"]:
         pre_level = state.player.level
         state.player.gain_xp(state.loot_bank["xp"])
@@ -1045,3 +1053,6 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         state.last_message = ""
         push_battle_message(state, "All is quiet. No enemies in sight.")
     state.loot_bank = {"xp": 0, "gold": 0}
+    commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
+    state.action_cursor = 0
+    clamp_action_cursor(state, commands)
