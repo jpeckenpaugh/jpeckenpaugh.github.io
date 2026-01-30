@@ -231,6 +231,13 @@ def _colorize_effect_line_map(line: str, color_map: dict, color_codes: dict, gly
     return "".join(out)
 
 
+def _venue_commands_with_back(venue: dict) -> list[dict]:
+    cmds = list(venue.get("commands", [])) if isinstance(venue.get("commands"), list) else []
+    if not any(cmd.get("command") == "B_KEY" for cmd in cmds):
+        cmds.append({"label": "Back", "command": "B_KEY"})
+    return cmds
+
+
 def _spell_preview_lines(
     frame_art: List[str],
     effect: Optional[dict],
@@ -519,7 +526,10 @@ def generate_frame(
             body += npc_lines + [""]
         body += info_lines
         body += venue.get("narrative", [])
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+        actions = format_command_lines(
+            _venue_commands_with_back(venue),
+            selected_index=action_cursor if action_cursor >= 0 else None
+        )
         art_anchor_x = None
         if venue.get("objects"):
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
@@ -538,7 +548,10 @@ def generate_frame(
         if npc_lines:
             body += npc_lines + [""]
         body += venue.get("narrative", [])
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+        actions = format_command_lines(
+            _venue_commands_with_back(venue),
+            selected_index=action_cursor if action_cursor >= 0 else None
+        )
         art_anchor_x = None
         if venue.get("objects"):
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
@@ -578,7 +591,10 @@ def generate_frame(
         if npc_lines:
             body += npc_lines + [""]
         body += venue.get("narrative", [])
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+        actions = format_command_lines(
+            _venue_commands_with_back(venue),
+            selected_index=action_cursor if action_cursor >= 0 else None
+        )
         art_anchor_x = None
         if venue.get("objects"):
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
@@ -597,7 +613,10 @@ def generate_frame(
         if npc_lines:
             body += npc_lines + [""]
         body += venue.get("narrative", [])
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+        actions = format_command_lines(
+            _venue_commands_with_back(venue),
+            selected_index=action_cursor if action_cursor >= 0 else None
+        )
         art_anchor_x = None
         if venue.get("objects"):
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)

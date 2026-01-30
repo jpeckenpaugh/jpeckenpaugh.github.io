@@ -33,6 +33,7 @@ class CommandState:
     opponents: List[Opponent]
     loot_bank: dict
     last_message: str
+    current_venue_id: Optional[str]
     shop_mode: bool
     shop_view: str
     inventory_mode: bool

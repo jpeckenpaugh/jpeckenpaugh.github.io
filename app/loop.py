@@ -659,6 +659,7 @@ def apply_router_command(
         opponents=state.opponents,
         loot_bank=state.loot_bank,
         last_message=state.last_message,
+        current_venue_id=state.current_venue_id,
         shop_mode=state.shop_mode,
         shop_view=state.shop_view,
         inventory_mode=state.inventory_mode,
@@ -683,6 +684,7 @@ def apply_router_command(
         return False, action_cmd, cmd, False, None
     state.opponents = cmd_state.opponents
     state.loot_bank = cmd_state.loot_bank
+    state.current_venue_id = cmd_state.current_venue_id
     post_in_forest = state.player.location == "Forest"
     post_alive = any(m.hp > 0 for m in state.opponents)
     if not pre_in_forest and post_in_forest:
