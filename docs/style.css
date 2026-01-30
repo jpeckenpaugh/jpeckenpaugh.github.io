@@ -58,6 +58,11 @@ body {
   text-decoration: underline;
 }
 
+.page-footer {
+  text-align: center;
+  margin-top: 4px;
+}
+
 .terminal-shell {
   background: linear-gradient(145deg, #121418, #0d0e11);
   border: 1px solid rgba(255, 255, 255, 0.08);
