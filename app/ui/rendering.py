@@ -137,9 +137,13 @@ def element_color_map(color_map: dict, element: str) -> dict:
     if not mapping:
         return color_map
     remapped = dict(color_map)
+    jitter = remapped.get("jitter", {}) if isinstance(remapped.get("jitter"), dict) else {}
     for src_key, dest_key in mapping.items():
         if dest_key in color_map:
             remapped[src_key] = color_map[dest_key]
+            jitter[src_key] = float(jitter.get(src_key, 0.08) or 0.08)
+    if jitter:
+        remapped["jitter"] = jitter
     return remapped
 
 
@@ -285,6 +289,7 @@ def render_venue_art(venue: dict, npc: dict, color_map_override: Optional[dict] 
     if isinstance(venue_color_map, dict):
         color_map.update(venue_color_map)
     random_config = color_map.get("random", {}) if isinstance(color_map.get("random"), dict) else {}
+    jitter_by_key = color_map.get("jitter", {}) if isinstance(color_map.get("jitter"), dict) else {}
     venue_seed_base = _random_seed_base(f"venue:{venue.get('name', '')}")
 
     def truecolor(code: str) -> str:
@@ -747,6 +752,7 @@ def render_venue_objects(
     npc_has_mask = len(npc_mask_lines) > 0
 
     random_config = color_map.get("random", {}) if isinstance(color_map.get("random"), dict) else {}
+    jitter_by_key = color_map.get("jitter", {}) if isinstance(color_map.get("jitter"), dict) else {}
     venue_seed_base = _random_seed_base(f"venue:{venue.get('name', '')}")
 
     def apply_color_mask(
@@ -1132,6 +1138,7 @@ def render_scene_art(
         return f"\033[38;2;{r};{g};{b}m"
 
     random_config = color_map.get("random", {}) if isinstance(color_map.get("random"), dict) else {}
+    jitter_by_key = color_map.get("jitter", {}) if isinstance(color_map.get("jitter"), dict) else {}
 
     def build_color_by_key() -> tuple[dict, set]:
         color_by_key = {}
@@ -1246,6 +1253,11 @@ def render_scene_art(
                 code = f"\033[38;2;{r};{g};{b}m"
             elif mask_char in _MASK_DIGITS:
                 code = _random_color_code(mask_char, i, row_index, seed_base, random_config)
+            elif mask_char in jitter_by_key and mask_char in color_rgb_by_key:
+                jitter_amount = float(jitter_by_key.get(mask_char, 0.0) or 0.0)
+                if jitter_amount > 0:
+                    jitter_seed = seed_base ^ (ord(mask_char) << 4) ^ (i * 0x85EBCA77) ^ (row_index * 0xC2B2AE3D)
+                    code = _jitter_color_code(color_rgb_by_key[mask_char], jitter_amount, jitter_seed)
             elif mask_char.isalpha() and mask_char in color_rgb_by_key and jitter_amount > 0:
                 jitter_seed = seed_base ^ (ord(mask_char) << 4) ^ (i * 0x85EBCA77) ^ (row_index * 0xC2B2AE3D)
                 if not jitter_stability:
