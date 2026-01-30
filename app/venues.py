@@ -287,8 +287,6 @@ def render_venue_body(
             if str(cmd.get("command", "")).startswith("PORTAL:")
         ]
         left_lines = []
-        if not portal_cmds:
-            left_lines = ["No continents unlocked."]
         selected_element = None
         if state.action_cursor is not None:
             selected = next((cmd for idx, cmd in portal_cmds if idx == state.action_cursor), None)
@@ -303,16 +301,13 @@ def render_venue_body(
         right_lines = list(atlas_lines)
         total_lines = max(len(left_lines), len(right_lines))
         content_width = max(0, SCREEN_WIDTH - 2)
-        right_margin = 14
         right_width = max((len(r) for r in right_lines), default=0)
         right_width = min(right_width, 24)
-        right_width = min(right_width, max(0, content_width - right_margin))
+        right_width = min(right_width, max(0, content_width))
+        left_width = max(0, (content_width - right_width) // 2)
         for i in range(total_lines):
             left = left_lines[i] if i < len(left_lines) else ""
             right = right_lines[i] if i < len(right_lines) else ""
-            gap = 1 if left and right else 0
-            right_col = max(0, content_width - right_margin - right_width)
-            left_width = max(0, right_col - gap)
             if left_width and len(left) > left_width:
                 left = left[:left_width]
             line = left.ljust(left_width)
@@ -375,7 +370,7 @@ def render_venue_body(
                         flicker_digit = selected_map[selected_element]
                         flicker_on = int(time.time() / 0.35) % 2 == 0
                 colored_right = _colorize_atlas_line(right, digit_colors, flicker_digit, flicker_on, locked_color)
-                line = line + (" " * gap) + colored_right
+                line = line + colored_right
             body.append(line)
 
     if not getattr(state, "portal_mode", False):
