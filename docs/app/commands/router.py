@@ -245,41 +245,41 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             return True
         return False
 
-    if command_id == "B_KEY" and state.hall_mode:
-        venue = ctx.venues.get("town_hall", {})
+    if command_id == "B_KEY" and (
+        state.hall_mode
+        or state.inn_mode
+        or state.shop_mode
+        or state.alchemist_mode
+        or state.temple_mode
+        or state.smithy_mode
+        or state.portal_mode
+    ):
+        venue_id = None
+        if state.hall_mode:
+            venue_id = "town_hall"
+        elif state.inn_mode:
+            venue_id = "town_inn"
+        elif state.shop_mode:
+            venue_id = "town_shop"
+        elif state.alchemist_mode:
+            venue_id = "town_alchemist"
+        elif state.temple_mode:
+            venue_id = "town_temple"
+        elif state.smithy_mode:
+            venue_id = "town_smithy"
+        elif state.portal_mode:
+            venue_id = "town_portal"
+        venue = ctx.venues.get(venue_id, {}) if venue_id else {}
         state.hall_mode = False
-        state.last_message = venue.get("leave_message", "You leave the hall.")
-        return True
-
-    if command_id == "B_KEY" and state.inn_mode:
-        venue = ctx.venues.get("town_inn", {})
         state.inn_mode = False
-        state.last_message = venue.get("leave_message", "You leave the inn.")
-        return True
-
-    if command_id == "B_KEY" and state.alchemist_mode:
-        venue = ctx.venues.get("town_alchemist", {})
+        state.shop_mode = False
+        state.shop_view = "menu"
         state.alchemist_mode = False
         state.alchemy_first = None
-        state.last_message = venue.get("leave_message", "You leave the alchemist.")
-        return True
-
-    if command_id == "B_KEY" and state.temple_mode:
-        venue = ctx.venues.get("town_temple", {})
         state.temple_mode = False
-        state.last_message = venue.get("leave_message", "You leave the temple.")
-        return True
-
-    if command_id == "B_KEY" and state.smithy_mode:
-        venue = ctx.venues.get("town_smithy", {})
         state.smithy_mode = False
-        state.last_message = venue.get("leave_message", "You leave the smithy.")
-        return True
-
-    if command_id == "B_KEY" and state.portal_mode:
-        venue = ctx.venues.get("town_portal", {})
         state.portal_mode = False
-        state.last_message = venue.get("leave_message", "You leave the portal.")
+        state.last_message = venue.get("leave_message", "You leave the venue.")
         return True
 
     if command_id == "B_KEY" and state.shop_mode:

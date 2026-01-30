@@ -333,6 +333,9 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if action is None:
         return None, None
 
+    if action == "BACK" and (state.alchemist_mode or state.temple_mode or state.smithy_mode):
+        return "B_KEY", None
+
     if action in ("START", "SELECT"):
         if state.options_mode:
             state.options_mode = False
@@ -520,6 +523,10 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if action == "BACK":
             return "B_KEY", None
         return None, None
+
+    if state.temple_mode or state.smithy_mode:
+        if action == "BACK":
+            return "B_KEY", None
 
     commands = action_commands_for_state(ctx, state)
     clamp_action_cursor(state, commands)

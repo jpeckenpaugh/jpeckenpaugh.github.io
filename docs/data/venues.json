@@ -11,12 +11,7 @@
     ],
     "welcome_message": "Welcome to the shop.",
     "leave_message": "You leave the shop.",
-    "commands": [
-      {
-        "label": "Back",
-        "command": "B_KEY"
-      }
-    ],
+    "commands": [],
     "info_sections": [
       {
         "key": "opponents",
@@ -308,10 +303,6 @@
       {
         "label": "Items",
         "command": "NUM2"
-      },
-      {
-        "label": "Back",
-        "command": "B_KEY"
       }
     ],
     "info_sections": [
@@ -428,10 +419,6 @@
         "command": "USE_SERVICE",
         "target": "town_inn",
         "service_id": "meal"
-      },
-      {
-        "label": "Back",
-        "command": "B_KEY"
       }
     ],
     "info_sections": [
@@ -562,12 +549,7 @@
     ],
     "welcome_message": "Welcome to the alchemist.",
     "leave_message": "You leave the alchemist.",
-    "commands": [
-      {
-        "label": "Back",
-        "command": "B_KEY"
-      }
-    ],
+    "commands": [],
     "narrative": [
       "Select two pieces of gear to fuse their powers."
     ],
@@ -664,10 +646,6 @@
         "command": "USE_SERVICE",
         "target": "town_temple",
         "service_id": "overcharge"
-      },
-      {
-        "label": "Back",
-        "command": "B_KEY"
       }
     ],
     "services": {
@@ -768,12 +746,7 @@
     ],
     "welcome_message": "You enter the smithy.",
     "leave_message": "You leave the smithy.",
-    "commands": [
-      {
-        "label": "Back",
-        "command": "B_KEY"
-      }
-    ],
+    "commands": [],
     "narrative": [
       "The smithy is quiet. Come back later for upgrades."
     ],
@@ -864,12 +837,7 @@
     ],
     "welcome_message": "The portal hums with distant lands.",
     "leave_message": "You step away from the portal.",
-    "commands": [
-      {
-        "label": "Back",
-        "command": "B_KEY"
-      }
-    ],
+    "commands": [],
     "narrative": [
       "Choose a continent to travel to."
     ],
