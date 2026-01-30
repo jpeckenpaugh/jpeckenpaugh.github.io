@@ -106,6 +106,11 @@ def _colorize_atlas_line(
     return "".join(out)
 
 
+def _highlight_label(label: str) -> str:
+    text = f"[ {label.strip()} ]" if label.strip() else "[]"
+    return f"{ANSI.BG_LIGHT_GRAY}{ANSI.FG_BLUE}{ANSI.BOLD}{text}{ANSI.RESET}"
+
+
 def venue_id_from_state(state: Any) -> Optional[str]:
     if getattr(state, "current_venue_id", None):
         return state.current_venue_id
@@ -149,9 +154,13 @@ def venue_actions(ctx: Any, state: Any, venue_id: str) -> list[dict]:
             order = list(ctx.continents.order() or [])
             elements = [e for e in order if e in elements] or elements
         commands = []
+        current_element = getattr(state.player, "current_element", None)
         for element in elements:
             label = ctx.continents.name_for(element) if hasattr(ctx, "continents") else element.title()
-            commands.append({"label": label, "command": f"PORTAL:{element}"})
+            entry = {"label": label, "command": f"PORTAL:{element}"}
+            if element == current_element:
+                entry["_disabled"] = True
+            commands.append(entry)
         if not commands:
             commands.append({"label": "No continents unlocked.", "_disabled": True})
         return _append_leave(commands)
@@ -267,23 +276,18 @@ def render_venue_body(
             body.append("")
 
     portal_message = None
+    portal_commands = None
     if getattr(state, "portal_mode", False):
         atlas = ctx.glyphs.get("atlas", {}) if hasattr(ctx, "glyphs") else {}
         atlas_lines = atlas.get("art", []) if isinstance(atlas, dict) else []
         commands = venue_actions(ctx, state, venue_id)
+        portal_commands = commands
         portal_cmds = [
             (idx, cmd) for idx, cmd in enumerate(commands)
             if str(cmd.get("command", "")).startswith("PORTAL:")
         ]
         left_lines = []
-        elements = []
-        for idx, cmd in portal_cmds:
-            element_id = str(cmd.get("command", "")).split(":", 1)[1]
-            elements.append(element_id)
-            label = cmd.get("label", element_id.title())
-            prefix = "> " if idx == state.action_cursor else "  "
-            left_lines.append(f"{prefix}{label}")
-        if not left_lines:
+        if not portal_cmds:
             left_lines = ["No continents unlocked."]
         selected_element = None
         if state.action_cursor is not None:

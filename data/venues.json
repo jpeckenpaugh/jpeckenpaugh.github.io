@@ -821,9 +821,6 @@
   "town_portal": {
     "name": "Portal",
     "scene_id": "shop",
-    "npc_ids": [
-      "mayor_1"
-    ],
     "actions": [
       "teleport"
     ],
