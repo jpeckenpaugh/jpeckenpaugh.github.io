@@ -538,7 +538,7 @@
     "name": "Alchemist",
     "scene_id": "shop",
     "npc_ids": [
-      "shopkeeper_1"
+      "alchemist_1"
     ],
     "actions": [
       "fuse"
@@ -628,7 +628,7 @@
     "name": "Temple",
     "scene_id": "shop",
     "npc_ids": [
-      "mayor_1"
+      "priestess_1"
     ],
     "actions": [
       "overcharge"
@@ -734,7 +734,7 @@
     "name": "Smithy",
     "scene_id": "shop",
     "npc_ids": [
-      "shopkeeper_1"
+      "blacksmith_1"
     ],
     "actions": [],
     "welcome_message": "You enter the smithy.",

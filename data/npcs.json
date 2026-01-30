@@ -67,5 +67,74 @@
         "id": "shoes_innkeeper"
       }
     ]
+  },
+  "alchemist_1": {
+    "name": "Lyra",
+    "role": "Alchemist",
+    "greeting": "Bring your gear. I can fuse its power.",
+    "color": "magenta",
+    "parts": [
+      {
+        "id": "hat_innkeeper"
+      },
+      {
+        "id": "face_innkeeper"
+      },
+      {
+        "id": "torso_innkeeper"
+      },
+      {
+        "id": "legs_dress"
+      },
+      {
+        "id": "shoes_basic"
+      }
+    ]
+  },
+  "priestess_1": {
+    "name": "Seren",
+    "role": "Priestess",
+    "greeting": "The temple's light can renew your will.",
+    "color": "yellow",
+    "parts": [
+      {
+        "id": "hat_mayor"
+      },
+      {
+        "id": "face_mayor"
+      },
+      {
+        "id": "torso_mayor"
+      },
+      {
+        "id": "legs_dress"
+      },
+      {
+        "id": "shoes_basic"
+      }
+    ]
+  },
+  "blacksmith_1": {
+    "name": "Bram",
+    "role": "Blacksmith",
+    "greeting": "Steel remembers every strike.",
+    "color": "red",
+    "parts": [
+      {
+        "id": "hat_shopkeeper"
+      },
+      {
+        "id": "face_shopkeeper"
+      },
+      {
+        "id": "torso_shopkeeper"
+      },
+      {
+        "id": "legs_mayor"
+      },
+      {
+        "id": "shoes_shopkeeper"
+      }
+    ]
   }
 }

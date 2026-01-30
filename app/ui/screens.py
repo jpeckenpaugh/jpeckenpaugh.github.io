@@ -502,7 +502,8 @@ def generate_frame(
         options_menu = dict(options_menu)
         options_menu["actions"] = options_actions
         title = options_menu.get("title", "Options")
-        body = [title, ""]
+        display_location = title
+        body = []
         if options_actions:
             for idx, entry in enumerate(options_actions):
                 label = str(entry.get("label", "")).strip() or entry.get("command", "")
@@ -533,10 +534,8 @@ def generate_frame(
     elif spell_mode:
         spell_menu = ctx.menus.get("spellbook", {})
         available_spells = ctx.spells.available(player.level)
-        body = [
-            spell_menu.get("title", "Spellbook"),
-            "",
-        ]
+        display_location = spell_menu.get("title", "Spellbook")
+        body = []
         if available_spells:
             color_codes = _color_codes_by_key(ctx.colors.all())
             for idx, (_, spell) in enumerate(available_spells):
