@@ -36,3 +36,4 @@ class GameState:
     defend_evasion: float = 0.0
     action_effect_override: Optional[dict] = None
     level_up_notes: list[str] = field(default_factory=list)
+    last_spell_targets: list[int] = field(default_factory=list)

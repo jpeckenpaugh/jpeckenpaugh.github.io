@@ -69,11 +69,14 @@ class OpponentsData:
     def spawn(
         self,
         player_level: int,
-        art_color: str
+        art_color: str,
+        element: str = "base"
     ) -> List[Opponent]:
         if not self._opponents:
             return []
-        candidates = list(self._opponents.values())
+        candidates = [m for m in self._opponents.values() if m.get("element", "base") == element]
+        if not candidates:
+            candidates = [m for m in self._opponents.values() if m.get("element", "base") == "base"]
         total_level = 0
         spawned = []
         attempts = 0

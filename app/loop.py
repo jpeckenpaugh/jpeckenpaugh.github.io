@@ -15,6 +15,7 @@ from app.ui.rendering import (
     animate_battle_end,
     animate_battle_start,
     animate_spell_overlay,
+    animate_spell_overlay_multi,
     element_color_map,
     flash_opponent,
     melt_opponent,
@@ -416,6 +417,13 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
 def maybe_begin_target_select(ctx, state: GameState, cmd: Optional[str]) -> bool:
     if not cmd:
         return False
+    if cmd in ctx.targeted_spell_commands:
+        spell_entry = ctx.spells.by_command_id(cmd)
+        if spell_entry:
+            _, spell = spell_entry
+            rank = ctx.spells.rank_for(spell, state.player.level)
+            if rank >= 2:
+                return False
     targeted = cmd == "ATTACK" or cmd in ctx.targeted_spell_commands
     if not targeted:
         return False
@@ -574,6 +582,7 @@ def resolve_player_action(
         state.defend_bonus = 0
         state.defend_evasion = 0.0
         state.action_effect_override = None
+        state.last_spell_targets = []
     if cmd == "DEFEND":
         alive = [opp for opp in state.opponents if opp.hp > 0]
         highest = max((opp.level for opp in alive), default=state.player.level)
@@ -590,6 +599,13 @@ def resolve_player_action(
         spell_id, spell = spell_entry
         name = spell.get("name", spell_id.title())
         rank = ctx.spells.rank_for(spell, state.player.level)
+        if rank >= 2:
+            state.last_spell_targets = [
+                i for i, opp in enumerate(state.opponents) if opp.hp > 0
+            ]
+        else:
+            if state.target_index is not None:
+                state.last_spell_targets = [state.target_index]
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
@@ -665,24 +681,60 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
         target_index = primary_opponent_index(state.opponents)
     spell_entry = ctx.spells.by_command_id(action_cmd) if action_cmd else None
     effect = None
+    spell = None
+    rank = 1
     if spell_entry:
         _, spell = spell_entry
+        rank = ctx.spells.rank_for(spell, state.player.level)
         effect = spell.get("effect") if isinstance(spell, dict) else None
     if state.action_effect_override:
         effect = state.action_effect_override
     if isinstance(effect, dict) and effect.get("type") == "overlay":
-        animate_spell_overlay(
-            ctx.scenes,
-            ctx.commands_data,
-            "forest",
-            state.player,
-            state.opponents,
-            message,
-            target_index,
-            effect,
-            objects_data=ctx.objects,
-            color_map_override=color_override
-        )
+        targets = state.last_spell_targets or [i for i, opp in enumerate(state.opponents) if opp.hp > 0]
+        if spell and rank >= 3:
+            effect_override = dict(effect)
+            effect_override["loops"] = 3
+            animate_spell_overlay_multi(
+                ctx.scenes,
+                ctx.commands_data,
+                "forest",
+                state.player,
+                state.opponents,
+                message,
+                targets,
+                effect_override,
+                objects_data=ctx.objects,
+                color_map_override=color_override
+            )
+        elif spell and rank >= 2:
+            for idx in targets:
+                effect_override = dict(effect)
+                effect_override["loops"] = 1
+                animate_spell_overlay(
+                    ctx.scenes,
+                    ctx.commands_data,
+                    "forest",
+                    state.player,
+                    state.opponents,
+                    message,
+                    idx,
+                    effect_override,
+                    objects_data=ctx.objects,
+                    color_map_override=color_override
+                )
+        else:
+            animate_spell_overlay(
+                ctx.scenes,
+                ctx.commands_data,
+                "forest",
+                state.player,
+                state.opponents,
+                message,
+                targets[0] if targets else target_index,
+                effect,
+                objects_data=ctx.objects,
+                color_map_override=color_override
+            )
     else:
         flash_opponent(
             ctx.scenes,

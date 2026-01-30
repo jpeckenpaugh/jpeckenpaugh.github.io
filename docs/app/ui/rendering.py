@@ -1089,6 +1089,7 @@ def render_scene_art(
     flash_index: Optional[int] = None,
     flash_color: Optional[str] = None,
     overlay_target_index: Optional[int] = None,
+    overlay_target_indices: Optional[set] = None,
     overlay_effect: Optional[dict] = None,
     overlay_frame_index: int = 0,
     visible_indices: Optional[set] = None,
@@ -1313,7 +1314,7 @@ def render_scene_art(
         overlay_color_key = "y"
         overlay_variation = 0.0
         overlay_jitter_stability = True
-        if overlay_effect and overlay_target_index == i:
+        if overlay_effect and (overlay_target_index == i or (overlay_target_indices and i in overlay_target_indices)):
             frames = overlay_effect.get("frames", [])
             if isinstance(frames, list) and frames:
                 max_frame_width = 0
@@ -1797,6 +1798,7 @@ def render_scene_frame(
     flash_index: Optional[int] = None,
     flash_color: Optional[str] = None,
     overlay_target_index: Optional[int] = None,
+    overlay_target_indices: Optional[set] = None,
     overlay_effect: Optional[dict] = None,
     overlay_frame_index: int = 0,
     visible_indices: Optional[set] = None,
@@ -1814,6 +1816,7 @@ def render_scene_frame(
         flash_index=flash_index,
         flash_color=flash_color,
         overlay_target_index=overlay_target_index,
+        overlay_target_indices=overlay_target_indices,
         overlay_effect=overlay_effect,
         overlay_frame_index=overlay_frame_index,
         visible_indices=visible_indices,
@@ -2036,6 +2039,56 @@ def animate_spell_overlay(
                 color_map_override=color_map_override,
                 art_opponents=art_overrides,
                 overlay_target_index=index,
+                overlay_effect=effect,
+                overlay_frame_index=frame_index,
+                suppress_actions=True,
+                suppress_narrative=True
+            )
+            time.sleep(max(0.03, min(frame_delay, battle_action_delay(player))))
+
+
+def animate_spell_overlay_multi(
+    scenes_data,
+    commands_data,
+    scene_id: str,
+    player: Player,
+    opponents: List[Opponent],
+    message: str,
+    targets: List[int],
+    effect: dict,
+    objects_data: Optional[object] = None,
+    color_map_override: Optional[dict] = None
+):
+    if not targets:
+        return
+    frames = effect.get("frames", [])
+    if not isinstance(frames, list) or not frames:
+        return
+    loops = int(effect.get("loops", 1) or 1)
+    frame_delay = float(effect.get("frame_delay", 0.06) or 0.06)
+    scene_data = scenes_data.get(scene_id, {})
+    gap_target = compute_scene_gap_target(scene_data, opponents)
+    art_overrides = []
+    target_set = set(targets)
+    for i, current in enumerate(opponents):
+        if i in target_set and current.hp <= 0:
+            art_overrides.append(replace(current, hp=1))
+        else:
+            art_overrides.append(current)
+    for _ in range(max(1, loops)):
+        for frame_index in range(len(frames)):
+            render_scene_frame(
+                scenes_data,
+                commands_data,
+                scene_id,
+                player,
+                opponents,
+                message,
+                gap_target,
+                objects_data=objects_data,
+                color_map_override=color_map_override,
+                art_opponents=art_overrides,
+                overlay_target_indices=target_set,
                 overlay_effect=effect,
                 overlay_frame_index=frame_index,
                 suppress_actions=True,

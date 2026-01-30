@@ -11,9 +11,9 @@
 - [ ] Add element-aware scene text variants (optional).
 
 ## Phase 3: Opponent Variants
-- [ ] Create elemental opponent variants (e.g., Fire Ant).
-- [ ] Increase stats per element tier.
-- [ ] Update spawn logic to use element variants.
+- [x] Create elemental opponent variants (e.g., Fire Ant).
+- [x] Increase stats per element tier.
+- [x] Update spawn logic to use element variants.
 
 ## Phase 4: Items + Shops
 - [ ] Add equipment item types: rings, bracelets, swords, shields, armor.
@@ -33,3 +33,4 @@
 - Elemental shops should stock elemental gear variants.
 - Phase 1 implemented: player tracks `elements` + `current_element`, unlock notes on level-up.
 - Phase 2 implemented: element palette remap applied to town/forest/venues + combat renders.
+- Phase 3 implemented: fire variants added; spawner prefers element pool.

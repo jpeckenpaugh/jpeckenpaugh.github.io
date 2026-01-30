@@ -463,7 +463,11 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
             ctx.save_data.save_player(state.player)
             return True
 
-        state.opponents = ctx.opponents_data.spawn(state.player.level, ANSI.FG_WHITE)
+        state.opponents = ctx.opponents_data.spawn(
+            state.player.level,
+            ANSI.FG_WHITE,
+            element=getattr(state.player, "current_element", "base")
+        )
         state.loot_bank = {"xp": 0, "gold": 0}
         if state.opponents:
             state.last_message = f"A {state.opponents[0].name} appears."
