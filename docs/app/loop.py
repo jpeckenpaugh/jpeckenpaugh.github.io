@@ -339,7 +339,17 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             state.menu_cursor = 0
         else:
             state.options_mode = True
-            state.menu_cursor = 0
+            menu = ctx.menus.get("options", {})
+            actions = []
+            for entry in menu.get("actions", []):
+                if not entry.get("command"):
+                    continue
+                cmd_entry = dict(entry)
+                if not command_is_enabled(cmd_entry, state.player, state.opponents):
+                    cmd_entry["_disabled"] = True
+                actions.append(cmd_entry)
+            enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
+            state.menu_cursor = enabled[0] if enabled else -1
             state.inventory_mode = False
             state.spell_mode = False
             state.element_mode = False

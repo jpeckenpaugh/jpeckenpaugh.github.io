@@ -540,7 +540,10 @@ def generate_frame(
             for idx, entry in enumerate(options_actions):
                 label = str(entry.get("label", "")).strip() or entry.get("command", "")
                 prefix = "> " if idx == menu_cursor else "  "
-                body.append(f"{prefix}{label}")
+                if entry.get("_disabled"):
+                    body.append(f"{ANSI.DIM}{prefix}{label}{ANSI.RESET}")
+                else:
+                    body.append(f"{prefix}{label}")
         else:
             body.append("No options available.")
         actions = format_menu_actions(options_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
