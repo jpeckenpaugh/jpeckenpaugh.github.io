@@ -94,6 +94,17 @@ def render_battle_pause(ctx, render_frame, state: GameState, generate_frame, mes
     time.sleep(battle_action_delay(state.player))
 
 
+def animate_strength_gain(ctx, render_frame, state: GameState, generate_frame, gain: int) -> None:
+    if gain <= 0:
+        return
+    delay = max(0.05, battle_action_delay(state.player) / 3) / 4
+    for _ in range(gain):
+        state.player.temp_atk_bonus += 1
+        state.player.temp_def_bonus += 1
+        render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
+        time.sleep(delay)
+
+
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
     if state.spell_mode or state.portal_mode:
         ch = read_keypress_timeout(0.2)
@@ -704,17 +715,17 @@ def resolve_player_action(
         state.defend_evasion = 0.0
         state.action_effect_override = None
         state.last_spell_targets = []
-    if cmd == "DEFEND":
-        alive = [opp for opp in state.opponents if opp.hp > 0]
-        highest = max((opp.level for opp in alive), default=state.player.level)
-        lower_level = highest < state.player.level
-        defense_bonus = max(2, state.player.total_defense() // 2)
-        evasion_bonus = 0.15 if lower_level else 0.05
-        state.defend_active = True
-        state.defend_bonus = defense_bonus
-        state.defend_evasion = evasion_bonus
-        push_battle_message(state, "You brace for impact.")
-        return cmd
+        if cmd == "DEFEND":
+            alive = [opp for opp in state.opponents if opp.hp > 0]
+            highest = max((opp.level for opp in alive), default=state.player.level)
+            lower_level = highest < state.player.level
+            defense_bonus = max(2, state.player.total_defense() // 2)
+            evasion_bonus = 0.15 if lower_level else 0.05
+            state.defend_active = True
+            state.defend_bonus = defense_bonus
+            state.defend_evasion = evasion_bonus
+            push_battle_message(state, "You brace for impact.")
+            return cmd
     spell_entry = ctx.spells.by_command_id(cmd)
     if spell_entry:
         spell_id, spell = spell_entry
@@ -966,6 +977,10 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 return True
         if state.player.location == "Forest" and idx < len(acting) - 1:
             render_battle_pause(ctx, render_frame, state, generate_frame, state.last_message)
+    if state.player.temp_atk_bonus > 0:
+        state.player.temp_atk_bonus = max(0, state.player.temp_atk_bonus - 1)
+    if state.player.temp_def_bonus > 0:
+        state.player.temp_def_bonus = max(0, state.player.temp_def_bonus - 1)
     return False
 
 

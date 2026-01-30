@@ -15,6 +15,7 @@ from app.bootstrap import create_app
 from app.config import DATA_DIR
 from app.loop import (
     apply_router_command,
+    animate_strength_gain,
     handle_battle_end,
     handle_offensive_action,
     map_input_to_command,
@@ -376,6 +377,17 @@ def main():
             action_cmd,
             handled_by_router,
         )
+        if action_cmd == "STRENGTH":
+            spell_entry = APP.spells.by_command_id(action_cmd)
+            if spell_entry:
+                _, spell = spell_entry
+                rank = APP.spells.rank_for(spell, state.player.level)
+                gain_per_cast = max(0, 10 * rank)
+                max_stack = gain_per_cast * 5
+                current = min(state.player.temp_atk_bonus, state.player.temp_def_bonus)
+                remaining = max(0, max_stack - current)
+                gain = min(gain_per_cast, remaining)
+                animate_strength_gain(APP, render_frame, state, generate_frame, gain)
         if state.player.needs_level_up() and not any(opponent.hp > 0 for opponent in state.opponents):
             state.leveling_mode = True
 

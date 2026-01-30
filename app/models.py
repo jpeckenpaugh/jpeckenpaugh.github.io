@@ -39,6 +39,8 @@ class Player:
     gear_defense: int
     elements: List[str]
     current_element: str
+    temp_atk_bonus: int = 0
+    temp_def_bonus: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -103,6 +105,8 @@ class Player:
             gear_defense=int(data.get("gear_defense", 0)),
             elements=elements,
             current_element=current_element,
+            temp_atk_bonus=0,
+            temp_def_bonus=0,
         )
 
     def add_item(self, key: str, amount: int = 1):
@@ -183,10 +187,10 @@ class Player:
         return f"Equipped {gear.get('name', 'gear')}."
 
     def total_atk(self) -> int:
-        return self.atk + int(self.gear_atk)
+        return self.atk + int(self.gear_atk) + int(self.temp_atk_bonus)
 
     def total_defense(self) -> int:
-        return self.defense + int(self.gear_defense)
+        return self.defense + int(self.gear_defense) + int(self.temp_def_bonus)
 
     def _recalc_gear(self) -> None:
         atk_bonus = 0

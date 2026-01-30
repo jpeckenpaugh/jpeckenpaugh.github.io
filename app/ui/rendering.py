@@ -2416,12 +2416,14 @@ def format_player_stats(player: Player) -> List[str]:
     mp_text = color(f"MP: {player.mp} / {player.max_mp}", ANSI.FG_MAGENTA)
     atk_total = player.total_atk()
     def_total = player.total_defense()
-    if player.gear_atk:
-        atk_text = color(f"ATK: {atk_total} (+{player.gear_atk})", ANSI.DIM)
+    atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))
+    def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0))
+    if atk_bonus:
+        atk_text = color(f"ATK: {atk_total} (+{atk_bonus})", ANSI.DIM)
     else:
         atk_text = color(f"ATK: {atk_total}", ANSI.DIM)
-    if player.gear_defense:
-        def_text = color(f"DEF: {def_total} (+{player.gear_defense})", ANSI.DIM)
+    if def_bonus:
+        def_text = color(f"DEF: {def_total} (+{def_bonus})", ANSI.DIM)
     else:
         def_text = color(f"DEF: {def_total}", ANSI.DIM)
     level_text = color(f"Level: {player.level}", ANSI.FG_CYAN)

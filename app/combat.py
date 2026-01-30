@@ -79,6 +79,11 @@ def cast_spell(
     if not used_charge and player.mp < mp_cost:
         return f"Not enough MP to cast {name}."
 
+    if spell_id == "strength":
+        if not used_charge:
+            player.mp -= mp_cost
+        return "You cast Strength. Your power surges."
+
     if spell_id == "healing":
         if player.hp == player.max_hp:
             return "Your HP is already full."

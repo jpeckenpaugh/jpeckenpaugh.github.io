@@ -412,6 +412,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             if service.get("heal_full", True):
                 state.player.hp = state.player.max_hp
                 state.player.mp = state.player.max_mp
+            state.player.temp_atk_bonus = 0
+            state.player.temp_def_bonus = 0
             state.last_message = service.get("message", "You rest at the inn and feel fully restored.")
         if service_type in ("rest", "meal"):
             state.player.recharge_wands()
