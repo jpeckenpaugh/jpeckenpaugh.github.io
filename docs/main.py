@@ -90,6 +90,7 @@ def main():
         portal_mode=False,
         quit_confirm=False,
         title_mode=True,
+        spell_cursor=0,
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)

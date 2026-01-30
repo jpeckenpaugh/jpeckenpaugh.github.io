@@ -439,13 +439,15 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if action == "BACK":
                 return "B_KEY", None
             return None, None
-        state.menu_cursor = max(0, min(state.menu_cursor, len(keys) - 1))
+        state.spell_cursor = max(0, min(state.spell_cursor, len(keys) - 1))
+        state.menu_cursor = state.spell_cursor
         if action in ("UP", "DOWN"):
             direction = -1 if action == "UP" else 1
-            state.menu_cursor = (state.menu_cursor + direction) % len(keys)
+            state.spell_cursor = (state.spell_cursor + direction) % len(keys)
+            state.menu_cursor = state.spell_cursor
             return None, None
         if action == "CONFIRM":
-            cmd = keys[state.menu_cursor]
+            cmd = keys[state.spell_cursor]
             return cmd, None
         if action == "BACK":
             return "B_KEY", None
@@ -623,8 +625,10 @@ def apply_router_command(
 ) -> tuple[bool, Optional[str], Optional[str], bool, Optional[int]]:
     if not cmd:
         return False, action_cmd, cmd, False, None
+    pre_location = state.player.location
     pre_in_forest = state.player.location == "Forest"
     pre_alive = any(m.hp > 0 for m in state.opponents)
+    pre_spell_mode = state.spell_mode
     cmd_state = CommandState(
         player=state.player,
         opponents=state.opponents,
@@ -679,9 +683,24 @@ def apply_router_command(
     state.portal_mode = cmd_state.portal_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
+    if state.spell_mode and not pre_spell_mode:
+        state.menu_cursor = state.spell_cursor
     if state.player.location == "Title" and cmd_state.player.location != "Title":
         state.title_mode = False
     state.player = cmd_state.player
+    post_location = state.player.location
+    if post_location == "Town" and pre_location != "Town":
+        commands = scene_commands(ctx.scenes, ctx.commands_data, "town", state.player, state.opponents)
+        state.action_cursor = 0
+        clamp_action_cursor(state, commands)
+    if post_location == "Forest" and pre_location != "Forest":
+        commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
+        state.action_cursor = 0
+        clamp_action_cursor(state, commands)
+    if pre_location == "Forest" and post_location == "Forest" and pre_alive and not post_alive:
+        commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
+        state.action_cursor = 0
+        clamp_action_cursor(state, commands)
     if command_meta and command_meta.get("anim") == "battle_start" and state.opponents:
         color_override = element_color_map(ctx.colors.all(), state.player.current_element)
         if not state.battle_log and _is_arrival_message(state, state.last_message):

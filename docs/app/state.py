@@ -37,6 +37,7 @@ class GameState:
     battle_log: list[str] = field(default_factory=list)
     action_cursor: int = 0
     menu_cursor: int = 0
+    spell_cursor: int = 0
     level_cursor: int = 0
     defend_active: bool = False
     defend_bonus: int = 0
