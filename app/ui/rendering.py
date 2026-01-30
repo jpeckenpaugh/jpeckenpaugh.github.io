@@ -2317,6 +2317,100 @@ def animate_art_transition(
         time.sleep(delay)
 
 
+def _split_ansi_by_visible(text: str, count: int) -> tuple[str, str]:
+    if count <= 0:
+        return "", text
+    left = []
+    right = []
+    vis = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\x1b" and i + 1 < len(text) and text[i + 1] == "[":
+            j = i + 2
+            while j < len(text) and text[j] != "m":
+                j += 1
+            if j < len(text):
+                seq = text[i:j + 1]
+                (left if vis < count else right).append(seq)
+                i = j + 1
+                continue
+        if vis < count:
+            left.append(ch)
+        else:
+            right.append(ch)
+        vis += 1
+        i += 1
+    return "".join(left), "".join(right)
+
+
+def animate_body_wipe_left_to_right(
+    frame_from: Frame,
+    player: Player,
+) -> None:
+    from_lines = frame_from.body_lines or []
+    if not from_lines:
+        return
+    max_width = max((len(strip_ansi(line)) for line in from_lines), default=0)
+    if max_width <= 0:
+        return
+    delay = max(0.05, battle_action_delay(player) / 3) / 4
+    blank_actions = format_action_lines([])
+    for step in range(1, max_width + 1):
+        wiped = []
+        for line in from_lines:
+            width = len(strip_ansi(line))
+            wipe_cols = min(step, width)
+            _, right = _split_ansi_by_visible(line, wipe_cols)
+            wiped.append((" " * wipe_cols) + right)
+        frame = replace(
+            frame_from,
+            body_lines=wiped,
+            status_lines=[],
+            action_lines=blank_actions,
+        )
+        render_frame(frame)
+        time.sleep(delay)
+
+
+def animate_art_melt_in(
+    frame_to: Frame,
+    player: Player,
+) -> None:
+    to_lines = frame_to.art_lines or []
+    height = len(to_lines)
+    if height <= 0:
+        return
+    to_padded = list(to_lines)
+    delay = max(0.05, battle_action_delay(player) / 3) / 4
+    blank_actions = format_action_lines([])
+    for visible in range(1, height + 1):
+        lines = ([""] * (height - visible)) + to_padded[height - visible:]
+        frame = replace(
+            frame_to,
+            art_lines=lines,
+            body_lines=[],
+            status_lines=[],
+            action_lines=blank_actions,
+        )
+        render_frame(frame)
+        time.sleep(delay)
+
+
+def animate_portal_departure(
+    frame_from: Frame,
+    frame_to: Frame,
+    player: Player,
+    pause_ticks: int = 1,
+) -> None:
+    animate_body_wipe_left_to_right(frame_from, player)
+    blank_actions = format_action_lines([])
+    for _ in range(max(0, pause_ticks)):
+        render_frame(replace(frame_to, art_lines=[], body_lines=[], status_lines=[], action_lines=blank_actions))
+        time.sleep(max(0.05, battle_action_delay(player) / 3) / 4)
+    animate_art_melt_in(frame_to, player)
+
+
 def format_player_stats(player: Player) -> List[str]:
     hp_text = color(f"HP: {player.hp} / {player.max_hp}", ANSI.FG_GREEN)
     mp_text = color(f"MP: {player.mp} / {player.max_mp}", ANSI.FG_MAGENTA)

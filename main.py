@@ -31,7 +31,7 @@ from app.models import Player
 from app.player_sync import sync_player_elements
 from app.state import GameState
 from app.ui.constants import SCREEN_HEIGHT, SCREEN_WIDTH
-from app.ui.rendering import animate_art_transition, clear_screen, render_frame
+from app.ui.rendering import animate_art_transition, animate_portal_departure, clear_screen, render_frame
 from app.ui.screens import generate_frame
 
 def warn_on_invalid_json(data_dir: str) -> None:
@@ -238,6 +238,7 @@ def main():
         if (
             cmd in ("ENTER_VENUE", "ENTER_SCENE")
             or cmd.startswith("TITLE_")
+            or cmd.startswith("PORTAL:")
             or (cmd in ("B_KEY", "LEAVE") and (
                 state.shop_mode
                 or state.hall_mode
@@ -356,7 +357,10 @@ def main():
                     state.level_cursor,
                     state.level_up_notes,
                 )
-                animate_art_transition(pre_frame, post_frame, state.player, pause_ticks=2)
+                if cmd and cmd.startswith("PORTAL:"):
+                    animate_portal_departure(pre_frame, post_frame, state.player, pause_ticks=1)
+                else:
+                    animate_art_transition(pre_frame, post_frame, state.player, pause_ticks=2)
         if should_continue:
             continue
         if target_index is not None:
