@@ -133,6 +133,10 @@ def main():
                 state.hall_view,
                 state.inn_mode,
                 state.spell_mode,
+                state.options_mode,
+                state.action_cursor,
+                state.menu_cursor,
+                state.level_cursor,
             )
             state.title_mode = True
             state.player.location = "Title"
@@ -146,6 +150,7 @@ def main():
             state.hall_view = "menu"
             state.inn_mode = False
             state.spell_mode = False
+            state.options_mode = False
             state.target_select = False
             state.target_index = None
             state.target_command = None
@@ -153,6 +158,9 @@ def main():
             state.loot_bank = {"xp": 0, "gold": 0}
             state.battle_log = []
             state.last_message = ""
+            state.action_cursor = 0
+            state.menu_cursor = 0
+            state.level_cursor = 0
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -166,6 +174,10 @@ def main():
                 state.hall_view,
                 state.inn_mode,
                 state.spell_mode,
+                state.options_mode,
+                state.action_cursor,
+                state.menu_cursor,
+                state.level_cursor,
             )
             animate_art_transition(pre_frame, post_frame, state.player, pause_ticks=2)
             continue
@@ -202,6 +214,10 @@ def main():
                 "hall_view": state.hall_view,
                 "inn_mode": state.inn_mode,
                 "spell_mode": state.spell_mode,
+                "options_mode": state.options_mode,
+                "action_cursor": state.action_cursor,
+                "menu_cursor": state.menu_cursor,
+                "level_cursor": state.level_cursor,
             }
             pre_in_venue = state.shop_mode or state.hall_mode or state.inn_mode
             pre_location = state.player.location
@@ -231,6 +247,10 @@ def main():
                     pre_snapshot["hall_view"],
                     pre_snapshot["inn_mode"],
                     pre_snapshot["spell_mode"],
+                    pre_snapshot.get("options_mode", False),
+                    pre_snapshot.get("action_cursor", 0),
+                    pre_snapshot.get("menu_cursor", 0),
+                    pre_snapshot.get("level_cursor", 0),
                 )
                 post_frame = generate_frame(
                     APP.screen_ctx,
@@ -245,6 +265,10 @@ def main():
                     state.hall_view,
                     state.inn_mode,
                     state.spell_mode,
+                    state.options_mode,
+                    state.action_cursor,
+                    state.menu_cursor,
+                    state.level_cursor,
                 )
                 animate_art_transition(pre_frame, post_frame, state.player, pause_ticks=2)
         if should_continue:

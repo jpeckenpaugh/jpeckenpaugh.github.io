@@ -4,13 +4,13 @@ import random
 import time
 from typing import Optional
 
-from app.commands.keymap import map_key_to_command
 from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_boost_confirm, handle_command
 from app.commands.scene_commands import scene_commands
 from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage
 from app.state import GameState
 from app.ui.ansi import ANSI
+from app.ui.constants import ACTION_LINES
 from app.ui.rendering import (
     animate_battle_end,
     animate_battle_start,
@@ -44,6 +44,10 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.hall_view,
         state.inn_mode,
         state.spell_mode,
+        state.options_mode,
+        state.action_cursor,
+        state.menu_cursor,
+        state.level_cursor,
         suppress_actions=suppress_actions,
     )
     render_frame(frame)
@@ -73,6 +77,140 @@ def read_boost_prompt_input(ctx, render_frame, state: GameState, generate_frame,
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
     return read_keypress()
 
+
+def normalize_input_action(ch: str) -> Optional[str]:
+    if not ch:
+        return None
+    if ch in ("UP", "DOWN", "LEFT", "RIGHT"):
+        return ch
+    if ch in ("ENTER", "\r", "\n"):
+        return "START"
+    if ch in ("SHIFT", "Shift"):
+        return "SELECT"
+    lower = ch.lower()
+    if lower == "a":
+        return "CONFIRM"
+    if lower == "s":
+        return "BACK"
+    return None
+
+
+def action_grid_dimensions(count: int) -> tuple[int, int]:
+    if count <= 3:
+        cols = 1
+    elif count <= 6:
+        cols = 2
+    else:
+        cols = 3
+    return ACTION_LINES, cols
+
+
+def _find_valid_in_column(row: int, col: int, count: int, rows: int) -> Optional[int]:
+    for offset in range(rows):
+        candidate_row = (row + offset) % rows
+        idx = candidate_row + col * rows
+        if idx < count:
+            return idx
+    return None
+
+
+def move_action_cursor(index: int, direction: str, count: int) -> int:
+    if count <= 0:
+        return 0
+    rows, cols = action_grid_dimensions(count)
+    index = max(0, min(index, count - 1))
+    row = index % rows
+    col = index // rows
+    if direction in ("UP", "DOWN"):
+        step = -1 if direction == "UP" else 1
+        for _ in range(rows):
+            row = (row + step) % rows
+            candidate = row + col * rows
+            if candidate < count:
+                return candidate
+        return index
+    if direction in ("LEFT", "RIGHT"):
+        step = -1 if direction == "LEFT" else 1
+        for _ in range(cols):
+            col = (col + step) % cols
+            candidate = _find_valid_in_column(row, col, count, rows)
+            if candidate is not None:
+                return candidate
+        return index
+    return index
+
+
+def action_commands_for_state(ctx, state: GameState) -> list[dict]:
+    if state.title_mode:
+        title_scene = ctx.scenes.get("title", {})
+        if getattr(state.player, "title_confirm", False):
+            return title_scene.get("confirm_commands", [])
+        return scene_commands(
+            ctx.scenes,
+            ctx.commands_data,
+            "title",
+            state.player,
+            state.opponents,
+        )
+    if state.shop_mode:
+        venue = ctx.venues.get("town_shop", {})
+        return venue.get("commands", [])
+    if state.hall_mode:
+        venue = ctx.venues.get("town_hall", {})
+        return venue.get("commands", [])
+    if state.inn_mode:
+        venue = ctx.venues.get("town_inn", {})
+        return venue.get("commands", [])
+    if state.inventory_mode or state.spell_mode or state.options_mode:
+        return []
+    if not any(
+        (
+            state.leveling_mode,
+            state.shop_mode,
+            state.inventory_mode,
+            state.hall_mode,
+            state.inn_mode,
+            state.spell_mode,
+            state.boost_prompt,
+        )
+    ):
+        scene_id = "town" if state.player.location == "Town" else "forest"
+        return scene_commands(
+            ctx.scenes,
+            ctx.commands_data,
+            scene_id,
+            state.player,
+            state.opponents,
+        )
+    return []
+
+
+def clamp_action_cursor(state: GameState, commands: list[dict]) -> None:
+    count = len(commands)
+    if count <= 0:
+        state.action_cursor = 0
+        return
+    state.action_cursor = max(0, min(state.action_cursor, count - 1))
+
+
+def spell_menu_keys(ctx) -> list[str]:
+    entries = []
+    for spell in ctx.spells.all().values():
+        menu_key = spell.get("menu_key")
+        if menu_key:
+            entries.append(menu_key)
+    def key_rank(val: str) -> int:
+        digits = "".join(ch for ch in val if ch.isdigit())
+        if digits:
+            return int(digits)
+        return 999
+    return sorted(entries, key=key_rank)
+
+
+def find_command_meta(commands: list[dict], command_id: Optional[str]) -> Optional[dict]:
+    if not command_id:
+        return None
+    return next((entry for entry in commands if entry.get("command") == command_id), None)
 
 def _alive_indices(opponents) -> list[int]:
     return [i for i, opp in enumerate(opponents) if opp.hp > 0]
@@ -126,14 +264,14 @@ def run_target_select(ctx, render_frame, state: GameState, generate_frame, read_
         if ch is None:
             blink_on = not blink_on
             continue
-        if ch in ("ENTER", "\r", "\n"):
+        if ch in ("ENTER", "\r", "\n", "A", "a"):
             state.target_select = False
             return state.target_command
         if ch in ("LEFT", "RIGHT"):
             direction = -1 if ch == "LEFT" else 1
             state.target_index = _advance_index(indices, state.target_index, direction)
             continue
-        if ch.lower() == "b":
+        if ch.lower() == "s":
             state.target_select = False
             state.target_command = None
             state.target_index = None
@@ -141,53 +279,110 @@ def run_target_select(ctx, render_frame, state: GameState, generate_frame, read_
     return None
 
 
-def available_commands_for_state(ctx, state: GameState) -> Optional[list]:
-    if state.title_mode:
-        title_scene = ctx.scenes.get("title", {})
-        if getattr(state.player, "title_confirm", False):
-            return title_scene.get("confirm_commands", [])
-        return scene_commands(
-            ctx.scenes,
-            ctx.commands_data,
-            "title",
-            state.player,
-            state.opponents
-        )
-    if state.inn_mode:
-        venue = ctx.venues.get("town_inn", {})
-        return venue.get("commands", [])
-    if not any(
-        (
-            state.leveling_mode,
-            state.shop_mode,
-            state.inventory_mode,
-            state.hall_mode,
-            state.inn_mode,
-            state.spell_mode,
-            state.boost_prompt,
-        )
-    ):
-        scene_id = "town" if state.player.location == "Town" else "forest"
-        return scene_commands(
-            ctx.scenes,
-            ctx.commands_data,
-            scene_id,
-            state.player,
-            state.opponents
-        )
-    return None
-
-
 def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str], Optional[dict]]:
-    available_commands = available_commands_for_state(ctx, state)
-    cmd = map_key_to_command(ch, available_commands)
-    command_meta = None
-    if available_commands and cmd:
-        command_meta = next(
-            (entry for entry in available_commands if entry.get("command") == cmd),
-            None
-        )
-    return cmd, command_meta
+    action = normalize_input_action(ch)
+    if action is None:
+        return None, None
+
+    if action in ("START", "SELECT"):
+        if state.options_mode:
+            state.options_mode = False
+            state.menu_cursor = 0
+        else:
+            state.options_mode = True
+            state.menu_cursor = 0
+            state.inventory_mode = False
+            state.spell_mode = False
+            state.shop_mode = False
+            state.hall_mode = False
+            state.inn_mode = False
+        return None, None
+
+    if state.leveling_mode:
+        options = ["NUM1", "NUM2", "NUM3", "NUM4", "B_KEY", "X_KEY"]
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.level_cursor = (state.level_cursor + direction) % len(options)
+            return None, None
+        if action == "CONFIRM":
+            cmd = options[state.level_cursor]
+            return cmd, None
+        if action == "BACK":
+            return "B_KEY", None
+        return None, None
+
+    if state.options_mode:
+        menu = ctx.menus.get("options", {})
+        actions = [entry for entry in menu.get("actions", []) if entry.get("command")]
+        if not actions:
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, len(actions) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % len(actions)
+            return None, None
+        if action == "BACK":
+            state.options_mode = False
+            return None, None
+        if action == "CONFIRM":
+            cmd = actions[state.menu_cursor].get("command")
+            state.options_mode = False
+            return cmd, None
+        return None, None
+
+    if state.inventory_mode:
+        items = state.inventory_items or []
+        count = min(len(items), 9)
+        if count == 0:
+            if action == "BACK":
+                return "B_KEY", None
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, count - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % count
+            return None, None
+        if action == "CONFIRM":
+            cmd = f"NUM{state.menu_cursor + 1}"
+            return cmd, None
+        if action == "BACK":
+            return "B_KEY", None
+        return None, None
+
+    if state.spell_mode:
+        keys = spell_menu_keys(ctx)
+        if not keys:
+            if action == "BACK":
+                return "B_KEY", None
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, len(keys) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % len(keys)
+            return None, None
+        if action == "CONFIRM":
+            cmd = keys[state.menu_cursor]
+            return cmd, None
+        if action == "BACK":
+            return "B_KEY", None
+        return None, None
+
+    commands = action_commands_for_state(ctx, state)
+    clamp_action_cursor(state, commands)
+    if action in ("UP", "DOWN", "LEFT", "RIGHT"):
+        state.action_cursor = move_action_cursor(state.action_cursor, action, len(commands))
+        return None, None
+    if action == "BACK":
+        cmd = "B_KEY"
+        command_meta = find_command_meta(commands, cmd)
+        return cmd if command_meta else None, command_meta
+    if action == "CONFIRM":
+        if not commands:
+            return None, None
+        cmd = commands[state.action_cursor].get("command")
+        command_meta = find_command_meta(commands, cmd)
+        return cmd, command_meta
+    return None, None
 
 
 def maybe_begin_target_select(ctx, state: GameState, cmd: Optional[str]) -> bool:
@@ -259,7 +454,8 @@ def apply_router_command(
         action_cmd=action_cmd,
         target_index=state.target_index,
     )
-    if not handle_command(cmd, cmd_state, ctx.router_ctx, key=ch):
+    key = command_meta.get("key") if command_meta else ch
+    if not handle_command(cmd, cmd_state, ctx.router_ctx, key=key):
         return False, action_cmd, cmd, False, None
     state.opponents = cmd_state.opponents
     state.loot_bank = cmd_state.loot_bank

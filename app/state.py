@@ -23,7 +23,11 @@ class GameState:
     spell_mode: bool
     quit_confirm: bool
     title_mode: bool
+    options_mode: bool = False
     target_select: bool = False
     target_index: Optional[int] = None
     target_command: Optional[str] = None
     battle_log: list[str] = field(default_factory=list)
+    action_cursor: int = 0
+    menu_cursor: int = 0
+    level_cursor: int = 0

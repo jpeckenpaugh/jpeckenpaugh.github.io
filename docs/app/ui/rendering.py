@@ -1743,11 +1743,11 @@ def render_scene_frame(
         body_lines=body,
         action_lines=actions,
         stat_lines=format_player_stats(player),
-        footer_hint="" if suppress_actions else "Keys: use the action panel",
+        footer_hint="" if suppress_actions else "D-pad move  A=Confirm  S=Back  Enter=Start  Shift=Select",
         location=player.location,
         art_lines=art_lines,
         art_color=art_color,
-        status_lines=["Select target (←/→, Enter)"] if show_target_prompt else [],
+        status_lines=["Select target (←/→, A, S)"] if show_target_prompt else [],
     )
     render_frame(frame)
 

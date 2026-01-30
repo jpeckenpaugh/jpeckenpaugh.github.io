@@ -163,6 +163,8 @@ function mapKeyEvent(domEvent) {
       return "DOWN";
     case "Enter":
       return "ENTER";
+    case "Shift":
+      return "SHIFT";
     default:
       break;
   }

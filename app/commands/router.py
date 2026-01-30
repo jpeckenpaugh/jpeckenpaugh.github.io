@@ -106,6 +106,12 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.spell_mode = False
         state.last_message = menu.get("close_message", "Closed spellbook.")
         return True
+
+    if command_id == "B_KEY" and state.options_mode:
+        menu = ctx.menus.get("options", {})
+        state.options_mode = False
+        state.last_message = menu.get("close_message", "Closed options.")
+        return True
     if command_id == "SPELLBOOK":
         menu = ctx.menus.get("spellbook", {})
         state.spell_mode = True
@@ -113,6 +119,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.inventory_mode = False
         state.hall_mode = False
         state.inn_mode = False
+        state.options_mode = False
         state.last_message = menu.get("open_message", "Open spellbook.")
         return True
 
@@ -180,6 +187,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.shop_mode = False
         state.hall_mode = False
         state.spell_mode = False
+        state.options_mode = False
         state.last_message = menu.get("open_message", "Choose an item to use.")
         return True
 

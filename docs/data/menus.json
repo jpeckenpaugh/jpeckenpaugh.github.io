@@ -48,5 +48,32 @@
         "command": "QUIT"
       }
     ]
+  },
+  "options": {
+    "title": "Options",
+    "open_message": "Options menu.",
+    "close_message": "Closed options.",
+    "actions": [
+      {
+        "key": "I",
+        "label": "Inventory",
+        "command": "INVENTORY"
+      },
+      {
+        "key": "M",
+        "label": "Spellbook",
+        "command": "SPELLBOOK"
+      },
+      {
+        "key": "Q",
+        "label": "Quit",
+        "command": "QUIT"
+      },
+      {
+        "key": "B",
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
   }
 }

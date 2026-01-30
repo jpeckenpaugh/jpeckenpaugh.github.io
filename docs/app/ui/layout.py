@@ -3,6 +3,7 @@
 from typing import Optional
 
 from app.commands.scene_commands import format_commands
+from app.ui.ansi import ANSI
 from app.ui.constants import ACTION_LINES, SCREEN_WIDTH
 
 
@@ -94,7 +95,11 @@ def center_crop_ansi(text: str, width: int, anchor_x: Optional[int] = None) -> s
     return "".join(out)
 
 
-def format_action_lines(actions: list[str]) -> list[str]:
+def _highlight_action(text: str) -> str:
+    return f"{ANSI.BG_LIGHT_GRAY}{ANSI.FG_BLUE}{ANSI.BOLD}{text}{ANSI.RESET}"
+
+
+def format_action_lines(actions: list[str], selected_index: Optional[int] = None) -> list[str]:
     clean = [a for a in actions if a.strip()]
     count = len(clean)
     if count <= 3:
@@ -113,18 +118,25 @@ def format_action_lines(actions: list[str]) -> list[str]:
         for c in range(cols):
             idx = r + c * rows
             if idx < count:
-                parts.append(pad_or_trim_ansi(clean[idx], col_width))
+                cell = pad_or_trim_ansi(clean[idx], col_width)
+                if selected_index is not None and idx == selected_index:
+                    cell = _highlight_action(cell)
+                parts.append(cell)
             else:
                 parts.append(" " * col_width)
         lines.append((" " * gap).join(parts))
     return lines
 
 
-def format_command_lines(commands: list[dict]) -> list[str]:
-    return format_action_lines(format_commands(commands))
+def format_command_lines(commands: list[dict], selected_index: Optional[int] = None) -> list[str]:
+    return format_action_lines(format_commands(commands), selected_index=selected_index)
 
 
-def format_menu_actions(menu_data: dict, replacements: Optional[dict] = None) -> list[str]:
+def format_menu_actions(
+    menu_data: dict,
+    replacements: Optional[dict] = None,
+    selected_index: Optional[int] = None
+) -> list[str]:
     actions = []
     replacements = replacements or {}
     for command in menu_data.get("actions", []):
@@ -135,4 +147,4 @@ def format_menu_actions(menu_data: dict, replacements: Optional[dict] = None) ->
         for token, value in replacements.items():
             label = label.replace(token, value)
         actions.append(f"  [{key}] {label}")
-    return format_action_lines(actions)
+    return format_action_lines(actions, selected_index=selected_index)
