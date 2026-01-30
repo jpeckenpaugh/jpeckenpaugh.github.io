@@ -667,6 +667,10 @@ def apply_router_command(
     target_index = cmd_state.target_index
     if state.spell_mode and not pre_spell_mode:
         state.menu_cursor = state.spell_cursor
+    if cmd == "ENTER_VENUE":
+        commands = action_commands_for_state(ctx, state)
+        state.action_cursor = 0
+        clamp_action_cursor(state, commands)
     if state.player.location == "Title" and cmd_state.player.location != "Title":
         state.title_mode = False
     state.player = cmd_state.player
