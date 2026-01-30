@@ -2151,6 +2151,67 @@ def melt_opponent(
         time.sleep(max(0.05, battle_action_delay(player) / 3))
 
 
+def melt_opponents_multi(
+    scenes_data,
+    commands_data,
+    scene_id: str,
+    player: Player,
+    opponents: List[Opponent],
+    message: str,
+    indices: List[int],
+    objects_data: Optional[object] = None,
+    color_map_override: Optional[dict] = None
+):
+    valid = [i for i in indices if 0 <= i < len(opponents)]
+    if not valid:
+        return
+    width = OPPONENT_ART_WIDTH
+    melt_lines = {}
+    max_steps = 0
+    for idx in valid:
+        opponent = opponents[idx]
+        if not opponent.art_lines:
+            continue
+        raw_lines = [line[:width].rstrip() for line in opponent.art_lines]
+        max_len = max((len(line) for line in raw_lines), default=0)
+        left_aligned = [line.ljust(max_len) for line in raw_lines]
+        display_lines = [line.center(width) for line in left_aligned]
+        melt_lines[idx] = display_lines
+        max_steps = max(max_steps, len(display_lines))
+    if not melt_lines:
+        return
+    scene_data = scenes_data.get(scene_id, {})
+    gap_target = compute_scene_gap_target(scene_data, opponents)
+    for removed in range(1, max_steps + 1):
+        art_overrides = []
+        for i, current in enumerate(opponents):
+            if i in melt_lines:
+                lines = melt_lines[i]
+                if removed <= len(lines):
+                    trimmed = ([" " * width for _ in range(removed)] + lines[removed:])
+                else:
+                    trimmed = [" " * width for _ in range(len(lines))]
+                art_overrides.append(replace(current, art_lines=trimmed, hp=1))
+            else:
+                art_overrides.append(current)
+        render_scene_frame(
+            scenes_data,
+            commands_data,
+            scene_id,
+            player,
+            opponents,
+            message,
+            gap_target,
+            objects_data=objects_data,
+            color_map_override=color_map_override,
+            art_opponents=art_overrides,
+            manual_lines_indices=set(valid),
+            suppress_actions=True,
+            suppress_narrative=True
+        )
+        time.sleep(max(0.05, battle_action_delay(player) / 3))
+
+
 def animate_art_transition(
     frame_from: Frame,
     frame_to: Frame,

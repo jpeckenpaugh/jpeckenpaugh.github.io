@@ -19,6 +19,7 @@ from app.ui.rendering import (
     element_color_map,
     flash_opponent,
     melt_opponent,
+    melt_opponents_multi,
     render_scene_frame,
 )
 from app.ui.text import format_text
@@ -753,19 +754,34 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
         i for i, m in enumerate(state.opponents)
         if m.hp <= 0 and not m.melted
     ]
-    for index in defeated_indices:
-        melt_opponent(
+    if len(defeated_indices) > 1:
+        melt_opponents_multi(
             ctx.scenes,
             ctx.commands_data,
             "forest",
             state.player,
             state.opponents,
             message,
-            index,
+            defeated_indices,
             objects_data=ctx.objects,
             color_map_override=color_override
         )
-        state.opponents[index].melted = True
+        for index in defeated_indices:
+            state.opponents[index].melted = True
+    else:
+        for index in defeated_indices:
+            melt_opponent(
+                ctx.scenes,
+                ctx.commands_data,
+                "forest",
+                state.player,
+                state.opponents,
+                message,
+                index,
+                objects_data=ctx.objects,
+                color_map_override=color_override
+            )
+            state.opponents[index].melted = True
 
 
 def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, action_cmd: Optional[str]) -> bool:
