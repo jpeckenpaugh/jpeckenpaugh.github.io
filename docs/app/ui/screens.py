@@ -134,12 +134,12 @@ def generate_frame(
     art_anchor_x = None
     if leveling_mode:
         level_options = [
-            "  [1] +HP",
-            "  [2] +MP",
-            "  [3] +ATK",
-            "  [4] +DEF",
-            "  [B] Balanced allocation",
-            "  [X] Random allocation",
+            "  +HP",
+            "  +MP",
+            "  +ATK",
+            "  +DEF",
+            "  Balanced allocation",
+            "  Random allocation",
         ]
         level_cursor = max(0, min(level_cursor, len(level_options) - 1))
         level_lines = []
@@ -260,7 +260,7 @@ def generate_frame(
         if items:
             for i, (_, label) in enumerate(items[:9], start=1):
                 prefix = "> " if (i - 1) == menu_cursor else "  "
-                body.append(f"{prefix}{i}. {label}")
+                body.append(f"{prefix}{label}")
         else:
             body.append(inventory_menu.get("empty", "Inventory is empty."))
         actions = format_menu_actions(inventory_menu, selected_index=menu_cursor)
@@ -497,7 +497,7 @@ def generate_frame(
         footer_hint=(
             "D-pad move  A=Confirm  S=Balanced"
             if leveling_mode
-            else "D-pad move  A=Confirm  S=Back  Enter=Start  Shift=Select"
+            else "D-pad move  A/Enter=Confirm  S=Back  Shift/Tab=Options"
         ),
         location=display_location,
         art_lines=art_lines,

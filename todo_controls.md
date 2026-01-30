@@ -20,7 +20,7 @@
 ## Phase 4: Data + Commands
 - [x] Add Options menu data in `data/menus.json`.
 - [x] Wire Start/Select to menu routing (router support).
-- [ ] Add any new command ids to registry/router.
+- [x] Remove action key display and drop command keys from JSON schema.
 
 ## Phase 5: Validation
 - [ ] Test title/town/forest/combat/menu flows.
@@ -31,11 +31,12 @@
 
 ## Notes (2026-01-30)
 - Confirmed mapping: D-pad = arrows, A = confirm, S = back/cancel, Start = Enter, Select = Shift.
-- Options menu contents: Inventory, Spellbook, Settings, Quit, Back.
+- Options menu contents (current): Inventory, Spellbook, Quit, Back.
 - Action navigation model: grid (left/right switches columns, up/down moves within column).
 - Targeting: left/right cycles targets, A confirms, S cancels. Enter does not confirm outside targeting.
 - Phase 2 implementation: added cursors and input routing in `app/loop.py`; target select now accepts A/S.
 - Web input: Shift now maps to `SHIFT` in `docs/main.js`.
 - Phase 3 implementation: added action/menu highlights in `app/ui/layout.py` + `app/ui/screens.py`; updated footer hints.
-- Phase 4 implementation: added Options menu in `data/menus.json` and routed options close in `app/commands/router.py`.
+- Phase 4 implementation: added Options menu in `data/menus.json`, routed options close in `app/commands/router.py`.
+- Action keys removed from UI; command entries no longer require `key` in JSON.
 - Note: terminal input cannot detect Shift alone; Select currently only works in web until we add a terminal fallback.

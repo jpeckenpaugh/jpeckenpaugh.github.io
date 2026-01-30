@@ -13,29 +13,20 @@
     "leave_message": "You leave the shop.",
     "commands": [
       {
-        "key": "1",
         "label": "Buy Rations",
         "command": "NUM1"
       },
       {
-        "key": "2",
         "label": "Buy Herbal Tea",
         "command": "NUM2"
       },
       {
-        "key": "3",
         "label": "Buy Elixir",
         "command": "NUM3"
       },
       {
-        "key": "B",
         "label": "Back",
         "command": "B_KEY"
-      },
-      {
-        "key": "Q",
-        "label": "Quit",
-        "command": "QUIT"
       }
     ],
     "info_sections": [
@@ -165,24 +156,16 @@
     "leave_message": "You leave the hall.",
     "commands": [
       {
-        "key": "1",
         "label": "Opponents",
         "command": "NUM1"
       },
       {
-        "key": "2",
         "label": "Items",
         "command": "NUM2"
       },
       {
-        "key": "B",
         "label": "Back",
         "command": "B_KEY"
-      },
-      {
-        "key": "Q",
-        "label": "Quit",
-        "command": "QUIT"
       }
     ],
     "info_sections": [
@@ -289,28 +272,20 @@
     "leave_message": "You step back into the street.",
     "commands": [
       {
-        "key": "R",
         "label": "Rest (10 GP)",
         "command": "USE_SERVICE",
         "target": "town_inn",
         "service_id": "rest"
       },
       {
-        "key": "M",
         "label": "Hot meal (3 GP)",
         "command": "USE_SERVICE",
         "target": "town_inn",
         "service_id": "meal"
       },
       {
-        "key": "B",
         "label": "Back",
         "command": "B_KEY"
-      },
-      {
-        "key": "Q",
-        "label": "Quit",
-        "command": "QUIT"
       }
     ],
     "info_sections": [

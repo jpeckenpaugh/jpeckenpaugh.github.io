@@ -31,3 +31,6 @@ class GameState:
     action_cursor: int = 0
     menu_cursor: int = 0
     level_cursor: int = 0
+    defend_active: bool = False
+    defend_bonus: int = 0
+    defend_evasion: float = 0.0

@@ -6,6 +6,7 @@ from app.commands.registry import CommandRegistry, CommandContext
 
 def register(registry: CommandRegistry):
     registry.register("ATTACK", _handle_attack)
+    registry.register("DEFEND", _handle_defend)
 
 
 def _handle_attack(ctx: CommandContext) -> str:
@@ -31,3 +32,7 @@ def _handle_attack(ctx: CommandContext) -> str:
     if crit:
         return f"Critical hit! You hit the {opponent.name} for {damage}."
     return f"You hit the {opponent.name} for {damage}."
+
+
+def _handle_defend(ctx: CommandContext) -> str:
+    return "You brace for impact."

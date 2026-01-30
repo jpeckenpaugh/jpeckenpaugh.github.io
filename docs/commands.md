@@ -4,8 +4,7 @@ Commands are defined in JSON (global, scenes, venues, menus) and merged at runti
 
 ## Base Fields
 
-- `key`: string displayed in the Actions panel (e.g., `"F"`, `"1"`)
-- `label`: string shown next to the key (e.g., `"Shop"`)
+- `label`: string shown in the Actions panel (e.g., `"Shop"`)
 - `command`: string command id dispatched by the router (the action to run)
 
 ## Optional Fields
@@ -66,7 +65,6 @@ These dynamic objects are referenced by `scatter` or `gap_ground_scatter`.
 
 ```json
 {
-  "key": "F",
   "label": "Set out for the Forest",
   "command": "ENTER_SCENE",
   "target": "forest"
@@ -75,7 +73,6 @@ These dynamic objects are referenced by `scatter` or `gap_ground_scatter`.
 
 ```json
 {
-  "key": "1",
   "label": "Buy Rations",
   "command": "NUM1"
 }
@@ -83,7 +80,6 @@ These dynamic objects are referenced by `scatter` or `gap_ground_scatter`.
 
 ```json
 {
-  "key": "S",
   "label": "Shop",
   "command": "ENTER_VENUE",
   "target": "town_shop"

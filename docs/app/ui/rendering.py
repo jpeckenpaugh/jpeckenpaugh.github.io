@@ -1743,7 +1743,7 @@ def render_scene_frame(
         body_lines=body,
         action_lines=actions,
         stat_lines=format_player_stats(player),
-        footer_hint="" if suppress_actions else "D-pad move  A=Confirm  S=Back  Enter=Start  Shift=Select",
+        footer_hint="" if suppress_actions else "D-pad move  A/Enter=Confirm  S=Back  Shift/Tab=Options",
         location=player.location,
         art_lines=art_lines,
         art_color=art_color,

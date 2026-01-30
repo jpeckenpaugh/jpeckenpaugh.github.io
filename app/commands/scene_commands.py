@@ -46,12 +46,20 @@ def scene_commands(
     merged = []
     seen = set()
     for command in scene_list + global_list:
-        if not include_hidden and command.get("key") == "_":
+        if not isinstance(command, dict):
             continue
-        key = str(command.get("key", "")).lower()
-        if not key or key in seen:
+        command_id = str(command.get("command", "")).strip()
+        if not command_id:
             continue
-        seen.add(key)
+        dedupe_key = (
+            command_id,
+            str(command.get("target", "")).strip(),
+            str(command.get("service_id", "")).strip(),
+            str(command.get("label", "")).strip(),
+        )
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
         merged.append(command)
     return merged
 
@@ -59,11 +67,10 @@ def scene_commands(
 def format_commands(commands: List[dict]) -> List[str]:
     actions = []
     for command in commands:
-        key = str(command.get("key", "")).upper()
         label = str(command.get("label", "")).strip()
-        if not key or not label:
+        if not label:
             continue
-        actions.append(f"  [{key}] {label}")
+        actions.append(f"  {label}")
     return actions
 
 

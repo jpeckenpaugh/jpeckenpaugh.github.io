@@ -7,9 +7,14 @@ from app.data_access.spells_data import SpellsData
 from app.models import Player, Opponent
 
 
-def roll_damage(attacker_atk: int, defender_def: int) -> Tuple[int, bool, bool]:
-    crit = random.random() < 0.15
-    miss = random.random() < 0.1
+def roll_damage(
+    attacker_atk: int,
+    defender_def: int,
+    miss_chance: float = 0.1,
+    crit_chance: float = 0.15
+) -> Tuple[int, bool, bool]:
+    crit = random.random() < crit_chance
+    miss = random.random() < miss_chance
     if miss:
         return 0, False, True
     base = max(1, attacker_atk - defender_def)

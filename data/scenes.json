@@ -87,26 +87,22 @@
     ],
     "commands": [
       {
-        "key": "F",
         "label": "Set out for the Forest",
         "command": "ENTER_SCENE",
         "target": "forest",
         "anim": "battle_start"
       },
       {
-        "key": "S",
         "label": "Shop",
         "command": "ENTER_VENUE",
         "target": "town_shop"
       },
       {
-        "key": "H",
         "label": "Hall",
         "command": "ENTER_VENUE",
         "target": "town_hall"
       },
       {
-        "key": "I",
         "label": "Inn",
         "command": "ENTER_VENUE",
         "target": "town_inn"
@@ -137,7 +133,6 @@
     ],
     "commands": [
       {
-        "key": "A",
         "label": "Attack",
         "command": "ATTACK",
         "type": "combat",
@@ -145,7 +140,12 @@
         "when": "has_opponents"
       },
       {
-        "key": "F",
+        "label": "Defend",
+        "command": "DEFEND",
+        "type": "combat",
+        "when": "has_opponents"
+      },
+      {
         "label": "Find an opponent to fight",
         "command": "ENTER_SCENE",
         "target": "forest",
@@ -153,10 +153,10 @@
         "when": "no_opponents"
       },
       {
-        "key": "T",
         "label": "Return to Town",
         "command": "ENTER_SCENE",
-        "target": "town"
+        "target": "town",
+        "when": "no_opponents"
       }
     ]
   },
@@ -179,18 +179,15 @@
     ],
     "commands": [
       {
-        "key": "C",
         "label": "Continue",
         "command": "TITLE_CONTINUE",
         "when": "has_save"
       },
       {
-        "key": "N",
         "label": "New Game",
         "command": "TITLE_NEW"
       },
       {
-        "key": "Q",
         "label": "Quit",
         "command": "QUIT"
       }
@@ -205,17 +202,14 @@
     ],
     "confirm_commands": [
       {
-        "key": "Y",
         "label": "Yes, start new",
         "command": "TITLE_CONFIRM_YES"
       },
       {
-        "key": "N",
         "label": "No, go back",
         "command": "TITLE_CONFIRM_NO"
       },
       {
-        "key": "Q",
         "label": "Quit",
         "command": "QUIT"
       }

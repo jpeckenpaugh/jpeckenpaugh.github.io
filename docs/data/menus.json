@@ -6,19 +6,12 @@
     "empty": "Inventory is empty.",
     "actions": [
       {
-        "key": "1-9",
         "label": "Use item",
         "command": "NUM"
       },
       {
-        "key": "B",
         "label": "Back",
         "command": "B_KEY"
-      },
-      {
-        "key": "Q",
-        "label": "Quit",
-        "command": "QUIT"
       }
     ]
   },
@@ -28,24 +21,16 @@
     "close_message": "Closed spellbook.",
     "actions": [
       {
-        "key": "1",
         "label": "{heal_name}",
         "command": "NUM1"
       },
       {
-        "key": "2",
         "label": "{spark_name}",
         "command": "NUM2"
       },
       {
-        "key": "B",
         "label": "Back",
         "command": "B_KEY"
-      },
-      {
-        "key": "Q",
-        "label": "Quit",
-        "command": "QUIT"
       }
     ]
   },
@@ -55,24 +40,16 @@
     "close_message": "Closed options.",
     "actions": [
       {
-        "key": "I",
         "label": "Inventory",
         "command": "INVENTORY"
       },
       {
-        "key": "M",
         "label": "Spellbook",
         "command": "SPELLBOOK"
       },
       {
-        "key": "Q",
         "label": "Quit",
         "command": "QUIT"
-      },
-      {
-        "key": "B",
-        "label": "Back",
-        "command": "B_KEY"
       }
     ]
   }

@@ -35,8 +35,11 @@ class CommandState:
     hall_view: str
     inn_mode: bool
     spell_mode: bool
+    options_mode: bool
     action_cmd: Optional[str]
     target_index: Optional[int] = None
+    command_target_override: Optional[str] = None
+    command_service_override: Optional[str] = None
 
 
 @dataclass
@@ -211,19 +214,17 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             return True
 
     if command_id == "USE_SERVICE":
-        service_key = "rest"
-        venue_id = None
+        service_key = state.command_service_override or "rest"
+        venue_id = state.command_target_override
         if state.inn_mode:
             venue = ctx.venues.get("town_inn", {})
-            for entry in venue.get("commands", []):
-                if entry.get("command") != command_id:
-                    continue
-                cmd_key = str(entry.get("key", "")).lower()
-                if key and cmd_key and cmd_key != key.lower():
-                    continue
-                venue_id = entry.get("target", "town_inn")
-                service_key = entry.get("service_id", service_key)
-                break
+            if not venue_id:
+                for entry in venue.get("commands", []):
+                    if entry.get("command") != command_id:
+                        continue
+                    venue_id = entry.get("target", "town_inn")
+                    service_key = entry.get("service_id", service_key)
+                    break
         if not venue_id:
             venue_id = _command_target(ctx.scenes, ctx.commands, state, command_id, key)
         if not venue_id:
@@ -369,6 +370,8 @@ def _command_target(
     command_id: str,
     key: Optional[str]
 ) -> Optional[str]:
+    if state.command_target_override:
+        return state.command_target_override
     from app.commands.scene_commands import scene_commands
     scene_id = "town" if state.player.location == "Town" else "forest"
     commands_list = scene_commands(
@@ -381,10 +384,6 @@ def _command_target(
     for command in commands_list:
         if command.get("command") != command_id:
             continue
-        if key:
-            cmd_key = str(command.get("key", "")).lower()
-            if cmd_key and cmd_key != key.lower():
-                continue
         return command.get("target")
     return None
 

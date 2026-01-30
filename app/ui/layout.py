@@ -140,11 +140,10 @@ def format_menu_actions(
     actions = []
     replacements = replacements or {}
     for command in menu_data.get("actions", []):
-        key = str(command.get("key", "")).upper()
         label = str(command.get("label", "")).strip()
-        if not key or not label:
+        if not label:
             continue
         for token, value in replacements.items():
             label = label.replace(token, value)
-        actions.append(f"  [{key}] {label}")
+        actions.append(f"  {label}")
     return format_action_lines(actions, selected_index=selected_index)

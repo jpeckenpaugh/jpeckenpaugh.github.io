@@ -451,11 +451,13 @@ def apply_router_command(
         hall_view=state.hall_view,
         inn_mode=state.inn_mode,
         spell_mode=state.spell_mode,
+        options_mode=state.options_mode,
         action_cmd=action_cmd,
         target_index=state.target_index,
+        command_target_override=command_meta.get("target") if command_meta else None,
+        command_service_override=command_meta.get("service_id") if command_meta else None,
     )
-    key = command_meta.get("key") if command_meta else ch
-    if not handle_command(cmd, cmd_state, ctx.router_ctx, key=key):
+    if not handle_command(cmd, cmd_state, ctx.router_ctx, key=None):
         return False, action_cmd, cmd, False, None
     state.opponents = cmd_state.opponents
     state.loot_bank = cmd_state.loot_bank

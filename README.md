@@ -85,10 +85,11 @@ Top to bottom:
 ## Controls
 
 Title Screen:
-- `C` Continue (if save exists)
-- `N` New Game (confirm overwrite if save exists)
-- `Q` Quit
-- `Y/N` confirm/cancel overwrite
+- D-pad to move selection
+- `A` to confirm
+- `S` to cancel/back
+- `Enter` (Start) opens Options
+- `Shift` (Select) opens Options
 
 Town/Forest/Menus:
 - Controls are data-driven from `data/commands.json`, `data/scenes.json`,
@@ -96,7 +97,7 @@ Town/Forest/Menus:
 - The action panel reflects the active commands and their conditions.
 - Command schema notes: `docs/commands.md`.
 - Boost prompts and timing are driven by `data/spells.json`.
-- Target selection (Attack/Spark) uses ←/→ to cycle and Enter to confirm.
+- Target selection (Attack/Spark) uses ←/→ to cycle, `A` to confirm, `S` to cancel.
 - Forest encounters are started via the Find action (no auto-spawn on entry).
 
 ---
