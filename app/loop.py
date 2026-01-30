@@ -105,6 +105,19 @@ def animate_strength_gain(ctx, render_frame, state: GameState, generate_frame, g
         time.sleep(delay)
 
 
+def animate_life_boost_gain(ctx, render_frame, state: GameState, generate_frame, gain: int) -> None:
+    if gain <= 0:
+        return
+    delay = max(0.05, battle_action_delay(state.player) / 3) / 4
+    for _ in range(gain):
+        state.player.temp_hp_bonus += 1
+        max_hp = state.player.total_max_hp()
+        if state.player.hp < max_hp:
+            state.player.hp += 1
+        render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
+        time.sleep(delay)
+
+
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
     if state.spell_mode or state.portal_mode:
         ch = read_keypress_timeout(0.2)
@@ -741,9 +754,8 @@ def resolve_player_action(
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
-        if spell_id == "healing" and state.player.hp == state.player.max_hp:
-            state.last_message = "Your HP is already full."
-            return None
+        if spell_id == "healing":
+            pass
         mp_cost = int(spell.get("mp_cost", 2))
         element = spell.get("element")
         has_charge = False
@@ -981,6 +993,11 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         state.player.temp_atk_bonus = max(0, state.player.temp_atk_bonus - 1)
     if state.player.temp_def_bonus > 0:
         state.player.temp_def_bonus = max(0, state.player.temp_def_bonus - 1)
+    if state.player.temp_hp_bonus > 0:
+        state.player.temp_hp_bonus = max(0, state.player.temp_hp_bonus - 1)
+        max_hp = state.player.total_max_hp()
+        if state.player.hp > max_hp:
+            state.player.hp = max_hp
     return False
 
 

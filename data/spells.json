@@ -1,15 +1,14 @@
 {
   "healing": {
-    "name": "Healing",
+    "name": "Life Boost",
     "command_id": "HEAL",
     "menu_key": "NUM1",
     "anim": "heal",
-    "mp_cost": 2,
+    "mp_cost": 1,
     "requires_target": false,
-    "heal": 10,
-    "desc": "Restore HP.",
+    "desc": "Raise max HP by 10 over a brief surge.",
     "level_required": 0,
-    "class": "basic"
+    "class": "support"
   },
   "spark": {
     "name": "Spark",
@@ -154,7 +153,7 @@
     "name": "Strength",
     "command_id": "STRENGTH",
     "anim": "flash_melt",
-    "mp_cost": 2,
+    "mp_cost": 1,
     "requires_target": false,
     "class": "support",
     "element": "base",

@@ -41,6 +41,7 @@ class Player:
     current_element: str
     temp_atk_bonus: int = 0
     temp_def_bonus: int = 0
+    temp_hp_bonus: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -91,12 +92,12 @@ class Player:
             stat_points=int(data.get("stat_points", 0)),
             gold=int(data.get("gold", 10)),
             battle_speed=data.get("battle_speed", "normal"),
-            hp=int(data.get("hp", 10)),
-            max_hp=int(data.get("max_hp", 10)),
-            mp=int(data.get("mp", 10)),
-            max_mp=int(data.get("max_mp", 10)),
-            atk=int(data.get("atk", 10)),
-            defense=int(data.get("defense", 10)),
+            hp=int(data.get("hp", 50)),
+            max_hp=int(data.get("max_hp", 50)),
+            mp=int(data.get("mp", 5)),
+            max_mp=int(data.get("max_mp", 5)),
+            atk=int(data.get("atk", 5)),
+            defense=int(data.get("defense", 5)),
             location="Town",
             inventory=data.get("inventory", {}),
             gear_inventory=gear_inventory,
@@ -107,6 +108,7 @@ class Player:
             current_element=current_element,
             temp_atk_bonus=0,
             temp_def_bonus=0,
+            temp_hp_bonus=0,
         )
 
     def add_item(self, key: str, amount: int = 1):
@@ -191,6 +193,9 @@ class Player:
 
     def total_defense(self) -> int:
         return self.defense + int(self.gear_defense) + int(self.temp_def_bonus)
+
+    def total_max_hp(self) -> int:
+        return self.max_hp + int(self.temp_hp_bonus)
 
     def _recalc_gear(self) -> None:
         atk_bonus = 0

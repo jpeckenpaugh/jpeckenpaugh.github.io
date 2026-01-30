@@ -85,18 +85,9 @@ def cast_spell(
         return "You cast Strength. Your power surges."
 
     if spell_id == "healing":
-        if player.hp == player.max_hp:
-            return "Your HP is already full."
         if not used_charge:
             player.mp -= mp_cost
-        heal_amount = int(spell.get("heal", 10))
-        if rank >= 2:
-            heal_amount = int(heal_amount * 1.25)
-        if rank >= 3:
-            heal_amount = int(heal_amount * 1.5)
-        heal = min(heal_amount, player.max_hp - player.hp)
-        player.hp += heal
-        return f"You cast {name} and restore {heal} HP."
+        return "You cast Life Boost. Your vitality surges."
 
     if spell.get("class") == "elemental" or spell_id == "spark":
         targets: List[Opponent] = []

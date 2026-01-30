@@ -31,9 +31,9 @@
   "rat": {
     "name": "Rat",
     "level": 1,
-    "hp": 8,
-    "atk": 4,
-    "defense": 3,
+    "hp": 20,
+    "atk": 20,
+    "defense": 20,
     "action_chance": 0.6,
     "arrival": "scurries into view",
     "desc": "A quick scavenger with a nasty bite.",
@@ -57,14 +57,15 @@
     ],
     "variation": 0.06,
     "jitter_stability": false,
-    "element": "base"
+    "element": "base",
+    "max_hp": 20
   },
   "ant": {
     "name": "Ant",
     "level": 1,
-    "hp": 6,
-    "atk": 3,
-    "defense": 2,
+    "hp": 15,
+    "atk": 15,
+    "defense": 15,
     "action_chance": 0.7,
     "arrival": "scurries in",
     "desc": "A skittering ant with sharp mandibles.",
@@ -88,7 +89,8 @@
     ],
     "variation": 0.06,
     "jitter_stability": false,
-    "element": "base"
+    "element": "base",
+    "max_hp": 15
   },
   "turtle": {
     "name": "Turtle",
