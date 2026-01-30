@@ -96,7 +96,18 @@ def center_crop_ansi(text: str, width: int, anchor_x: Optional[int] = None) -> s
 
 
 def _highlight_action(text: str) -> str:
-    return f"{ANSI.BG_LIGHT_GRAY}{ANSI.FG_BLUE}{ANSI.BOLD}{text}{ANSI.RESET}"
+    visible = strip_ansi(text)
+    width = len(visible)
+    inner = visible.strip()
+    if inner:
+        bracketed = f"[ {inner} ]"
+    else:
+        bracketed = "[]"
+    if len(bracketed) > width:
+        bracketed = bracketed[:width]
+    elif len(bracketed) < width:
+        bracketed = bracketed.ljust(width)
+    return f"{ANSI.BG_LIGHT_GRAY}{ANSI.FG_BLUE}{ANSI.BOLD}{bracketed}{ANSI.RESET}"
 
 
 def format_action_lines(actions: list[str], selected_index: Optional[int] = None) -> list[str]:

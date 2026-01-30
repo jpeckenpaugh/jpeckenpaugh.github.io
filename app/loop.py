@@ -23,7 +23,7 @@ from app.ui.rendering import (
     render_scene_frame,
 )
 from app.ui.text import format_text
-from app.shop import shop_commands
+from app.venues import venue_actions, venue_id_from_state
 
 
 def _spell_effect_with_art(ctx, spell: dict) -> Optional[dict]:
@@ -199,24 +199,11 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
             state.player,
             state.opponents,
         )
-    if state.shop_mode:
-        venue = ctx.venues.get("town_shop", {})
-        element = getattr(state.player, "current_element", "base")
-        return shop_commands(venue, ctx.items, element, state.shop_view, state.player)
-    if state.hall_mode or state.inn_mode or state.temple_mode or state.smithy_mode or state.alchemist_mode or state.portal_mode:
-        venue_id = state.current_venue_id or (
-            "town_hall" if state.hall_mode else
-            "town_inn" if state.inn_mode else
-            "town_temple" if state.temple_mode else
-            "town_smithy" if state.smithy_mode else
-            "town_alchemist" if state.alchemist_mode else
-            "town_portal"
-        )
-        venue = ctx.venues.get(venue_id, {})
-        cmds = list(venue.get("commands", [])) if isinstance(venue.get("commands"), list) else []
-        cmds.append({"label": "Back", "command": "B_KEY"})
-        return cmds
-    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode or state.alchemist_mode or state.portal_mode:
+    if state.shop_mode or state.hall_mode or state.inn_mode or state.temple_mode or state.smithy_mode or state.alchemist_mode or state.portal_mode:
+        venue_id = venue_id_from_state(state)
+        if venue_id:
+            return venue_actions(ctx, state, venue_id)
+    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode:
         return []
     if not any(
         (
@@ -344,7 +331,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         or state.smithy_mode
         or state.portal_mode
     ):
-        return "B_KEY", None
+        return "LEAVE", None
 
     if action in ("START", "SELECT"):
         if state.options_mode:
@@ -486,50 +473,6 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if action == "CONFIRM":
             element_id = elements[state.menu_cursor]
             return f"ELEMENT:{element_id}", None
-        if action == "BACK":
-            return "B_KEY", None
-        return None, None
-
-    if state.alchemist_mode:
-        gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]
-        if not gear_items:
-            if action == "BACK":
-                return "B_KEY", None
-            return None, None
-        state.menu_cursor = max(0, min(state.menu_cursor, len(gear_items) - 1))
-        if action in ("UP", "DOWN"):
-            direction = -1 if action == "UP" else 1
-            state.menu_cursor = (state.menu_cursor + direction) % len(gear_items)
-            return None, None
-        if action == "CONFIRM":
-            gear_id = gear_items[state.menu_cursor].get("id")
-            if gear_id:
-                return f"ALCHEMY_PICK:{gear_id}", None
-            return None, None
-        if action == "BACK":
-            return "B_KEY", None
-        return None, None
-
-    if state.portal_mode:
-        elements = list(getattr(state.player, "elements", []) or [])
-        if hasattr(ctx, "continents"):
-            order = list(ctx.continents.order() or [])
-            elements = [e for e in order if e in elements] or elements
-        if hasattr(ctx, "continents"):
-            order = list(ctx.continents.order() or [])
-            elements = [e for e in order if e in elements] or elements
-        if not elements:
-            if action == "BACK":
-                return "B_KEY", None
-            return None, None
-        state.menu_cursor = max(0, min(state.menu_cursor, len(elements) - 1))
-        if action in ("UP", "DOWN"):
-            direction = -1 if action == "UP" else 1
-            state.menu_cursor = (state.menu_cursor + direction) % len(elements)
-            return None, None
-        if action == "CONFIRM":
-            element_id = elements[state.menu_cursor]
-            return f"PORTAL:{element_id}", None
         if action == "BACK":
             return "B_KEY", None
         return None, None

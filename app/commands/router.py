@@ -20,7 +20,7 @@ from app.data_access.save_data import SaveData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.data_access.spells_data import SpellsData
-from app.shop import purchase_item, sell_item, shop_inventory, shop_sell_inventory
+from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
 from app.ui.constants import SCREEN_WIDTH
@@ -226,6 +226,15 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.last_message = menu.get("open_message", "Select an element.")
         return True
 
+    if state.portal_mode and command_id.startswith("PORTAL:"):
+        element_id = command_id.split(":", 1)[1]
+        if element_id and element_id in getattr(state.player, "elements", []):
+            state.player.current_element = element_id
+            state.portal_mode = False
+            ctx.save_data.save_player(state.player)
+            state.last_message = f"Teleported to {element_id.title()} continent."
+            return True
+
     if state.spell_mode and command_id:
         spell_entry = ctx.spells.by_command_id(command_id)
         if not spell_entry:
@@ -248,7 +257,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             return True
         return False
 
-    if command_id == "B_KEY" and (
+    if command_id in ("B_KEY", "LEAVE") and (
         state.current_venue_id
         or state.hall_mode
         or state.inn_mode
@@ -258,83 +267,26 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         or state.smithy_mode
         or state.portal_mode
     ):
-        venue_id = state.current_venue_id
-        if not venue_id:
-            if state.hall_mode:
-                venue_id = "town_hall"
-            elif state.inn_mode:
-                venue_id = "town_inn"
-            elif state.shop_mode:
-                venue_id = "town_shop"
-            elif state.alchemist_mode:
-                venue_id = "town_alchemist"
-            elif state.temple_mode:
-                venue_id = "town_temple"
-            elif state.smithy_mode:
-                venue_id = "town_smithy"
-            elif state.portal_mode:
-                venue_id = "town_portal"
-        venue = ctx.venues.get(venue_id, {}) if venue_id else {}
-        state.hall_mode = False
-        state.inn_mode = False
+        venue_id = venue_id_from_state(state)
+        if venue_id:
+            return handle_venue_command(ctx, state, venue_id, command_id)
         state.shop_mode = False
         state.shop_view = "menu"
+        state.hall_mode = False
+        state.inn_mode = False
         state.alchemist_mode = False
         state.alchemy_first = None
         state.temple_mode = False
         state.smithy_mode = False
         state.portal_mode = False
         state.current_venue_id = None
-        state.last_message = venue.get("leave_message", "You leave the venue.")
-        return True
-
-    if command_id == "B_KEY" and state.shop_mode:
-        if state.shop_view in ("buy", "sell"):
-            state.shop_view = "menu"
-            state.last_message = "Shop menu."
-            return True
-        venue = ctx.venues.get("town_shop", {})
-        state.shop_mode = False
-        state.shop_view = "menu"
-        state.last_message = venue.get("leave_message", "You leave the shop.")
+        state.last_message = "You leave the venue."
         return True
 
     if state.shop_mode:
-        venue = ctx.venues.get("town_shop", {})
-        element = getattr(state.player, "current_element", "base")
-        if command_id == "SHOP_BUY":
-            state.shop_view = "buy"
-            state.last_message = "Choose an item to buy."
+        venue_id = venue_id_from_state(state)
+        if venue_id and handle_venue_command(ctx, state, venue_id, command_id):
             return True
-        if command_id == "SHOP_SELL":
-            state.shop_view = "sell"
-            state.last_message = "Choose an item to sell."
-            return True
-        if state.shop_view == "buy":
-            selection = next(
-                (entry for entry in shop_inventory(venue, ctx.items, element) if entry.get("command") == command_id),
-                None
-            )
-            if selection:
-                item_id = selection.get("item_id")
-                if item_id:
-                    state.last_message = purchase_item(state.player, ctx.items, item_id)
-                    ctx.save_data.save_player(state.player)
-                return True
-            return False
-        if state.shop_view == "sell":
-            selection = next(
-                (entry for entry in shop_sell_inventory(state.player, ctx.items) if entry.get("command") == command_id),
-                None
-            )
-            if selection:
-                key = selection.get("key")
-                if key:
-                    state.last_message = sell_item(state.player, ctx.items, key)
-                    ctx.save_data.save_player(state.player)
-                return True
-            return False
-        return False
 
     if command_id == "INVENTORY":
         menu = ctx.menus.get("inventory", {})
@@ -370,7 +322,16 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             return True
 
     if state.alchemist_mode and command_id.startswith("ALCHEMY_PICK:"):
-        gear_id = command_id.split(":", 1)[1]
+        idx_raw = command_id.split(":", 1)[1]
+        if not idx_raw.isdigit():
+            return False
+        gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]
+        idx = int(idx_raw) - 1
+        if idx < 0 or idx >= len(gear_items):
+            return False
+        gear_id = gear_items[idx].get("id")
+        if not gear_id:
+            return False
         if not state.alchemy_first:
             state.alchemy_first = gear_id
             state.last_message = "Select a second item to fuse."
@@ -394,15 +355,6 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.element_mode = False
             ctx.save_data.save_player(state.player)
             state.last_message = f"Element set to {element_id.title()}."
-            return True
-
-    if state.portal_mode and command_id.startswith("PORTAL:"):
-        element_id = command_id.split(":", 1)[1]
-        if element_id and element_id in getattr(state.player, "elements", []):
-            state.player.current_element = element_id
-            state.portal_mode = False
-            ctx.save_data.save_player(state.player)
-            state.last_message = f"Teleported to {element_id.title()} continent."
             return True
 
     if command_id == "USE_SERVICE":

@@ -103,7 +103,7 @@ def shop_commands(venue: dict, items_data: ItemsData, element: str, view: str, p
                 "label": f"Sell {entry.get('label', '')}".strip(),
                 "command": entry.get("command"),
             })
-    commands.append({"label": "Back", "command": "B_KEY"})
+    commands.append({"label": "Leave", "command": "B_KEY"})
     return commands
 
 
