@@ -16,63 +16,72 @@
       "element": "base",
       "spell_id": "strength",
       "spell_name": "Strength",
-      "level_required": 0
+      "level_required": 0,
+      "description": "Your home continent, your their innate magic first awakened. Hearths and halls here echo with quiet power."
     },
     "earth": {
       "name": "Stoneward",
       "element": "earth",
       "spell_id": "boulder",
       "spell_name": "Boulder",
-      "level_required": 2
+      "level_required": 2,
+      "description": "Stoneward is a land of cliffs and deep roots, where mountains hum with ancient patience. Its people prize endurance, craft, and the slow strength of the world below."
     },
     "fire": {
       "name": "Emberfall",
       "element": "fire",
       "spell_id": "fireblast",
       "spell_name": "Fireblast",
-      "level_required": 6
+      "level_required": 6,
+      "description": "Emberfall blazes with restless heat, forging will and weapon in equal measure. Its glow inspires courage, but demands respect for the flames within."
     },
     "water": {
       "name": "Tidevein",
       "element": "water",
       "spell_id": "tide",
       "spell_name": "Tide",
-      "level_required": 8
+      "level_required": 8,
+      "description": "Tidevein is a sweeping coast of tides and hidden channels, forever shifting yet never lost. Its calm hides depth, healing, and the pull of distant seas."
     },
     "light": {
       "name": "Lumenrise",
       "element": "light",
       "spell_id": "radiance",
       "spell_name": "Radiance",
-      "level_required": 10
+      "level_required": 10,
+      "description": "Lumenrise is a bright realm of wards and radiant halls, where truth is prized like gold. Hope and protection flow from its temples into the wider world."
     },
     "lightning": {
       "name": "Stormcoil",
       "element": "lightning",
       "spell_id": "spark",
       "spell_name": "Spark",
-      "level_required": 12
+      "level_required": 12,
+      "description": "Stormcoil crackles with sudden storms and humming spires of glass. Its people favor precision and speed, striking fast before the thunder fades."
     },
     "dark": {
       "name": "Umbravale",
       "element": "dark",
       "spell_id": "shade",
       "spell_name": "Shade",
-      "level_required": 14
+      "level_required": 14,
+      "description": "Umbravale stretches beneath long dusk, where secrets linger and power gathers in silence. Shadow is not evil here, but a veil for resilience and resolve."
     },
     "ice": {
       "name": "Frostcrown",
       "element": "ice",
       "spell_id": "iceblast",
       "spell_name": "Iceblast",
-      "level_required": 16
+      "level_required": 16,
+      "description": "Frostcrown crowns the far north in crystal winds and silent drifts. Its cold teaches patience, and its jagged beauty rewards those who endure."
     },
     "wind": {
       "name": "Skylark Reach",
       "element": "wind",
       "spell_id": "tornado",
       "spell_name": "Tornado",
-      "level_required": 4
+      "level_required": 4,
+      "description": "Skylark Reach rides the high currents, a chain of skybridges and open plains. Swift caravans and watchful towers thrive on speed, clarity, and free air."
     }
   }
 }

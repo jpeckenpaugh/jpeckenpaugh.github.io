@@ -2345,7 +2345,7 @@ def clear_screen():
 
 
 
-def format_gradient_location_text(location: str) -> str:
+def format_gradient_location_text(location: str, gradient: Optional[tuple[int, int, int, int, int, int]] = None) -> str:
     """Applies a gradient color effect to the location text and its embellishments."""
     left_embellishment = "*-----<{([  "
     right_embellishment = "  ])}>-----*"
@@ -2363,8 +2363,12 @@ def format_gradient_location_text(location: str) -> str:
             colored_text += f"{_truecolor(r, g, b)}{char}"
         return colored_text
 
-    start_color = (192, 192, 192)
-    end_color = (0, 0, 128)
+    if gradient:
+        start_color = gradient[0:3]
+        end_color = gradient[3:6]
+    else:
+        start_color = (192, 192, 192)
+        end_color = (0, 0, 128)
 
     left_colored = _gradient(left_embellishment, start_color, end_color)
     right_colored = _gradient(right_embellishment, end_color, start_color)
@@ -2449,7 +2453,7 @@ def render_frame(frame: Frame):
     output.append(_compose_line(abs_row_base + row_idx, _apply_bg(_gradient_line(row_idx, top_border), row_idx)))
     row_idx += 1
 
-    gradient_location = format_gradient_location_text(frame.location)
+    gradient_location = format_gradient_location_text(frame.location, frame.location_gradient)
     location_row = center_ansi(gradient_location, SCREEN_WIDTH - 2)
 
 

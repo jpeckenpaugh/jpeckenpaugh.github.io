@@ -14,6 +14,7 @@ class Frame:
     art_color: str
     status_lines: List[str]
     art_anchor_x: Optional[int] = None
+    location_gradient: Optional[Tuple[int, int, int, int, int, int]] = None
 
 
 @dataclass

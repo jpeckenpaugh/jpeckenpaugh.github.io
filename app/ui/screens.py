@@ -160,6 +160,34 @@ def _color_code_for_key(colors: dict, key: str) -> str:
     return COLOR_BY_NAME.get(lowered, "")
 
 
+def _color_key_to_rgb(colors: dict, key: str) -> Optional[tuple[int, int, int]]:
+    entry = colors.get(key)
+    if isinstance(entry, dict):
+        hex_code = entry.get("hex", "") if isinstance(entry.get("hex"), str) else ""
+        name = entry.get("name", "") if isinstance(entry.get("name"), str) else ""
+    elif isinstance(entry, str):
+        hex_code = ""
+        name = entry
+    else:
+        return None
+    name = name.strip()
+    hex_code = hex_code.strip()
+    if not hex_code:
+        hex_start = name.find("#")
+        hex_code = name[hex_start:] if hex_start != -1 else ""
+    if not hex_code:
+        return None
+    value = hex_code.lstrip("#")
+    if len(value) != 6:
+        return None
+    try:
+        r = int(value[0:2], 16)
+        g = int(value[2:4], 16)
+        b = int(value[4:6], 16)
+    except ValueError:
+        return None
+    return (r, g, b)
+
 def _color_codes_by_key(colors: dict) -> dict:
     if not isinstance(colors, dict):
         return {}
@@ -317,6 +345,7 @@ def _colorize_atlas_line(
     digit_colors: Optional[dict] = None,
     flicker_digit: Optional[str] = None,
     flicker_on: bool = True,
+    locked_color: Optional[str] = None,
 ) -> str:
     if not line:
         return line
@@ -331,6 +360,9 @@ def _colorize_atlas_line(
                 else:
                     out.append(f"{code}*{ANSI.RESET}")
                 continue
+        if ch.isdigit() and locked_color:
+            out.append(f"{locked_color}*{ANSI.RESET}")
+            continue
         if ch == "o":
             out.append(f"{ANSI.FG_WHITE}{ANSI.DIM}{ch}{ANSI.RESET}")
         elif ch == "w":
@@ -375,6 +407,8 @@ def generate_frame(
     heal_name = healing.get("name", "Healing")
     spark_name = spark.get("name", "Spark")
     display_location = player.location
+    location_gradient = None
+    portal_desc = None
     color_map_override = element_color_map(ctx.colors.all(), player.current_element)
     art_anchor_x = None
     if leveling_mode:
@@ -695,6 +729,10 @@ def generate_frame(
                     label = element.title()
                 prefix = "> " if idx == menu_cursor else "  "
                 left_lines.append(f"{prefix}{label}")
+            if hasattr(ctx, "continents") and 0 <= menu_cursor < len(elements):
+                entry = ctx.continents.continents().get(elements[menu_cursor], {})
+                if isinstance(entry, dict):
+                    portal_desc = entry.get("description")
         else:
             left_lines = ["No continents unlocked."]
         right_lines = list(atlas_lines)
@@ -720,8 +758,29 @@ def generate_frame(
                 digit_colors = {}
                 flicker_digit = None
                 flicker_on = True
+                locked_color = f"{ANSI.FG_WHITE}{ANSI.DIM}"
                 if hasattr(ctx, "elements"):
                     colors = ctx.colors.all()
+                    unlocked = set(getattr(player, "elements", []) or [])
+                    unlocked_digits = set()
+                    if "base" in unlocked:
+                        unlocked_digits.add("1")
+                    if "earth" in unlocked:
+                        unlocked_digits.add("2")
+                    if "wind" in unlocked or "air" in unlocked:
+                        unlocked_digits.add("3")
+                    if "fire" in unlocked:
+                        unlocked_digits.add("4")
+                    if "water" in unlocked:
+                        unlocked_digits.add("5")
+                    if "light" in unlocked:
+                        unlocked_digits.add("6")
+                    if "lightning" in unlocked:
+                        unlocked_digits.add("7")
+                    if "dark" in unlocked:
+                        unlocked_digits.add("8")
+                    if "ice" in unlocked:
+                        unlocked_digits.add("9")
                     elem_colors = {
                         "1": ctx.elements.colors_for("base"),
                         "2": ctx.elements.colors_for("earth"),
@@ -734,7 +793,7 @@ def generate_frame(
                         "9": ctx.elements.colors_for("ice"),
                     }
                     for digit, palette in elem_colors.items():
-                        if palette:
+                        if palette and digit in unlocked_digits:
                             digit_colors[digit] = _color_code_for_key(colors, palette[0])
                     selected = None
                     if elements and 0 <= menu_cursor < len(elements):
@@ -756,7 +815,7 @@ def generate_frame(
                     if selected in selected_map:
                         flicker_digit = selected_map[selected]
                         flicker_on = int(time.time() / 0.35) % 2 == 0
-                colored_right = _colorize_atlas_line(right, digit_colors, flicker_digit, flicker_on)
+                colored_right = _colorize_atlas_line(right, digit_colors, flicker_digit, flicker_on, locked_color)
                 line = line + (" " * gap) + colored_right
             body.append(line)
         actions = format_menu_actions(portal_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
@@ -778,6 +837,8 @@ def generate_frame(
             scene_commands(ctx.scenes, ctx.commands, "town", player, opponents),
             selected_index=action_cursor if action_cursor >= 0 else None,
         )
+        if hasattr(ctx, "continents"):
+            display_location = ctx.continents.name_for(player.current_element)
     elif player.location == "Title":
         scene_data = ctx.scenes.get("title", {})
         art_lines = scene_data.get("art", [])
@@ -954,6 +1015,8 @@ def generate_frame(
         art_lines = forest_art
         art_anchor_x = None
 
+    if portal_desc:
+        message = portal_desc
     if player.location == "Forest":
         status_lines = []
     elif message and "\n" in message:
@@ -964,6 +1027,14 @@ def generate_frame(
             if message
             else []
         )
+
+    if player.location == "Town" and hasattr(ctx, "elements"):
+        colors = ctx.colors.all()
+        palette = ctx.elements.colors_for(player.current_element)
+        if palette:
+            start_rgb = _color_key_to_rgb(colors, palette[0]) or (192, 192, 192)
+            end_rgb = _color_key_to_rgb(colors, palette[1] if len(palette) > 1 else palette[0]) or start_rgb
+            location_gradient = (*start_rgb, *end_rgb)
 
     return Frame(
         title="Lokarta - World Maker — PROTOTYPE",
@@ -976,6 +1047,7 @@ def generate_frame(
             else "D-pad move  A/Enter=Confirm  S=Back  Shift/Tab=Options"
         ),
         location=display_location,
+        location_gradient=location_gradient,
         art_lines=art_lines,
         art_color=art_color,
         status_lines=status_lines,
