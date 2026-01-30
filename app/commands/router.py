@@ -84,6 +84,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         if not venue_id:
             return False
         venue = ctx.venues.get(venue_id, {})
+        state.current_venue_id = venue_id
         if venue_id == "town_shop":
             state.shop_mode = True
             state.shop_view = "menu"
@@ -173,6 +174,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         scene_id = _command_target(ctx.scenes, ctx.commands, state, command_id, key)
         if not scene_id:
             return False
+        state.current_venue_id = None
         return _enter_scene(scene_id, state, ctx)
 
     if command_id == "B_KEY" and state.inventory_mode:
@@ -279,6 +281,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.temple_mode = False
         state.smithy_mode = False
         state.portal_mode = False
+        state.current_venue_id = None
         state.last_message = venue.get("leave_message", "You leave the venue.")
         return True
 

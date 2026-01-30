@@ -46,3 +46,4 @@ class GameState:
     action_effect_override: Optional[dict] = None
     level_up_notes: list[str] = field(default_factory=list)
     last_spell_targets: list[int] = field(default_factory=list)
+    current_venue_id: Optional[str] = None

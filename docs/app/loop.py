@@ -203,18 +203,19 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
         venue = ctx.venues.get("town_shop", {})
         element = getattr(state.player, "current_element", "base")
         return shop_commands(venue, ctx.items, element, state.shop_view, state.player)
-    if state.hall_mode:
-        venue = ctx.venues.get("town_hall", {})
-        return venue.get("commands", [])
-    if state.inn_mode:
-        venue = ctx.venues.get("town_inn", {})
-        return venue.get("commands", [])
-    if state.temple_mode:
-        venue = ctx.venues.get("town_temple", {})
-        return venue.get("commands", [])
-    if state.smithy_mode:
-        venue = ctx.venues.get("town_smithy", {})
-        return venue.get("commands", [])
+    if state.hall_mode or state.inn_mode or state.temple_mode or state.smithy_mode or state.alchemist_mode or state.portal_mode:
+        venue_id = state.current_venue_id or (
+            "town_hall" if state.hall_mode else
+            "town_inn" if state.inn_mode else
+            "town_temple" if state.temple_mode else
+            "town_smithy" if state.smithy_mode else
+            "town_alchemist" if state.alchemist_mode else
+            "town_portal"
+        )
+        venue = ctx.venues.get(venue_id, {})
+        cmds = list(venue.get("commands", [])) if isinstance(venue.get("commands"), list) else []
+        cmds.append({"label": "Back", "command": "B_KEY"})
+        return cmds
     if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode or state.alchemist_mode or state.portal_mode:
         return []
     if not any(
@@ -333,7 +334,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if action is None:
         return None, None
 
-    if action == "BACK" and (state.alchemist_mode or state.temple_mode or state.smithy_mode):
+    if action == "BACK" and state.current_venue_id:
         return "B_KEY", None
 
     if action in ("START", "SELECT"):

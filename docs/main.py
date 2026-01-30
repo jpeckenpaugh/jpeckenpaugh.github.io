@@ -92,6 +92,7 @@ def main():
         title_mode=True,
         spell_cursor=0,
         battle_cursor=0,
+        current_venue_id=None,
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
