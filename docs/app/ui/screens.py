@@ -653,21 +653,40 @@ def generate_frame(
         body = [title, ""]
         atlas = ctx.glyphs.get("atlas", {}) if hasattr(ctx, "glyphs") else {}
         atlas_lines = atlas.get("art", []) if isinstance(atlas, dict) else []
-        for line in atlas_lines:
-            body.append(line)
-        if atlas_lines:
-            body.append("")
         if elements:
             menu_cursor = max(0, min(menu_cursor, len(elements) - 1))
+            left_lines = []
             for idx, element in enumerate(elements):
                 if hasattr(ctx, "continents"):
                     label = ctx.continents.name_for(element)
                 else:
                     label = element.title()
                 prefix = "> " if idx == menu_cursor else "  "
-                body.append(f"{prefix}{label}")
+                left_lines.append(f"{prefix}{label}")
         else:
-            body.append("No continents unlocked.")
+            left_lines = ["No continents unlocked."]
+        right_lines = list(atlas_lines)
+        total_lines = max(len(left_lines), len(right_lines))
+        left_width = max((len(line) for line in left_lines), default=0)
+        right_width = max((len(r) for r in right_lines), default=0)
+        content_width = max(0, SCREEN_WIDTH - 2)
+        right_margin = 4
+        right_width = min(right_width, 24)
+        right_width = min(right_width, max(0, content_width - right_margin))
+        for i in range(total_lines):
+            left = left_lines[i] if i < len(left_lines) else ""
+            right = right_lines[i] if i < len(right_lines) else ""
+            gap = 1 if left and right else 0
+            right_col = max(0, content_width - right_margin - right_width)
+            left_width = max(0, right_col - gap)
+            if left_width and len(left) > left_width:
+                left = left[:left_width]
+            line = left.ljust(left_width)
+            if right:
+                if right_width and len(right) > right_width:
+                    right = right[:right_width]
+                line = line + (" " * gap) + right
+            body.append(line)
         actions = format_menu_actions(portal_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
