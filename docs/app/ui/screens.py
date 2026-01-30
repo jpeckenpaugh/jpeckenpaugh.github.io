@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from app.commands.scene_commands import scene_commands
+from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
 from app.data_access.items_data import ItemsData
@@ -188,7 +188,7 @@ def generate_frame(
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, ctx.colors.all())
         else:
             art_lines, art_color = render_venue_art(venue, npc, ctx.colors.all())
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor)
+        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
     elif player.location == "Town" and hall_mode:
         venue = ctx.venues.get("town_hall", {})
         display_location = venue.get("name", display_location)
@@ -212,7 +212,7 @@ def generate_frame(
             body += npc_lines + [""]
         body += info_lines
         body += venue.get("narrative", [])
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor)
+        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
         art_anchor_x = None
         if venue.get("objects"):
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, ctx.colors.all())
@@ -231,7 +231,7 @@ def generate_frame(
         if npc_lines:
             body += npc_lines + [""]
         body += venue.get("narrative", [])
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor)
+        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
         art_anchor_x = None
         if venue.get("objects"):
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, ctx.colors.all())
@@ -239,9 +239,16 @@ def generate_frame(
             art_lines, art_color = render_venue_art(venue, npc, ctx.colors.all())
     elif options_mode:
         options_menu = ctx.menus.get("options", {})
+        options_actions = []
+        for entry in options_menu.get("actions", []):
+            cmd_entry = dict(entry)
+            if not command_is_enabled(cmd_entry, player, opponents):
+                cmd_entry["_disabled"] = True
+            options_actions.append(cmd_entry)
+        options_menu = dict(options_menu)
+        options_menu["actions"] = options_actions
         title = options_menu.get("title", "Options")
         body = [title, ""]
-        options_actions = options_menu.get("actions", [])
         if options_actions:
             for idx, entry in enumerate(options_actions):
                 label = str(entry.get("label", "")).strip() or entry.get("command", "")
@@ -249,7 +256,7 @@ def generate_frame(
                 body.append(f"{prefix}{label}")
         else:
             body.append("No options available.")
-        actions = format_menu_actions(options_menu, selected_index=menu_cursor)
+        actions = format_menu_actions(options_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif inventory_mode:
@@ -263,7 +270,7 @@ def generate_frame(
                 body.append(f"{prefix}{label}")
         else:
             body.append(inventory_menu.get("empty", "Inventory is empty."))
-        actions = format_menu_actions(inventory_menu, selected_index=menu_cursor)
+        actions = format_menu_actions(inventory_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif spell_mode:
@@ -282,7 +289,7 @@ def generate_frame(
                 "{heal_name}": heal_name,
                 "{spark_name}": spark_name,
             },
-            selected_index=menu_cursor,
+            selected_index=menu_cursor if menu_cursor >= 0 else None,
         )
         art_lines = []
         art_color = ANSI.FG_WHITE
@@ -300,7 +307,7 @@ def generate_frame(
         body = scene_data.get("narrative", [])
         actions = format_command_lines(
             scene_commands(ctx.scenes, ctx.commands, "town", player, opponents),
-            selected_index=action_cursor,
+            selected_index=action_cursor if action_cursor >= 0 else None,
         )
     elif player.location == "Title":
         scene_data = ctx.scenes.get("title", {})
@@ -440,12 +447,12 @@ def generate_frame(
             )
         if getattr(player, "title_confirm", False):
             body = scene_data.get("confirm_narrative", [])
-            actions = format_command_lines(scene_data.get("confirm_commands", []), selected_index=action_cursor)
+            actions = format_command_lines(scene_data.get("confirm_commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
         else:
             body = scene_data.get("narrative", [])
             actions = format_command_lines(
                 scene_commands(ctx.scenes, ctx.commands, "title", player, opponents),
-                selected_index=action_cursor,
+                selected_index=action_cursor if action_cursor >= 0 else None,
             )
         display_location = "Lokarta - World Maker"
     else:
@@ -473,7 +480,7 @@ def generate_frame(
             body = [line for line in message.splitlines() if line.strip()]
         actions = format_command_lines(
             scene_commands(ctx.scenes, ctx.commands, "forest", player, opponents),
-            selected_index=action_cursor,
+            selected_index=action_cursor if action_cursor >= 0 else None,
         )
         art_lines = forest_art
         art_anchor_x = None

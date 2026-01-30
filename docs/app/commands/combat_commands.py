@@ -7,6 +7,7 @@ from app.commands.registry import CommandRegistry, CommandContext
 def register(registry: CommandRegistry):
     registry.register("ATTACK", _handle_attack)
     registry.register("DEFEND", _handle_defend)
+    registry.register("FLEE", _handle_flee)
 
 
 def _handle_attack(ctx: CommandContext) -> str:
@@ -36,3 +37,10 @@ def _handle_attack(ctx: CommandContext) -> str:
 
 def _handle_defend(ctx: CommandContext) -> str:
     return "You brace for impact."
+
+
+def _handle_flee(ctx: CommandContext) -> str:
+    ctx.opponents.clear()
+    ctx.loot["xp"] = 0
+    ctx.loot["gold"] = 0
+    return "You flee to safety."

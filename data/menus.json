@@ -41,11 +41,13 @@
     "actions": [
       {
         "label": "Inventory",
-        "command": "INVENTORY"
+        "command": "INVENTORY",
+        "enabled_when": "has_items"
       },
       {
         "label": "Spellbook",
-        "command": "SPELLBOOK"
+        "command": "SPELLBOOK",
+        "enabled_when": "has_mp"
       },
       {
         "label": "Quit",

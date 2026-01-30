@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_boost_confirm, handle_command
-from app.commands.scene_commands import scene_commands
+from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage
 from app.state import GameState
 from app.ui.ansi import ANSI
@@ -105,20 +105,29 @@ def action_grid_dimensions(count: int) -> tuple[int, int]:
     return ACTION_LINES, cols
 
 
-def _find_valid_in_column(row: int, col: int, count: int, rows: int) -> Optional[int]:
+def _find_valid_in_column(row: int, col: int, count: int, rows: int, commands: list[dict]) -> Optional[int]:
     for offset in range(rows):
         candidate_row = (row + offset) % rows
         idx = candidate_row + col * rows
-        if idx < count:
+        if idx < count and not commands[idx].get("_disabled"):
             return idx
     return None
 
 
-def move_action_cursor(index: int, direction: str, count: int) -> int:
+def _enabled_indices(commands: list[dict]) -> list[int]:
+    return [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]
+
+
+def move_action_cursor(index: int, direction: str, commands: list[dict]) -> int:
+    count = len(commands)
     if count <= 0:
-        return 0
+        return -1
+    enabled = _enabled_indices(commands)
+    if not enabled:
+        return -1
     rows, cols = action_grid_dimensions(count)
-    index = max(0, min(index, count - 1))
+    if index not in enabled:
+        index = enabled[0]
     row = index % rows
     col = index // rows
     if direction in ("UP", "DOWN"):
@@ -126,14 +135,14 @@ def move_action_cursor(index: int, direction: str, count: int) -> int:
         for _ in range(rows):
             row = (row + step) % rows
             candidate = row + col * rows
-            if candidate < count:
+            if candidate < count and not commands[candidate].get("_disabled"):
                 return candidate
         return index
     if direction in ("LEFT", "RIGHT"):
         step = -1 if direction == "LEFT" else 1
         for _ in range(cols):
             col = (col + step) % cols
-            candidate = _find_valid_in_column(row, col, count, rows)
+            candidate = _find_valid_in_column(row, col, count, rows, commands)
             if candidate is not None:
                 return candidate
         return index
@@ -186,11 +195,14 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
 
 
 def clamp_action_cursor(state: GameState, commands: list[dict]) -> None:
-    count = len(commands)
-    if count <= 0:
-        state.action_cursor = 0
+    enabled = _enabled_indices(commands)
+    if not commands or not enabled:
+        state.action_cursor = -1
         return
-    state.action_cursor = max(0, min(state.action_cursor, count - 1))
+    if state.action_cursor not in enabled:
+        state.action_cursor = enabled[0]
+        return
+    state.action_cursor = max(0, min(state.action_cursor, len(commands) - 1))
 
 
 def spell_menu_keys(ctx) -> list[str]:
@@ -313,18 +325,38 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
 
     if state.options_mode:
         menu = ctx.menus.get("options", {})
-        actions = [entry for entry in menu.get("actions", []) if entry.get("command")]
+        actions = []
+        for entry in menu.get("actions", []):
+            if not entry.get("command"):
+                continue
+            cmd_entry = dict(entry)
+            if not command_is_enabled(cmd_entry, state.player, state.opponents):
+                cmd_entry["_disabled"] = True
+            actions.append(cmd_entry)
         if not actions:
             return None, None
-        state.menu_cursor = max(0, min(state.menu_cursor, len(actions) - 1))
+        enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
+        if not enabled:
+            state.menu_cursor = -1
+        elif state.menu_cursor not in enabled:
+            state.menu_cursor = enabled[0]
+        else:
+            state.menu_cursor = max(0, min(state.menu_cursor, len(actions) - 1))
         if action in ("UP", "DOWN"):
             direction = -1 if action == "UP" else 1
-            state.menu_cursor = (state.menu_cursor + direction) % len(actions)
+            if enabled:
+                pos = enabled.index(state.menu_cursor) if state.menu_cursor in enabled else 0
+                pos = (pos + direction) % len(enabled)
+                state.menu_cursor = enabled[pos]
             return None, None
         if action == "BACK":
             state.options_mode = False
             return None, None
         if action == "CONFIRM":
+            if state.menu_cursor < 0:
+                return None, None
+            if actions[state.menu_cursor].get("_disabled"):
+                return None, None
             cmd = actions[state.menu_cursor].get("command")
             state.options_mode = False
             return cmd, None
@@ -370,16 +402,18 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     commands = action_commands_for_state(ctx, state)
     clamp_action_cursor(state, commands)
     if action in ("UP", "DOWN", "LEFT", "RIGHT"):
-        state.action_cursor = move_action_cursor(state.action_cursor, action, len(commands))
+        state.action_cursor = move_action_cursor(state.action_cursor, action, commands)
         return None, None
     if action == "BACK":
         cmd = "B_KEY"
         command_meta = find_command_meta(commands, cmd)
         return cmd if command_meta else None, command_meta
     if action == "CONFIRM":
-        if not commands:
+        if not commands or state.action_cursor < 0:
             return None, None
         command_meta = commands[state.action_cursor]
+        if command_meta.get("_disabled"):
+            return None, None
         cmd = command_meta.get("command")
         return cmd, command_meta
     return None, None
@@ -621,6 +655,8 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
 
 def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, action_cmd: Optional[str]) -> bool:
     if action_cmd not in ctx.combat_actions or not any(opponent.hp > 0 for opponent in state.opponents):
+        return False
+    if action_cmd == "FLEE":
         return False
     if state.player.location == "Forest":
         render_battle_pause(ctx, render_frame, state, generate_frame, _status_message(state, None))

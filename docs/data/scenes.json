@@ -133,6 +133,13 @@
     ],
     "commands": [
       {
+        "label": "Find an opponent to fight",
+        "command": "ENTER_SCENE",
+        "target": "forest",
+        "anim": "battle_start",
+        "when": "no_opponents"
+      },
+      {
         "label": "Attack",
         "command": "ATTACK",
         "type": "combat",
@@ -146,11 +153,20 @@
         "when": "has_opponents"
       },
       {
-        "label": "Find an opponent to fight",
-        "command": "ENTER_SCENE",
-        "target": "forest",
-        "anim": "battle_start",
-        "when": "no_opponents"
+        "label": "Items",
+        "command": "INVENTORY",
+        "enabled_when": "has_items"
+      },
+      {
+        "label": "Magic",
+        "command": "SPELLBOOK",
+        "enabled_when": "has_mp"
+      },
+      {
+        "label": "Flee",
+        "command": "FLEE",
+        "type": "combat",
+        "when": "has_opponents"
       },
       {
         "label": "Return to Town",

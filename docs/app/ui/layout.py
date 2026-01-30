@@ -145,5 +145,8 @@ def format_menu_actions(
             continue
         for token, value in replacements.items():
             label = label.replace(token, value)
-        actions.append(f"  {label}")
+        line = f"  {label}"
+        if command.get("_disabled"):
+            line = f"{ANSI.DIM}{line}{ANSI.RESET}"
+        actions.append(line)
     return format_action_lines(actions, selected_index=selected_index)
