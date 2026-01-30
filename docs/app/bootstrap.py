@@ -10,6 +10,7 @@ from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.frames_data import FramesData
+from app.data_access.glyphs_data import GlyphsData
 from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.elements_data import ElementsData
 from app.data_access.items_data import ItemsData
@@ -42,6 +43,7 @@ class AppContext:
     continents: ContinentsData
     elements: ElementsData
     spells_art: SpellsArtData
+    glyphs: GlyphsData
     save_data: SaveData
     registry: object
     router_ctx: RouterContext
@@ -102,6 +104,10 @@ def _load_frames() -> FramesData:
     return FramesData(f"{DATA_DIR}/frames.json")
 
 
+def _load_glyphs() -> GlyphsData:
+    return GlyphsData(f"{DATA_DIR}/glyphs.json")
+
+
 def _load_elements() -> ElementsData:
     return ElementsData(f"{DATA_DIR}/elements.json")
 
@@ -150,6 +156,7 @@ def create_app() -> AppContext:
     texts = _load_texts()
     colors = _load_colors()
     frames = _load_frames()
+    glyphs = _load_glyphs()
     elements = _load_elements()
     spells_art = _load_spells_art()
     continents = _load_continents()
@@ -173,6 +180,7 @@ def create_app() -> AppContext:
         continents=continents,
         elements=elements,
         spells_art=spells_art,
+        glyphs=glyphs,
         objects=objects,
         registry=registry,
     )
@@ -192,6 +200,7 @@ def create_app() -> AppContext:
         continents=continents,
         elements=elements,
         spells_art=spells_art,
+        glyphs=glyphs,
     )
 
     return AppContext(
@@ -210,6 +219,7 @@ def create_app() -> AppContext:
         continents=continents,
         elements=elements,
         spells_art=spells_art,
+        glyphs=glyphs,
         save_data=save_data,
         registry=registry,
         router_ctx=router_ctx,

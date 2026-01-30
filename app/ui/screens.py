@@ -11,6 +11,7 @@ from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.frames_data import FramesData
+from app.data_access.glyphs_data import GlyphsData
 from app.data_access.elements_data import ElementsData
 from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.items_data import ItemsData
@@ -55,6 +56,7 @@ class ScreenContext:
     continents: ContinentsData
     elements: ElementsData
     spells_art: SpellsArtData
+    glyphs: GlyphsData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -651,6 +653,12 @@ def generate_frame(
             elements = [e for e in order if e in elements] or elements
         title = portal_menu.get("title", "Portal")
         body = [title, ""]
+        atlas = ctx.glyphs.get("atlas", {}) if hasattr(ctx, "glyphs") else {}
+        atlas_lines = atlas.get("art", []) if isinstance(atlas, dict) else []
+        for line in atlas_lines:
+            body.append(line)
+        if atlas_lines:
+            body.append("")
         if elements:
             menu_cursor = max(0, min(menu_cursor, len(elements) - 1))
             for idx, element in enumerate(elements):

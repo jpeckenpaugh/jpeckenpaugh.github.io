@@ -651,6 +651,12 @@ def generate_frame(
             elements = [e for e in order if e in elements] or elements
         title = portal_menu.get("title", "Portal")
         body = [title, ""]
+        atlas = ctx.glyphs.get("atlas", {}) if hasattr(ctx, "glyphs") else {}
+        atlas_lines = atlas.get("art", []) if isinstance(atlas, dict) else []
+        for line in atlas_lines:
+            body.append(line)
+        if atlas_lines:
+            body.append("")
         if elements:
             menu_cursor = max(0, min(menu_cursor, len(elements) - 1))
             for idx, element in enumerate(elements):
