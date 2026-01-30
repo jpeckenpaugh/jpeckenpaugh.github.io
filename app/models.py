@@ -32,6 +32,8 @@ class Player:
     defense: int
     location: str
     inventory: dict
+    elements: List[str]
+    current_element: str
 
     def to_dict(self) -> dict:
         return {
@@ -49,10 +51,20 @@ class Player:
             "defense": self.defense,
             "location": self.location,
             "inventory": self.inventory,
+            "elements": list(self.elements),
+            "current_element": self.current_element,
         }
 
     @staticmethod
     def from_dict(data: dict) -> "Player":
+        elements = data.get("elements")
+        if not isinstance(elements, list):
+            elements = []
+        if not elements:
+            elements = ["base"]
+        current_element = data.get("current_element", "base")
+        if current_element not in elements:
+            current_element = elements[0]
         return Player(
             name=data.get("name", "WARRIOR"),
             level=int(data.get("level", 1)),
@@ -68,6 +80,8 @@ class Player:
             defense=int(data.get("defense", 10)),
             location="Town",
             inventory=data.get("inventory", {}),
+            elements=elements,
+            current_element=current_element,
         )
 
     def add_item(self, key: str, amount: int = 1):

@@ -34,3 +34,5 @@ class GameState:
     defend_active: bool = False
     defend_bonus: int = 0
     defend_evasion: float = 0.0
+    action_effect_override: Optional[dict] = None
+    level_up_notes: list[str] = field(default_factory=list)

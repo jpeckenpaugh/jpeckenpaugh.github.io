@@ -21,14 +21,6 @@
     "close_message": "Closed spellbook.",
     "actions": [
       {
-        "label": "{heal_name}",
-        "command": "NUM1"
-      },
-      {
-        "label": "{spark_name}",
-        "command": "NUM2"
-      },
-      {
         "label": "Back",
         "command": "B_KEY"
       }

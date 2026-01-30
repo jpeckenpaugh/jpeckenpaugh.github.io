@@ -36,3 +36,31 @@ class SpellsData:
             if spell.get("menu_key") == menu_key:
                 return spell_id, spell
         return None
+
+    def available(self, player_level: int) -> list[Tuple[str, dict]]:
+        entries = []
+        for spell_id, spell in self._spells.items():
+            level_required = int(spell.get("level_required", 0) or 0)
+            if player_level >= level_required:
+                entries.append((spell_id, spell))
+        entries.sort(key=lambda item: (int(item[1].get("level_required", 0) or 0), item[0]))
+        return entries
+
+    def rank_for(self, spell: dict, player_level: int) -> int:
+        level_required = int(spell.get("level_required", 0) or 0)
+        if player_level < level_required:
+            return 0
+        rank = 1 + max(0, (player_level - level_required) // 2)
+        return min(3, rank)
+
+    def element_unlocks(self) -> dict:
+        unlocks = {}
+        for spell in self._spells.values():
+            if not isinstance(spell, dict):
+                continue
+            element = spell.get("element")
+            if not element:
+                continue
+            level_required = int(spell.get("level_required", 0) or 0)
+            unlocks[element] = min(unlocks.get(element, level_required), level_required)
+        return unlocks

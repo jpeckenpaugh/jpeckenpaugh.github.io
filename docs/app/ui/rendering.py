@@ -38,6 +38,110 @@ _SESSION_RANDOM_SEED = random.SystemRandom().randint(0, 2**31 - 1)
 _MASK_DIGITS = set("0123456789")
 _JITTER_TICK_SECONDS = 0.6
 
+_ELEMENT_KEY_MAP = {
+    "fire": {
+        "g": "r",
+        "G": "R",
+        "m": "o",
+        "M": "O",
+        "j": "r",
+        "J": "R",
+        "e": "r",
+        "E": "R",
+        "b": "o",
+        "B": "O",
+        "u": "o",
+        "U": "O",
+        "y": "O",
+        "Y": "O",
+        "t": "o",
+        "T": "O",
+    },
+    "ice": {
+        "g": "b",
+        "G": "B",
+        "m": "b",
+        "M": "B",
+        "j": "b",
+        "J": "B",
+        "e": "b",
+        "E": "B",
+        "y": "c",
+        "Y": "C",
+        "r": "i",
+        "R": "I",
+        "o": "B",
+        "O": "B",
+        "t": "c",
+        "T": "C",
+    },
+    "earth": {
+        "g": "q",
+        "G": "Q",
+        "m": "q",
+        "M": "Q",
+        "j": "q",
+        "J": "Q",
+        "e": "q",
+        "E": "Q",
+        "y": "a",
+        "Y": "A",
+        "b": "q",
+        "B": "Q",
+        "u": "q",
+        "U": "Q",
+        "t": "q",
+        "T": "Q",
+    },
+    "wind": {
+        "g": "s",
+        "G": "S",
+        "m": "s",
+        "M": "S",
+        "j": "s",
+        "J": "S",
+        "e": "s",
+        "E": "S",
+        "b": "w",
+        "B": "w",
+        "u": "w",
+        "U": "w",
+        "y": "S",
+        "Y": "S",
+        "t": "S",
+        "T": "S",
+    },
+    "lightning": {
+        "g": "y",
+        "G": "Y",
+        "m": "y",
+        "M": "Y",
+        "j": "y",
+        "J": "Y",
+        "e": "y",
+        "E": "Y",
+        "b": "y",
+        "B": "Y",
+        "u": "y",
+        "U": "Y",
+        "t": "y",
+        "T": "Y",
+    },
+}
+
+
+def element_color_map(color_map: dict, element: str) -> dict:
+    if not color_map or not element or element == "base":
+        return color_map
+    mapping = _ELEMENT_KEY_MAP.get(element, {})
+    if not mapping:
+        return color_map
+    remapped = dict(color_map)
+    for src_key, dest_key in mapping.items():
+        if dest_key in color_map:
+            remapped[src_key] = color_map[dest_key]
+    return remapped
+
 
 def gradient_rgb(x: int, y: int, width: int, height: int) -> tuple[int, int, int]:
     # Diagonal gradient: light silver -> bright blue -> dark silver

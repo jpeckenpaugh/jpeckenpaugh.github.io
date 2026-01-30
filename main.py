@@ -137,6 +137,7 @@ def main():
                 state.action_cursor,
                 state.menu_cursor,
                 state.level_cursor,
+                state.level_up_notes,
             )
             state.title_mode = True
             state.player.location = "Title"
@@ -161,6 +162,7 @@ def main():
             state.action_cursor = 0
             state.menu_cursor = 0
             state.level_cursor = 0
+            state.level_up_notes = []
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -178,6 +180,7 @@ def main():
                 state.action_cursor,
                 state.menu_cursor,
                 state.level_cursor,
+                state.level_up_notes,
             )
             animate_art_transition(pre_frame, post_frame, state.player, pause_ticks=2)
             continue
@@ -189,6 +192,7 @@ def main():
             state.last_message, leveling_done = state.player.handle_level_up_input(cmd)
             if leveling_done:
                 state.leveling_mode = False
+                state.level_up_notes = []
             continue
 
         if cmd == "B_KEY" and not (state.shop_mode or state.hall_mode or state.inn_mode or state.spell_mode or state.inventory_mode):
@@ -218,6 +222,7 @@ def main():
                 "action_cursor": state.action_cursor,
                 "menu_cursor": state.menu_cursor,
                 "level_cursor": state.level_cursor,
+                "level_up_notes": list(state.level_up_notes),
             }
             pre_in_venue = state.shop_mode or state.hall_mode or state.inn_mode
             pre_location = state.player.location
@@ -251,6 +256,7 @@ def main():
                     pre_snapshot.get("action_cursor", 0),
                     pre_snapshot.get("menu_cursor", 0),
                     pre_snapshot.get("level_cursor", 0),
+                    pre_snapshot.get("level_up_notes", []),
                 )
                 post_frame = generate_frame(
                     APP.screen_ctx,
@@ -269,6 +275,7 @@ def main():
                     state.action_cursor,
                     state.menu_cursor,
                     state.level_cursor,
+                    state.level_up_notes,
                 )
                 animate_art_transition(pre_frame, post_frame, state.player, pause_ticks=2)
         if should_continue:

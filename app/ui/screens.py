@@ -24,6 +24,7 @@ from app.ui.layout import format_action_lines, format_command_lines, format_menu
 from app.ui.constants import SCREEN_WIDTH
 from app.ui.rendering import (
     COLOR_BY_NAME,
+    element_color_map,
     format_player_stats,
     render_scene_art,
     render_venue_art,
@@ -123,6 +124,7 @@ def generate_frame(
     action_cursor: int = 0,
     menu_cursor: int = 0,
     level_cursor: int = 0,
+    level_up_notes: Optional[List[str]] = None,
     suppress_actions: bool = False
 ) -> Frame:
     """Build a screen frame from game state and UI data."""
@@ -131,6 +133,7 @@ def generate_frame(
     heal_name = healing.get("name", "Healing")
     spark_name = spark.get("name", "Spark")
     display_location = player.location
+    color_map_override = element_color_map(ctx.colors.all(), player.current_element)
     art_anchor_x = None
     if leveling_mode:
         level_options = [
@@ -158,6 +161,11 @@ def generate_frame(
             "Choose how to spend your points:",
             *level_lines,
         ]
+        if level_up_notes:
+            body.append("")
+            body.append("Spell updates:")
+            for note in level_up_notes:
+                body.append(f"  - {note}")
         actions = format_action_lines([])
         art_lines = []
         art_color = ANSI.FG_WHITE
@@ -185,9 +193,9 @@ def generate_frame(
         body += venue.get("narrative", [])
         art_anchor_x = None
         if venue.get("objects"):
-            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, ctx.colors.all())
+            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
         else:
-            art_lines, art_color = render_venue_art(venue, npc, ctx.colors.all())
+            art_lines, art_color = render_venue_art(venue, npc, color_map_override)
         actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
     elif player.location == "Town" and hall_mode:
         venue = ctx.venues.get("town_hall", {})
@@ -215,9 +223,9 @@ def generate_frame(
         actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
         art_anchor_x = None
         if venue.get("objects"):
-            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, ctx.colors.all())
+            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
         else:
-            art_lines, art_color = render_venue_art(venue, npc, ctx.colors.all())
+            art_lines, art_color = render_venue_art(venue, npc, color_map_override)
     elif player.location == "Town" and inn_mode:
         venue = ctx.venues.get("town_inn", {})
         display_location = venue.get("name", display_location)
@@ -234,9 +242,9 @@ def generate_frame(
         actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
         art_anchor_x = None
         if venue.get("objects"):
-            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, ctx.colors.all())
+            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
         else:
-            art_lines, art_color = render_venue_art(venue, npc, ctx.colors.all())
+            art_lines, art_color = render_venue_art(venue, npc, color_map_override)
     elif options_mode:
         options_menu = ctx.menus.get("options", {})
         options_actions = []
@@ -275,14 +283,20 @@ def generate_frame(
         art_color = ANSI.FG_WHITE
     elif spell_mode:
         spell_menu = ctx.menus.get("spellbook", {})
-        heal_cost = int(healing.get("mp_cost", 2))
-        spark_cost = int(spark.get("mp_cost", 2))
+        available_spells = ctx.spells.available(player.level)
         body = [
             spell_menu.get("title", "Spellbook"),
             "",
-            ("> " if menu_cursor == 0 else "  ") + f"{heal_name} ({heal_cost} MP)",
-            ("> " if menu_cursor == 1 else "  ") + f"{spark_name} ({spark_cost} MP)",
         ]
+        if available_spells:
+            for idx, (_, spell) in enumerate(available_spells):
+                name = spell.get("name", "Spell")
+                mp_cost = int(spell.get("mp_cost", 0))
+                rank = ctx.spells.rank_for(spell, player.level)
+                prefix = "> " if idx == menu_cursor else "  "
+                body.append(f"{prefix}{name} ({mp_cost} MP) Rank {rank}")
+        else:
+            body.append("  No spells learned.")
         actions = format_menu_actions(
             spell_menu,
             replacements={
@@ -299,7 +313,7 @@ def generate_frame(
             scene_data,
             opponents,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all(),
+            color_map_override=color_map_override,
         )
         if not art_lines:
             art_lines = scene_data.get("art", [])
@@ -443,7 +457,7 @@ def generate_frame(
                 scene_data,
                 opponents,
                 objects_data=ctx.objects,
-                color_map_override=ctx.colors.all(),
+                color_map_override=color_map_override,
             )
         if getattr(player, "title_confirm", False):
             body = scene_data.get("confirm_narrative", [])
@@ -461,7 +475,7 @@ def generate_frame(
             scene_data,
             opponents,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all(),
+            color_map_override=color_map_override,
         )
         alive = [o for o in opponents if o.hp > 0]
         default_text = ctx.text.get("battle", "quiet", "All is quiet. No enemies in sight.")

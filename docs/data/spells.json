@@ -12,7 +12,9 @@
     "requires_target": false,
     "heal": 10,
     "boosted_heal": 20,
-    "desc": "Restore HP."
+    "desc": "Restore HP.",
+    "level_required": 0,
+    "class": "basic"
   },
   "spark": {
     "name": "Spark",
@@ -55,6 +57,233 @@
         ]
       ],
       "color_key": "y",
+      "variation": 0.12,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.06
+    },
+    "level_required": 0,
+    "class": "elemental",
+    "element": "lightning",
+    "overlay_color_key_rank2": "Y",
+    "overlay_color_key_rank3": "w",
+    "effect_loops_rank2": 3,
+    "effect_loops_rank3": 4
+  },
+  "iceblast": {
+    "name": "Iceblast",
+    "command_id": "ICEBLAST",
+    "anim": "flash_melt",
+    "mp_cost": 4,
+    "boosted_mp_cost": 8,
+    "boost_prompt_seconds": 3,
+    "boost_default": "N",
+    "boost_prompt_text": "Boost {name}? (Y/N)",
+    "requires_target": true,
+    "class": "elemental",
+    "element": "ice",
+    "level_required": 4,
+    "atk_bonus": 3,
+    "boosted_multiplier": 2,
+    "stun_chance": 0.5,
+    "boosted_stun_chance": 0.8,
+    "rank3_damage_mult": 1.25,
+    "rank3_stun_bonus": 0.1,
+    "overlay_color_key_rank2": "B",
+    "overlay_color_key_rank3": "C",
+    "effect_loops_rank2": 3,
+    "effect_loops_rank3": 4,
+    "desc": "Freezing blast that can stun.",
+    "effect": {
+      "type": "overlay",
+      "frames": [
+        [
+          "<>"
+        ],
+        [
+          " **",
+          "<oo>",
+          " **"
+        ],
+        [
+          "  /\\",
+          "<<oo>>",
+          "  \\/"
+        ],
+        [
+          "   /\\",
+          "  /  \\",
+          "<<o--o>>",
+          "  \\  /",
+          "   \\/"
+        ]
+      ],
+      "color_key": "b",
+      "variation": 0.12,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.06
+    }
+  },
+  "fireblast": {
+    "name": "Fireblast",
+    "command_id": "FIREBLAST",
+    "anim": "flash_melt",
+    "mp_cost": 6,
+    "boosted_mp_cost": 12,
+    "boost_prompt_seconds": 3,
+    "boost_default": "N",
+    "boost_prompt_text": "Boost {name}? (Y/N)",
+    "requires_target": true,
+    "class": "elemental",
+    "element": "fire",
+    "level_required": 6,
+    "atk_bonus": 4,
+    "boosted_multiplier": 2,
+    "stun_chance": 0.2,
+    "boosted_stun_chance": 0.5,
+    "rank3_damage_mult": 1.35,
+    "rank3_stun_bonus": 0.05,
+    "overlay_color_key_rank2": "R",
+    "overlay_color_key_rank3": "O",
+    "effect_loops_rank2": 3,
+    "effect_loops_rank3": 4,
+    "desc": "Roaring flame with heavy damage.",
+    "effect": {
+      "type": "overlay",
+      "frames": [
+        [
+          "<>"
+        ],
+        [
+          " **",
+          "<oo>",
+          " **"
+        ],
+        [
+          "  /\\",
+          "<<oo>>",
+          "  \\/"
+        ],
+        [
+          "   /\\",
+          "  /  \\",
+          "<<o--o>>",
+          "  \\  /",
+          "   \\/"
+        ]
+      ],
+      "color_key": "r",
+      "variation": 0.12,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.06
+    }
+  },
+  "boulder": {
+    "name": "Boulder",
+    "command_id": "BOULDER",
+    "anim": "flash_melt",
+    "mp_cost": 8,
+    "boosted_mp_cost": 16,
+    "boost_prompt_seconds": 3,
+    "boost_default": "N",
+    "boost_prompt_text": "Boost {name}? (Y/N)",
+    "requires_target": true,
+    "class": "elemental",
+    "element": "earth",
+    "level_required": 8,
+    "atk_bonus": 5,
+    "boosted_multiplier": 2,
+    "stun_chance": 0.3,
+    "boosted_stun_chance": 0.6,
+    "rank3_damage_mult": 1.3,
+    "rank3_stun_bonus": 0.1,
+    "overlay_color_key_rank2": "Q",
+    "overlay_color_key_rank3": "A",
+    "effect_loops_rank2": 3,
+    "effect_loops_rank3": 4,
+    "desc": "Crushing earthbound strike.",
+    "effect": {
+      "type": "overlay",
+      "frames": [
+        [
+          "<>"
+        ],
+        [
+          " **",
+          "<oo>",
+          " **"
+        ],
+        [
+          "  /\\",
+          "<<oo>>",
+          "  \\/"
+        ],
+        [
+          "   /\\",
+          "  /  \\",
+          "<<o--o>>",
+          "  \\  /",
+          "   \\/"
+        ]
+      ],
+      "color_key": "q",
+      "variation": 0.12,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.06
+    }
+  },
+  "tornado": {
+    "name": "Tornado",
+    "command_id": "TORNADO",
+    "anim": "flash_melt",
+    "mp_cost": 10,
+    "boosted_mp_cost": 20,
+    "boost_prompt_seconds": 3,
+    "boost_default": "N",
+    "boost_prompt_text": "Boost {name}? (Y/N)",
+    "requires_target": true,
+    "class": "elemental",
+    "element": "wind",
+    "level_required": 10,
+    "atk_bonus": 6,
+    "boosted_multiplier": 2,
+    "stun_chance": 0.25,
+    "boosted_stun_chance": 0.5,
+    "rank3_damage_mult": 1.2,
+    "rank3_stun_bonus": 0.1,
+    "overlay_color_key_rank2": "S",
+    "overlay_color_key_rank3": "w",
+    "effect_loops_rank2": 3,
+    "effect_loops_rank3": 4,
+    "desc": "A violent spiral of cutting wind.",
+    "effect": {
+      "type": "overlay",
+      "frames": [
+        [
+          "<>"
+        ],
+        [
+          " **",
+          "<oo>",
+          " **"
+        ],
+        [
+          "  /\\",
+          "<<oo>>",
+          "  \\/"
+        ],
+        [
+          "   /\\",
+          "  /  \\",
+          "<<o--o>>",
+          "  \\  /",
+          "   \\/"
+        ]
+      ],
+      "color_key": "s",
       "variation": 0.12,
       "jitter_stability": false,
       "loops": 2,

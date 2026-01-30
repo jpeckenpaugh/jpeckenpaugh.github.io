@@ -126,8 +126,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.last_message = menu.get("open_message", "Open spellbook.")
         return True
 
-    if state.spell_mode and command_id.startswith("NUM"):
-        spell_entry = ctx.spells.by_menu_key(command_id)
+    if state.spell_mode and command_id:
+        spell_entry = ctx.spells.by_command_id(command_id)
         if not spell_entry:
             return False
         _, spell = spell_entry

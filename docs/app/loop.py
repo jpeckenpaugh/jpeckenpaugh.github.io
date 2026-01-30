@@ -15,6 +15,7 @@ from app.ui.rendering import (
     animate_battle_end,
     animate_battle_start,
     animate_spell_overlay,
+    element_color_map,
     flash_opponent,
     melt_opponent,
     render_scene_frame,
@@ -48,6 +49,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.action_cursor,
         state.menu_cursor,
         state.level_cursor,
+        state.level_up_notes,
         suppress_actions=suppress_actions,
     )
     render_frame(frame)
@@ -205,18 +207,9 @@ def clamp_action_cursor(state: GameState, commands: list[dict]) -> None:
     state.action_cursor = max(0, min(state.action_cursor, len(commands) - 1))
 
 
-def spell_menu_keys(ctx) -> list[str]:
-    entries = []
-    for spell in ctx.spells.all().values():
-        menu_key = spell.get("menu_key")
-        if menu_key:
-            entries.append(menu_key)
-    def key_rank(val: str) -> int:
-        digits = "".join(ch for ch in val if ch.isdigit())
-        if digits:
-            return int(digits)
-        return 999
-    return sorted(entries, key=key_rank)
+def spell_menu_keys(ctx, player) -> list[str]:
+    entries = ctx.spells.available(player.level)
+    return [spell.get("command_id") for _, spell in entries if spell.get("command_id")]
 
 
 def find_command_meta(commands: list[dict], command_id: Optional[str]) -> Optional[dict]:
@@ -239,6 +232,7 @@ def _advance_index(indices: list[int], current: int, direction: int) -> int:
 
 
 def run_target_select(ctx, render_frame, state: GameState, generate_frame, read_keypress_timeout) -> Optional[str]:
+    color_override = element_color_map(ctx.colors.all(), state.player.current_element)
     indices = _alive_indices(state.opponents)
     if not indices:
         state.target_select = False
@@ -266,7 +260,7 @@ def run_target_select(ctx, render_frame, state: GameState, generate_frame, read_
             message,
             gap_override=gap_target,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all(),
+            color_map_override=color_override,
             flash_index=flash_index,
             flash_color=ANSI.FG_YELLOW,
             suppress_actions=True,
@@ -382,7 +376,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         return None, None
 
     if state.spell_mode:
-        keys = spell_menu_keys(ctx)
+        keys = spell_menu_keys(ctx, state.player)
         if not keys:
             if action == "BACK":
                 return "B_KEY", None
@@ -457,6 +451,33 @@ def _is_arrival_message(state: GameState, message: str) -> bool:
     return False
 
 
+def spell_level_up_notes(ctx, prev_level: int, new_level: int) -> list[str]:
+    notes = []
+    for _, spell in ctx.spells.available(new_level):
+        name = spell.get("name", "Spell")
+        old_rank = ctx.spells.rank_for(spell, prev_level)
+        new_rank = ctx.spells.rank_for(spell, new_level)
+        if old_rank == 0 and new_rank > 0:
+            notes.append(f"New spell: {name} (Rank {new_rank})")
+        elif new_rank > old_rank:
+            notes.append(f"{name} rank up: {old_rank} → {new_rank}")
+    return notes
+
+
+def element_unlock_notes(ctx, player, prev_level: int, new_level: int) -> list[str]:
+    unlocks = ctx.spells.element_unlocks()
+    notes = []
+    for element, level_required in unlocks.items():
+        if prev_level < level_required <= new_level:
+            element_name = element.title()
+            if element not in player.elements:
+                player.elements.append(element)
+            notes.append(f"Element unlocked: {element_name}")
+    if not player.elements:
+        player.elements.append("base")
+    return notes
+
+
 def apply_boost_confirm(ctx, state: GameState, ch: str, action_cmd: Optional[str]) -> tuple[bool, Optional[str], bool]:
     return False, action_cmd, False
 
@@ -517,6 +538,7 @@ def apply_router_command(
         state.title_mode = False
     state.player = cmd_state.player
     if command_meta and command_meta.get("anim") == "battle_start" and state.opponents:
+        color_override = element_color_map(ctx.colors.all(), state.player.current_element)
         if not state.battle_log and _is_arrival_message(state, state.last_message):
             state.last_message = ""
         animate_battle_start(
@@ -527,7 +549,7 @@ def apply_router_command(
             state.opponents,
             state.last_message,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all()
+            color_map_override=color_override
         )
     if action_cmd not in ctx.combat_actions:
         return True, action_cmd, cmd, True, target_index
@@ -547,10 +569,27 @@ def resolve_player_action(
 ) -> Optional[str]:
     if handled_boost or handled_by_router:
         return action_cmd
+    if cmd != "DEFEND":
+        state.defend_active = False
+        state.defend_bonus = 0
+        state.defend_evasion = 0.0
+        state.action_effect_override = None
+    if cmd == "DEFEND":
+        alive = [opp for opp in state.opponents if opp.hp > 0]
+        highest = max((opp.level for opp in alive), default=state.player.level)
+        lower_level = highest < state.player.level
+        defense_bonus = max(2, state.player.defense // 2)
+        evasion_bonus = 0.15 if lower_level else 0.05
+        state.defend_active = True
+        state.defend_bonus = defense_bonus
+        state.defend_evasion = evasion_bonus
+        push_battle_message(state, "You brace for impact.")
+        return cmd
     spell_entry = ctx.spells.by_command_id(cmd)
     if spell_entry:
         spell_id, spell = spell_entry
         name = spell.get("name", spell_id.title())
+        rank = ctx.spells.rank_for(spell, state.player.level)
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
@@ -572,7 +611,27 @@ def resolve_player_action(
             loot=state.loot_bank,
             spells_data=ctx.spells,
             target_index=state.target_index,
+            rank=rank,
         )
+        effect = spell.get("effect") if isinstance(spell, dict) else None
+        if isinstance(effect, dict):
+            effect_override = dict(effect)
+            if rank >= 3:
+                rank3_key = spell.get("overlay_color_key_rank3")
+                if rank3_key:
+                    effect_override["color_key"] = rank3_key
+            elif rank >= 2:
+                rank2_key = spell.get("overlay_color_key_rank2")
+                if rank2_key:
+                    effect_override["color_key"] = rank2_key
+            loops = effect_override.get("loops")
+            if rank >= 3 and spell.get("effect_loops_rank3") is not None:
+                loops = spell.get("effect_loops_rank3")
+            elif rank >= 2 and spell.get("effect_loops_rank2") is not None:
+                loops = spell.get("effect_loops_rank2")
+            if loops is not None:
+                effect_override["loops"] = loops
+            state.action_effect_override = effect_override
         push_battle_message(state, message)
         return cmd
 
@@ -599,6 +658,7 @@ def resolve_player_action(
 def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     if action_cmd not in ctx.offensive_actions:
         return
+    color_override = element_color_map(ctx.colors.all(), state.player.current_element)
     message = _status_message(state, None)
     target_index = state.target_index
     if target_index is None:
@@ -608,6 +668,8 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
     if spell_entry:
         _, spell = spell_entry
         effect = spell.get("effect") if isinstance(spell, dict) else None
+    if state.action_effect_override:
+        effect = state.action_effect_override
     if isinstance(effect, dict) and effect.get("type") == "overlay":
         animate_spell_overlay(
             ctx.scenes,
@@ -619,7 +681,7 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
             target_index,
             effect,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all()
+            color_map_override=color_override
         )
     else:
         flash_opponent(
@@ -632,8 +694,9 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
             target_index,
             ANSI.FG_YELLOW,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all()
+            color_map_override=color_override
         )
+    state.action_effect_override = None
     defeated_indices = [
         i for i, m in enumerate(state.opponents)
         if m.hp <= 0 and not m.melted
@@ -648,7 +711,7 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
             message,
             index,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all()
+            color_map_override=color_override
         )
         state.opponents[index].melted = True
 
@@ -718,6 +781,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
     if ctx.battle_end_commands:
+        color_override = element_color_map(ctx.colors.all(), state.player.current_element)
         animate_battle_end(
             ctx.scenes,
             ctx.commands_data,
@@ -726,11 +790,12 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             state.opponents,
             state.last_message,
             objects_data=ctx.objects,
-            color_map_override=ctx.colors.all()
+            color_map_override=color_override
         )
     state.opponents = []
     state.battle_log = []
     if state.loot_bank["xp"] or state.loot_bank["gold"]:
+        pre_level = state.player.level
         state.player.gain_xp(state.loot_bank["xp"])
         state.player.gold += state.loot_bank["gold"]
         push_battle_message(state, (
@@ -739,6 +804,9 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         ))
         if state.player.needs_level_up():
             state.leveling_mode = True
+            spell_notes = spell_level_up_notes(ctx, pre_level, state.player.level)
+            element_notes = element_unlock_notes(ctx, state.player, pre_level, state.player.level)
+            state.level_up_notes = spell_notes + element_notes
         push_battle_message(state, "All is quiet. No enemies in sight.")
     else:
         state.last_message = ""

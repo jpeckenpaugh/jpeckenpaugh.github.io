@@ -67,7 +67,8 @@ def cast_spell(
     boosted: bool,
     loot: dict,
     spells_data: SpellsData,
-    target_index: Optional[int] = None
+    target_index: Optional[int] = None,
+    rank: int = 1
 ) -> str:
     spell = spells_data.get(spell_id, {})
     name = spell.get("name", spell_id.title())
@@ -84,45 +85,63 @@ def cast_spell(
         heal_amount = int(spell.get("boosted_heal", 20 if boosted else 10))
         if not boosted:
             heal_amount = int(spell.get("heal", 10))
+        if rank >= 2:
+            heal_amount = int(heal_amount * 1.25)
+        if rank >= 3:
+            heal_amount = int(heal_amount * 1.5)
         heal = min(heal_amount, player.max_hp - player.hp)
         player.hp += heal
         return f"You cast {name} and restore {heal} HP."
 
-    if spell_id == "spark":
-        opponent = None
-        if target_index is not None and 0 <= target_index < len(opponents):
-            candidate = opponents[target_index]
-            if candidate.hp > 0:
-                opponent = candidate
-        if opponent is None:
-            opponent = primary_opponent(opponents)
-        if not opponent:
+    if spell.get("class") == "elemental" or spell_id == "spark":
+        targets: List[Opponent] = []
+        if rank >= 2:
+            targets = [opp for opp in opponents if opp.hp > 0]
+        else:
+            opponent = None
+            if target_index is not None and 0 <= target_index < len(opponents):
+                candidate = opponents[target_index]
+                if candidate.hp > 0:
+                    opponent = candidate
+            if opponent is None:
+                opponent = primary_opponent(opponents)
+            if opponent:
+                targets = [opponent]
+        if not targets:
             return "There is nothing to target."
         player.mp -= mp_cost
         atk_bonus = int(spell.get("atk_bonus", 2))
-        damage, crit, miss = roll_damage(player.atk + atk_bonus, opponent.defense)
-        if boosted:
-            damage *= int(spell.get("boosted_multiplier", 2))
-        if miss:
-            return f"Your {name} misses the {opponent.name}."
-        opponent.hp = max(0, opponent.hp - damage)
-        if opponent.hp == 0:
-            xp_gain = random.randint(opponent.max_hp // 2, opponent.max_hp)
-            gold_gain = random.randint(opponent.max_hp // 2, opponent.max_hp)
-            add_loot(loot, xp_gain, gold_gain)
-            opponent.melted = False
-            message = f"Your {name} fells the {opponent.name}."
-            return message
-        stun_chance = float(spell.get("boosted_stun_chance", 0.8 if boosted else 0.4))
-        if not boosted:
-            stun_chance = float(spell.get("stun_chance", 0.4))
-        stunned_turns = try_stun(opponent, stun_chance)
-        if crit:
-            message = f"Critical {name}! You hit the {opponent.name} for {damage}."
-        else:
-            message = f"You hit the {opponent.name} with {name} for {damage}."
-        if stunned_turns > 0:
-            message += f" It is stunned for {stunned_turns} turn(s)."
-        return message
+        damage_mult = float(spell.get("rank3_damage_mult", 1.25)) if rank >= 3 else 1.0
+        messages = []
+        for opponent in targets:
+            damage, crit, miss = roll_damage(player.atk + atk_bonus, opponent.defense)
+            if boosted:
+                damage *= int(spell.get("boosted_multiplier", 2))
+            damage = int(damage * damage_mult)
+            if miss:
+                messages.append(f"Your {name} misses the {opponent.name}.")
+                continue
+            opponent.hp = max(0, opponent.hp - damage)
+            if opponent.hp == 0:
+                xp_gain = random.randint(opponent.max_hp // 2, opponent.max_hp)
+                gold_gain = random.randint(opponent.max_hp // 2, opponent.max_hp)
+                add_loot(loot, xp_gain, gold_gain)
+                opponent.melted = False
+                messages.append(f"Your {name} fells the {opponent.name}.")
+                continue
+            stun_chance = float(spell.get("boosted_stun_chance", 0.8 if boosted else 0.4))
+            if not boosted:
+                stun_chance = float(spell.get("stun_chance", 0.4))
+            if rank >= 3:
+                stun_chance = min(0.95, stun_chance + float(spell.get("rank3_stun_bonus", 0.1)))
+            stunned_turns = try_stun(opponent, stun_chance)
+            if crit:
+                message = f"Critical {name}! You hit the {opponent.name} for {damage}."
+            else:
+                message = f"You hit the {opponent.name} with {name} for {damage}."
+            if stunned_turns > 0:
+                message += f" It is stunned for {stunned_turns} turn(s)."
+            messages.append(message)
+        return " ".join(messages)
 
     return f"{name} fizzles with no effect."
