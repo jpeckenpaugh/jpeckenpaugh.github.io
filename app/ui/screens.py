@@ -407,6 +407,19 @@ def generate_frame(
     heal_name = healing.get("name", "Healing")
     spark_name = spark.get("name", "Spark")
     display_location = player.location
+    continent_prefix = None
+    if hasattr(ctx, "continents"):
+        continent_prefix = ctx.continents.name_for(player.current_element)
+
+    def _continent_title(name: str) -> str:
+        if not name:
+            return name
+        if continent_prefix:
+            if name.startswith("Town "):
+                return f"{continent_prefix} {name[len('Town '):]}"
+            if name.startswith("Town"):
+                return f"{continent_prefix}{name[len('Town'):]}"
+        return name
     location_gradient = None
     portal_desc = None
     color_map_override = element_color_map(ctx.colors.all(), player.current_element)
@@ -447,7 +460,7 @@ def generate_frame(
         art_color = ANSI.FG_WHITE
     elif player.location == "Town" and shop_mode:
         venue = ctx.venues.get("town_shop", {})
-        display_location = venue.get("name", display_location)
+        display_location = _continent_title(venue.get("name", display_location))
         npc_lines = []
         npc_ids = venue.get("npc_ids", [])
         npc = {}
@@ -485,7 +498,7 @@ def generate_frame(
         )
     elif player.location == "Town" and hall_mode:
         venue = ctx.venues.get("town_hall", {})
-        display_location = venue.get("name", display_location)
+        display_location = _continent_title(venue.get("name", display_location))
         info_sections = venue.get("info_sections", [])
         npc_lines = []
         npc_ids = venue.get("npc_ids", [])
@@ -514,7 +527,7 @@ def generate_frame(
             art_lines, art_color = render_venue_art(venue, npc, color_map_override)
     elif player.location == "Town" and inn_mode:
         venue = ctx.venues.get("town_inn", {})
-        display_location = venue.get("name", display_location)
+        display_location = _continent_title(venue.get("name", display_location))
         npc_lines = []
         npc_ids = venue.get("npc_ids", [])
         npc = {}
@@ -554,7 +567,7 @@ def generate_frame(
         art_color = ANSI.FG_WHITE
     elif player.location == "Town" and temple_mode:
         venue = ctx.venues.get("town_temple", {})
-        display_location = venue.get("name", display_location)
+        display_location = _continent_title(venue.get("name", display_location))
         npc_lines = []
         npc_ids = venue.get("npc_ids", [])
         npc = {}
@@ -573,7 +586,7 @@ def generate_frame(
             art_lines, art_color = render_venue_art(venue, npc, color_map_override)
     elif player.location == "Town" and smithy_mode:
         venue = ctx.venues.get("town_smithy", {})
-        display_location = venue.get("name", display_location)
+        display_location = _continent_title(venue.get("name", display_location))
         npc_lines = []
         npc_ids = venue.get("npc_ids", [])
         npc = {}
