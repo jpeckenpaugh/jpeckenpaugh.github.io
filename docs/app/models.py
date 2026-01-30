@@ -32,6 +32,9 @@ class Player:
     defense: int
     location: str
     inventory: dict
+    equipment: dict
+    gear_atk: int
+    gear_defense: int
     elements: List[str]
     current_element: str
 
@@ -51,6 +54,9 @@ class Player:
             "defense": self.defense,
             "location": self.location,
             "inventory": self.inventory,
+            "equipment": self.equipment,
+            "gear_atk": self.gear_atk,
+            "gear_defense": self.gear_defense,
             "elements": list(self.elements),
             "current_element": self.current_element,
         }
@@ -65,6 +71,9 @@ class Player:
         current_element = data.get("current_element", "base")
         if current_element not in elements:
             current_element = elements[0]
+        equipment = data.get("equipment", {})
+        if not isinstance(equipment, dict):
+            equipment = {}
         return Player(
             name=data.get("name", "WARRIOR"),
             level=int(data.get("level", 1)),
@@ -80,12 +89,71 @@ class Player:
             defense=int(data.get("defense", 10)),
             location="Town",
             inventory=data.get("inventory", {}),
+            equipment=equipment,
+            gear_atk=int(data.get("gear_atk", 0)),
+            gear_defense=int(data.get("gear_defense", 0)),
             elements=elements,
             current_element=current_element,
         )
 
     def add_item(self, key: str, amount: int = 1):
         self.inventory[key] = int(self.inventory.get(key, 0)) + amount
+
+    def total_atk(self) -> int:
+        return self.atk + int(self.gear_atk)
+
+    def total_defense(self) -> int:
+        return self.defense + int(self.gear_defense)
+
+    def _recalc_gear(self, items_data) -> None:
+        atk_bonus = 0
+        def_bonus = 0
+        equipment = self.equipment if isinstance(self.equipment, dict) else {}
+        for slot, item_id in equipment.items():
+            item = items_data.get(item_id, {})
+            if item.get("type") != "gear":
+                continue
+            if item.get("slot") != slot:
+                continue
+            atk_bonus += int(item.get("atk", 0))
+            def_bonus += int(item.get("defense", 0))
+        self.gear_atk = atk_bonus
+        self.gear_defense = def_bonus
+
+    def sync_equipment(self, items_data) -> None:
+        if not isinstance(self.equipment, dict):
+            self.equipment = {}
+        cleaned = {}
+        for slot, item_id in self.equipment.items():
+            item = items_data.get(item_id, {})
+            if item.get("type") != "gear":
+                continue
+            if item.get("slot") != slot:
+                continue
+            cleaned[slot] = item_id
+        self.equipment = cleaned
+        self._recalc_gear(items_data)
+
+    def equip_item(self, key: str, items_data) -> str:
+        item = items_data.get(key)
+        if not item:
+            return "That item is not available."
+        if item.get("type") != "gear":
+            return "That item cannot be equipped."
+        if int(self.inventory.get(key, 0)) <= 0:
+            return "You do not have that item."
+        slot = item.get("slot")
+        if not slot:
+            return "That item cannot be equipped."
+        current = self.equipment.get(slot)
+        self.inventory[key] = int(self.inventory.get(key, 0)) - 1
+        if self.inventory.get(key, 0) <= 0:
+            self.inventory.pop(key, None)
+        if current:
+            self.add_item(current, 1)
+        self.equipment[slot] = key
+        self._recalc_gear(items_data)
+        return f"Equipped {item.get('name', key)}."
 
     def format_inventory(self, items_data) -> str:
         if not self.inventory:
@@ -104,15 +172,30 @@ class Player:
                 continue
             item = items_data.get(key, {"name": key})
             name = item.get("name", key)
-            hp = int(item.get("hp", 0))
-            mp = int(item.get("mp", 0))
-            entries.append((key, f"{name} x{count} (+{hp} HP/+{mp} MP)"))
+            if item.get("type") == "gear":
+                atk = int(item.get("atk", 0))
+                defense = int(item.get("defense", 0))
+                slot = item.get("slot", "")
+                bonus = []
+                if atk:
+                    bonus.append(f"ATK+{atk}")
+                if defense:
+                    bonus.append(f"DEF+{defense}")
+                detail = ", ".join(bonus) if bonus else "No bonuses"
+                slot_text = f"{slot.title()}" if slot else "Gear"
+                entries.append((key, f"{name} x{count} ({slot_text} {detail})"))
+            else:
+                hp = int(item.get("hp", 0))
+                mp = int(item.get("mp", 0))
+                entries.append((key, f"{name} x{count} (+{hp} HP/+{mp} MP)"))
         return entries
 
     def use_item(self, key: str, items_data) -> str:
         item = items_data.get(key)
         if not item:
             return "That item is not available."
+        if item.get("type") == "gear":
+            return self.equip_item(key, items_data)
         if int(self.inventory.get(key, 0)) <= 0:
             return "You do not have that item."
         if self.hp == self.max_hp and self.mp == self.max_mp:

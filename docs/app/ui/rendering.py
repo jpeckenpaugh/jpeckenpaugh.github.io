@@ -2268,8 +2268,16 @@ def animate_art_transition(
 def format_player_stats(player: Player) -> List[str]:
     hp_text = color(f"HP: {player.hp} / {player.max_hp}", ANSI.FG_GREEN)
     mp_text = color(f"MP: {player.mp} / {player.max_mp}", ANSI.FG_MAGENTA)
-    atk_text = color(f"ATK: {player.atk}", ANSI.DIM)
-    def_text = color(f"DEF: {player.defense}", ANSI.DIM)
+    atk_total = player.total_atk()
+    def_total = player.total_defense()
+    if player.gear_atk:
+        atk_text = color(f"ATK: {atk_total} (+{player.gear_atk})", ANSI.DIM)
+    else:
+        atk_text = color(f"ATK: {atk_total}", ANSI.DIM)
+    if player.gear_defense:
+        def_text = color(f"DEF: {def_total} (+{player.gear_defense})", ANSI.DIM)
+    else:
+        def_text = color(f"DEF: {def_total}", ANSI.DIM)
     level_text = color(f"Level: {player.level}", ANSI.FG_CYAN)
     xp_text = color(f"XP: {player.xp}", ANSI.FG_GREEN)
     gp_text = color(f"GP: {player.gold}", ANSI.FG_YELLOW)

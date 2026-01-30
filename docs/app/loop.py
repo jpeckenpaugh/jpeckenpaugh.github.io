@@ -23,6 +23,7 @@ from app.ui.rendering import (
     render_scene_frame,
 )
 from app.ui.text import format_text
+from app.shop import shop_commands
 
 
 def _status_message(state: GameState, message: Optional[str]) -> str:
@@ -167,7 +168,8 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
         )
     if state.shop_mode:
         venue = ctx.venues.get("town_shop", {})
-        return venue.get("commands", [])
+        element = getattr(state.player, "current_element", "base")
+        return shop_commands(venue, ctx.items, element)
     if state.hall_mode:
         venue = ctx.venues.get("town_hall", {})
         return venue.get("commands", [])
@@ -588,7 +590,7 @@ def resolve_player_action(
         alive = [opp for opp in state.opponents if opp.hp > 0]
         highest = max((opp.level for opp in alive), default=state.player.level)
         lower_level = highest < state.player.level
-        defense_bonus = max(2, state.player.defense // 2)
+        defense_bonus = max(2, state.player.total_defense() // 2)
         evasion_bonus = 0.15 if lower_level else 0.05
         state.defend_active = True
         state.defend_bonus = defense_bonus
@@ -801,7 +803,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
             template = ctx.texts.get("battle", "opponent_hesitates", "The {name} hesitates.")
             push_battle_message(state, format_text(template, name=m.name))
         else:
-            damage, crit, miss = roll_damage(m.atk, state.player.defense)
+            defense_value = state.player.total_defense() + state.defend_bonus
+            damage, crit, miss = roll_damage(m.atk, defense_value)
             if miss:
                 template = ctx.texts.get("battle", "opponent_miss", "The {name} misses you.")
                 push_battle_message(state, format_text(template, name=m.name))

@@ -16,9 +16,9 @@
 - [x] Update spawn logic to use element variants.
 
 ## Phase 4: Items + Shops
-- [ ] Add equipment item types: rings, bracelets, swords, shields, armor.
-- [ ] Create elemental variants of equipment.
-- [ ] Add elemental shop inventory lists.
+- [x] Add equipment item types: rings, bracelets, swords, shields, armor.
+- [x] Create elemental variants of equipment.
+- [x] Add elemental shop inventory lists.
 
 ## Phase 5: Balancing + Validation
 - [ ] Review combat pacing per element tier.
@@ -34,3 +34,4 @@
 - Phase 1 implemented: player tracks `elements` + `current_element`, unlock notes on level-up.
 - Phase 2 implemented: element palette remap applied to town/forest/venues + combat renders.
 - Phase 3 implemented: fire variants added; spawner prefers element pool.
+- Phase 4 implemented: gear items + elemental gear variants added, shop uses element-based inventory sets.

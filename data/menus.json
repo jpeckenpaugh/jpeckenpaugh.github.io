@@ -1,12 +1,12 @@
 {
   "inventory": {
     "title": "Inventory",
-    "open_message": "Choose an item to use.",
+    "open_message": "Choose an item to use or equip.",
     "close_message": "Closed inventory.",
     "empty": "Inventory is empty.",
     "actions": [
       {
-        "label": "Use item",
+        "label": "Use/Equip",
         "command": "NUM"
       },
       {

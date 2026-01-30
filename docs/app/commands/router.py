@@ -16,7 +16,7 @@ from app.data_access.save_data import SaveData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.data_access.spells_data import SpellsData
-from app.shop import purchase_item
+from app.shop import purchase_item, shop_inventory
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
 from app.ui.constants import SCREEN_WIDTH
@@ -168,8 +168,9 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
 
     if state.shop_mode:
         venue = ctx.venues.get("town_shop", {})
+        element = getattr(state.player, "current_element", "base")
         selection = next(
-            (entry for entry in venue.get("inventory_items", []) if entry.get("command") == command_id),
+            (entry for entry in shop_inventory(venue, ctx.items, element) if entry.get("command") == command_id),
             None
         )
         if selection:
@@ -312,6 +313,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.player.title_confirm = True
             return True
         state.player = Player.from_dict({})
+        state.player.sync_equipment(ctx.items)
         state.player.location = "Town"
         state.player.title_confirm = False
         state.player.has_save = False
@@ -329,6 +331,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             return True
         loaded = ctx.save_data.load_player()
         state.player = loaded if loaded else Player.from_dict({})
+        state.player.sync_equipment(ctx.items)
         state.player.location = "Town"
         state.player.title_confirm = False
         state.player.has_save = ctx.save_data.exists()

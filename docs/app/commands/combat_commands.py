@@ -20,7 +20,7 @@ def _handle_attack(ctx: CommandContext) -> str:
         opponent = primary_opponent(ctx.opponents)
     if not opponent:
         return "There is nothing to attack."
-    damage, crit, miss = roll_damage(ctx.player.atk, opponent.defense)
+    damage, crit, miss = roll_damage(ctx.player.total_atk(), opponent.defense)
     if miss:
         return f"You miss the {opponent.name}."
     opponent.hp = max(0, opponent.hp - damage)

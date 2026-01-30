@@ -13,18 +13,6 @@
     "leave_message": "You leave the shop.",
     "commands": [
       {
-        "label": "Buy Rations",
-        "command": "NUM1"
-      },
-      {
-        "label": "Buy Herbal Tea",
-        "command": "NUM2"
-      },
-      {
-        "label": "Buy Elixir",
-        "command": "NUM3"
-      },
-      {
         "label": "Back",
         "command": "B_KEY"
       }
@@ -122,24 +110,164 @@
         "id": "house_wall_left"
       }
     ],
-    "inventory_items": [
-      {
-        "command": "NUM1",
-        "item_id": "rations",
-        "label": "Rations (+5 HP/MP)"
-      },
-      {
-        "command": "NUM2",
-        "item_id": "herbal_tea",
-        "label": "Herbal Tea (+10 HP/MP)"
-      },
-      {
-        "command": "NUM3",
-        "item_id": "elixir",
-        "label": "Elixir (+20 HP/MP)"
-      }
-    ],
-    "inventory_source": "basic"
+    "inventory_sets": {
+      "base": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "iron_ring"
+        },
+        {
+          "item_id": "leather_bracelet"
+        },
+        {
+          "item_id": "iron_sword"
+        },
+        {
+          "item_id": "wood_shield"
+        },
+        {
+          "item_id": "leather_armor"
+        }
+      ],
+      "lightning": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "lightning_ring"
+        },
+        {
+          "item_id": "lightning_bracelet"
+        },
+        {
+          "item_id": "lightning_sword"
+        },
+        {
+          "item_id": "lightning_shield"
+        },
+        {
+          "item_id": "lightning_armor"
+        }
+      ],
+      "ice": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "ice_ring"
+        },
+        {
+          "item_id": "ice_bracelet"
+        },
+        {
+          "item_id": "ice_sword"
+        },
+        {
+          "item_id": "ice_shield"
+        },
+        {
+          "item_id": "ice_armor"
+        }
+      ],
+      "fire": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "fire_ring"
+        },
+        {
+          "item_id": "fire_bracelet"
+        },
+        {
+          "item_id": "fire_sword"
+        },
+        {
+          "item_id": "fire_shield"
+        },
+        {
+          "item_id": "fire_armor"
+        }
+      ],
+      "earth": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "earth_ring"
+        },
+        {
+          "item_id": "earth_bracelet"
+        },
+        {
+          "item_id": "earth_sword"
+        },
+        {
+          "item_id": "earth_shield"
+        },
+        {
+          "item_id": "earth_armor"
+        }
+      ],
+      "wind": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "wind_ring"
+        },
+        {
+          "item_id": "wind_bracelet"
+        },
+        {
+          "item_id": "wind_sword"
+        },
+        {
+          "item_id": "wind_shield"
+        },
+        {
+          "item_id": "wind_armor"
+        }
+      ]
+    }
   },
   "town_hall": {
     "name": "Town Hall",

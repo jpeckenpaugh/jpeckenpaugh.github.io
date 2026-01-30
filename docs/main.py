@@ -85,6 +85,7 @@ def main():
         title_mode=True,
     )
     state.player.location = "Title"
+    state.player.sync_equipment(ITEMS)
 
     if os.name != 'nt' and not WEB_MODE:
         termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)

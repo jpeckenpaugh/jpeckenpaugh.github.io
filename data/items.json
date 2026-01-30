@@ -30,5 +30,300 @@
     "mp": 20,
     "price": 20,
     "desc": "A strong tonic that revitalizes body and mind."
+  },
+  "iron_ring": {
+    "name": "Iron Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 1,
+    "defense": 0,
+    "price": 12,
+    "desc": "A simple ring that sharpens focus."
+  },
+  "leather_bracelet": {
+    "name": "Leather Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 1,
+    "price": 12,
+    "desc": "A sturdy band that dulls blows."
+  },
+  "iron_sword": {
+    "name": "Iron Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 2,
+    "defense": 0,
+    "price": 25,
+    "desc": "A dependable blade with solid bite."
+  },
+  "wood_shield": {
+    "name": "Wood Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 2,
+    "price": 25,
+    "desc": "A rough shield that softens hits."
+  },
+  "leather_armor": {
+    "name": "Leather Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 3,
+    "price": 40,
+    "desc": "Basic armor that absorbs damage."
+  },
+  "lightning_ring": {
+    "name": "Spark Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 1,
+    "defense": 0,
+    "price": 12,
+    "desc": "A storm ring that sharpens focus.",
+    "element": "lightning"
+  },
+  "lightning_bracelet": {
+    "name": "Spark Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 1,
+    "price": 12,
+    "desc": "A storm band that dulls blows.",
+    "element": "lightning"
+  },
+  "lightning_sword": {
+    "name": "Spark Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 2,
+    "defense": 0,
+    "price": 25,
+    "desc": "A storm blade with a fierce edge.",
+    "element": "lightning"
+  },
+  "lightning_shield": {
+    "name": "Spark Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 2,
+    "price": 25,
+    "desc": "A storm shield that softens hits.",
+    "element": "lightning"
+  },
+  "lightning_armor": {
+    "name": "Spark Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 3,
+    "price": 40,
+    "desc": "Storm armor that absorbs damage.",
+    "element": "lightning"
+  },
+  "ice_ring": {
+    "name": "Frost Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 2,
+    "defense": 0,
+    "price": 22,
+    "desc": "A frost ring that sharpens focus.",
+    "element": "ice"
+  },
+  "ice_bracelet": {
+    "name": "Frost Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 2,
+    "price": 22,
+    "desc": "A frost band that dulls blows.",
+    "element": "ice"
+  },
+  "ice_sword": {
+    "name": "Frost Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 3,
+    "defense": 0,
+    "price": 35,
+    "desc": "A frost blade with a fierce edge.",
+    "element": "ice"
+  },
+  "ice_shield": {
+    "name": "Frost Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 3,
+    "price": 35,
+    "desc": "A frost shield that softens hits.",
+    "element": "ice"
+  },
+  "ice_armor": {
+    "name": "Frost Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 4,
+    "price": 50,
+    "desc": "Frost armor that absorbs damage.",
+    "element": "ice"
+  },
+  "fire_ring": {
+    "name": "Ember Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 3,
+    "defense": 0,
+    "price": 32,
+    "desc": "An ember ring that sharpens focus.",
+    "element": "fire"
+  },
+  "fire_bracelet": {
+    "name": "Ember Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 3,
+    "price": 32,
+    "desc": "An ember band that dulls blows.",
+    "element": "fire"
+  },
+  "fire_sword": {
+    "name": "Ember Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 4,
+    "defense": 0,
+    "price": 45,
+    "desc": "An ember blade with a fierce edge.",
+    "element": "fire"
+  },
+  "fire_shield": {
+    "name": "Ember Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 4,
+    "price": 45,
+    "desc": "An ember shield that softens hits.",
+    "element": "fire"
+  },
+  "fire_armor": {
+    "name": "Ember Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 5,
+    "price": 60,
+    "desc": "Ember armor that absorbs damage.",
+    "element": "fire"
+  },
+  "earth_ring": {
+    "name": "Stone Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 4,
+    "defense": 0,
+    "price": 42,
+    "desc": "A stone ring that sharpens focus.",
+    "element": "earth"
+  },
+  "earth_bracelet": {
+    "name": "Stone Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 4,
+    "price": 42,
+    "desc": "A stone band that dulls blows.",
+    "element": "earth"
+  },
+  "earth_sword": {
+    "name": "Stone Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 5,
+    "defense": 0,
+    "price": 55,
+    "desc": "A stone blade with a fierce edge.",
+    "element": "earth"
+  },
+  "earth_shield": {
+    "name": "Stone Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 5,
+    "price": 55,
+    "desc": "A stone shield that softens hits.",
+    "element": "earth"
+  },
+  "earth_armor": {
+    "name": "Stone Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 6,
+    "price": 70,
+    "desc": "Stone armor that absorbs damage.",
+    "element": "earth"
+  },
+  "wind_ring": {
+    "name": "Gale Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 5,
+    "defense": 0,
+    "price": 52,
+    "desc": "A gale ring that sharpens focus.",
+    "element": "wind"
+  },
+  "wind_bracelet": {
+    "name": "Gale Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 5,
+    "price": 52,
+    "desc": "A gale band that dulls blows.",
+    "element": "wind"
+  },
+  "wind_sword": {
+    "name": "Gale Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 6,
+    "defense": 0,
+    "price": 65,
+    "desc": "A gale blade with a fierce edge.",
+    "element": "wind"
+  },
+  "wind_shield": {
+    "name": "Gale Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 6,
+    "price": 65,
+    "desc": "A gale shield that softens hits.",
+    "element": "wind"
+  },
+  "wind_armor": {
+    "name": "Gale Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 7,
+    "price": 80,
+    "desc": "Gale armor that absorbs damage.",
+    "element": "wind"
   }
 }

@@ -114,7 +114,7 @@ def cast_spell(
         damage_mult = float(spell.get("rank3_damage_mult", 1.25)) if rank >= 3 else 1.0
         messages = []
         for opponent in targets:
-            damage, crit, miss = roll_damage(player.atk + atk_bonus, opponent.defense)
+            damage, crit, miss = roll_damage(player.total_atk() + atk_bonus, opponent.defense)
             if boosted:
                 damage *= int(spell.get("boosted_multiplier", 2))
             damage = int(damage * damage_mult)

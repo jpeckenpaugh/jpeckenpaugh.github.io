@@ -31,6 +31,7 @@ from app.ui.rendering import (
     render_venue_objects,
 )
 from app.ui.text import format_text
+from app.shop import shop_commands, shop_inventory
 
 
 @dataclass
@@ -181,10 +182,9 @@ def generate_frame(
         body = []
         if npc_lines:
             body += npc_lines + [""]
-        for entry in venue.get("inventory_items", []):
+        element = getattr(player, "current_element", "base")
+        for entry in shop_inventory(venue, ctx.items, element):
             item_id = entry.get("item_id")
-            if not item_id:
-                continue
             item = ctx.items.get(item_id, {})
             label = entry.get("label", item.get("name", item_id))
             price = item.get("price", 0)
@@ -196,7 +196,10 @@ def generate_frame(
             art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
         else:
             art_lines, art_color = render_venue_art(venue, npc, color_map_override)
-        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+        actions = format_command_lines(
+            shop_commands(venue, ctx.items, element),
+            selected_index=action_cursor if action_cursor >= 0 else None
+        )
     elif player.location == "Town" and hall_mode:
         venue = ctx.venues.get("town_hall", {})
         display_location = venue.get("name", display_location)
