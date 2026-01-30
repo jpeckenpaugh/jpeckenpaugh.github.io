@@ -275,6 +275,8 @@ def render_scene(scene_name):
 def render_spell(spell_name, opponent_name=None):
     base = os.path.dirname(__file__)
     spells = load_json(os.path.join(base, 'data', 'spells.json'))
+    spells_art = load_json(os.path.join(base, 'data', 'spells_art.json'))
+    elements = load_json(os.path.join(base, 'data', 'elements.json'))
     opponents = load_json(os.path.join(base, 'data', 'opponents.json'))
     scenes = load_json(os.path.join(base, 'data', 'scenes.json'))
     colors = load_json(os.path.join(base, 'data', 'colors.json'))
@@ -291,6 +293,20 @@ def render_spell(spell_name, opponent_name=None):
     if not isinstance(effect, dict) or effect.get("type") != "overlay":
         print(f"Error: Spell '{spell_name}' has no overlay effect.")
         return
+    effect_override = dict(effect)
+    art_id = effect_override.get("art_id")
+    if art_id and isinstance(spells_art, dict):
+        art_entry = spells_art.get(art_id, {})
+        if isinstance(art_entry, dict):
+            merged = dict(art_entry)
+            merged.update(effect_override)
+            effect_override = merged
+    element_id = spell.get("element") if isinstance(spell, dict) else None
+    if isinstance(elements, dict) and element_id in elements:
+        elem = elements.get(element_id, {})
+        colors_list = elem.get("colors") if isinstance(elem, dict) else None
+        if isinstance(colors_list, list) and len(colors_list) >= 3:
+            effect_override["color_map"] = {"1": colors_list[0], "2": colors_list[1], "3": colors_list[2]}
     try:
         sys.path.insert(0, base)
         from app.data_access.objects_data import ObjectsData
@@ -315,11 +331,11 @@ def render_spell(spell_name, opponent_name=None):
             "gap_min": 0,
             "color": "white"
         }
-        frames = effect.get("frames", [])
+        frames = effect_override.get("frames", [])
         if not isinstance(frames, list) or not frames:
             print(f"Error: Spell '{spell_name}' has no frames.")
             return
-        for idx in range(len(frames)):
+        for idx, frame_idx in enumerate(range(len(frames)), start=1):
             if not opponent:
                 from app.models import Opponent
                 from app.ui.constants import OPPONENT_ART_WIDTH
@@ -333,6 +349,7 @@ def render_spell(spell_name, opponent_name=None):
                     max_hp=1,
                     atk=0,
                     defense=0,
+                    element="base",
                     stunned_turns=0,
                     action_chance=0.0,
                     melted=False,
@@ -345,15 +362,15 @@ def render_spell(spell_name, opponent_name=None):
                 scene,
                 [opponent],
                 overlay_target_index=0,
-                overlay_effect=effect,
-                overlay_frame_index=idx,
+                overlay_effect=effect_override,
+                overlay_frame_index=frame_idx,
                 objects_data=objects,
                 color_map_override=colors
             )
             if opponent_name:
-                header = f"Spell '{spell_name}' frame {idx + 1} vs '{opponent_name}':"
+                header = f"Spell '{spell_name}' frame {idx} vs '{opponent_name}':"
             else:
-                header = f"Spell '{spell_name}' frame {idx + 1} (no opponent):"
+                header = f"Spell '{spell_name}' frame {idx} (no opponent):"
             print(f"\n{header}\n")
             for line in art_lines:
                 print(f"{art_color}{line}\033[0m")

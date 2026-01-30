@@ -10,6 +10,8 @@ from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.frames_data import FramesData
+from app.data_access.spells_art_data import SpellsArtData
+from app.data_access.elements_data import ElementsData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
 from app.data_access.npcs_data import NpcsData
@@ -38,6 +40,8 @@ class AppContext:
     colors: ColorsData
     frames: FramesData
     continents: ContinentsData
+    elements: ElementsData
+    spells_art: SpellsArtData
     save_data: SaveData
     registry: object
     router_ctx: RouterContext
@@ -98,6 +102,14 @@ def _load_frames() -> FramesData:
     return FramesData(f"{DATA_DIR}/frames.json")
 
 
+def _load_elements() -> ElementsData:
+    return ElementsData(f"{DATA_DIR}/elements.json")
+
+
+def _load_spells_art() -> SpellsArtData:
+    return SpellsArtData(f"{DATA_DIR}/spells_art.json")
+
+
 def _load_continents() -> ContinentsData:
     return ContinentsData(f"{DATA_DIR}/continents.json")
 
@@ -138,6 +150,8 @@ def create_app() -> AppContext:
     texts = _load_texts()
     colors = _load_colors()
     frames = _load_frames()
+    elements = _load_elements()
+    spells_art = _load_spells_art()
     continents = _load_continents()
     save_data = _load_save()
 
@@ -157,6 +171,8 @@ def create_app() -> AppContext:
         spells=spells,
         menus=menus,
         continents=continents,
+        elements=elements,
+        spells_art=spells_art,
         objects=objects,
         registry=registry,
     )
@@ -174,6 +190,8 @@ def create_app() -> AppContext:
         colors=colors,
         frames=frames,
         continents=continents,
+        elements=elements,
+        spells_art=spells_art,
     )
 
     return AppContext(
@@ -190,6 +208,8 @@ def create_app() -> AppContext:
         colors=colors,
         frames=frames,
         continents=continents,
+        elements=elements,
+        spells_art=spells_art,
         save_data=save_data,
         registry=registry,
         router_ctx=router_ctx,

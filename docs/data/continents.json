@@ -12,63 +12,63 @@
   ],
   "continents": {
     "base": {
-      "name": "Base",
+      "name": "Homestead",
       "element": "base",
       "spell_id": "strength",
       "spell_name": "Strength",
       "level_required": 0
     },
     "earth": {
-      "name": "Earth",
+      "name": "Stoneward",
       "element": "earth",
       "spell_id": "boulder",
       "spell_name": "Boulder",
       "level_required": 2
     },
     "fire": {
-      "name": "Fire",
+      "name": "Emberfall",
       "element": "fire",
       "spell_id": "fireblast",
       "spell_name": "Fireblast",
       "level_required": 6
     },
     "water": {
-      "name": "Water",
+      "name": "Tidevein",
       "element": "water",
       "spell_id": "tide",
       "spell_name": "Tide",
       "level_required": 8
     },
     "light": {
-      "name": "Light",
+      "name": "Lumenrise",
       "element": "light",
       "spell_id": "radiance",
       "spell_name": "Radiance",
       "level_required": 10
     },
     "lightning": {
-      "name": "Lightning",
+      "name": "Stormcoil",
       "element": "lightning",
       "spell_id": "spark",
       "spell_name": "Spark",
       "level_required": 12
     },
     "dark": {
-      "name": "Dark",
+      "name": "Umbravale",
       "element": "dark",
       "spell_id": "shade",
       "spell_name": "Shade",
       "level_required": 14
     },
     "ice": {
-      "name": "Ice",
+      "name": "Frostcrown",
       "element": "ice",
       "spell_id": "iceblast",
       "spell_name": "Iceblast",
       "level_required": 16
     },
     "wind": {
-      "name": "Air",
+      "name": "Skylark Reach",
       "element": "wind",
       "spell_id": "tornado",
       "spell_name": "Tornado",

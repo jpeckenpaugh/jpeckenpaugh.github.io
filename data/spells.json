@@ -34,33 +34,12 @@
     "desc": "Arcane damage with a chance to stun.",
     "effect": {
       "type": "overlay",
-      "frames": [
-        [
-          "<>"
-        ],
-        [
-          " **",
-          "<oo>",
-          " **"
-        ],
-        [
-          "  /\\",
-          "<<oo>>",
-          "  \\/"
-        ],
-        [
-          "   /\\",
-          "  /  \\",
-          "<<o--o>>",
-          "  \\  /",
-          "   \\/"
-        ]
-      ],
       "color_key": "y",
       "variation": 0.12,
       "jitter_stability": false,
       "loops": 2,
-      "frame_delay": 0.06
+      "frame_delay": 0.06,
+      "art_id": "energy"
     },
     "level_required": 0,
     "class": "elemental",
@@ -96,33 +75,12 @@
     "desc": "Freezing blast that can stun.",
     "effect": {
       "type": "overlay",
-      "frames": [
-        [
-          "<>"
-        ],
-        [
-          " **",
-          "<oo>",
-          " **"
-        ],
-        [
-          "  /\\",
-          "<<oo>>",
-          "  \\/"
-        ],
-        [
-          "   /\\",
-          "  /  \\",
-          "<<o--o>>",
-          "  \\  /",
-          "   \\/"
-        ]
-      ],
       "color_key": "b",
       "variation": 0.12,
       "jitter_stability": false,
       "loops": 2,
-      "frame_delay": 0.06
+      "frame_delay": 0.06,
+      "art_id": "energy"
     }
   },
   "fireblast": {
@@ -151,33 +109,12 @@
     "desc": "Roaring flame with heavy damage.",
     "effect": {
       "type": "overlay",
-      "frames": [
-        [
-          "<>"
-        ],
-        [
-          " **",
-          "<oo>",
-          " **"
-        ],
-        [
-          "  /\\",
-          "<<oo>>",
-          "  \\/"
-        ],
-        [
-          "   /\\",
-          "  /  \\",
-          "<<o--o>>",
-          "  \\  /",
-          "   \\/"
-        ]
-      ],
       "color_key": "r",
       "variation": 0.12,
       "jitter_stability": false,
       "loops": 2,
-      "frame_delay": 0.06
+      "frame_delay": 0.06,
+      "art_id": "energy"
     }
   },
   "boulder": {
@@ -206,33 +143,12 @@
     "desc": "Crushing earthbound strike.",
     "effect": {
       "type": "overlay",
-      "frames": [
-        [
-          "<>"
-        ],
-        [
-          " **",
-          "<oo>",
-          " **"
-        ],
-        [
-          "  /\\",
-          "<<oo>>",
-          "  \\/"
-        ],
-        [
-          "   /\\",
-          "  /  \\",
-          "<<o--o>>",
-          "  \\  /",
-          "   \\/"
-        ]
-      ],
       "color_key": "q",
       "variation": 0.12,
       "jitter_stability": false,
       "loops": 2,
-      "frame_delay": 0.06
+      "frame_delay": 0.06,
+      "art_id": "energy"
     }
   },
   "tornado": {
@@ -261,33 +177,12 @@
     "desc": "A violent spiral of cutting wind.",
     "effect": {
       "type": "overlay",
-      "frames": [
-        [
-          "<>"
-        ],
-        [
-          " **",
-          "<oo>",
-          " **"
-        ],
-        [
-          "  /\\",
-          "<<oo>>",
-          "  \\/"
-        ],
-        [
-          "   /\\",
-          "  /  \\",
-          "<<o--o>>",
-          "  \\  /",
-          "   \\/"
-        ]
-      ],
       "color_key": "s",
       "variation": 0.12,
       "jitter_stability": false,
       "loops": 2,
-      "frame_delay": 0.06
+      "frame_delay": 0.06,
+      "art_id": "energy"
     }
   }
 }

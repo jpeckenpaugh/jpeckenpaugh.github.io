@@ -11,6 +11,8 @@ from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.frames_data import FramesData
+from app.data_access.elements_data import ElementsData
+from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
 from app.data_access.npcs_data import NpcsData
@@ -51,6 +53,8 @@ class ScreenContext:
     colors: ColorsData
     frames: FramesData
     continents: ContinentsData
+    elements: ElementsData
+    spells_art: SpellsArtData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -154,6 +158,19 @@ def _color_code_for_key(colors: dict, key: str) -> str:
     return COLOR_BY_NAME.get(lowered, "")
 
 
+def _color_codes_by_key(colors: dict) -> dict:
+    if not isinstance(colors, dict):
+        return {}
+    codes = {}
+    for key in colors:
+        if not isinstance(key, str):
+            continue
+        code = _color_code_for_key(colors, key)
+        if code:
+            codes[key] = code
+    return codes
+
+
 def _colorize_effect_line(line: str, code: str) -> str:
     if not code:
         return line
@@ -166,11 +183,32 @@ def _colorize_effect_line(line: str, code: str) -> str:
     return "".join(out)
 
 
+def _colorize_effect_line_map(line: str, color_map: dict, color_codes: dict, glyph: Optional[str] = None) -> str:
+    if not color_map or not color_codes:
+        return line
+    out = []
+    for ch in line:
+        if ch == " ":
+            out.append(" ")
+            continue
+        if ch in color_map:
+            key = color_map.get(ch)
+            code = color_codes.get(key, "")
+            if code:
+                out.append(f"{code}{glyph or ch}{ANSI.RESET}")
+                continue
+        out.append(ch)
+    return "".join(out)
+
+
 def _spell_preview_lines(
     frame_art: List[str],
     effect: Optional[dict],
     color_code: str,
     frame_index: int,
+    color_codes: Optional[dict] = None,
+    color_map: Optional[dict] = None,
+    glyph: Optional[str] = None,
 ) -> List[str]:
     if not frame_art:
         return []
@@ -190,12 +228,18 @@ def _spell_preview_lines(
     inner_width = min((right - left - 1) for _, left, right in interior)
     inner_height = len(interior)
     content_lines = []
+    mask_lines = []
     if isinstance(effect, dict):
         frames = effect.get("frames", [])
+        mask_frames = effect.get("mask_frames", [])
         if isinstance(frames, list) and frames:
             frame = frames[frame_index % len(frames)]
             if isinstance(frame, list):
                 content_lines = [str(row) for row in frame]
+            if isinstance(mask_frames, list) and mask_frames:
+                mask_frame = mask_frames[frame_index % len(mask_frames)]
+                if isinstance(mask_frame, list):
+                    mask_lines = [str(row) for row in mask_frame]
     content_height = len(content_lines)
     content_width = max((len(row) for row in content_lines), default=0)
     top_pad = max(0, (inner_height - content_height) // 2)
@@ -210,10 +254,60 @@ def _spell_preview_lines(
                 content = content.ljust(inner_width)
             else:
                 content = content[:inner_width]
-        content = _colorize_effect_line(content, color_code)
+        if color_map and color_codes and mask_lines:
+            mask_index = row - top_pad
+            mask_row = mask_lines[mask_index] if 0 <= mask_index < len(mask_lines) else ""
+            if mask_row:
+                padded_mask = (" " * left_pad) + mask_row
+                if len(padded_mask) < inner_width:
+                    padded_mask = padded_mask.ljust(inner_width)
+                else:
+                    padded_mask = padded_mask[:inner_width]
+                mapped = ""
+                for idx, ch in enumerate(content):
+                    mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                    if ch == " ":
+                        mapped += " "
+                        continue
+                    key = color_map.get(mask_ch, "") if mask_ch else ""
+                    code = color_codes.get(key, "") if key else ""
+                    if code:
+                        mapped += f"{code}{glyph or ch}{ANSI.RESET}"
+                    else:
+                        mapped += ch
+                content = mapped
+            else:
+                content = _colorize_effect_line_map(content, color_map, color_codes, glyph)
+        elif color_map and color_codes:
+            content = _colorize_effect_line_map(content, color_map, color_codes, glyph)
+        else:
+            content = _colorize_effect_line(content, color_code)
         line = lines[line_idx]
         lines[line_idx] = line[:left + 1] + content + line[right:]
     return lines
+
+
+def _spell_effect_with_art(ctx: ScreenContext, spell: dict) -> Optional[dict]:
+    if not isinstance(spell, dict):
+        return None
+    effect = spell.get("effect")
+    if not isinstance(effect, dict):
+        return None
+    effect_override = dict(effect)
+    art_id = effect_override.get("art_id")
+    if art_id and hasattr(ctx, "spells_art"):
+        art = ctx.spells_art.get(art_id)
+        if isinstance(art, dict):
+            merged = dict(art)
+            merged.update(effect_override)
+            effect_override = merged
+    element = spell.get("element")
+    if element and hasattr(ctx, "elements"):
+        colors = ctx.elements.colors_for(element)
+        if len(colors) >= 3:
+            effect_override["color_map"] = {"1": colors[0], "2": colors[1], "3": colors[2]}
+            effect_override["color_key"] = colors[0]
+    return effect_override
 
 
 def generate_frame(
@@ -474,6 +568,7 @@ def generate_frame(
             "",
         ]
         if available_spells:
+            color_codes = _color_codes_by_key(ctx.colors.all())
             for idx, (_, spell) in enumerate(available_spells):
                 name = spell.get("name", "Spell")
                 mp_cost = int(spell.get("mp_cost", 0))
@@ -482,7 +577,7 @@ def generate_frame(
                 body.append(f"{prefix}{name} ({mp_cost} MP) Rank {rank}")
             selection = max(0, min(menu_cursor, len(available_spells) - 1))
             _, spell = available_spells[selection]
-            effect = spell.get("effect") if isinstance(spell, dict) else None
+            effect = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None
             rank = ctx.spells.rank_for(spell, player.level)
             color_key = ""
             if isinstance(effect, dict):
@@ -506,6 +601,9 @@ def generate_frame(
                 effect,
                 color_code,
                 effect_index,
+                color_codes=color_codes,
+                color_map=effect.get("color_map") if isinstance(effect, dict) else None,
+                glyph=effect.get("glyph") if isinstance(effect, dict) else None,
             )
         else:
             body.append("  No spells learned.")

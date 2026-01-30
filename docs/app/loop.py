@@ -26,6 +26,29 @@ from app.ui.text import format_text
 from app.shop import shop_commands
 
 
+def _spell_effect_with_art(ctx, spell: dict) -> Optional[dict]:
+    if not isinstance(spell, dict):
+        return None
+    effect = spell.get("effect")
+    if not isinstance(effect, dict):
+        return None
+    effect_override = dict(effect)
+    art_id = effect_override.get("art_id")
+    if art_id and hasattr(ctx, "spells_art"):
+        art = ctx.spells_art.get(art_id)
+        if isinstance(art, dict):
+            merged = dict(art)
+            merged.update(effect_override)
+            effect_override = merged
+    element = spell.get("element")
+    if element and hasattr(ctx, "elements"):
+        colors = ctx.elements.colors_for(element)
+        if len(colors) >= 3:
+            effect_override["color_map"] = {"1": colors[0], "2": colors[1], "3": colors[2]}
+            effect_override["color_key"] = colors[0]
+    return effect_override
+
+
 def _status_message(state: GameState, message: Optional[str]) -> str:
     if message is not None:
         return message
@@ -738,9 +761,8 @@ def resolve_player_action(
             target_index=state.target_index,
             rank=rank,
         )
-        effect = spell.get("effect") if isinstance(spell, dict) else None
-        if isinstance(effect, dict):
-            effect_override = dict(effect)
+        effect_override = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None
+        if isinstance(effect_override, dict):
             if rank >= 3:
                 rank3_key = spell.get("overlay_color_key_rank3")
                 if rank3_key:
@@ -795,7 +817,7 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
     if spell_entry:
         _, spell = spell_entry
         rank = ctx.spells.rank_for(spell, state.player.level)
-        effect = spell.get("effect") if isinstance(spell, dict) else None
+        effect = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None
     if state.action_effect_override:
         effect = state.action_effect_override
     if isinstance(effect, dict) and effect.get("type") == "overlay":

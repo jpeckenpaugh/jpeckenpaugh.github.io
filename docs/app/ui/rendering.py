@@ -498,6 +498,8 @@ def render_venue_art(venue: dict, npc: dict, color_map_override: Optional[dict] 
                         tick,
                         None,
                         "y",
+                        None,
+                        None,
                         0.0,
                         True,
                         len(gap_ground)
@@ -593,6 +595,8 @@ def render_venue_art(venue: dict, npc: dict, color_map_override: Optional[dict] 
                     tick,
                     None,
                     "y",
+                    None,
+                    None,
                     0.0,
                     True,
                     len(bottom_objects)
@@ -1198,6 +1202,8 @@ def render_scene_art(
         tick: int,
         overlay_row: Optional[dict],
         overlay_color_key: str,
+        overlay_color_map: Optional[dict],
+        overlay_glyph: Optional[str],
         overlay_variation: float,
         overlay_jitter_stability: bool,
         art_height: int
@@ -1212,15 +1218,29 @@ def render_scene_art(
             overlay_cell = overlay_row.get(i) if overlay_row else None
             code = ""
             if overlay_cell:
-                ch = overlay_cell
-                base_rgb = color_rgb_by_key.get(overlay_color_key)
+                overlay_char = overlay_cell
+                overlay_mask = ""
+                if isinstance(overlay_cell, tuple):
+                    overlay_char, overlay_mask = overlay_cell
+                color_key = overlay_color_key
+                if overlay_mask:
+                    if overlay_color_map and overlay_mask in overlay_color_map:
+                        color_key = overlay_color_map.get(overlay_mask, overlay_color_key)
+                    else:
+                        color_key = overlay_mask
+                elif overlay_color_map and overlay_cell in overlay_color_map:
+                    color_key = overlay_color_map.get(overlay_cell, overlay_color_key)
+                if overlay_glyph:
+                    overlay_char = overlay_glyph
+                ch = overlay_char
+                base_rgb = color_rgb_by_key.get(color_key)
                 if base_rgb:
-                    overlay_seed = seed_base ^ (ord(overlay_color_key) << 4) ^ (i * 0x85EBCA77) ^ (row_index * 0xC2B2AE3D)
+                    overlay_seed = seed_base ^ (ord(color_key) << 4) ^ (i * 0x85EBCA77) ^ (row_index * 0xC2B2AE3D)
                     if not overlay_jitter_stability:
                         overlay_seed ^= (tick * 0x9E3779B1)
                     code = _jitter_color_code(base_rgb, overlay_variation, overlay_seed)
                 else:
-                    code = color_by_key.get(overlay_color_key, "")
+                    code = color_by_key.get(color_key, "")
             elif mask_char in gradient_keys:
                 r, g, b = gradient_rgb(i, row_index, len(line), art_height)
                 code = f"\033[38;2;{r};{g};{b}m"
@@ -1312,10 +1332,13 @@ def render_scene_art(
                 opponent_bounds = (top, bottom, left, right)
         overlay_rows = None
         overlay_color_key = "y"
+        overlay_color_map = None
+        overlay_glyph = None
         overlay_variation = 0.0
         overlay_jitter_stability = True
         if overlay_effect and (overlay_target_index == i or (overlay_target_indices and i in overlay_target_indices)):
             frames = overlay_effect.get("frames", [])
+            mask_frames = overlay_effect.get("mask_frames", [])
             if isinstance(frames, list) and frames:
                 max_frame_width = 0
                 max_frame_height = 0
@@ -1327,8 +1350,13 @@ def render_scene_art(
                     max_frame_width = max(max_frame_width, frame_width)
                 frame_index = overlay_frame_index % len(frames)
                 overlay_frame = frames[frame_index]
+                overlay_mask_frame = None
+                if isinstance(mask_frames, list) and mask_frames:
+                    overlay_mask_frame = mask_frames[frame_index % len(mask_frames)]
                 if isinstance(overlay_frame, list) and overlay_frame:
                     overlay_color_key = str(overlay_effect.get("color_key", "y"))[:1] or "y"
+                    overlay_color_map = overlay_effect.get("color_map") if isinstance(overlay_effect.get("color_map"), dict) else None
+                    overlay_glyph = overlay_effect.get("glyph") if isinstance(overlay_effect.get("glyph"), str) else None
                     overlay_variation = float(overlay_effect.get("variation", 0.0) or 0.0)
                     overlay_jitter_stability = bool(overlay_effect.get("jitter_stability", True))
                     overlay_height = len(overlay_frame)
@@ -1352,12 +1380,18 @@ def render_scene_art(
                         target_row = row_start + pad_top + r_idx
                         if target_row < 0 or target_row >= art_height:
                             continue
+                        mask_row = None
+                        if isinstance(overlay_mask_frame, list) and r_idx < len(overlay_mask_frame):
+                            mask_row = overlay_mask_frame[r_idx]
                         for c_idx, ch in enumerate(row):
                             if ch == " ":
                                 continue
                             target_col = col_start + pad_left + c_idx
                             if 0 <= target_col < OPPONENT_ART_WIDTH:
-                                overlay_rows.setdefault(target_row, {})[target_col] = ch
+                                mask_ch = ""
+                                if isinstance(mask_row, str) and c_idx < len(mask_row):
+                                    mask_ch = mask_row[c_idx]
+                                overlay_rows.setdefault(target_row, {})[target_col] = (ch, mask_ch)
         if has_mask:
             colored = []
             if flash_index == i and flash_color:
@@ -1380,6 +1414,8 @@ def render_scene_art(
                             tick,
                             overlay_rows.get(idx) if overlay_rows else None,
                             overlay_color_key,
+                            overlay_color_map,
+                            overlay_glyph,
                             overlay_variation,
                             overlay_jitter_stability,
                             len(art_lines)
@@ -1580,6 +1616,8 @@ def render_scene_art(
                         tick,
                         None,
                         "y",
+                        None,
+                        None,
                         0.0,
                         True,
                         len(gap_ground)
@@ -1706,6 +1744,8 @@ def render_scene_art(
                     tick,
                     None,
                     "y",
+                    None,
+                    None,
                     0.0,
                     True,
                     len(bottom_objects)

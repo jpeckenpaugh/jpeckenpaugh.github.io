@@ -8,6 +8,8 @@ from app.combat import cast_spell, primary_opponent
 from app.data_access.commands_data import CommandsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.items_data import ItemsData
+from app.data_access.elements_data import ElementsData
+from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.opponents_data import OpponentsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.venues_data import VenuesData
@@ -62,6 +64,8 @@ class RouterContext:
     spells: SpellsData
     menus: MenusData
     continents: ContinentsData
+    elements: ElementsData
+    spells_art: SpellsArtData
     objects: ObjectsData
     registry: CommandRegistry
 

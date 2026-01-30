@@ -1,0 +1,83 @@
+{
+  "base": {
+    "name": "Base",
+    "colors": [
+      "w",
+      "s",
+      "K"
+    ],
+    "description": "Innate magical ability, associated with mana and life force."
+  },
+  "earth": {
+    "name": "Earth",
+    "colors": [
+      "q",
+      "Q",
+      "h"
+    ],
+    "description": "Stalwart and grounding, favoring defense, endurance, and crushing force."
+  },
+  "wind": {
+    "name": "Air",
+    "colors": [
+      "s",
+      "S",
+      "w"
+    ],
+    "description": "Swift and elusive, shaping speed, evasion, and cutting gusts."
+  },
+  "fire": {
+    "name": "Fire",
+    "colors": [
+      "r",
+      "O",
+      "y"
+    ],
+    "description": "Fierce and consuming, amplifying attack, risk, and raw power."
+  },
+  "water": {
+    "name": "Water",
+    "colors": [
+      "u",
+      "b",
+      "c"
+    ],
+    "description": "Flowing and adaptive, blending control, healing, and steady pressure."
+  },
+  "light": {
+    "name": "Light",
+    "colors": [
+      "y",
+      "w",
+      "L"
+    ],
+    "description": "Radiant and protective, guiding clarity, wards, and restoration."
+  },
+  "lightning": {
+    "name": "Lightning",
+    "colors": [
+      "Y",
+      "y",
+      "b"
+    ],
+    "description": "Volatile and precise, striking fast with shock and disruption."
+  },
+  "dark": {
+    "name": "Dark",
+    "colors": [
+      "k",
+      "K",
+      "i"
+    ],
+    "description": "Subtle and relentless, weaving curses, drain, and shadowed resolve."
+  },
+  "ice": {
+    "name": "Ice",
+    "colors": [
+      "b",
+      "B",
+      "C"
+    ],
+    "description": "Cold and patient, slowing foes with armor and fracture."
+  }
+}
