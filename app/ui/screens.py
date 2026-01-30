@@ -9,6 +9,7 @@ from typing import List, Optional
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
+from app.data_access.continents_data import ContinentsData
 from app.data_access.frames_data import FramesData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
@@ -49,6 +50,7 @@ class ScreenContext:
     text: TextData
     colors: ColorsData
     frames: FramesData
+    continents: ContinentsData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -520,12 +522,18 @@ def generate_frame(
     elif element_mode:
         elements_menu = ctx.menus.get("elements", {})
         elements = list(getattr(player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            elements = [e for e in order if e in elements] or elements
         title = elements_menu.get("title", "Elements")
         body = [title, ""]
         if elements:
             menu_cursor = max(0, min(menu_cursor, len(elements) - 1))
             for idx, element in enumerate(elements):
-                label = element.title()
+                if hasattr(ctx, "continents"):
+                    label = ctx.continents.name_for(element)
+                else:
+                    label = element.title()
                 suffix = " (current)" if element == player.current_element else ""
                 prefix = "> " if idx == menu_cursor else "  "
                 body.append(f"{prefix}{label}{suffix}")
@@ -537,12 +545,18 @@ def generate_frame(
     elif portal_mode:
         portal_menu = ctx.menus.get("portal", {})
         elements = list(getattr(player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            elements = [e for e in order if e in elements] or elements
         title = portal_menu.get("title", "Portal")
         body = [title, ""]
         if elements:
             menu_cursor = max(0, min(menu_cursor, len(elements) - 1))
             for idx, element in enumerate(elements):
-                label = element.title()
+                if hasattr(ctx, "continents"):
+                    label = ctx.continents.name_for(element)
+                else:
+                    label = element.title()
                 prefix = "> " if idx == menu_cursor else "  "
                 body.append(f"{prefix}{label}")
         else:

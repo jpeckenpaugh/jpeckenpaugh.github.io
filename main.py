@@ -28,6 +28,7 @@ from app.loop import (
 )
 from app.input import read_keypress, read_keypress_timeout
 from app.models import Player
+from app.player_sync import sync_player_elements
 from app.state import GameState
 from app.ui.constants import SCREEN_HEIGHT, SCREEN_WIDTH
 from app.ui.rendering import animate_art_transition, clear_screen, render_frame
@@ -92,6 +93,7 @@ def main():
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
+    sync_player_elements(APP, state.player)
 
     if os.name != 'nt' and not WEB_MODE:
         termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)

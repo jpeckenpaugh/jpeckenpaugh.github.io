@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from app.combat import cast_spell, primary_opponent
 from app.data_access.commands_data import CommandsData
+from app.data_access.continents_data import ContinentsData
 from app.data_access.items_data import ItemsData
 from app.data_access.opponents_data import OpponentsData
 from app.data_access.scenes_data import ScenesData
@@ -20,6 +21,7 @@ from app.shop import purchase_item, sell_item, shop_inventory, shop_sell_invento
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
 from app.ui.constants import SCREEN_WIDTH
+from app.player_sync import sync_player_elements
 
 
 @dataclass
@@ -59,6 +61,7 @@ class RouterContext:
     save_data: SaveData
     spells: SpellsData
     menus: MenusData
+    continents: ContinentsData
     objects: ObjectsData
     registry: CommandRegistry
 
@@ -504,6 +507,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             return True
         state.player = Player.from_dict({})
         state.player.sync_items(ctx.items)
+        sync_player_elements(ctx, state.player)
         state.player.location = "Town"
         state.player.title_confirm = False
         state.player.has_save = False
@@ -527,6 +531,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         loaded = ctx.save_data.load_player()
         state.player = loaded if loaded else Player.from_dict({})
         state.player.sync_items(ctx.items)
+        sync_player_elements(ctx, state.player)
         state.player.location = "Town"
         state.player.title_confirm = False
         state.player.has_save = ctx.save_data.exists()

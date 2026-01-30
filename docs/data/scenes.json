@@ -87,7 +87,7 @@
     ],
     "commands": [
       {
-        "label": "Set out for the Forest",
+        "label": "Hunting",
         "command": "ENTER_SCENE",
         "target": "forest",
         "anim": "battle_start"
@@ -158,7 +158,7 @@
     ],
     "commands": [
       {
-        "label": "Find an opponent to fight",
+        "label": "Seek out monsters",
         "command": "ENTER_SCENE",
         "target": "forest",
         "anim": "battle_start",

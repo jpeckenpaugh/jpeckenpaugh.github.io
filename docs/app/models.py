@@ -70,6 +70,8 @@ class Player:
             elements = []
         if not elements:
             elements = ["base"]
+        order = ["base", "earth", "wind", "fire", "water", "light", "lightning", "dark", "ice"]
+        elements = [e for e in order if e in elements] or elements
         current_element = data.get("current_element", "base")
         if current_element not in elements:
             current_element = elements[0]

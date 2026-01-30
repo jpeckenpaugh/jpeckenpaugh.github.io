@@ -420,6 +420,9 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
 
     if state.element_mode:
         elements = list(getattr(state.player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            elements = [e for e in order if e in elements] or elements
         if not elements:
             if action == "BACK":
                 return "B_KEY", None
@@ -458,6 +461,9 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
 
     if state.portal_mode:
         elements = list(getattr(state.player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            elements = [e for e in order if e in elements] or elements
         if not elements:
             if action == "BACK":
                 return "B_KEY", None
@@ -553,7 +559,11 @@ def spell_level_up_notes(ctx, prev_level: int, new_level: int) -> list[str]:
 
 
 def element_unlock_notes(ctx, player, prev_level: int, new_level: int) -> list[str]:
-    unlocks = ctx.spells.element_unlocks()
+    unlocks = {}
+    if hasattr(ctx, "continents"):
+        unlocks = ctx.continents.unlocks() if hasattr(ctx.continents, "unlocks") else {}
+    if not unlocks:
+        unlocks = ctx.spells.element_unlocks()
     notes = []
     for element, level_required in unlocks.items():
         if prev_level < level_required <= new_level:
