@@ -23,7 +23,13 @@ class GameState:
     spell_mode: bool
     quit_confirm: bool
     title_mode: bool
+    shop_view: str = "menu"
     element_mode: bool = False
+    alchemist_mode: bool = False
+    alchemy_first: Optional[str] = None
+    temple_mode: bool = False
+    smithy_mode: bool = False
+    portal_mode: bool = False
     options_mode: bool = False
     target_select: bool = False
     target_index: Optional[int] = None

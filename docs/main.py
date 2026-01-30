@@ -82,11 +82,16 @@ def main():
         inn_mode=False,
         spell_mode=False,
         element_mode=False,
+        alchemist_mode=False,
+        alchemy_first=None,
+        temple_mode=False,
+        smithy_mode=False,
+        portal_mode=False,
         quit_confirm=False,
         title_mode=True,
     )
     state.player.location = "Title"
-    state.player.sync_equipment(ITEMS)
+    state.player.sync_items(ITEMS)
 
     if os.name != 'nt' and not WEB_MODE:
         termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
@@ -129,6 +134,7 @@ def main():
                 state.last_message,
                 state.leveling_mode,
                 state.shop_mode,
+                state.shop_view,
                 state.inventory_mode,
                 state.inventory_items,
                 state.hall_mode,
@@ -136,6 +142,11 @@ def main():
                 state.inn_mode,
                 state.spell_mode,
                 state.element_mode,
+                state.alchemist_mode,
+                state.alchemy_first,
+                state.temple_mode,
+                state.smithy_mode,
+                state.portal_mode,
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
@@ -148,12 +159,19 @@ def main():
             state.leveling_mode = False
             state.boost_prompt = None
             state.shop_mode = False
+            state.shop_view = "menu"
             state.inventory_mode = False
             state.inventory_items = []
             state.hall_mode = False
             state.hall_view = "menu"
             state.inn_mode = False
             state.spell_mode = False
+            state.element_mode = False
+            state.alchemist_mode = False
+            state.alchemy_first = None
+            state.temple_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
             state.options_mode = False
             state.target_select = False
             state.target_index = None
@@ -174,6 +192,7 @@ def main():
                 state.last_message,
                 state.leveling_mode,
                 state.shop_mode,
+                state.shop_view,
                 state.inventory_mode,
                 state.inventory_items,
                 state.hall_mode,
@@ -181,6 +200,11 @@ def main():
                 state.inn_mode,
                 state.spell_mode,
                 state.element_mode,
+                state.alchemist_mode,
+                state.alchemy_first,
+                state.temple_mode,
+                state.smithy_mode,
+                state.portal_mode,
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
@@ -217,6 +241,7 @@ def main():
                 "message": state.last_message,
                 "leveling_mode": state.leveling_mode,
                 "shop_mode": state.shop_mode,
+                "shop_view": state.shop_view,
                 "inventory_mode": state.inventory_mode,
                 "inventory_items": list(state.inventory_items),
                 "hall_mode": state.hall_mode,
@@ -224,13 +249,25 @@ def main():
                 "inn_mode": state.inn_mode,
                 "spell_mode": state.spell_mode,
                 "element_mode": state.element_mode,
+                "alchemist_mode": state.alchemist_mode,
+                "alchemy_first": state.alchemy_first,
+                "temple_mode": state.temple_mode,
+                "smithy_mode": state.smithy_mode,
+                "portal_mode": state.portal_mode,
                 "options_mode": state.options_mode,
                 "action_cursor": state.action_cursor,
                 "menu_cursor": state.menu_cursor,
                 "level_cursor": state.level_cursor,
                 "level_up_notes": list(state.level_up_notes),
             }
-            pre_in_venue = state.shop_mode or state.hall_mode or state.inn_mode
+            pre_in_venue = (
+                state.shop_mode
+                or state.hall_mode
+                or state.inn_mode
+                or state.temple_mode
+                or state.smithy_mode
+                or state.alchemist_mode
+            )
             pre_location = state.player.location
 
         handled_by_router, action_cmd, cmd, should_continue, target_index = apply_router_command(
@@ -242,7 +279,14 @@ def main():
             action_cmd,
         )
         if pre_snapshot is not None:
-            post_in_venue = state.shop_mode or state.hall_mode or state.inn_mode
+            post_in_venue = (
+                state.shop_mode
+                or state.hall_mode
+                or state.inn_mode
+                or state.temple_mode
+                or state.smithy_mode
+                or state.alchemist_mode
+            )
             post_location = state.player.location
             if pre_in_venue != post_in_venue or pre_location != post_location:
                 pre_frame = generate_frame(
@@ -252,6 +296,7 @@ def main():
                     pre_snapshot["message"],
                     pre_snapshot["leveling_mode"],
                     pre_snapshot["shop_mode"],
+                    pre_snapshot.get("shop_view", "menu"),
                     pre_snapshot["inventory_mode"],
                     pre_snapshot["inventory_items"],
                     pre_snapshot["hall_mode"],
@@ -259,6 +304,11 @@ def main():
                     pre_snapshot["inn_mode"],
                     pre_snapshot["spell_mode"],
                     pre_snapshot.get("element_mode", False),
+                    pre_snapshot.get("alchemist_mode", False),
+                    pre_snapshot.get("alchemy_first", None),
+                    pre_snapshot.get("temple_mode", False),
+                    pre_snapshot.get("smithy_mode", False),
+                    pre_snapshot.get("portal_mode", False),
                     pre_snapshot.get("options_mode", False),
                     pre_snapshot.get("action_cursor", 0),
                     pre_snapshot.get("menu_cursor", 0),
@@ -272,6 +322,7 @@ def main():
                     state.last_message,
                     state.leveling_mode,
                     state.shop_mode,
+                    state.shop_view,
                     state.inventory_mode,
                     state.inventory_items,
                     state.hall_mode,
@@ -279,6 +330,11 @@ def main():
                     state.inn_mode,
                     state.spell_mode,
                     state.element_mode,
+                    state.alchemist_mode,
+                    state.alchemy_first,
+                    state.temple_mode,
+                    state.smithy_mode,
+                    state.portal_mode,
                     state.options_mode,
                     state.action_cursor,
                     state.menu_cursor,

@@ -42,6 +42,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         _status_message(state, message),
         state.leveling_mode,
         state.shop_mode,
+        state.shop_view,
         state.inventory_mode,
         state.inventory_items,
         state.hall_mode,
@@ -49,6 +50,11 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.inn_mode,
         state.spell_mode,
         state.element_mode,
+        state.alchemist_mode,
+        state.alchemy_first,
+        state.temple_mode,
+        state.smithy_mode,
+        state.portal_mode,
         state.options_mode,
         state.action_cursor,
         state.menu_cursor,
@@ -173,14 +179,20 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
     if state.shop_mode:
         venue = ctx.venues.get("town_shop", {})
         element = getattr(state.player, "current_element", "base")
-        return shop_commands(venue, ctx.items, element)
+        return shop_commands(venue, ctx.items, element, state.shop_view, state.player)
     if state.hall_mode:
         venue = ctx.venues.get("town_hall", {})
         return venue.get("commands", [])
     if state.inn_mode:
         venue = ctx.venues.get("town_inn", {})
         return venue.get("commands", [])
-    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode:
+    if state.temple_mode:
+        venue = ctx.venues.get("town_temple", {})
+        return venue.get("commands", [])
+    if state.smithy_mode:
+        venue = ctx.venues.get("town_smithy", {})
+        return venue.get("commands", [])
+    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode or state.alchemist_mode or state.portal_mode:
         return []
     if not any(
         (
@@ -308,6 +320,10 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             state.inventory_mode = False
             state.spell_mode = False
             state.element_mode = False
+            state.alchemist_mode = False
+            state.temple_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
             state.shop_mode = False
             state.hall_mode = False
             state.inn_mode = False
@@ -416,6 +432,44 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if action == "CONFIRM":
             element_id = elements[state.menu_cursor]
             return f"ELEMENT:{element_id}", None
+        if action == "BACK":
+            return "B_KEY", None
+        return None, None
+
+    if state.alchemist_mode:
+        gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]
+        if not gear_items:
+            if action == "BACK":
+                return "B_KEY", None
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, len(gear_items) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % len(gear_items)
+            return None, None
+        if action == "CONFIRM":
+            gear_id = gear_items[state.menu_cursor].get("id")
+            if gear_id:
+                return f"ALCHEMY_PICK:{gear_id}", None
+            return None, None
+        if action == "BACK":
+            return "B_KEY", None
+        return None, None
+
+    if state.portal_mode:
+        elements = list(getattr(state.player, "elements", []) or [])
+        if not elements:
+            if action == "BACK":
+                return "B_KEY", None
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, len(elements) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % len(elements)
+            return None, None
+        if action == "CONFIRM":
+            element_id = elements[state.menu_cursor]
+            return f"PORTAL:{element_id}", None
         if action == "BACK":
             return "B_KEY", None
         return None, None
@@ -534,6 +588,7 @@ def apply_router_command(
         loot_bank=state.loot_bank,
         last_message=state.last_message,
         shop_mode=state.shop_mode,
+        shop_view=state.shop_view,
         inventory_mode=state.inventory_mode,
         inventory_items=state.inventory_items,
         hall_mode=state.hall_mode,
@@ -541,6 +596,11 @@ def apply_router_command(
         inn_mode=state.inn_mode,
         spell_mode=state.spell_mode,
         element_mode=state.element_mode,
+        alchemist_mode=state.alchemist_mode,
+        alchemy_first=state.alchemy_first,
+        temple_mode=state.temple_mode,
+        smithy_mode=state.smithy_mode,
+        portal_mode=state.portal_mode,
         options_mode=state.options_mode,
         action_cmd=action_cmd,
         target_index=state.target_index,
@@ -561,6 +621,7 @@ def apply_router_command(
         state.battle_log = []
     push_battle_message(state, cmd_state.last_message)
     state.shop_mode = cmd_state.shop_mode
+    state.shop_view = cmd_state.shop_view
     state.inventory_mode = cmd_state.inventory_mode
     state.inventory_items = cmd_state.inventory_items
     state.hall_mode = cmd_state.hall_mode
@@ -568,6 +629,11 @@ def apply_router_command(
     state.inn_mode = cmd_state.inn_mode
     state.spell_mode = cmd_state.spell_mode
     state.element_mode = cmd_state.element_mode
+    state.alchemist_mode = cmd_state.alchemist_mode
+    state.alchemy_first = cmd_state.alchemy_first
+    state.temple_mode = cmd_state.temple_mode
+    state.smithy_mode = cmd_state.smithy_mode
+    state.portal_mode = cmd_state.portal_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
     if state.player.location == "Title" and cmd_state.player.location != "Title":
@@ -642,7 +708,12 @@ def resolve_player_action(
             return None
         mp_cost = int(spell.get("mp_cost", 2))
         boosted_mp_cost = int(spell.get("boosted_mp_cost", mp_cost))
-        if state.player.mp < mp_cost:
+        element = spell.get("element")
+        has_charge = False
+        if element:
+            charges = state.player.wand_charges()
+            has_charge = int(charges.get(str(element), 0)) > 0
+        if state.player.mp < mp_cost and not has_charge:
             state.last_message = f"Not enough MP to cast {name}."
             return None
         if state.player.mp >= boosted_mp_cost:
@@ -830,6 +901,11 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         else:
             defense_value = state.player.total_defense() + state.defend_bonus
             damage, crit, miss = roll_damage(m.atk, defense_value)
+            if not miss:
+                element = getattr(m, "element", "base")
+                if element and element != "base":
+                    block = state.player.element_points_total(str(element), slots=["shield", "armor"])
+                    damage = max(1, damage - int(block))
             if miss:
                 template = ctx.texts.get("battle", "opponent_miss", "The {name} misses you.")
                 push_battle_message(state, format_text(template, name=m.name))

@@ -16,7 +16,7 @@ from app.data_access.save_data import SaveData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.data_access.spells_data import SpellsData
-from app.shop import purchase_item, shop_inventory
+from app.shop import purchase_item, sell_item, shop_inventory, shop_sell_inventory
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
 from app.ui.constants import SCREEN_WIDTH
@@ -29,6 +29,7 @@ class CommandState:
     loot_bank: dict
     last_message: str
     shop_mode: bool
+    shop_view: str
     inventory_mode: bool
     inventory_items: List[tuple[str, str]]
     hall_mode: bool
@@ -36,6 +37,11 @@ class CommandState:
     inn_mode: bool
     spell_mode: bool
     element_mode: bool
+    alchemist_mode: bool
+    alchemy_first: Optional[str]
+    temple_mode: bool
+    smithy_mode: bool
+    portal_mode: bool
     options_mode: bool
     action_cmd: Optional[str]
     target_index: Optional[int] = None
@@ -71,11 +77,16 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         venue = ctx.venues.get(venue_id, {})
         if venue_id == "town_shop":
             state.shop_mode = True
+            state.shop_view = "menu"
             state.hall_mode = False
             state.inn_mode = False
             state.inventory_mode = False
             state.spell_mode = False
             state.element_mode = False
+            state.alchemist_mode = False
+            state.temple_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
         elif venue_id == "town_hall":
             state.hall_mode = True
             state.hall_view = "menu"
@@ -84,6 +95,10 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.inventory_mode = False
             state.spell_mode = False
             state.element_mode = False
+            state.alchemist_mode = False
+            state.temple_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
         elif venue_id == "town_inn":
             state.inn_mode = True
             state.shop_mode = False
@@ -91,6 +106,55 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.inventory_mode = False
             state.spell_mode = False
             state.element_mode = False
+            state.alchemist_mode = False
+            state.temple_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
+        elif venue_id == "town_alchemist":
+            state.alchemist_mode = True
+            state.alchemy_first = None
+            state.shop_mode = False
+            state.hall_mode = False
+            state.inn_mode = False
+            state.inventory_mode = False
+            state.spell_mode = False
+            state.element_mode = False
+            state.temple_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
+        elif venue_id == "town_temple":
+            state.temple_mode = True
+            state.shop_mode = False
+            state.hall_mode = False
+            state.inn_mode = False
+            state.inventory_mode = False
+            state.spell_mode = False
+            state.element_mode = False
+            state.alchemist_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
+        elif venue_id == "town_smithy":
+            state.smithy_mode = True
+            state.shop_mode = False
+            state.hall_mode = False
+            state.inn_mode = False
+            state.inventory_mode = False
+            state.spell_mode = False
+            state.element_mode = False
+            state.alchemist_mode = False
+            state.temple_mode = False
+            state.portal_mode = False
+        elif venue_id == "town_portal":
+            state.portal_mode = True
+            state.shop_mode = False
+            state.hall_mode = False
+            state.inn_mode = False
+            state.inventory_mode = False
+            state.spell_mode = False
+            state.element_mode = False
+            state.alchemist_mode = False
+            state.temple_mode = False
+            state.smithy_mode = False
         else:
             return False
         state.last_message = venue.get("welcome_message", state.last_message)
@@ -129,6 +193,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         menu = ctx.menus.get("spellbook", {})
         state.spell_mode = True
         state.shop_mode = False
+        state.shop_view = "menu"
         state.inventory_mode = False
         state.hall_mode = False
         state.inn_mode = False
@@ -183,25 +248,77 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.last_message = venue.get("leave_message", "You leave the inn.")
         return True
 
+    if command_id == "B_KEY" and state.alchemist_mode:
+        venue = ctx.venues.get("town_alchemist", {})
+        state.alchemist_mode = False
+        state.alchemy_first = None
+        state.last_message = venue.get("leave_message", "You leave the alchemist.")
+        return True
+
+    if command_id == "B_KEY" and state.temple_mode:
+        venue = ctx.venues.get("town_temple", {})
+        state.temple_mode = False
+        state.last_message = venue.get("leave_message", "You leave the temple.")
+        return True
+
+    if command_id == "B_KEY" and state.smithy_mode:
+        venue = ctx.venues.get("town_smithy", {})
+        state.smithy_mode = False
+        state.last_message = venue.get("leave_message", "You leave the smithy.")
+        return True
+
+    if command_id == "B_KEY" and state.portal_mode:
+        venue = ctx.venues.get("town_portal", {})
+        state.portal_mode = False
+        state.last_message = venue.get("leave_message", "You leave the portal.")
+        return True
+
     if command_id == "B_KEY" and state.shop_mode:
+        if state.shop_view in ("buy", "sell"):
+            state.shop_view = "menu"
+            state.last_message = "Shop menu."
+            return True
         venue = ctx.venues.get("town_shop", {})
         state.shop_mode = False
+        state.shop_view = "menu"
         state.last_message = venue.get("leave_message", "You leave the shop.")
         return True
 
     if state.shop_mode:
         venue = ctx.venues.get("town_shop", {})
         element = getattr(state.player, "current_element", "base")
-        selection = next(
-            (entry for entry in shop_inventory(venue, ctx.items, element) if entry.get("command") == command_id),
-            None
-        )
-        if selection:
-            item_id = selection.get("item_id")
-            if item_id:
-                state.last_message = purchase_item(state.player, ctx.items, item_id)
-                ctx.save_data.save_player(state.player)
+        if command_id == "SHOP_BUY":
+            state.shop_view = "buy"
+            state.last_message = "Choose an item to buy."
             return True
+        if command_id == "SHOP_SELL":
+            state.shop_view = "sell"
+            state.last_message = "Choose an item to sell."
+            return True
+        if state.shop_view == "buy":
+            selection = next(
+                (entry for entry in shop_inventory(venue, ctx.items, element) if entry.get("command") == command_id),
+                None
+            )
+            if selection:
+                item_id = selection.get("item_id")
+                if item_id:
+                    state.last_message = purchase_item(state.player, ctx.items, item_id)
+                    ctx.save_data.save_player(state.player)
+                return True
+            return False
+        if state.shop_view == "sell":
+            selection = next(
+                (entry for entry in shop_sell_inventory(state.player, ctx.items) if entry.get("command") == command_id),
+                None
+            )
+            if selection:
+                key = selection.get("key")
+                if key:
+                    state.last_message = sell_item(state.player, ctx.items, key)
+                    ctx.save_data.save_player(state.player)
+                return True
+            return False
         return False
 
     if command_id == "INVENTORY":
@@ -237,6 +354,24 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                 state.last_message = "Invalid item selection."
             return True
 
+    if state.alchemist_mode and command_id.startswith("ALCHEMY_PICK:"):
+        gear_id = command_id.split(":", 1)[1]
+        if not state.alchemy_first:
+            state.alchemy_first = gear_id
+            state.last_message = "Select a second item to fuse."
+            return True
+        if state.alchemy_first == gear_id:
+            state.last_message = "Choose a different item."
+            return True
+        fused = state.player.fuse_gear(state.alchemy_first, gear_id)
+        state.alchemy_first = None
+        if fused:
+            state.last_message = f"Fused into {fused.get('name', 'gear')}."
+            ctx.save_data.save_player(state.player)
+        else:
+            state.last_message = "Fusion failed."
+        return True
+
     if state.element_mode and command_id.startswith("ELEMENT:"):
         element_id = command_id.split(":", 1)[1]
         if element_id and element_id in getattr(state.player, "elements", []):
@@ -244,6 +379,15 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.element_mode = False
             ctx.save_data.save_player(state.player)
             state.last_message = f"Element set to {element_id.title()}."
+            return True
+
+    if state.portal_mode and command_id.startswith("PORTAL:"):
+        element_id = command_id.split(":", 1)[1]
+        if element_id and element_id in getattr(state.player, "elements", []):
+            state.player.current_element = element_id
+            state.portal_mode = False
+            ctx.save_data.save_player(state.player)
+            state.last_message = f"Teleported to {element_id.title()} continent."
             return True
 
     if command_id == "USE_SERVICE":
@@ -269,11 +413,12 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         else:
             service = venue.get("service", {})
         service_type = service.get("type")
-        if service_type not in ("rest", "meal"):
+        if service_type not in ("rest", "meal", "overcharge"):
             return False
-        if not (state.player.hp < state.player.max_hp or state.player.mp < state.player.max_mp):
-            state.last_message = service.get("full_message", "You're already fully rested.")
-            return True
+        if service_type != "overcharge":
+            if not (state.player.hp < state.player.max_hp or state.player.mp < state.player.max_mp):
+                state.last_message = service.get("full_message", "You're already fully rested.")
+                return True
         if state.player.location != "Town":
             state.last_message = service.get("location_message", "The inn is only in town.")
             return True
@@ -282,7 +427,13 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.last_message = service.get("insufficient_message", "Not enough GP to rest at the inn.")
             return True
         state.player.gold -= cost
-        if service_type == "meal":
+        if service_type == "overcharge":
+            if not state.player.equipment.get("wand"):
+                state.last_message = service.get("no_wand_message", "You have no wand to charge.")
+                return True
+            state.player.recharge_wands(overcharge=True)
+            state.last_message = service.get("message", "Your wand hums with power.")
+        elif service_type == "meal":
             item_id = service.get("item_id")
             item = ctx.items.get(item_id, {}) if item_id else {}
             hp_gain = int(item.get("hp", service.get("hp", 0)))
@@ -295,6 +446,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                 state.player.hp = state.player.max_hp
                 state.player.mp = state.player.max_mp
             state.last_message = service.get("message", "You rest at the inn and feel fully restored.")
+        if service_type in ("rest", "meal"):
+            state.player.recharge_wands()
         ctx.save_data.save_player(state.player)
         return True
 
@@ -335,6 +488,12 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.hall_mode = False
         state.inn_mode = False
         state.spell_mode = False
+        state.element_mode = False
+        state.alchemist_mode = False
+        state.alchemy_first = None
+        state.temple_mode = False
+        state.smithy_mode = False
+        state.portal_mode = False
         state.last_message = "You arrive in town."
         return True
     if command_id == "TITLE_CONFIRM_NO":
@@ -345,7 +504,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.player.title_confirm = True
             return True
         state.player = Player.from_dict({})
-        state.player.sync_equipment(ctx.items)
+        state.player.sync_items(ctx.items)
         state.player.location = "Town"
         state.player.title_confirm = False
         state.player.has_save = False
@@ -356,6 +515,12 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.hall_mode = False
         state.inn_mode = False
         state.spell_mode = False
+        state.element_mode = False
+        state.alchemist_mode = False
+        state.alchemy_first = None
+        state.temple_mode = False
+        state.smithy_mode = False
+        state.portal_mode = False
         state.last_message = "You arrive in town."
         return True
     if command_id == "TITLE_CONTINUE":
@@ -363,7 +528,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             return True
         loaded = ctx.save_data.load_player()
         state.player = loaded if loaded else Player.from_dict({})
-        state.player.sync_equipment(ctx.items)
+        state.player.sync_items(ctx.items)
         state.player.location = "Town"
         state.player.title_confirm = False
         state.player.has_save = ctx.save_data.exists()
@@ -475,6 +640,11 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
         state.inn_mode = False
         state.spell_mode = False
         state.element_mode = False
+        state.alchemist_mode = False
+        state.alchemy_first = None
+        state.temple_mode = False
+        state.smithy_mode = False
+        state.portal_mode = False
         state.last_message = "You return to town."
         ctx.save_data.save_player(state.player)
         return True
@@ -486,11 +656,17 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
             state.loot_bank = {"xp": 0, "gold": 0}
             state.last_message = "All is quiet. No enemies in sight."
             state.shop_mode = False
+            state.shop_view = "menu"
             state.inventory_mode = False
             state.hall_mode = False
             state.inn_mode = False
             state.spell_mode = False
             state.element_mode = False
+            state.alchemist_mode = False
+            state.alchemy_first = None
+            state.temple_mode = False
+            state.smithy_mode = False
+            state.portal_mode = False
             ctx.save_data.save_player(state.player)
             return True
 

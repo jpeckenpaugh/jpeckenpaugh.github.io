@@ -75,13 +75,18 @@ def cast_spell(
     mp_cost = int(spell.get("boosted_mp_cost", 4 if boosted else 2))
     if not boosted:
         mp_cost = int(spell.get("mp_cost", 2))
-    if player.mp < mp_cost:
+    element = spell.get("element")
+    used_charge = False
+    if element:
+        used_charge = player.consume_wand_charge(str(element))
+    if not used_charge and player.mp < mp_cost:
         return f"Not enough MP to cast {name}."
 
     if spell_id == "healing":
         if player.hp == player.max_hp:
             return "Your HP is already full."
-        player.mp -= mp_cost
+        if not used_charge:
+            player.mp -= mp_cost
         heal_amount = int(spell.get("boosted_heal", 20 if boosted else 10))
         if not boosted:
             heal_amount = int(spell.get("heal", 10))
@@ -109,8 +114,12 @@ def cast_spell(
                 targets = [opponent]
         if not targets:
             return "There is nothing to target."
-        player.mp -= mp_cost
+        if not used_charge:
+            player.mp -= mp_cost
         atk_bonus = int(spell.get("atk_bonus", 2))
+        if element:
+            ring_bonus = player.element_points_total(str(element), slots=["ring"])
+            atk_bonus += int(ring_bonus)
         damage_mult = float(spell.get("rank3_damage_mult", 1.25)) if rank >= 3 else 1.0
         messages = []
         for opponent in targets:

@@ -108,9 +108,29 @@
         "target": "town_inn"
       },
       {
+        "label": "Alchemist",
+        "command": "ENTER_VENUE",
+        "target": "town_alchemist"
+      },
+      {
+        "label": "Temple",
+        "command": "ENTER_VENUE",
+        "target": "town_temple"
+      },
+      {
+        "label": "Smithy",
+        "command": "ENTER_VENUE",
+        "target": "town_smithy"
+      },
+      {
         "label": "Elements",
         "command": "ELEMENTS",
         "enabled_when": "has_elements"
+      },
+      {
+        "label": "Portal",
+        "command": "ENTER_VENUE",
+        "target": "town_portal"
       }
     ]
   },
@@ -166,11 +186,6 @@
         "label": "Magic",
         "command": "SPELLBOOK",
         "enabled_when": "has_mp"
-      },
-      {
-        "label": "Elements",
-        "command": "ELEMENTS",
-        "enabled_when": "has_elements"
       },
       {
         "label": "Flee",

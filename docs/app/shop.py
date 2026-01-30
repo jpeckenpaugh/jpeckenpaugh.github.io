@@ -1,5 +1,7 @@
 """Shop-related helpers for purchases."""
 
+from typing import Optional
+
 from app.data_access.items_data import ItemsData
 from app.models import Player
 
@@ -43,18 +45,65 @@ def shop_inventory(venue: dict, items_data: ItemsData, element: str) -> list[dic
     return output
 
 
-def shop_commands(venue: dict, items_data: ItemsData, element: str) -> list[dict]:
-    commands = []
-    inventory = shop_inventory(venue, items_data, element)
-    for entry in inventory:
-        commands.append({
-            "label": f"Buy {entry.get('label', '')}".strip(),
-            "command": entry.get("command"),
+def shop_sell_inventory(player: Player, items_data: ItemsData) -> list[dict]:
+    entries = []
+    idx = 0
+    for key in sorted(player.inventory.keys()):
+        count = int(player.inventory.get(key, 0))
+        if count <= 0:
+            continue
+        item = items_data.get(key, {})
+        name = item.get("name", key)
+        price = int(item.get("price", 0))
+        sell_price = price // 2
+        label = f"{name} x{count}"
+        entries.append({
+            "key": f"item:{key}",
+            "label": label,
+            "price": sell_price,
+            "command": f"SELL_{idx + 1}",
         })
-    for cmd in venue.get("commands", []):
-        if cmd.get("command") == "B_KEY":
-            commands.append(cmd)
-            break
+        idx += 1
+    for gear in player.gear_inventory:
+        if not isinstance(gear, dict):
+            continue
+        gear_id = gear.get("id", "")
+        name = gear.get("name", "Gear")
+        price = int(gear.get("price", 0))
+        sell_price = price // 2
+        label = name
+        entries.append({
+            "key": f"gear:{gear_id}",
+            "label": label,
+            "price": sell_price,
+            "command": f"SELL_{idx + 1}",
+        })
+        idx += 1
+    return entries
+
+
+def shop_commands(venue: dict, items_data: ItemsData, element: str, view: str, player: Optional[Player] = None) -> list[dict]:
+    commands = []
+    if view == "menu":
+        commands = [
+            {"label": "Purchase", "command": "SHOP_BUY"},
+            {"label": "Sell", "command": "SHOP_SELL"},
+        ]
+    elif view == "buy":
+        inventory = shop_inventory(venue, items_data, element)
+        for entry in inventory:
+            commands.append({
+                "label": f"Buy {entry.get('label', '')}".strip(),
+                "command": entry.get("command"),
+            })
+    elif view == "sell" and player is not None:
+        inventory = shop_sell_inventory(player, items_data)
+        for entry in inventory:
+            commands.append({
+                "label": f"Sell {entry.get('label', '')}".strip(),
+                "command": entry.get("command"),
+            })
+    commands.append({"label": "Back", "command": "B_KEY"})
     return commands
 
 
@@ -66,5 +115,41 @@ def purchase_item(player: Player, items_data: ItemsData, key: str) -> str:
     if player.gold < price:
         return "Not enough GP."
     player.gold -= price
-    player.add_item(key, 1)
+    if item.get("type") == "gear":
+        player.add_gear(key, items_data)
+    else:
+        player.add_item(key, 1)
     return f"Purchased {item.get('name', key)}."
+
+
+def sell_item(player: Player, items_data: ItemsData, key: str) -> str:
+    if key.startswith("item:"):
+        item_id = key.split(":", 1)[1]
+        item = items_data.get(item_id)
+        if not item:
+            return "That item cannot be sold."
+        if int(player.inventory.get(item_id, 0)) <= 0:
+            return "You do not have that item."
+        price = int(item.get("price", 0))
+        player.inventory[item_id] = int(player.inventory.get(item_id, 0)) - 1
+        if player.inventory[item_id] <= 0:
+            player.inventory.pop(item_id, None)
+        player.gold += price // 2
+        return f"Sold {item.get('name', item_id)}."
+    if key.startswith("gear:"):
+        gear_id = key.split(":", 1)[1]
+        gear = player.gear_instance(gear_id)
+        if not gear:
+            return "That item cannot be sold."
+        price = int(gear.get("price", 0))
+        for slot, equipped_id in list(player.equipment.items()):
+            if equipped_id == gear_id:
+                player.equipment.pop(slot, None)
+        player.gear_inventory = [
+            g for g in player.gear_inventory
+            if not (isinstance(g, dict) and g.get("id") == gear_id)
+        ]
+        player._recalc_gear()
+        player.gold += price // 2
+        return f"Sold {gear.get('name', 'gear')}."
+    return "That item cannot be sold."

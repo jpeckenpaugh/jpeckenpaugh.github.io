@@ -57,5 +57,27 @@
         "command": "B_KEY"
       }
     ]
+  },
+  "alchemist": {
+    "title": "Alchemist",
+    "open_message": "Select two items to fuse.",
+    "close_message": "Closed alchemist.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "portal": {
+    "title": "Portal",
+    "open_message": "Select a continent.",
+    "close_message": "Closed portal.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
   }
 }

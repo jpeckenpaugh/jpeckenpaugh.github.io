@@ -32,6 +32,7 @@ class Player:
     defense: int
     location: str
     inventory: dict
+    gear_inventory: List[dict]
     equipment: dict
     gear_atk: int
     gear_defense: int
@@ -54,6 +55,7 @@ class Player:
             "defense": self.defense,
             "location": self.location,
             "inventory": self.inventory,
+            "gear_inventory": self.gear_inventory,
             "equipment": self.equipment,
             "gear_atk": self.gear_atk,
             "gear_defense": self.gear_defense,
@@ -74,6 +76,9 @@ class Player:
         equipment = data.get("equipment", {})
         if not isinstance(equipment, dict):
             equipment = {}
+        gear_inventory = data.get("gear_inventory", [])
+        if not isinstance(gear_inventory, list):
+            gear_inventory = []
         return Player(
             name=data.get("name", "WARRIOR"),
             level=int(data.get("level", 1)),
@@ -89,6 +94,7 @@ class Player:
             defense=int(data.get("defense", 10)),
             location="Town",
             inventory=data.get("inventory", {}),
+            gear_inventory=gear_inventory,
             equipment=equipment,
             gear_atk=int(data.get("gear_atk", 0)),
             gear_defense=int(data.get("gear_defense", 0)),
@@ -99,69 +105,155 @@ class Player:
     def add_item(self, key: str, amount: int = 1):
         self.inventory[key] = int(self.inventory.get(key, 0)) + amount
 
+    def add_gear(self, item_id: str, items_data) -> dict:
+        gear = self._create_gear_instance(item_id, items_data)
+        self.gear_inventory.append(gear)
+        return gear
+
+    def _next_gear_id(self) -> str:
+        current = 0
+        for gear in self.gear_inventory:
+            if not isinstance(gear, dict):
+                continue
+            gear_id = str(gear.get("id", ""))
+            if gear_id.startswith("g") and gear_id[1:].isdigit():
+                current = max(current, int(gear_id[1:]))
+        return f"g{current + 1}"
+
+    def _normalize_elem_points(self, elem_points: Optional[dict]) -> dict:
+        output = {}
+        if not isinstance(elem_points, dict):
+            return output
+        for key, value in elem_points.items():
+            try:
+                output[str(key)] = max(0, int(value))
+            except (TypeError, ValueError):
+                continue
+        return output
+
+    def _charges_from_points(self, elem_points: dict) -> dict:
+        charges = {}
+        for element, points in elem_points.items():
+            charges[element] = max(0, int(points) // 3)
+        return charges
+
+    def _create_gear_instance(self, item_id: str, items_data, overrides: Optional[dict] = None) -> dict:
+        item = items_data.get(item_id, {})
+        elem_points = self._normalize_elem_points(item.get("elem_points"))
+        if not elem_points:
+            element = item.get("element")
+            if element:
+                elem_points = {str(element): 1}
+        instance = {
+            "id": self._next_gear_id(),
+            "item_id": item_id,
+            "name": item.get("name", item_id),
+            "slot": item.get("slot", ""),
+            "atk": int(item.get("atk", 0)),
+            "defense": int(item.get("defense", 0)),
+            "elem_points": elem_points,
+            "price": int(item.get("price", 0)),
+        }
+        if overrides:
+            instance.update(overrides)
+        if instance.get("slot") == "wand":
+            charges = self._charges_from_points(instance.get("elem_points", {}))
+            instance["charges"] = charges.copy()
+            instance["max_charges"] = charges.copy()
+        return instance
+
+    def gear_instance(self, gear_id: str) -> Optional[dict]:
+        for gear in self.gear_inventory:
+            if isinstance(gear, dict) and gear.get("id") == gear_id:
+                return gear
+        return None
+
+    def equip_gear(self, gear_id: str) -> str:
+        gear = self.gear_instance(gear_id)
+        if not gear:
+            return "That gear is not available."
+        slot = gear.get("slot")
+        if not slot:
+            return "That item cannot be equipped."
+        self.equipment[slot] = gear_id
+        self._recalc_gear()
+        return f"Equipped {gear.get('name', 'gear')}."
+
     def total_atk(self) -> int:
         return self.atk + int(self.gear_atk)
 
     def total_defense(self) -> int:
         return self.defense + int(self.gear_defense)
 
-    def _recalc_gear(self, items_data) -> None:
+    def _recalc_gear(self) -> None:
         atk_bonus = 0
         def_bonus = 0
         equipment = self.equipment if isinstance(self.equipment, dict) else {}
-        for slot, item_id in equipment.items():
-            item = items_data.get(item_id, {})
-            if item.get("type") != "gear":
+        for slot, gear_id in equipment.items():
+            gear = self.gear_instance(gear_id)
+            if not gear:
                 continue
-            if item.get("slot") != slot:
+            if gear.get("slot") != slot:
                 continue
-            atk_bonus += int(item.get("atk", 0))
-            def_bonus += int(item.get("defense", 0))
+            atk_bonus += int(gear.get("atk", 0))
+            def_bonus += int(gear.get("defense", 0))
         self.gear_atk = atk_bonus
         self.gear_defense = def_bonus
 
-    def sync_equipment(self, items_data) -> None:
+    def sync_items(self, items_data) -> None:
         if not isinstance(self.equipment, dict):
             self.equipment = {}
-        cleaned = {}
-        for slot, item_id in self.equipment.items():
+        if not isinstance(self.inventory, dict):
+            self.inventory = {}
+        if not isinstance(self.gear_inventory, list):
+            self.gear_inventory = []
+        migrated = []
+        for item_id, count in list(self.inventory.items()):
             item = items_data.get(item_id, {})
             if item.get("type") != "gear":
                 continue
-            if item.get("slot") != slot:
+            count_int = int(count)
+            if count_int <= 0:
                 continue
-            cleaned[slot] = item_id
+            for _ in range(count_int):
+                migrated.append(self._create_gear_instance(item_id, items_data))
+            self.inventory.pop(item_id, None)
+        self.gear_inventory.extend(migrated)
+        for gear in self.gear_inventory:
+            if not isinstance(gear, dict):
+                continue
+            if gear.get("slot") != "wand":
+                continue
+            if not isinstance(gear.get("charges"), dict):
+                points = self._normalize_elem_points(gear.get("elem_points", {}))
+                charges = self._charges_from_points(points)
+                gear["charges"] = charges.copy()
+                gear["max_charges"] = charges.copy()
+        cleaned = {}
+        for slot, gear_id in self.equipment.items():
+            if isinstance(gear_id, str) and gear_id.startswith("g"):
+                gear = self.gear_instance(gear_id)
+                if gear and gear.get("slot") == slot:
+                    cleaned[slot] = gear_id
+                    continue
+            item = items_data.get(str(gear_id), {})
+            if item.get("type") == "gear" and item.get("slot") == slot:
+                gear = self._create_gear_instance(str(gear_id), items_data)
+                self.gear_inventory.append(gear)
+                cleaned[slot] = gear.get("id")
         self.equipment = cleaned
-        self._recalc_gear(items_data)
-
-    def equip_item(self, key: str, items_data) -> str:
-        item = items_data.get(key)
-        if not item:
-            return "That item is not available."
-        if item.get("type") != "gear":
-            return "That item cannot be equipped."
-        if int(self.inventory.get(key, 0)) <= 0:
-            return "You do not have that item."
-        slot = item.get("slot")
-        if not slot:
-            return "That item cannot be equipped."
-        current = self.equipment.get(slot)
-        self.inventory[key] = int(self.inventory.get(key, 0)) - 1
-        if self.inventory.get(key, 0) <= 0:
-            self.inventory.pop(key, None)
-        if current:
-            self.add_item(current, 1)
-        self.equipment[slot] = key
-        self._recalc_gear(items_data)
-        return f"Equipped {item.get('name', key)}."
+        self._recalc_gear()
 
     def format_inventory(self, items_data) -> str:
         if not self.inventory:
-            return "Inventory is empty."
+            if not self.gear_inventory:
+                return "Inventory is empty."
         parts = []
         for key, count in self.inventory.items():
             item = items_data.get(key, {"name": key})
             parts.append(f"{item.get('name', key)} x{count}")
+        if self.gear_inventory:
+            parts.append(f"Gear x{len(self.gear_inventory)}")
         return "Inventory: " + ", ".join(parts)
 
     def list_inventory_items(self, items_data) -> List[tuple[str, str]]:
@@ -172,30 +264,41 @@ class Player:
                 continue
             item = items_data.get(key, {"name": key})
             name = item.get("name", key)
-            if item.get("type") == "gear":
-                atk = int(item.get("atk", 0))
-                defense = int(item.get("defense", 0))
-                slot = item.get("slot", "")
-                bonus = []
-                if atk:
-                    bonus.append(f"ATK+{atk}")
-                if defense:
-                    bonus.append(f"DEF+{defense}")
-                detail = ", ".join(bonus) if bonus else "No bonuses"
-                slot_text = f"{slot.title()}" if slot else "Gear"
-                entries.append((key, f"{name} x{count} ({slot_text} {detail})"))
-            else:
-                hp = int(item.get("hp", 0))
-                mp = int(item.get("mp", 0))
-                entries.append((key, f"{name} x{count} (+{hp} HP/+{mp} MP)"))
+            hp = int(item.get("hp", 0))
+            mp = int(item.get("mp", 0))
+            entries.append((f"item:{key}", f"{name} x{count} (+{hp} HP/+{mp} MP)"))
+        for gear in self.gear_inventory:
+            if not isinstance(gear, dict):
+                continue
+            gear_id = gear.get("id", "")
+            name = gear.get("name", "Gear")
+            slot = gear.get("slot", "")
+            atk = int(gear.get("atk", 0))
+            defense = int(gear.get("defense", 0))
+            elem_points = gear.get("elem_points", {})
+            elem_total = sum(int(v) for v in elem_points.values()) if isinstance(elem_points, dict) else 0
+            bonus = []
+            if atk:
+                bonus.append(f"ATK+{atk}")
+            if defense:
+                bonus.append(f"DEF+{defense}")
+            if elem_total:
+                bonus.append(f"Elem+{elem_total}")
+            detail = ", ".join(bonus) if bonus else "No bonuses"
+            slot_text = slot.title() if slot else "Gear"
+            equipped = " (equipped)" if self.equipment.get(slot) == gear_id else ""
+            entries.append((f"gear:{gear_id}", f"{name} ({slot_text} {detail}){equipped}"))
         return entries
 
     def use_item(self, key: str, items_data) -> str:
+        if key.startswith("gear:"):
+            gear_id = key.split(":", 1)[1]
+            return self.equip_gear(gear_id)
+        if key.startswith("item:"):
+            key = key.split(":", 1)[1]
         item = items_data.get(key)
         if not item:
             return "That item is not available."
-        if item.get("type") == "gear":
-            return self.equip_item(key, items_data)
         if int(self.inventory.get(key, 0)) <= 0:
             return "You do not have that item."
         if self.hp == self.max_hp and self.mp == self.max_mp:
@@ -208,6 +311,103 @@ class Player:
         if self.inventory[key] <= 0:
             self.inventory.pop(key, None)
         return f"Used {item.get('name', key)}."
+
+    def gear_points_by_slot(self, slot: str) -> dict:
+        gear_id = self.equipment.get(slot)
+        if not gear_id:
+            return {}
+        gear = self.gear_instance(gear_id)
+        if not gear:
+            return {}
+        return self._normalize_elem_points(gear.get("elem_points", {}))
+
+    def element_points_total(self, element: str, slots: Optional[List[str]] = None) -> int:
+        total = 0
+        if slots is None:
+            slots = list(self.equipment.keys())
+        for slot in slots:
+            points = self.gear_points_by_slot(slot)
+            total += int(points.get(element, 0))
+        return total
+
+    def wand_charges(self) -> dict:
+        gear_id = self.equipment.get("wand")
+        if not gear_id:
+            return {}
+        gear = self.gear_instance(gear_id)
+        if not gear:
+            return {}
+        charges = gear.get("charges", {})
+        return charges if isinstance(charges, dict) else {}
+
+    def consume_wand_charge(self, element: str) -> bool:
+        gear_id = self.equipment.get("wand")
+        if not gear_id:
+            return False
+        gear = self.gear_instance(gear_id)
+        if not gear:
+            return False
+        charges = gear.get("charges", {})
+        if not isinstance(charges, dict):
+            return False
+        current = int(charges.get(element, 0))
+        if current <= 0:
+            return False
+        charges[element] = current - 1
+        gear["charges"] = charges
+        return True
+
+    def recharge_wands(self, overcharge: bool = False) -> None:
+        gear_id = self.equipment.get("wand")
+        if not gear_id:
+            return
+        gear = self.gear_instance(gear_id)
+        if not gear:
+            return
+        points = self._normalize_elem_points(gear.get("elem_points", {}))
+        max_charges = self._charges_from_points(points)
+        if overcharge:
+            charges = {k: int(v * 1.5) for k, v in max_charges.items()}
+        else:
+            charges = dict(max_charges)
+        gear["charges"] = charges
+        gear["max_charges"] = max_charges
+
+    def fuse_gear(self, gear_a: str, gear_b: str) -> Optional[dict]:
+        first = self.gear_instance(gear_a)
+        second = self.gear_instance(gear_b)
+        if not first or not second:
+            return None
+        merged_points = {}
+        for points in (first.get("elem_points", {}), second.get("elem_points", {})):
+            if not isinstance(points, dict):
+                continue
+            for element, value in points.items():
+                merged_points[element] = int(merged_points.get(element, 0)) + int(value)
+        fused = {
+            "id": self._next_gear_id(),
+            "item_id": first.get("item_id") or second.get("item_id"),
+            "name": f"Fused {first.get('name', 'Gear')}",
+            "slot": first.get("slot") or second.get("slot"),
+            "atk": int(first.get("atk", 0)) + int(second.get("atk", 0)),
+            "defense": int(first.get("defense", 0)) + int(second.get("defense", 0)),
+            "elem_points": merged_points,
+            "price": int(first.get("price", 0)) + int(second.get("price", 0)),
+        }
+        if fused.get("slot") == "wand":
+            charges = self._charges_from_points(merged_points)
+            fused["charges"] = charges.copy()
+            fused["max_charges"] = charges.copy()
+        self.gear_inventory = [
+            gear for gear in self.gear_inventory
+            if not (isinstance(gear, dict) and gear.get("id") in {gear_a, gear_b})
+        ]
+        for slot, gear_id in list(self.equipment.items()):
+            if gear_id in {gear_a, gear_b}:
+                self.equipment.pop(slot, None)
+        self.gear_inventory.append(fused)
+        self._recalc_gear()
+        return fused
 
     def gain_xp(self, amount: int) -> int:
         self.xp += amount
@@ -303,6 +503,7 @@ class Player:
 @dataclass
 class Opponent:
     name: str
+    element: str
     level: int
     hp: int
     max_hp: int

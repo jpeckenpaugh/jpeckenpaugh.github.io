@@ -135,6 +135,9 @@
         },
         {
           "item_id": "leather_armor"
+        },
+        {
+          "item_id": "oak_wand"
         }
       ],
       "lightning": [
@@ -161,6 +164,9 @@
         },
         {
           "item_id": "lightning_armor"
+        },
+        {
+          "item_id": "lightning_wand"
         }
       ],
       "ice": [
@@ -187,6 +193,9 @@
         },
         {
           "item_id": "ice_armor"
+        },
+        {
+          "item_id": "ice_wand"
         }
       ],
       "fire": [
@@ -213,6 +222,9 @@
         },
         {
           "item_id": "fire_armor"
+        },
+        {
+          "item_id": "fire_wand"
         }
       ],
       "earth": [
@@ -239,6 +251,9 @@
         },
         {
           "item_id": "earth_armor"
+        },
+        {
+          "item_id": "earth_wand"
         }
       ],
       "wind": [
@@ -265,6 +280,9 @@
         },
         {
           "item_id": "wind_armor"
+        },
+        {
+          "item_id": "wind_wand"
         }
       ]
     }
@@ -531,5 +549,403 @@
         "location_message": "The inn is only in town."
       }
     }
+  },
+  "town_alchemist": {
+    "name": "Alchemist",
+    "scene_id": "shop",
+    "npc_ids": [
+      "shopkeeper_1"
+    ],
+    "actions": [
+      "fuse",
+      "leave"
+    ],
+    "welcome_message": "Welcome to the alchemist.",
+    "leave_message": "You leave the alchemist.",
+    "commands": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ],
+    "narrative": [
+      "Select two pieces of gear to fuse their powers."
+    ],
+    "objects": [
+      {
+        "id": "water",
+        "repeat": 2
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      },
+      {
+        "id": "roof",
+        "mode": "span_until",
+        "target": "house_wall_right"
+      },
+      {
+        "id": "space",
+        "width": 1
+      },
+      {
+        "id": "table_shop",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "npc",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "bookshelf",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 4
+      },
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "flower_box",
+        "repeat": 1
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      }
+    ]
+  },
+  "town_temple": {
+    "name": "Temple",
+    "scene_id": "shop",
+    "npc_ids": [
+      "mayor_1"
+    ],
+    "actions": [
+      "overcharge",
+      "leave"
+    ],
+    "welcome_message": "You enter the temple.",
+    "leave_message": "You leave the temple.",
+    "commands": [
+      {
+        "label": "Overcharge Wands",
+        "command": "USE_SERVICE",
+        "target": "town_temple",
+        "service_id": "overcharge"
+      },
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ],
+    "services": {
+      "overcharge": {
+        "type": "overcharge",
+        "cost": 20,
+        "message": "Your wand is overcharged with elemental power.",
+        "no_wand_message": "You have no wand to charge.",
+        "insufficient_message": "Not enough GP."
+      }
+    },
+    "narrative": [
+      "The air hums with sacred energy."
+    ],
+    "objects": [
+      {
+        "id": "water",
+        "repeat": 2
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      },
+      {
+        "id": "roof",
+        "mode": "span_until",
+        "target": "house_wall_right"
+      },
+      {
+        "id": "space",
+        "width": 1
+      },
+      {
+        "id": "table_shop",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "npc",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "bookshelf",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 4
+      },
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "flower_box",
+        "repeat": 1
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      }
+    ]
+  },
+  "town_smithy": {
+    "name": "Smithy",
+    "scene_id": "shop",
+    "npc_ids": [
+      "shopkeeper_1"
+    ],
+    "actions": [
+      "leave"
+    ],
+    "welcome_message": "You enter the smithy.",
+    "leave_message": "You leave the smithy.",
+    "commands": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ],
+    "narrative": [
+      "The smithy is quiet. Come back later for upgrades."
+    ],
+    "objects": [
+      {
+        "id": "water",
+        "repeat": 2
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      },
+      {
+        "id": "roof",
+        "mode": "span_until",
+        "target": "house_wall_right"
+      },
+      {
+        "id": "space",
+        "width": 1
+      },
+      {
+        "id": "table_shop",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "npc",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "bookshelf",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 4
+      },
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "flower_box",
+        "repeat": 1
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      }
+    ]
+  },
+  "town_portal": {
+    "name": "Portal",
+    "scene_id": "shop",
+    "npc_ids": [
+      "mayor_1"
+    ],
+    "actions": [
+      "teleport",
+      "leave"
+    ],
+    "welcome_message": "The portal hums with distant lands.",
+    "leave_message": "You step away from the portal.",
+    "commands": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ],
+    "narrative": [
+      "Choose a continent to travel to."
+    ],
+    "objects": [
+      {
+        "id": "water",
+        "repeat": 2
+      },
+      {
+        "id": "town_wall"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "bush_small"
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      },
+      {
+        "id": "roof",
+        "mode": "span_until",
+        "target": "house_wall_right"
+      },
+      {
+        "id": "space",
+        "width": 1
+      },
+      {
+        "id": "table_shop",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "npc",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 5
+      },
+      {
+        "id": "bookshelf",
+        "align": 0
+      },
+      {
+        "id": "space",
+        "width": 4
+      },
+      {
+        "id": "house_wall_right"
+      },
+      {
+        "id": "grass",
+        "repeat": 2
+      },
+      {
+        "id": "flower_box",
+        "repeat": 1
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "house_wall_left"
+      }
+    ]
   }
 }

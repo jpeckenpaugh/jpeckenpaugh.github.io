@@ -38,6 +38,7 @@ class OpponentsData:
 
     def create(self, data: dict, art_color: str) -> Opponent:
         name = data.get("name", "Slime")
+        element = data.get("element", "base")
         level = int(data.get("level", 1))
         hp = int(data.get("hp", 10))
         atk = int(data.get("atk", 5))
@@ -50,6 +51,7 @@ class OpponentsData:
         jitter_stability = data.get("jitter_stability", True)
         return Opponent(
             name=name,
+            element=element,
             level=level,
             hp=hp,
             max_hp=hp,

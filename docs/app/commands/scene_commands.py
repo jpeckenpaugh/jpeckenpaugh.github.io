@@ -15,7 +15,12 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
     conditions = enabled_when if isinstance(enabled_when, list) else [enabled_when]
     has_opponents = any(opponent.hp > 0 for opponent in opponents)
     has_items = any(int(count) > 0 for count in player.inventory.values()) if player.inventory else False
+    if not has_items:
+        has_items = bool(getattr(player, "gear_inventory", []))
     has_mp = player.mp > 0
+    if not has_mp:
+        charges = getattr(player, "wand_charges", lambda: {})()
+        has_mp = any(int(v) > 0 for v in charges.values()) if isinstance(charges, dict) else False
     has_elements = len(getattr(player, "elements", []) or []) > 1
     for cond in conditions:
         if cond == "has_opponents" and not has_opponents:

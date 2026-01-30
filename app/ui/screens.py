@@ -32,7 +32,7 @@ from app.ui.rendering import (
     render_venue_objects,
 )
 from app.ui.text import format_text
-from app.shop import shop_commands, shop_inventory
+from app.shop import shop_commands, shop_inventory, shop_sell_inventory
 
 
 @dataclass
@@ -221,6 +221,7 @@ def generate_frame(
     message: str = "",
     leveling_mode: bool = False,
     shop_mode: bool = False,
+    shop_view: str = "menu",
     inventory_mode: bool = False,
     inventory_items: Optional[List[tuple[str, str]]] = None,
     hall_mode: bool = False,
@@ -228,6 +229,11 @@ def generate_frame(
     inn_mode: bool = False,
     spell_mode: bool = False,
     element_mode: bool = False,
+    alchemist_mode: bool = False,
+    alchemy_first: Optional[str] = None,
+    temple_mode: bool = False,
+    smithy_mode: bool = False,
+    portal_mode: bool = False,
     options_mode: bool = False,
     action_cursor: int = 0,
     menu_cursor: int = 0,
@@ -290,12 +296,20 @@ def generate_frame(
         if npc_lines:
             body += npc_lines + [""]
         element = getattr(player, "current_element", "base")
-        for entry in shop_inventory(venue, ctx.items, element):
-            item_id = entry.get("item_id")
-            item = ctx.items.get(item_id, {})
-            label = entry.get("label", item.get("name", item_id))
-            price = item.get("price", 0)
-            body.append(f"{label}  {price} GP")
+        if shop_view == "menu":
+            body.append("What would you like to do?")
+        elif shop_view == "buy":
+            for entry in shop_inventory(venue, ctx.items, element):
+                item_id = entry.get("item_id")
+                item = ctx.items.get(item_id, {})
+                label = entry.get("label", item.get("name", item_id))
+                price = item.get("price", 0)
+                body.append(f"{label}  {price} GP")
+        elif shop_view == "sell":
+            for entry in shop_sell_inventory(player, ctx.items):
+                label = entry.get("label", "Item")
+                price = entry.get("price", 0)
+                body.append(f"{label}  {price} GP")
         body.append("")
         body += venue.get("narrative", [])
         art_anchor_x = None
@@ -304,7 +318,7 @@ def generate_frame(
         else:
             art_lines, art_color = render_venue_art(venue, npc, color_map_override)
         actions = format_command_lines(
-            shop_commands(venue, ctx.items, element),
+            shop_commands(venue, ctx.items, element, shop_view, player),
             selected_index=action_cursor if action_cursor >= 0 else None
         )
     elif player.location == "Town" and hall_mode:
@@ -338,6 +352,65 @@ def generate_frame(
             art_lines, art_color = render_venue_art(venue, npc, color_map_override)
     elif player.location == "Town" and inn_mode:
         venue = ctx.venues.get("town_inn", {})
+        display_location = venue.get("name", display_location)
+        npc_lines = []
+        npc_ids = venue.get("npc_ids", [])
+        npc = {}
+        if npc_ids:
+            npc_lines = ctx.npcs.format_greeting(npc_ids[0])
+            npc = ctx.npcs.get(npc_ids[0], {})
+        body = []
+        if npc_lines:
+            body += npc_lines + [""]
+        body += venue.get("narrative", [])
+        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+        art_anchor_x = None
+        if venue.get("objects"):
+            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
+        else:
+            art_lines, art_color = render_venue_art(venue, npc, color_map_override)
+    elif alchemist_mode:
+        alchemy_menu = ctx.menus.get("alchemist", {})
+        title = alchemy_menu.get("title", "Alchemist")
+        body = [title, ""]
+        gear_items = [g for g in player.gear_inventory if isinstance(g, dict)]
+        if alchemy_first:
+            first = next((g for g in gear_items if g.get("id") == alchemy_first), None)
+            if first:
+                body.append(f"First: {first.get('name', 'Gear')}")
+                body.append("")
+        if gear_items:
+            menu_cursor = max(0, min(menu_cursor, len(gear_items) - 1))
+            for idx, gear in enumerate(gear_items):
+                label = gear.get("name", "Gear")
+                prefix = "> " if idx == menu_cursor else "  "
+                body.append(f"{prefix}{label}")
+        else:
+            body.append("No gear to fuse.")
+        actions = format_menu_actions(alchemy_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
+        art_lines = []
+        art_color = ANSI.FG_WHITE
+    elif player.location == "Town" and temple_mode:
+        venue = ctx.venues.get("town_temple", {})
+        display_location = venue.get("name", display_location)
+        npc_lines = []
+        npc_ids = venue.get("npc_ids", [])
+        npc = {}
+        if npc_ids:
+            npc_lines = ctx.npcs.format_greeting(npc_ids[0])
+            npc = ctx.npcs.get(npc_ids[0], {})
+        body = []
+        if npc_lines:
+            body += npc_lines + [""]
+        body += venue.get("narrative", [])
+        actions = format_command_lines(venue.get("commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+        art_anchor_x = None
+        if venue.get("objects"):
+            art_lines, art_color, art_anchor_x = render_venue_objects(venue, npc, ctx.objects, color_map_override)
+        else:
+            art_lines, art_color = render_venue_art(venue, npc, color_map_override)
+    elif player.location == "Town" and smithy_mode:
+        venue = ctx.venues.get("town_smithy", {})
         display_location = venue.get("name", display_location)
         npc_lines = []
         npc_ids = venue.get("npc_ids", [])
@@ -459,6 +532,22 @@ def generate_frame(
         else:
             body.append("No elements unlocked.")
         actions = format_menu_actions(elements_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
+        art_lines = []
+        art_color = ANSI.FG_WHITE
+    elif portal_mode:
+        portal_menu = ctx.menus.get("portal", {})
+        elements = list(getattr(player, "elements", []) or [])
+        title = portal_menu.get("title", "Portal")
+        body = [title, ""]
+        if elements:
+            menu_cursor = max(0, min(menu_cursor, len(elements) - 1))
+            for idx, element in enumerate(elements):
+                label = element.title()
+                prefix = "> " if idx == menu_cursor else "  "
+                body.append(f"{prefix}{label}")
+        else:
+            body.append("No continents unlocked.")
+        actions = format_menu_actions(portal_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif player.location == "Town":
