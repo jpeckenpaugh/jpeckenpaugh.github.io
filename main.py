@@ -238,7 +238,15 @@ def main():
         if (
             cmd in ("ENTER_VENUE", "ENTER_SCENE")
             or cmd.startswith("TITLE_")
-            or (cmd == "B_KEY" and (state.shop_mode or state.hall_mode or state.inn_mode))
+            or (cmd in ("B_KEY", "LEAVE") and (
+                state.shop_mode
+                or state.hall_mode
+                or state.inn_mode
+                or state.temple_mode
+                or state.smithy_mode
+                or state.alchemist_mode
+                or state.portal_mode
+            ))
         ):
             pre_snapshot = {
                 "player": copy.deepcopy(state.player),
@@ -272,6 +280,7 @@ def main():
                 or state.temple_mode
                 or state.smithy_mode
                 or state.alchemist_mode
+                or state.portal_mode
             )
             pre_location = state.player.location
 
@@ -291,6 +300,7 @@ def main():
                 or state.temple_mode
                 or state.smithy_mode
                 or state.alchemist_mode
+                or state.portal_mode
             )
             post_location = state.player.location
             if pre_in_venue != post_in_venue or pre_location != post_location:
