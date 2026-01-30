@@ -16,6 +16,7 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
     has_opponents = any(opponent.hp > 0 for opponent in opponents)
     has_items = any(int(count) > 0 for count in player.inventory.values()) if player.inventory else False
     has_mp = player.mp > 0
+    has_elements = len(getattr(player, "elements", []) or []) > 1
     for cond in conditions:
         if cond == "has_opponents" and not has_opponents:
             return False
@@ -24,6 +25,8 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         if cond == "has_items" and not has_items:
             return False
         if cond == "has_mp" and not has_mp:
+            return False
+        if cond == "has_elements" and not has_elements:
             return False
     return True
 

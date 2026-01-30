@@ -8,6 +8,7 @@ from app.commands.scene_commands import command_ids_by_anim, command_ids_by_type
 from app.config import DATA_DIR, SAVE_PATH
 from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
+from app.data_access.frames_data import FramesData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
 from app.data_access.npcs_data import NpcsData
@@ -34,6 +35,7 @@ class AppContext:
     menus: MenusData
     texts: TextData
     colors: ColorsData
+    frames: FramesData
     save_data: SaveData
     registry: object
     router_ctx: RouterContext
@@ -90,6 +92,10 @@ def _load_colors() -> ColorsData:
     return ColorsData(f"{DATA_DIR}/colors.json")
 
 
+def _load_frames() -> FramesData:
+    return FramesData(f"{DATA_DIR}/frames.json")
+
+
 def _load_save() -> SaveData:
     return SaveData(SAVE_PATH)
 
@@ -125,6 +131,7 @@ def create_app() -> AppContext:
     menus = _load_menus()
     texts = _load_texts()
     colors = _load_colors()
+    frames = _load_frames()
     save_data = _load_save()
 
     spell_commands, targeted_spell_commands, flash_spell_commands = _spell_command_sets(spells)
@@ -157,6 +164,7 @@ def create_app() -> AppContext:
         spells=spells,
         text=texts,
         colors=colors,
+        frames=frames,
     )
 
     return AppContext(
@@ -171,6 +179,7 @@ def create_app() -> AppContext:
         menus=menus,
         texts=texts,
         colors=colors,
+        frames=frames,
         save_data=save_data,
         registry=registry,
         router_ctx=router_ctx,

@@ -46,5 +46,16 @@
         "command": "QUIT"
       }
     ]
+  },
+  "elements": {
+    "title": "Elements",
+    "open_message": "Select an element.",
+    "close_message": "Closed elements.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
   }
 }

@@ -48,6 +48,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.hall_view,
         state.inn_mode,
         state.spell_mode,
+        state.element_mode,
         state.options_mode,
         state.action_cursor,
         state.menu_cursor,
@@ -80,6 +81,9 @@ def read_boost_prompt_input(ctx, render_frame, state: GameState, generate_frame,
 
 
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
+    if state.spell_mode:
+        ch = read_keypress_timeout(0.2)
+        return ch or ""
     return read_keypress()
 
 
@@ -176,7 +180,7 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
     if state.inn_mode:
         venue = ctx.venues.get("town_inn", {})
         return venue.get("commands", [])
-    if state.inventory_mode or state.spell_mode or state.options_mode:
+    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode:
         return []
     if not any(
         (
@@ -303,6 +307,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             state.menu_cursor = 0
             state.inventory_mode = False
             state.spell_mode = False
+            state.element_mode = False
             state.shop_mode = False
             state.hall_mode = False
             state.inn_mode = False
@@ -393,6 +398,24 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if action == "CONFIRM":
             cmd = keys[state.menu_cursor]
             return cmd, None
+        if action == "BACK":
+            return "B_KEY", None
+        return None, None
+
+    if state.element_mode:
+        elements = list(getattr(state.player, "elements", []) or [])
+        if not elements:
+            if action == "BACK":
+                return "B_KEY", None
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, len(elements) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % len(elements)
+            return None, None
+        if action == "CONFIRM":
+            element_id = elements[state.menu_cursor]
+            return f"ELEMENT:{element_id}", None
         if action == "BACK":
             return "B_KEY", None
         return None, None
@@ -517,6 +540,7 @@ def apply_router_command(
         hall_view=state.hall_view,
         inn_mode=state.inn_mode,
         spell_mode=state.spell_mode,
+        element_mode=state.element_mode,
         options_mode=state.options_mode,
         action_cmd=action_cmd,
         target_index=state.target_index,
@@ -543,6 +567,7 @@ def apply_router_command(
     state.hall_view = cmd_state.hall_view
     state.inn_mode = cmd_state.inn_mode
     state.spell_mode = cmd_state.spell_mode
+    state.element_mode = cmd_state.element_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
     if state.player.location == "Title" and cmd_state.player.location != "Title":

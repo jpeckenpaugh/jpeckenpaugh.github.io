@@ -9,6 +9,7 @@ from typing import List, Optional
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
+from app.data_access.frames_data import FramesData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
 from app.data_access.npcs_data import NpcsData
@@ -47,6 +48,7 @@ class ScreenContext:
     spells: SpellsData
     text: TextData
     colors: ColorsData
+    frames: FramesData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -108,6 +110,110 @@ def _slice_ansi(text: str, start: int, width: int) -> str:
     return "".join(out)
 
 
+def _truecolor(hex_code: str) -> str:
+    value = hex_code.lstrip("#")
+    if len(value) != 6:
+        return ""
+    try:
+        r = int(value[0:2], 16)
+        g = int(value[2:4], 16)
+        b = int(value[4:6], 16)
+    except ValueError:
+        return ""
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def _color_code_for_key(colors: dict, key: str) -> str:
+    if not key:
+        return ""
+    entry = colors.get(key)
+    if isinstance(entry, dict):
+        hex_code = entry.get("hex", "") if isinstance(entry.get("hex"), str) else ""
+        name = entry.get("name", "") if isinstance(entry.get("name"), str) else ""
+    elif isinstance(entry, str):
+        hex_code = ""
+        name = entry
+    else:
+        return ""
+    name = name.strip()
+    hex_code = hex_code.strip()
+    if not hex_code:
+        hex_start = name.find("#")
+        hex_code = name[hex_start:] if hex_start != -1 else ""
+    if hex_code:
+        code = _truecolor(hex_code)
+        if code:
+            return code
+    lowered = name.lower()
+    if lowered == "brown":
+        return ANSI.FG_YELLOW + ANSI.DIM
+    if lowered in ("gray", "grey"):
+        return ANSI.FG_WHITE + ANSI.DIM
+    return COLOR_BY_NAME.get(lowered, "")
+
+
+def _colorize_effect_line(line: str, code: str) -> str:
+    if not code:
+        return line
+    out = []
+    for ch in line:
+        if ch == " ":
+            out.append(" ")
+        else:
+            out.append(f"{code}{ch}{ANSI.RESET}")
+    return "".join(out)
+
+
+def _spell_preview_lines(
+    frame_art: List[str],
+    effect: Optional[dict],
+    color_code: str,
+    frame_index: int,
+) -> List[str]:
+    if not frame_art:
+        return []
+    width = max(len(line) for line in frame_art)
+    lines = [line.ljust(width) for line in frame_art]
+    interior = []
+    for idx, line in enumerate(lines):
+        left = line.find("|")
+        if left == -1:
+            continue
+        right = line.rfind("|")
+        if right <= left:
+            continue
+        interior.append((idx, left, right))
+    if not interior:
+        return lines
+    inner_width = min((right - left - 1) for _, left, right in interior)
+    inner_height = len(interior)
+    content_lines = []
+    if isinstance(effect, dict):
+        frames = effect.get("frames", [])
+        if isinstance(frames, list) and frames:
+            frame = frames[frame_index % len(frames)]
+            if isinstance(frame, list):
+                content_lines = [str(row) for row in frame]
+    content_height = len(content_lines)
+    content_width = max((len(row) for row in content_lines), default=0)
+    top_pad = max(0, (inner_height - content_height) // 2)
+    left_pad = max(0, (inner_width - content_width) // 2)
+    for row, (line_idx, left, right) in enumerate(interior):
+        if row < top_pad or row >= top_pad + content_height:
+            content = " " * inner_width
+        else:
+            src = content_lines[row - top_pad][:inner_width]
+            content = (" " * left_pad) + src
+            if len(content) < inner_width:
+                content = content.ljust(inner_width)
+            else:
+                content = content[:inner_width]
+        content = _colorize_effect_line(content, color_code)
+        line = lines[line_idx]
+        lines[line_idx] = line[:left + 1] + content + line[right:]
+    return lines
+
+
 def generate_frame(
     ctx: ScreenContext,
     player: Player,
@@ -121,6 +227,7 @@ def generate_frame(
     hall_view: str = "menu",
     inn_mode: bool = False,
     spell_mode: bool = False,
+    element_mode: bool = False,
     options_mode: bool = False,
     action_cursor: int = 0,
     menu_cursor: int = 0,
@@ -298,8 +405,36 @@ def generate_frame(
                 rank = ctx.spells.rank_for(spell, player.level)
                 prefix = "> " if idx == menu_cursor else "  "
                 body.append(f"{prefix}{name} ({mp_cost} MP) Rank {rank}")
+            selection = max(0, min(menu_cursor, len(available_spells) - 1))
+            _, spell = available_spells[selection]
+            effect = spell.get("effect") if isinstance(spell, dict) else None
+            rank = ctx.spells.rank_for(spell, player.level)
+            color_key = ""
+            if isinstance(effect, dict):
+                if rank >= 3:
+                    color_key = str(spell.get("overlay_color_key_rank3", ""))[:1]
+                elif rank >= 2:
+                    color_key = str(spell.get("overlay_color_key_rank2", ""))[:1]
+                if not color_key:
+                    color_key = str(effect.get("color_key", ""))[:1]
+            color_code = _color_code_for_key(ctx.colors.all(), color_key)
+            delay = 0.08
+            if isinstance(effect, dict):
+                delay = float(effect.get("frame_delay", delay) or delay)
+            frame_art = ctx.frames.get("spell_preview", {}).get("art", [])
+            frames = effect.get("frames", []) if isinstance(effect, dict) else []
+            frame_count = len(frames) if isinstance(frames, list) else 0
+            tick = int(time.time() / max(0.01, delay))
+            effect_index = tick % max(frame_count, 1)
+            art_lines = _spell_preview_lines(
+                frame_art,
+                effect,
+                color_code,
+                effect_index,
+            )
         else:
             body.append("  No spells learned.")
+            art_lines = []
         actions = format_menu_actions(
             spell_menu,
             replacements={
@@ -308,6 +443,22 @@ def generate_frame(
             },
             selected_index=menu_cursor if menu_cursor >= 0 else None,
         )
+        art_color = ANSI.FG_WHITE
+    elif element_mode:
+        elements_menu = ctx.menus.get("elements", {})
+        elements = list(getattr(player, "elements", []) or [])
+        title = elements_menu.get("title", "Elements")
+        body = [title, ""]
+        if elements:
+            menu_cursor = max(0, min(menu_cursor, len(elements) - 1))
+            for idx, element in enumerate(elements):
+                label = element.title()
+                suffix = " (current)" if element == player.current_element else ""
+                prefix = "> " if idx == menu_cursor else "  "
+                body.append(f"{prefix}{label}{suffix}")
+        else:
+            body.append("No elements unlocked.")
+        actions = format_menu_actions(elements_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif player.location == "Town":

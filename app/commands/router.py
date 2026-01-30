@@ -35,6 +35,7 @@ class CommandState:
     hall_view: str
     inn_mode: bool
     spell_mode: bool
+    element_mode: bool
     options_mode: bool
     action_cmd: Optional[str]
     target_index: Optional[int] = None
@@ -74,6 +75,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.inn_mode = False
             state.inventory_mode = False
             state.spell_mode = False
+            state.element_mode = False
         elif venue_id == "town_hall":
             state.hall_mode = True
             state.hall_view = "menu"
@@ -81,12 +83,14 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.inn_mode = False
             state.inventory_mode = False
             state.spell_mode = False
+            state.element_mode = False
         elif venue_id == "town_inn":
             state.inn_mode = True
             state.shop_mode = False
             state.hall_mode = False
             state.inventory_mode = False
             state.spell_mode = False
+            state.element_mode = False
         else:
             return False
         state.last_message = venue.get("welcome_message", state.last_message)
@@ -110,6 +114,12 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.last_message = menu.get("close_message", "Closed spellbook.")
         return True
 
+    if command_id == "B_KEY" and state.element_mode:
+        menu = ctx.menus.get("elements", {})
+        state.element_mode = False
+        state.last_message = menu.get("close_message", "Closed elements.")
+        return True
+
     if command_id == "B_KEY" and state.options_mode:
         menu = ctx.menus.get("options", {})
         state.options_mode = False
@@ -123,7 +133,20 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.hall_mode = False
         state.inn_mode = False
         state.options_mode = False
+        state.element_mode = False
         state.last_message = menu.get("open_message", "Open spellbook.")
+        return True
+
+    if command_id == "ELEMENTS":
+        menu = ctx.menus.get("elements", {})
+        state.element_mode = True
+        state.inventory_mode = False
+        state.shop_mode = False
+        state.hall_mode = False
+        state.inn_mode = False
+        state.spell_mode = False
+        state.options_mode = False
+        state.last_message = menu.get("open_message", "Select an element.")
         return True
 
     if state.spell_mode and command_id:
@@ -212,6 +235,15 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                     state.inventory_mode = False
             else:
                 state.last_message = "Invalid item selection."
+            return True
+
+    if state.element_mode and command_id.startswith("ELEMENT:"):
+        element_id = command_id.split(":", 1)[1]
+        if element_id and element_id in getattr(state.player, "elements", []):
+            state.player.current_element = element_id
+            state.element_mode = False
+            ctx.save_data.save_player(state.player)
+            state.last_message = f"Element set to {element_id.title()}."
             return True
 
     if command_id == "USE_SERVICE":
@@ -442,6 +474,7 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
         state.hall_mode = False
         state.inn_mode = False
         state.spell_mode = False
+        state.element_mode = False
         state.last_message = "You return to town."
         ctx.save_data.save_player(state.player)
         return True
@@ -457,6 +490,7 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
             state.hall_mode = False
             state.inn_mode = False
             state.spell_mode = False
+            state.element_mode = False
             ctx.save_data.save_player(state.player)
             return True
 
