@@ -379,8 +379,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if action == "CONFIRM":
         if not commands:
             return None, None
-        cmd = commands[state.action_cursor].get("command")
-        command_meta = find_command_meta(commands, cmd)
+        command_meta = commands[state.action_cursor]
+        cmd = command_meta.get("command")
         return cmd, command_meta
     return None, None
 
