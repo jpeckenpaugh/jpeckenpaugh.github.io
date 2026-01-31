@@ -328,6 +328,21 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.inventory_mode = False
             state.last_message = menu.get("close_message", "Closed inventory.")
             return True
+        if command_id == "NUM":
+            state.last_message = menu.get("open_message", "Choose an item to use.")
+            return True
+        if command_id.startswith("NUM"):
+            idx = int(command_id.replace("NUM", "")) - 1
+            if 0 <= idx < len(state.inventory_items):
+                item_id, _ = state.inventory_items[idx]
+                state.last_message = state.player.use_item(item_id, ctx.items)
+                ctx.save_data.save_player(state.player)
+                state.inventory_items = state.player.list_inventory_items(ctx.items)
+                if not state.inventory_items:
+                    state.inventory_mode = False
+            else:
+                state.last_message = "Invalid item selection."
+            return True
 
     if state.stats_mode:
         menu = ctx.menus.get("stats", {})
@@ -367,19 +382,6 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             ctx.save_data.save_player(state.player)
             state.last_message = "Random allocation complete."
             return True
-        if command_id.startswith("NUM"):
-            idx = int(command_id.replace("NUM", "")) - 1
-            if 0 <= idx < len(state.inventory_items):
-                item_id, _ = state.inventory_items[idx]
-                state.last_message = state.player.use_item(item_id, ctx.items)
-                ctx.save_data.save_player(state.player)
-                state.inventory_items = state.player.list_inventory_items(ctx.items)
-                if not state.inventory_items:
-                    state.inventory_mode = False
-            else:
-                state.last_message = "Invalid item selection."
-            return True
-
     if state.element_mode and command_id.startswith("ELEMENT:"):
         element_id = command_id.split(":", 1)[1]
         if element_id and element_id in getattr(state.player, "elements", []):

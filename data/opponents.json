@@ -10,20 +10,22 @@
       "arrival": "oozes into view",
       "desc": "A wobbling blob that absorbs weak blows.",
       "art": [
-        " o____o",
-        " / oo \\",
-        "|  ..  |",
-        "|      |",
-        " \\____/",
-        " (_)(_)"
+        " ,-~ooOoo~-,",
+        "(    <=>   )",
+        " \\_, ,, , ,/",
+        "  / / || \\ \\",
+        " / / /  \\ \\ \\",
+        " | | |  | | |",
+        "  O O    O O"
       ],
       "color_map": [
-        " gGGGGg",
-        " g XX g",
-        "g  xx  g",
-        "g      g",
-        " gGGGGg",
-        " gxggxg"
+        " 111332223311",
+        "1    222   1",
+        " 111 11 1 11",
+        "  1 1 33 1 1",
+        " 1 1 1  1 1 1",
+        " 3 3 3  3 3 3",
+        "  2 2    2 2 "
       ],
       "variation": 0.06,
       "jitter_stability": false,
