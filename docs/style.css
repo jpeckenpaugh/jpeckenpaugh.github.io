@@ -235,16 +235,22 @@ body {
 
 .action-pad {
   display: grid;
-  gap: 8px;
+  gap: 16px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
 }
 
 .key-action {
-  min-width: 60px;
+  min-width: 80px;
+  min-height: 160px;
+  font-size: clamp(18px, 5vw, 28px);
 }
 
 .action-pad .key-enter {
   grid-column: span 2;
+  min-height: 200px;
+  margin-top: 8px;
+  font-size: clamp(18px, 5vw, 26px);
 }
 
 .key-action-a {
