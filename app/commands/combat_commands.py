@@ -82,7 +82,7 @@ def _handle_socialize(ctx: CommandContext) -> str:
     follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
     names = getattr(opponent, "follower_names", []) or []
     name = random.choice(names) if names else opponent.name
-    follower = {"type": follower_type, "name": name}
+    follower = {"type": follower_type, "name": name, "level": 1, "xp": 0, "max_level": 5}
     if not ctx.player.add_follower(follower):
         return "You cannot lead more followers."
     opponent.hp = 0

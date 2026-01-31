@@ -230,6 +230,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.followers_mode = True
         state.options_mode = False
         state.menu_cursor = 0
+        state.follower_dismiss_pending = None
         state.last_message = menu.get("open_message", "View your followers.")
         return True
 

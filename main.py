@@ -192,6 +192,7 @@ def main():
             state.level_cursor = 0
             state.level_up_notes = []
             state.last_spell_targets = []
+            state.follower_dismiss_pending = None
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
