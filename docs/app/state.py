@@ -21,8 +21,9 @@ class GameState:
     inn_mode: bool
     stats_mode: bool
     spell_mode: bool
-    quit_confirm: bool
-    title_mode: bool
+    followers_mode: bool = False
+    quit_confirm: bool = False
+    title_mode: bool = False
     shop_view: str = "menu"
     element_mode: bool = False
     alchemist_mode: bool = False
@@ -49,3 +50,4 @@ class GameState:
     level_up_notes: list[str] = field(default_factory=list)
     last_spell_targets: list[int] = field(default_factory=list)
     current_venue_id: Optional[str] = None
+    follower_dismiss_pending: Optional[int] = None

@@ -395,6 +395,7 @@ def generate_frame(
     hall_view: str = "menu",
     inn_mode: bool = False,
     stats_mode: bool = False,
+    followers_mode: bool = False,
     spell_mode: bool = False,
     element_mode: bool = False,
     alchemist_mode: bool = False,
@@ -525,6 +526,38 @@ def generate_frame(
         else:
             body.append("No options available.")
         actions = format_menu_actions(options_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
+        art_lines = []
+        art_color = ANSI.FG_WHITE
+    elif followers_mode:
+        followers_menu = ctx.menus.get("followers", {})
+        followers = list(getattr(player, "followers", []) or [])
+        title = followers_menu.get("title", "Followers")
+        display_location = title
+        body = [f"Followers: {len(followers)}/{player.follower_limit()}"]
+        body.append("")
+        if followers:
+            for idx, follower in enumerate(followers):
+                name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
+                f_type = follower.get("type", "follower") if isinstance(follower, dict) else "follower"
+                effect = ""
+                if f_type == "fairy":
+                    effect = "Heals 3-5 HP after each round."
+                label = f"{name} ({f_type})"
+                if effect:
+                    label = f"{label} - {effect}"
+                prefix = "> " if idx == menu_cursor else "  "
+                body.append(f"{prefix}{label}")
+        else:
+            body.append("No followers.")
+        followers_actions = []
+        for entry in followers_menu.get("actions", []):
+            cmd_entry = dict(entry)
+            if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
+                cmd_entry["_disabled"] = True
+            followers_actions.append(cmd_entry)
+        followers_menu = dict(followers_menu)
+        followers_menu["actions"] = followers_actions
+        actions = format_menu_actions(followers_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif inventory_mode:

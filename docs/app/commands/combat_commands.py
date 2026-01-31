@@ -8,6 +8,7 @@ def register(registry: CommandRegistry):
     registry.register("ATTACK", _handle_attack)
     registry.register("DEFEND", _handle_defend)
     registry.register("FLEE", _handle_flee)
+    registry.register("SOCIALIZE", _handle_socialize)
 
 
 def _handle_attack(ctx: CommandContext) -> str:
@@ -55,3 +56,35 @@ def _handle_flee(ctx: CommandContext) -> str:
     ctx.loot["xp"] = 0
     ctx.loot["gold"] = 0
     return "You flee to safety."
+
+
+def _handle_socialize(ctx: CommandContext) -> str:
+    opponent = None
+    if ctx.target_index is not None and 0 <= ctx.target_index < len(ctx.opponents):
+        candidate = ctx.opponents[ctx.target_index]
+        if candidate.hp > 0:
+            opponent = candidate
+    if opponent is None:
+        opponent = primary_opponent(ctx.opponents)
+    if not opponent:
+        return "There is no one to socialize with."
+    if not getattr(opponent, "recruitable", False):
+        return f"The {opponent.name} shows no interest."
+    if getattr(ctx.player, "follower_slots_remaining", lambda: 0)() <= 0:
+        return "You cannot lead more followers."
+    cost = int(getattr(opponent, "recruit_cost", 0) or 0)
+    if ctx.player.gold < cost:
+        return "Not enough GP."
+    ctx.player.gold -= cost
+    chance = float(getattr(opponent, "recruit_chance", 0.0) or 0.0)
+    if random.random() > chance:
+        return f"The {opponent.name} refuses your offer."
+    follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
+    names = getattr(opponent, "follower_names", []) or []
+    name = random.choice(names) if names else opponent.name
+    follower = {"type": follower_type, "name": name, "level": 1, "xp": 0, "max_level": 5}
+    if not ctx.player.add_follower(follower):
+        return "You cannot lead more followers."
+    opponent.hp = 0
+    opponent.melted = True
+    return f"{name} joins your party."

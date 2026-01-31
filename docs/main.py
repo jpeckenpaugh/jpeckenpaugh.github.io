@@ -83,6 +83,7 @@ def main():
         inn_mode=False,
         stats_mode=False,
         spell_mode=False,
+        followers_mode=False,
         element_mode=False,
         alchemist_mode=False,
         alchemy_first=None,
@@ -142,6 +143,7 @@ def main():
                 state.hall_view,
                 state.inn_mode,
                 state.stats_mode,
+                state.followers_mode,
                 state.spell_mode,
                 state.element_mode,
                 state.alchemist_mode,
@@ -170,6 +172,7 @@ def main():
             state.inn_mode = False
             state.stats_mode = False
             state.spell_mode = False
+            state.followers_mode = False
             state.element_mode = False
             state.alchemist_mode = False
             state.alchemy_first = None
@@ -189,6 +192,7 @@ def main():
             state.level_cursor = 0
             state.level_up_notes = []
             state.last_spell_targets = []
+            state.follower_dismiss_pending = None
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -203,6 +207,7 @@ def main():
                 state.hall_view,
                 state.inn_mode,
                 state.stats_mode,
+                state.followers_mode,
                 state.spell_mode,
                 state.element_mode,
                 state.alchemist_mode,
@@ -264,6 +269,7 @@ def main():
                 "hall_view": state.hall_view,
                 "inn_mode": state.inn_mode,
                 "stats_mode": state.stats_mode,
+                "followers_mode": state.followers_mode,
                 "spell_mode": state.spell_mode,
                 "element_mode": state.element_mode,
                 "alchemist_mode": state.alchemist_mode,
@@ -324,6 +330,7 @@ def main():
                     pre_snapshot["hall_view"],
                     pre_snapshot["inn_mode"],
                     pre_snapshot.get("stats_mode", False),
+                    pre_snapshot.get("followers_mode", False),
                     pre_snapshot["spell_mode"],
                     pre_snapshot.get("element_mode", False),
                     pre_snapshot.get("alchemist_mode", False),
@@ -353,6 +360,7 @@ def main():
                     state.hall_view,
                     state.inn_mode,
                     state.stats_mode,
+                    state.followers_mode,
                     state.spell_mode,
                     state.element_mode,
                     state.alchemist_mode,
@@ -378,7 +386,7 @@ def main():
             state.target_index = target_index
 
         target_cmd = cmd
-        if action_cmd in APP.targeted_spell_commands or action_cmd == "ATTACK":
+        if action_cmd in APP.targeted_spell_commands or action_cmd in ("ATTACK", "SOCIALIZE"):
             target_cmd = action_cmd
         if maybe_begin_target_select(APP, state, target_cmd):
             confirmed = run_target_select(APP, render_frame, state, generate_frame, read_keypress_timeout)

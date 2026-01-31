@@ -72,6 +72,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.hall_view,
         state.inn_mode,
         state.stats_mode,
+        state.followers_mode,
         state.spell_mode,
         state.element_mode,
         state.alchemist_mode,
@@ -232,7 +233,7 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
         venue_id = venue_id_from_state(state)
         if venue_id:
             return venue_actions(ctx, state, venue_id)
-    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode or state.stats_mode:
+    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode or state.stats_mode or state.followers_mode:
         return []
     if not any(
         (
@@ -488,6 +489,44 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return cmd, None
         return None, None
 
+    if state.followers_mode:
+        menu = ctx.menus.get("followers", {})
+        followers = getattr(state.player, "followers", [])
+        if not isinstance(followers, list):
+            followers = []
+        count = len(followers)
+        if count == 0:
+            if action == "BACK":
+                state.follower_dismiss_pending = None
+                state.followers_mode = False
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, count - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % count
+            state.follower_dismiss_pending = None
+            return None, None
+        if action == "CONFIRM":
+            if state.follower_dismiss_pending != state.menu_cursor:
+                follower = followers[state.menu_cursor]
+                name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
+                state.follower_dismiss_pending = state.menu_cursor
+                state.last_message = f"Press A again to dismiss {name}."
+                return None, None
+            follower = followers[state.menu_cursor]
+            name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
+            state.player.followers.pop(state.menu_cursor)
+            state.last_message = f"{name} has departed."
+            state.follower_dismiss_pending = None
+            if state.menu_cursor >= len(state.player.followers):
+                state.menu_cursor = max(0, len(state.player.followers) - 1)
+            return None, None
+        if action == "BACK":
+            state.follower_dismiss_pending = None
+            state.followers_mode = False
+            return None, None
+        return None, None
+
     if state.inventory_mode:
         items = state.inventory_items or []
         count = min(len(items), 9)
@@ -627,7 +666,7 @@ def maybe_begin_target_select(ctx, state: GameState, cmd: Optional[str]) -> bool
             rank = ctx.spells.rank_for(spell, state.player.level)
             if rank >= 2:
                 return False
-    targeted = cmd == "ATTACK" or cmd in ctx.targeted_spell_commands
+    targeted = cmd in ("ATTACK", "SOCIALIZE") or cmd in ctx.targeted_spell_commands
     if not targeted:
         return False
     indices = _alive_indices(state.opponents)
@@ -736,6 +775,7 @@ def apply_router_command(
         inn_mode=state.inn_mode,
         stats_mode=state.stats_mode,
         spell_mode=state.spell_mode,
+        followers_mode=state.followers_mode,
         element_mode=state.element_mode,
         alchemist_mode=state.alchemist_mode,
         alchemy_first=state.alchemy_first,
@@ -777,6 +817,7 @@ def apply_router_command(
     state.inn_mode = cmd_state.inn_mode
     state.stats_mode = cmd_state.stats_mode
     state.spell_mode = cmd_state.spell_mode
+    state.followers_mode = cmd_state.followers_mode
     state.element_mode = cmd_state.element_mode
     state.alchemist_mode = cmd_state.alchemist_mode
     state.alchemy_first = cmd_state.alchemy_first
@@ -1167,6 +1208,28 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         max_hp = state.player.total_max_hp()
         if state.player.hp > max_hp:
             state.player.hp = max_hp
+    if state.player.followers:
+        total_heal = 0
+        fairy_names = []
+        for follower in state.player.followers:
+            if not isinstance(follower, dict):
+                continue
+            if follower.get("type") != "fairy":
+                continue
+            level = int(follower.get("level", 1) or 1)
+            bonus = max(0, level - 1) * 2
+            total_heal += random.randint(3, 5) + bonus
+            fairy_names.append(str(follower.get("name", "A fairy")))
+        if total_heal > 0:
+            max_hp = state.player.total_max_hp()
+            if state.player.hp < max_hp:
+                healed = min(total_heal, max_hp - state.player.hp)
+                state.player.hp += healed
+                if len(fairy_names) == 1:
+                    who = fairy_names[0]
+                    push_battle_message(state, f"{who} heals you for {healed} HP.")
+                else:
+                    push_battle_message(state, f"Your fairies heal you for {healed} HP.")
     return False
 
 
@@ -1194,6 +1257,28 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         pre_level = state.player.level
         levels_gained = state.player.gain_xp(state.loot_bank["xp"])
         state.player.gold += state.loot_bank["gold"]
+        if state.player.followers and state.loot_bank["xp"] > 0:
+            share = int(state.loot_bank["xp"] * 0.5)
+            if share > 0:
+                for follower in state.player.followers:
+                    if not isinstance(follower, dict):
+                        continue
+                    level = int(follower.get("level", 1) or 1)
+                    max_level = int(follower.get("max_level", 5) or 5)
+                    xp = int(follower.get("xp", 0) or 0) + share
+                    start_level = level
+                    threshold = 100
+                    for _ in range(1, level):
+                        threshold *= 2
+                    while level < max_level and xp >= threshold:
+                        xp -= threshold
+                        level += 1
+                        threshold *= 2
+                    follower["xp"] = xp
+                    follower["level"] = level
+                    if level > start_level:
+                        name = follower.get("name", "Follower")
+                        push_battle_message(state, f"{name} leveled up to {level}!")
         push_battle_message(state, (
             f"You gain {state.loot_bank['xp']} XP and "
             f"{state.loot_bank['gold']} gold."

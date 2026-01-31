@@ -120,6 +120,13 @@ class OpponentsData:
         arrival = data.get("arrival", "appears")
         variation = data.get("variation", 0.0)
         jitter_stability = data.get("jitter_stability", True)
+        recruitable = bool(data.get("recruitable", False))
+        recruit_cost = int(data.get("recruit_cost", 0) or 0)
+        recruit_chance = float(data.get("recruit_chance", 0.0) or 0.0)
+        follower_type = str(data.get("follower_type", "") or "")
+        follower_names = data.get("follower_names", [])
+        if not isinstance(follower_names, list):
+            follower_names = []
         if element and self._variants:
             color_map = self._colorize_map(color_map, element)
         return Opponent(
@@ -137,6 +144,11 @@ class OpponentsData:
             art_color=art_color,
             color_map=color_map,
             arrival=arrival,
+            recruitable=recruitable,
+            recruit_cost=recruit_cost,
+            recruit_chance=recruit_chance,
+            follower_type=follower_type,
+            follower_names=follower_names,
             variation=variation,
             jitter_stability=bool(jitter_stability)
         )
