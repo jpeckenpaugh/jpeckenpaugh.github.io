@@ -569,19 +569,11 @@
         "repeat": 1
       },
       {
-        "id": "house_wall_left"
-      },
-      {
-        "id": "roof",
-        "mode": "span_until",
-        "target": "house_wall_right"
-      },
-      {
         "id": "space",
         "width": 1
       },
       {
-        "id": "table_shop",
+        "id": "large_pedistle",
         "align": 0
       },
       {
@@ -597,15 +589,12 @@
         "width": 5
       },
       {
-        "id": "bookshelf",
+        "id": "fireplace",
         "align": 0
       },
       {
         "id": "space",
         "width": 4
-      },
-      {
-        "id": "house_wall_right"
       },
       {
         "id": "grass",
