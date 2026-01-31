@@ -44,6 +44,7 @@ class CommandState:
     inn_mode: bool
     stats_mode: bool
     spell_mode: bool
+    followers_mode: bool
     element_mode: bool
     alchemist_mode: bool
     alchemy_first: Optional[str]
@@ -204,6 +205,12 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.options_mode = False
         state.last_message = menu.get("close_message", "Closed options.")
         return True
+
+    if command_id == "B_KEY" and state.followers_mode:
+        menu = ctx.menus.get("followers", {})
+        state.followers_mode = False
+        state.last_message = menu.get("close_message", "Closed followers.")
+        return True
     if command_id == "SPELLBOOK":
         menu = ctx.menus.get("spellbook", {})
         state.spell_mode = True
@@ -213,8 +220,17 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.hall_mode = False
         state.inn_mode = False
         state.options_mode = False
+        state.followers_mode = False
         state.element_mode = False
         state.last_message = menu.get("open_message", "Open spellbook.")
+        return True
+
+    if command_id == "FOLLOWERS":
+        menu = ctx.menus.get("followers", {})
+        state.followers_mode = True
+        state.options_mode = False
+        state.menu_cursor = 0
+        state.last_message = menu.get("open_message", "View your followers.")
         return True
 
     if command_id == "ELEMENTS":
@@ -226,6 +242,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.inn_mode = False
         state.spell_mode = False
         state.options_mode = False
+        state.followers_mode = False
         state.last_message = menu.get("open_message", "Select an element.")
         return True
 
@@ -247,6 +264,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
         state.menu_cursor = enabled[0] if enabled else -1
         state.options_mode = True
+        state.followers_mode = False
         state.last_message = menu.get("open_message", "Options menu.")
         return True
 
@@ -485,14 +503,14 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         items_data=ctx.items,
         target_index=state.target_index,
     )
-    if command_id in ("ATTACK", "SPARK", "HEAL", "DEFEND"):
+    if command_id in ("ATTACK", "SPARK", "HEAL", "DEFEND", "SOCIALIZE"):
         state.action_cmd = command_id
         return True
 
     message = dispatch_command(ctx.registry, command_id, ctx_data)
     if message != "Unknown action.":
         state.last_message = message
-        if command_id == "FLEE":
+        if command_id in ("FLEE", "SOCIALIZE"):
             state.action_cmd = command_id
         return True
 

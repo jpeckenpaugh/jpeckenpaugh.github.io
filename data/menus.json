@@ -41,6 +41,10 @@
         "command": "STATS"
       },
       {
+        "label": "Followers",
+        "command": "FOLLOWERS"
+      },
+      {
         "label": "Spellbook",
         "command": "SPELLBOOK",
         "enabled_when": "has_mp"
@@ -79,6 +83,21 @@
       {
         "label": "Random allocation",
         "command": "STAT_RANDOM"
+      },
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "followers": {
+    "title": "Followers",
+    "open_message": "View your followers.",
+    "close_message": "Closed followers.",
+    "actions": [
+      {
+        "label": "Dismiss",
+        "command": "FOLLOWER_DISMISS"
       },
       {
         "label": "Back",

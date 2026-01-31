@@ -22,6 +22,23 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         charges = getattr(player, "wand_charges", lambda: {})()
         has_mp = any(int(v) > 0 for v in charges.values()) if isinstance(charges, dict) else False
     has_elements = len(getattr(player, "elements", []) or []) > 1
+    has_recruitable = any(
+        getattr(opponent, "recruitable", False) and opponent.hp > 0
+        for opponent in opponents
+    )
+    can_recruit = False
+    if has_recruitable:
+        min_cost = None
+        for opponent in opponents:
+            if not getattr(opponent, "recruitable", False) or opponent.hp <= 0:
+                continue
+            cost = int(getattr(opponent, "recruit_cost", 0) or 0)
+            if min_cost is None or cost < min_cost:
+                min_cost = cost
+        if min_cost is None:
+            min_cost = 0
+        slots = getattr(player, "follower_slots_remaining", lambda: 0)()
+        can_recruit = slots > 0 and player.gold >= min_cost
     for cond in conditions:
         if cond == "has_opponents" and not has_opponents:
             return False
@@ -32,6 +49,8 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         if cond == "has_mp" and not has_mp:
             return False
         if cond == "has_elements" and not has_elements:
+            return False
+        if cond == "has_recruitable" and not can_recruit:
             return False
     return True
 

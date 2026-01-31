@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 
@@ -39,6 +39,7 @@ class Player:
     gear_defense: int
     elements: List[str]
     current_element: str
+    followers: List[dict] = field(default_factory=list)
     temp_atk_bonus: int = 0
     temp_def_bonus: int = 0
     temp_hp_bonus: int = 0
@@ -65,6 +66,7 @@ class Player:
             "gear_defense": self.gear_defense,
             "elements": list(self.elements),
             "current_element": self.current_element,
+            "followers": self.followers,
         }
 
     @staticmethod
@@ -85,6 +87,9 @@ class Player:
         gear_inventory = data.get("gear_inventory", [])
         if not isinstance(gear_inventory, list):
             gear_inventory = []
+        followers = data.get("followers", [])
+        if not isinstance(followers, list):
+            followers = []
         return Player(
             name=data.get("name", "WARRIOR"),
             level=int(data.get("level", 1)),
@@ -106,6 +111,7 @@ class Player:
             gear_defense=int(data.get("gear_defense", 0)),
             elements=elements,
             current_element=current_element,
+            followers=followers,
             temp_atk_bonus=0,
             temp_def_bonus=0,
             temp_hp_bonus=0,
@@ -259,6 +265,20 @@ class Player:
 
     def total_max_hp(self) -> int:
         return self.max_hp + int(self.temp_hp_bonus)
+
+    def follower_limit(self) -> int:
+        return 5
+
+    def follower_slots_remaining(self) -> int:
+        return max(0, self.follower_limit() - len(self.followers))
+
+    def add_follower(self, follower: dict) -> bool:
+        if self.follower_slots_remaining() <= 0:
+            return False
+        if not isinstance(self.followers, list):
+            self.followers = []
+        self.followers.append(follower)
+        return True
 
     def _recalc_gear(self) -> None:
         atk_bonus = 0
@@ -600,5 +620,10 @@ class Opponent:
     art_color: str
     color_map: List[str]
     arrival: str
+    recruitable: bool = False
+    recruit_cost: int = 0
+    recruit_chance: float = 0.0
+    follower_type: str = ""
+    follower_names: List[str] = field(default_factory=list)
     variation: float = 0.0
     jitter_stability: bool = True

@@ -187,6 +187,13 @@
         "enabled_when": "has_mp"
       },
       {
+        "label": "Socialize",
+        "command": "SOCIALIZE",
+        "type": "combat",
+        "when": "has_opponents",
+        "enabled_when": "has_recruitable"
+      },
+      {
         "label": "Flee",
         "command": "FLEE",
         "type": "combat",
