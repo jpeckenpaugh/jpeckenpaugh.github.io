@@ -271,6 +271,201 @@
       "fire": 5
     }
   },
+  "water_ring": {
+    "name": "Tide Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 4,
+    "defense": 0,
+    "price": 42,
+    "desc": "A tide ring that sharpens focus.",
+    "element": "water",
+    "elem_points": {
+      "water": 4
+    }
+  },
+  "water_bracelet": {
+    "name": "Tide Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 4,
+    "price": 42,
+    "desc": "A tide band that dulls blows.",
+    "element": "water",
+    "elem_points": {
+      "water": 4
+    }
+  },
+  "water_sword": {
+    "name": "Tide Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 5,
+    "defense": 0,
+    "price": 55,
+    "desc": "A tide blade with a fierce edge.",
+    "element": "water",
+    "elem_points": {
+      "water": 5
+    }
+  },
+  "water_shield": {
+    "name": "Tide Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 5,
+    "price": 55,
+    "desc": "A tide shield that softens hits.",
+    "element": "water",
+    "elem_points": {
+      "water": 5
+    }
+  },
+  "water_armor": {
+    "name": "Tide Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 6,
+    "price": 70,
+    "desc": "Tide armor that absorbs damage.",
+    "element": "water",
+    "elem_points": {
+      "water": 6
+    }
+  },
+  "light_ring": {
+    "name": "Lumen Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 5,
+    "defense": 0,
+    "price": 52,
+    "desc": "A luminous ring that sharpens focus.",
+    "element": "light",
+    "elem_points": {
+      "light": 5
+    }
+  },
+  "light_bracelet": {
+    "name": "Lumen Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 5,
+    "price": 52,
+    "desc": "A luminous band that dulls blows.",
+    "element": "light",
+    "elem_points": {
+      "light": 5
+    }
+  },
+  "light_sword": {
+    "name": "Lumen Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 6,
+    "defense": 0,
+    "price": 65,
+    "desc": "A luminous blade with a fierce edge.",
+    "element": "light",
+    "elem_points": {
+      "light": 6
+    }
+  },
+  "light_shield": {
+    "name": "Lumen Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 6,
+    "price": 65,
+    "desc": "A luminous shield that softens hits.",
+    "element": "light",
+    "elem_points": {
+      "light": 6
+    }
+  },
+  "light_armor": {
+    "name": "Lumen Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 7,
+    "price": 80,
+    "desc": "Lumen armor that absorbs damage.",
+    "element": "light",
+    "elem_points": {
+      "light": 7
+    }
+  },
+  "dark_ring": {
+    "name": "Umbral Ring",
+    "type": "gear",
+    "slot": "ring",
+    "atk": 6,
+    "defense": 0,
+    "price": 62,
+    "desc": "A shadowed ring that sharpens focus.",
+    "element": "dark",
+    "elem_points": {
+      "dark": 6
+    }
+  },
+  "dark_bracelet": {
+    "name": "Umbral Bracelet",
+    "type": "gear",
+    "slot": "bracelet",
+    "atk": 0,
+    "defense": 6,
+    "price": 62,
+    "desc": "A shadowed band that dulls blows.",
+    "element": "dark",
+    "elem_points": {
+      "dark": 6
+    }
+  },
+  "dark_sword": {
+    "name": "Umbral Sword",
+    "type": "gear",
+    "slot": "sword",
+    "atk": 7,
+    "defense": 0,
+    "price": 75,
+    "desc": "A shadowed blade with a fierce edge.",
+    "element": "dark",
+    "elem_points": {
+      "dark": 7
+    }
+  },
+  "dark_shield": {
+    "name": "Umbral Shield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 7,
+    "price": 75,
+    "desc": "A shadowed shield that softens hits.",
+    "element": "dark",
+    "elem_points": {
+      "dark": 7
+    }
+  },
+  "dark_armor": {
+    "name": "Umbral Armor",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 8,
+    "price": 90,
+    "desc": "Umbral armor that absorbs damage.",
+    "element": "dark",
+    "elem_points": {
+      "dark": 8
+    }
+  },
   "earth_ring": {
     "name": "Stone Ring",
     "type": "gear",
@@ -450,6 +645,32 @@
       "fire": 4
     }
   },
+  "water_wand": {
+    "name": "Tide Wand",
+    "type": "gear",
+    "slot": "wand",
+    "atk": 0,
+    "defense": 0,
+    "price": 70,
+    "desc": "A wand tuned to water energy.",
+    "element": "water",
+    "elem_points": {
+      "water": 5
+    }
+  },
+  "light_wand": {
+    "name": "Lumen Wand",
+    "type": "gear",
+    "slot": "wand",
+    "atk": 0,
+    "defense": 0,
+    "price": 80,
+    "desc": "A wand tuned to light energy.",
+    "element": "light",
+    "elem_points": {
+      "light": 6
+    }
+  },
   "earth_wand": {
     "name": "Stone Wand",
     "type": "gear",
@@ -474,6 +695,19 @@
     "element": "wind",
     "elem_points": {
       "wind": 6
+    }
+  },
+  "dark_wand": {
+    "name": "Umbral Wand",
+    "type": "gear",
+    "slot": "wand",
+    "atk": 0,
+    "defense": 0,
+    "price": 90,
+    "desc": "A wand tuned to dark energy.",
+    "element": "dark",
+    "elem_points": {
+      "dark": 7
     }
   }
 }

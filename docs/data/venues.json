@@ -221,6 +221,93 @@
           "item_id": "fire_wand"
         }
       ],
+      "water": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "water_ring"
+        },
+        {
+          "item_id": "water_bracelet"
+        },
+        {
+          "item_id": "water_sword"
+        },
+        {
+          "item_id": "water_shield"
+        },
+        {
+          "item_id": "water_armor"
+        },
+        {
+          "item_id": "water_wand"
+        }
+      ],
+      "light": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "light_ring"
+        },
+        {
+          "item_id": "light_bracelet"
+        },
+        {
+          "item_id": "light_sword"
+        },
+        {
+          "item_id": "light_shield"
+        },
+        {
+          "item_id": "light_armor"
+        },
+        {
+          "item_id": "light_wand"
+        }
+      ],
+      "dark": [
+        {
+          "item_id": "rations"
+        },
+        {
+          "item_id": "herbal_tea"
+        },
+        {
+          "item_id": "elixir"
+        },
+        {
+          "item_id": "dark_ring"
+        },
+        {
+          "item_id": "dark_bracelet"
+        },
+        {
+          "item_id": "dark_sword"
+        },
+        {
+          "item_id": "dark_shield"
+        },
+        {
+          "item_id": "dark_armor"
+        },
+        {
+          "item_id": "dark_wand"
+        }
+      ],
       "earth": [
         {
           "item_id": "rations"
