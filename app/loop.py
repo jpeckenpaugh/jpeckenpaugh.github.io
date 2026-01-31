@@ -84,6 +84,8 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.options_mode,
         state.action_cursor,
         state.menu_cursor,
+        state.followers_focus,
+        state.followers_action_cursor,
         state.spell_cast_rank,
         state.level_cursor,
         state.level_up_notes,
@@ -500,26 +502,81 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.follower_dismiss_pending = None
                 state.followers_mode = False
             return None, None
+        actions = []
+        if followers and 0 <= state.menu_cursor < len(followers) and isinstance(followers[state.menu_cursor], dict):
+            abilities = followers[state.menu_cursor].get("abilities", [])
+            if isinstance(abilities, list):
+                for ability_id in abilities:
+                    label = str(ability_id)
+                    if hasattr(ctx, "abilities"):
+                        ability = ctx.abilities.get(ability_id, {})
+                        if isinstance(ability, dict):
+                            label = ability.get("label", label)
+                    actions.append({
+                        "label": f"Enable {label}",
+                        "command": f"FOLLOWER_ABILITY:{ability_id}",
+                    })
+        for entry in menu.get("actions", []):
+            cmd_entry = dict(entry)
+            if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
+                cmd_entry["_disabled"] = True
+            actions.append(cmd_entry)
+        if not actions:
+            actions = [{"label": "Back", "command": "B_KEY"}]
+
         state.menu_cursor = max(0, min(state.menu_cursor, count - 1))
-        if action in ("UP", "DOWN"):
-            direction = -1 if action == "UP" else 1
-            state.menu_cursor = (state.menu_cursor + direction) % count
+        state.followers_action_cursor = max(0, min(state.followers_action_cursor, len(actions) - 1))
+
+        if action in ("LEFT", "RIGHT"):
+            state.followers_focus = "actions" if state.followers_focus == "list" else "list"
             state.follower_dismiss_pending = None
             return None, None
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            if state.followers_focus == "list":
+                state.menu_cursor = (state.menu_cursor + direction) % count
+                state.follower_dismiss_pending = None
+            else:
+                state.followers_action_cursor = (state.followers_action_cursor + direction) % len(actions)
+            return None, None
         if action == "CONFIRM":
-            if state.follower_dismiss_pending != state.menu_cursor:
+            if state.followers_focus == "list":
+                state.followers_focus = "actions"
+                state.follower_dismiss_pending = None
+                return None, None
+            cmd = actions[state.followers_action_cursor].get("command")
+            if isinstance(cmd, str) and cmd.startswith("FOLLOWER_ABILITY:"):
+                ability_id = cmd.split(":", 1)[1]
+                follower = followers[state.menu_cursor]
+                if isinstance(follower, dict):
+                    follower["active_ability"] = ability_id
+                    label = ability_id
+                    if hasattr(ctx, "abilities"):
+                        ability = ctx.abilities.get(ability_id, {})
+                        if isinstance(ability, dict):
+                            label = ability.get("label", label)
+                    state.last_message = f"{follower.get('name', 'Follower')} activates {label}."
+                state.follower_dismiss_pending = None
+                return None, None
+            if cmd == "FOLLOWER_DISMISS":
+                if state.follower_dismiss_pending != state.menu_cursor:
+                    follower = followers[state.menu_cursor]
+                    name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
+                    state.follower_dismiss_pending = state.menu_cursor
+                    state.last_message = f"Press A again to dismiss {name}."
+                    return None, None
                 follower = followers[state.menu_cursor]
                 name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
-                state.follower_dismiss_pending = state.menu_cursor
-                state.last_message = f"Press A again to dismiss {name}."
+                state.player.followers.pop(state.menu_cursor)
+                state.last_message = f"{name} has departed."
+                state.follower_dismiss_pending = None
+                if state.menu_cursor >= len(state.player.followers):
+                    state.menu_cursor = max(0, len(state.player.followers) - 1)
                 return None, None
-            follower = followers[state.menu_cursor]
-            name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
-            state.player.followers.pop(state.menu_cursor)
-            state.last_message = f"{name} has departed."
-            state.follower_dismiss_pending = None
-            if state.menu_cursor >= len(state.player.followers):
-                state.menu_cursor = max(0, len(state.player.followers) - 1)
+            if cmd == "B_KEY":
+                state.follower_dismiss_pending = None
+                state.followers_mode = False
+                return None, None
             return None, None
         if action == "BACK":
             state.follower_dismiss_pending = None
@@ -1209,27 +1266,70 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         if state.player.hp > max_hp:
             state.player.hp = max_hp
     if state.player.followers:
-        total_heal = 0
-        fairy_names = []
         for follower in state.player.followers:
             if not isinstance(follower, dict):
                 continue
-            if follower.get("type") != "fairy":
+            abilities_list = follower.get("abilities", [])
+            if not isinstance(abilities_list, list):
+                abilities_list = []
+            ability_id = str(follower.get("active_ability", "") or "")
+            if ability_id and ability_id not in abilities_list:
+                ability_id = ""
+            if not ability_id and abilities_list:
+                ability_id = str(abilities_list[0])
+                follower["active_ability"] = ability_id
+            if not ability_id:
+                continue
+            ability = ctx.abilities.get(ability_id, {}) if hasattr(ctx, "abilities") else {}
+            if not isinstance(ability, dict):
+                continue
+            if ability.get("timing") != "end_round":
                 continue
             level = int(follower.get("level", 1) or 1)
-            bonus = max(0, level - 1) * 2
-            total_heal += random.randint(3, 5) + bonus
-            fairy_names.append(str(follower.get("name", "A fairy")))
-        if total_heal > 0:
-            max_hp = state.player.total_max_hp()
-            if state.player.hp < max_hp:
-                healed = min(total_heal, max_hp - state.player.hp)
+            min_level = int(ability.get("min_level", 1) or 1)
+            if level < min_level:
+                fallback = ""
+                for candidate_id in abilities_list:
+                    candidate = ctx.abilities.get(candidate_id, {}) if hasattr(ctx, "abilities") else {}
+                    if not isinstance(candidate, dict):
+                        continue
+                    req = int(candidate.get("min_level", 1) or 1)
+                    if level >= req:
+                        fallback = str(candidate_id)
+                        ability = candidate
+                        min_level = req
+                        break
+                if not fallback:
+                    continue
+                follower["active_ability"] = fallback
+            base_min = int(ability.get("base_min", 0) or 0)
+            base_max = int(ability.get("base_max", 0) or 0)
+            bonus = int(ability.get("per_level_bonus", 0) or 0) * max(0, level - 1)
+            heal_min = base_min + bonus
+            heal_max = base_max + bonus
+            if heal_max <= 0:
+                continue
+            amount = random.randint(heal_min, max(heal_min, heal_max))
+            ability_type = ability.get("type")
+            if ability_type == "heal":
+                max_hp = state.player.total_max_hp()
+                if state.player.hp >= max_hp:
+                    continue
+                healed = min(amount, max_hp - state.player.hp)
                 state.player.hp += healed
-                if len(fairy_names) == 1:
-                    who = fairy_names[0]
-                    push_battle_message(state, f"{who} heals you for {healed} HP.")
-                else:
-                    push_battle_message(state, f"Your fairies heal you for {healed} HP.")
+                suffix = "HP"
+            elif ability_type == "mana":
+                max_mp = state.player.max_mp
+                if state.player.mp >= max_mp:
+                    continue
+                healed = min(amount, max_mp - state.player.mp)
+                state.player.mp += healed
+                suffix = "MP"
+            else:
+                continue
+            name = follower.get("name", "Follower")
+            label = ability.get("label", "Ability")
+            push_battle_message(state, f"{name} uses {label} and restores {healed} {suffix}.")
     return False
 
 

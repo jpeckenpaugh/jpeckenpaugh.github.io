@@ -1,0 +1,21 @@
+{
+  "fairy_heal": {
+    "label": "Fairy Heal",
+    "desc": "Heals 3-5 HP after each round.",
+    "type": "heal",
+    "timing": "end_round",
+    "base_min": 3,
+    "base_max": 5,
+    "per_level_bonus": 2
+  },
+  "fairy_mana": {
+    "label": "Fairy Mana",
+    "desc": "Restores 3-5 MP after each round.",
+    "type": "mana",
+    "timing": "end_round",
+    "base_min": 3,
+    "base_max": 5,
+    "per_level_bonus": 2,
+    "min_level": 3
+  }
+}

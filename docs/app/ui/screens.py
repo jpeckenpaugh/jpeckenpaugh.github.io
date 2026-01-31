@@ -56,6 +56,7 @@ class ScreenContext:
     frames: FramesData
     continents: ContinentsData
     elements: ElementsData
+    abilities: object
     spells_art: SpellsArtData
     glyphs: GlyphsData
     save_data: object
@@ -407,6 +408,8 @@ def generate_frame(
     options_mode: bool = False,
     action_cursor: int = 0,
     menu_cursor: int = 0,
+    followers_focus: str = "list",
+    followers_action_cursor: int = 0,
     spell_cast_rank: int = 1,
     level_cursor: int = 0,
     level_up_notes: Optional[List[str]] = None,
@@ -541,15 +544,42 @@ def generate_frame(
                 f_type = follower.get("type", "follower") if isinstance(follower, dict) else "follower"
                 effect = ""
                 if f_type == "fairy":
-                    effect = "Heals 3-5 HP after each round."
+                    effect = "Heals after each round."
                 label = f"{name} ({f_type})"
                 if effect:
                     label = f"{label} - {effect}"
-                prefix = "> " if idx == menu_cursor else "  "
+                prefix = "> " if idx == menu_cursor and followers_focus == "list" else "  "
                 body.append(f"{prefix}{label}")
         else:
             body.append("No followers.")
         followers_actions = []
+        if followers and 0 <= menu_cursor < len(followers) and isinstance(followers[menu_cursor], dict):
+            abilities = followers[menu_cursor].get("abilities", [])
+            if isinstance(abilities, list):
+                for ability_id in abilities:
+                    label = str(ability_id)
+                    min_level = 1
+                    if hasattr(ctx, "abilities"):
+                        ability = ctx.abilities.get(ability_id, {})
+                        if isinstance(ability, dict):
+                            label = ability.get("label", label)
+                            min_level = int(ability.get("min_level", 1) or 1)
+                    cmd_entry = {
+                        "label": f"Enable {label}",
+                        "command": f"FOLLOWER_ABILITY:{ability_id}",
+                    }
+                    if int(followers[menu_cursor].get("level", 1) or 1) < min_level:
+                        cmd_entry["_disabled"] = True
+                        cmd_entry["label"] = f"{label} (Level {min_level}+)"
+                    followers_actions.append(cmd_entry)
+            active_label = ""
+            active_id = str(followers[menu_cursor].get("active_ability", "") or "")
+            if active_id and hasattr(ctx, "abilities"):
+                ability = ctx.abilities.get(active_id, {})
+                if isinstance(ability, dict):
+                    active_label = ability.get("label", active_id)
+            if active_label:
+                followers_actions.insert(0, {"label": f"Active: {active_label}", "_disabled": True})
         for entry in followers_menu.get("actions", []):
             cmd_entry = dict(entry)
             if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
@@ -557,7 +587,11 @@ def generate_frame(
             followers_actions.append(cmd_entry)
         followers_menu = dict(followers_menu)
         followers_menu["actions"] = followers_actions
-        actions = format_menu_actions(followers_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
+        action_selected = followers_action_cursor if followers_focus == "actions" else None
+        actions = format_menu_actions(followers_menu, selected_index=action_selected)
+        if followers:
+            body.append("")
+            body.append("Use left/right to switch list and actions.")
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif inventory_mode:

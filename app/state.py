@@ -51,3 +51,5 @@ class GameState:
     last_spell_targets: list[int] = field(default_factory=list)
     current_venue_id: Optional[str] = None
     follower_dismiss_pending: Optional[int] = None
+    followers_focus: str = "list"
+    followers_action_cursor: int = 0

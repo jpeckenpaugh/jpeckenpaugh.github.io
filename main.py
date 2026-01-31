@@ -155,6 +155,8 @@ def main():
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
+                state.followers_focus,
+                state.followers_action_cursor,
                 state.spell_cast_rank,
                 state.level_cursor,
                 state.level_up_notes,
@@ -193,6 +195,8 @@ def main():
             state.level_up_notes = []
             state.last_spell_targets = []
             state.follower_dismiss_pending = None
+            state.followers_focus = "list"
+            state.followers_action_cursor = 0
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -219,6 +223,8 @@ def main():
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
+                state.followers_focus,
+                state.followers_action_cursor,
                 state.spell_cast_rank,
                 state.level_cursor,
                 state.level_up_notes,
@@ -281,6 +287,8 @@ def main():
                 "options_mode": state.options_mode,
                 "action_cursor": state.action_cursor,
                 "menu_cursor": state.menu_cursor,
+                "followers_focus": state.followers_focus,
+                "followers_action_cursor": state.followers_action_cursor,
                 "spell_cast_rank": state.spell_cast_rank,
                 "level_cursor": state.level_cursor,
                 "level_up_notes": list(state.level_up_notes),
@@ -342,6 +350,8 @@ def main():
                     pre_snapshot.get("options_mode", False),
                     pre_snapshot.get("action_cursor", 0),
                     pre_snapshot.get("menu_cursor", 0),
+                    pre_snapshot.get("followers_focus", "list"),
+                    pre_snapshot.get("followers_action_cursor", 0),
                     pre_snapshot.get("spell_cast_rank", 1),
                     pre_snapshot.get("level_cursor", 0),
                     pre_snapshot.get("level_up_notes", []),
@@ -372,6 +382,8 @@ def main():
                     state.options_mode,
                     state.action_cursor,
                     state.menu_cursor,
+                    state.followers_focus,
+                    state.followers_action_cursor,
                     state.spell_cast_rank,
                     state.level_cursor,
                     state.level_up_notes,

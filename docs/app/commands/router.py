@@ -71,6 +71,7 @@ class RouterContext:
     menus: MenusData
     continents: ContinentsData
     elements: ElementsData
+    abilities: object
     spells_art: SpellsArtData
     glyphs: GlyphsData
     objects: ObjectsData
@@ -231,6 +232,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.options_mode = False
         state.menu_cursor = 0
         state.follower_dismiss_pending = None
+        state.followers_focus = "list"
+        state.followers_action_cursor = 0
         state.last_message = menu.get("open_message", "View your followers.")
         return True
 

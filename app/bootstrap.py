@@ -8,6 +8,7 @@ from app.commands.scene_commands import command_ids_by_anim, command_ids_by_type
 from app.config import DATA_DIR, SAVE_DIR, SAVE_PATH
 from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
+from app.data_access.abilities_data import AbilitiesData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.frames_data import FramesData
 from app.data_access.glyphs_data import GlyphsData
@@ -42,6 +43,7 @@ class AppContext:
     frames: FramesData
     continents: ContinentsData
     elements: ElementsData
+    abilities: AbilitiesData
     spells_art: SpellsArtData
     glyphs: GlyphsData
     save_data: SaveData
@@ -111,6 +113,9 @@ def _load_glyphs() -> GlyphsData:
 def _load_elements() -> ElementsData:
     return ElementsData(f"{DATA_DIR}/elements.json")
 
+def _load_abilities() -> AbilitiesData:
+    return AbilitiesData(f"{DATA_DIR}/abilities.json")
+
 
 def _load_spells_art() -> SpellsArtData:
     return SpellsArtData(f"{DATA_DIR}/spells_art.json")
@@ -158,6 +163,7 @@ def create_app() -> AppContext:
     frames = _load_frames()
     glyphs = _load_glyphs()
     elements = _load_elements()
+    abilities = _load_abilities()
     spells_art = _load_spells_art()
     continents = _load_continents()
     save_data = _load_save()
@@ -179,6 +185,7 @@ def create_app() -> AppContext:
         menus=menus,
         continents=continents,
         elements=elements,
+        abilities=abilities,
         spells_art=spells_art,
         glyphs=glyphs,
         objects=objects,
@@ -199,6 +206,7 @@ def create_app() -> AppContext:
         frames=frames,
         continents=continents,
         elements=elements,
+        abilities=abilities,
         spells_art=spells_art,
         glyphs=glyphs,
         save_data=save_data,
@@ -219,6 +227,7 @@ def create_app() -> AppContext:
         frames=frames,
         continents=continents,
         elements=elements,
+        abilities=abilities,
         spells_art=spells_art,
         glyphs=glyphs,
         save_data=save_data,
