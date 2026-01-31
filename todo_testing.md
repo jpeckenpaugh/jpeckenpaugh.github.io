@@ -1,5 +1,8 @@
 # QA Feedback Triage Todo
 
+## Status
+- Some items completed; keep this as a rolling QA checklist.
+
 ## Phase 1 - Gather Repro & Context
 - [ ] Confirm current branch/state and any local diffs
 - [ ] Reproduce each issue from testing_feedback.md

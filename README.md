@@ -1,4 +1,4 @@
-# Lokarta - World Maker — Local Terminal POC
+# Lokarta - World Maker — Terminal RPG Prototype
 
 ## Overview
 
@@ -39,27 +39,28 @@ Once validated locally, the same engine and assets can be migrated to:
 - `app/data_access/` — JSON data loaders
 - `data/` — JSON content packs
 - `saves/` — local save slots
-- `docs/` — schema and design notes
+- `docs/` — web build (Pyodide assets + terminal UI)
 - `tests/` — unit tests
 
 ---
 
-## Current Features
+## Current Features (Snapshot)
 
-- Title screen with Continue/New/Quit and save overwrite confirmation
+- Title screen with Continue/New/Quit, save slot selection, and overwrite confirmation
 - Title screen uses a scrolling panorama with a centered logo overlay
-- Persistent save file (`saves/slot1.json`)
+- Save slots (`saves/slot1.json` → `slot5.json`) + created/last played metadata
 - ANSI color rendering and ASCII scene art
-- Town hub with Inn, Shop, Hall, and Inventory (scene assembled from objects)
-- Spellbook (Healing / Spark) and boosted casting prompts
-- Items (Rations, Herbal Tea, Elixir) and purchasing via the shop
-- Inn services (Rest and Hot Meal)
-- Inventory item usage with numbered selection
+- Town hub with Inn, Shop, Hall, Temple, Alchemist, Smithy, and Portal
+- Elemental continents + portal travel; town/forest palettes shift by element
+- Spellbook with rank selection and MP scaling (cost = base * rank)
+- Support spells (Life Boost, Strength) with temporary buffs
+- Items + elemental gear variants; element-aligned shops per continent
+- Inventory equip/unequip workflow with actions menu
 - Multi-opponent encounters (up to 3) with level-budget spawns
-- Combat with variance, crits, misses, and Spark stun
-- Leveling: +10 stat points per level, allocation screen, auto-heal
-- Boosted spell prompts auto-time out after 3 seconds
-- Forest does not auto-spawn a battle on entry; use Find to spawn opponents
+- Combat with variance, crits, misses, stuns, defend, and flee
+- Followers: recruit via Socialize, follower abilities, end-of-round effects
+- Leveling with stat allocation + banked points via Stats menu
+- Forest does not auto-spawn a battle on entry; use Seek out monsters
 - Scene/venue transitions use a melt-down/build-up animation
 
 ---
@@ -82,23 +83,20 @@ Top to bottom:
 
 ---
 
-## Controls
+## Controls (Gamepad-like)
 
 Title Screen:
 - D-pad to move selection
-- `A` to confirm
-- `S` to cancel/back
-- `Enter` (Start) opens Options
-- `Shift` (Select) opens Options
+- `A` / `Enter` to confirm
+- `S` / `Esc` to cancel/back
+- `Shift` / `Tab` opens Options
 
 Town/Forest/Menus:
 - Controls are data-driven from `data/commands.json`, `data/scenes.json`,
   `data/venues.json`, and `data/menus.json`.
 - The action panel reflects the active commands and their conditions.
-- Command schema notes: `docs/commands.md`.
-- Boost prompts and timing are driven by `data/spells.json`.
-- Target selection (Attack/Spark) uses ←/→ to cycle, `A` to confirm, `S` to cancel.
-- Forest encounters are started via the Find action (no auto-spawn on entry).
+- Target selection (Attack/Socialize/targeted spells) uses ←/→ to cycle, `A` to confirm, `S` to cancel.
+- Forest encounters are started via the Seek out monsters action (no auto-spawn on entry).
 
 ---
 
@@ -117,6 +115,11 @@ Game data is externalized into JSON:
 - `data/text.json` — message templates for battle text
 - `data/objects.json` — object art, color masks, dynamic object defs
 - `data/colors.json` — color palette, gradient, random bands
+- `data/continents.json` — continent names, unlock levels, descriptions
+- `data/elements.json` — element palettes and metadata
+- `data/glyphs.json` — glyph art (atlas, etc.)
+- `data/spells_art.json` — reusable spell animation art
+- `data/abilities.json` — follower ability definitions
 
 ---
 

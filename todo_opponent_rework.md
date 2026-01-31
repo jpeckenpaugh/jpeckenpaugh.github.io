@@ -1,5 +1,8 @@
 # Opponent Rework Todo
 
+## Status
+- Implemented with base opponents + element variants; refresh QA notes if needed.
+
 ## Phase 1 - Plan & Data Schema
 - [x] Confirm base opponent list (slime, rat, ant, turtle)
 - [x] Define element level offsets (+0 base, +1 earth, +2 wind, +3 fire, +4 water, +5 light, +6 lightning, +7 dark, +8 ice)

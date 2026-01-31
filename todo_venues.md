@@ -1,5 +1,8 @@
 # Venue Refactor TODO
 
+## Status
+- Core venue routing/rendering is in place; remaining notes are cleanup/QA.
+
 ## Phase 1 — Discovery + Inventory
 - [x] Audit current venue modes, inputs, and render paths (shop/hall/inn/alchemist/temple/smithy/portal)
 - [x] List all venue-specific commands and services in `data/venues.json`

@@ -1,5 +1,8 @@
 # Controls Redesign Plan
 
+## Status
+- Mostly implemented; update remaining notes below as needed.
+
 ## Phase 1: Control Model + UX
 - [x] Confirm final key mapping: D-pad arrows, A/S for confirm/back, Enter=Start, Shift=Select.
 - [x] Define Options menu contents (Inventory, Spellbook, Settings, Quit, Back).

@@ -1,5 +1,8 @@
 # Elemental Expansion Plan
 
+## Status
+- Largely implemented; verify remaining phase notes below.
+
 ## Phase 1: Element Unlocks
 - [x] Define element unlock levels (tie to spell unlocks).
 - [x] Add element fields to player state and save data.
