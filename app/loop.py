@@ -771,6 +771,7 @@ def apply_router_command(
     state.temple_mode = cmd_state.temple_mode
     state.smithy_mode = cmd_state.smithy_mode
     state.portal_mode = cmd_state.portal_mode
+    state.options_mode = cmd_state.options_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
     post_title_slot_select = getattr(state.player, "title_slot_select", False)

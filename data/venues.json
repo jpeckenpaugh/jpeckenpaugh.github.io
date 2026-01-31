@@ -551,7 +551,7 @@
     ],
     "objects": [
       {
-        "id": "water",
+        "id": "grass",
         "repeat": 2
       },
       {
@@ -562,54 +562,54 @@
         "repeat": 2
       },
       {
-        "id": "bush_small"
+        "id": "bottle_1"
       },
       {
         "id": "grass",
         "repeat": 1
       },
       {
-        "id": "space",
+        "id": "grass",
         "width": 1
       },
       {
-        "id": "large_pedistle",
+        "id": "bottle_3",
         "align": 0
       },
       {
-        "id": "space",
-        "width": 5
+        "id": "grass",
+        "width": 2
       },
       {
         "id": "npc",
         "align": 0
       },
       {
-        "id": "space",
-        "width": 5
+        "id": "grass",
+        "width": 1
       },
       {
-        "id": "fireplace",
+        "id": "bottle_4",
+        "repeat": 1
+      },
+      {
+        "id": "large_pedistle",
         "align": 0
       },
       {
-        "id": "space",
-        "width": 4
+        "id": "bottle_2",
+        "repeat": 1
+      },
+      {
+        "id": "grass",
+        "repeat": 1
+      },
+      {
+        "id": "town_wall"
       },
       {
         "id": "grass",
         "repeat": 2
-      },
-      {
-        "id": "flower_box",
-        "repeat": 1
-      },
-      {
-        "id": "grass",
-        "repeat": 1
-      },
-      {
-        "id": "house_wall_left"
       }
     ]
   },

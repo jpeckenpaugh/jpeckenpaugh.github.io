@@ -19,6 +19,7 @@ from app.data_access.objects_data import ObjectsData
 from app.data_access.save_data import SaveData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
+from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
@@ -226,6 +227,27 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.spell_mode = False
         state.options_mode = False
         state.last_message = menu.get("open_message", "Select an element.")
+        return True
+
+    if command_id == "OPTIONS":
+        menu = ctx.menus.get("options", {})
+        if state.options_mode:
+            state.options_mode = False
+            state.menu_cursor = 0
+            state.last_message = menu.get("close_message", "Closed options.")
+            return True
+        actions = []
+        for entry in menu.get("actions", []):
+            if not entry.get("command"):
+                continue
+            cmd_entry = dict(entry)
+            if not command_is_enabled(cmd_entry, state.player, state.opponents):
+                cmd_entry["_disabled"] = True
+            actions.append(cmd_entry)
+        enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
+        state.menu_cursor = enabled[0] if enabled else -1
+        state.options_mode = True
+        state.last_message = menu.get("open_message", "Options menu.")
         return True
 
     if state.portal_mode and command_id.startswith("PORTAL:"):
