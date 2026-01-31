@@ -37,6 +37,7 @@ class GameState:
     action_cursor: int = 0
     menu_cursor: int = 0
     spell_cursor: int = 0
+    spell_cast_rank: int = 1
     battle_cursor: int = 0
     level_cursor: int = 0
     defend_active: bool = False

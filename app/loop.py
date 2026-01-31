@@ -81,6 +81,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.options_mode,
         state.action_cursor,
         state.menu_cursor,
+        state.spell_cast_rank,
         state.level_cursor,
         state.level_up_notes,
         suppress_actions=suppress_actions,
@@ -453,6 +454,21 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             direction = -1 if action == "UP" else 1
             state.spell_cursor = (state.spell_cursor + direction) % len(keys)
             state.menu_cursor = state.spell_cursor
+            spell_entry = ctx.spells.by_command_id(keys[state.spell_cursor])
+            if spell_entry:
+                _, spell = spell_entry
+                max_rank = ctx.spells.rank_for(spell, state.player.level)
+                state.spell_cast_rank = max_rank
+            return None, None
+        if action in ("LEFT", "RIGHT"):
+            spell_entry = ctx.spells.by_command_id(keys[state.spell_cursor])
+            if spell_entry:
+                _, spell = spell_entry
+                max_rank = ctx.spells.rank_for(spell, state.player.level)
+                if action == "LEFT":
+                    state.spell_cast_rank = max(1, state.spell_cast_rank - 1)
+                else:
+                    state.spell_cast_rank = min(max_rank, state.spell_cast_rank + 1)
             return None, None
         if action == "CONFIRM":
             cmd = keys[state.spell_cursor]
@@ -671,6 +687,12 @@ def apply_router_command(
     target_index = cmd_state.target_index
     if state.spell_mode and not pre_spell_mode:
         state.menu_cursor = state.spell_cursor
+        keys = spell_menu_keys(ctx, state.player)
+        if keys and 0 <= state.menu_cursor < len(keys):
+            spell_entry = ctx.spells.by_command_id(keys[state.menu_cursor])
+            if spell_entry:
+                _, spell = spell_entry
+                state.spell_cast_rank = ctx.spells.rank_for(spell, state.player.level)
     if cmd == "ENTER_VENUE":
         commands = action_commands_for_state(ctx, state)
         state.action_cursor = 0
@@ -743,7 +765,9 @@ def resolve_player_action(
     if spell_entry:
         spell_id, spell = spell_entry
         name = spell.get("name", spell_id.title())
-        rank = ctx.spells.rank_for(spell, state.player.level)
+        max_rank = ctx.spells.rank_for(spell, state.player.level)
+        rank = max(1, min(state.spell_cast_rank, max_rank))
+        state.spell_cast_rank = rank
         if rank >= 2:
             state.last_spell_targets = [
                 i for i, opp in enumerate(state.opponents) if opp.hp > 0
@@ -756,7 +780,7 @@ def resolve_player_action(
             return None
         if spell_id == "healing":
             pass
-        mp_cost = int(spell.get("mp_cost", 2))
+        mp_cost = int(spell.get("mp_cost", 2)) * max(1, rank)
         element = spell.get("element")
         has_charge = False
         if element:
@@ -829,7 +853,8 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
     rank = 1
     if spell_entry:
         _, spell = spell_entry
-        rank = ctx.spells.rank_for(spell, state.player.level)
+        max_rank = ctx.spells.rank_for(spell, state.player.level)
+        rank = max(1, min(state.spell_cast_rank, max_rank))
         effect = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None
     if state.action_effect_override:
         effect = state.action_effect_override

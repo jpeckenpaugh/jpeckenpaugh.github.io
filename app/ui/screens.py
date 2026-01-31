@@ -399,6 +399,7 @@ def generate_frame(
     options_mode: bool = False,
     action_cursor: int = 0,
     menu_cursor: int = 0,
+    spell_cast_rank: int = 1,
     level_cursor: int = 0,
     level_up_notes: Optional[List[str]] = None,
     suppress_actions: bool = False
@@ -540,10 +541,27 @@ def generate_frame(
             color_codes = _color_codes_by_key(ctx.colors.all())
             for idx, (_, spell) in enumerate(available_spells):
                 name = spell.get("name", "Spell")
-                mp_cost = int(spell.get("mp_cost", 0))
-                rank = ctx.spells.rank_for(spell, player.level)
+                base_cost = int(spell.get("mp_cost", 0))
+                max_rank = ctx.spells.rank_for(spell, player.level)
+                selected_rank = max_rank
+                if idx == menu_cursor:
+                    selected_rank = max(1, min(spell_cast_rank, max_rank))
+                mp_cost = base_cost * max(1, selected_rank)
                 prefix = "> " if idx == menu_cursor else "  "
-                body.append(f"{prefix}{name} ({mp_cost} MP) Rank {rank}")
+                element = spell.get("element")
+                star_color = ""
+                if element and hasattr(ctx, "elements"):
+                    colors = ctx.elements.colors_for(str(element))
+                    if colors:
+                        star_color = _color_code_for_key(ctx.colors.all(), colors[0])
+                enabled = "*" * selected_rank
+                disabled = "*" * max(0, max_rank - selected_rank)
+                if star_color and enabled:
+                    enabled = f"{star_color}{enabled}{ANSI.RESET}"
+                if disabled:
+                    disabled = f"{ANSI.FG_WHITE}{ANSI.DIM}{disabled}{ANSI.RESET}"
+                rank_bar = f"[{(enabled + disabled).ljust(3)}]"
+                body.append(f"{prefix}{name} ({mp_cost} MP) {rank_bar}")
             selection = max(0, min(menu_cursor, len(available_spells) - 1))
             _, spell = available_spells[selection]
             effect = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None

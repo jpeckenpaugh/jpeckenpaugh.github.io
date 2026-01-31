@@ -71,7 +71,7 @@ def cast_spell(
 ) -> str:
     spell = spells_data.get(spell_id, {})
     name = spell.get("name", spell_id.title())
-    mp_cost = int(spell.get("mp_cost", 2))
+    mp_cost = int(spell.get("mp_cost", 2)) * max(1, rank)
     element = spell.get("element")
     used_charge = False
     if element:
