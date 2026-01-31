@@ -71,6 +71,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.hall_mode,
         state.hall_view,
         state.inn_mode,
+        state.stats_mode,
         state.spell_mode,
         state.element_mode,
         state.alchemist_mode,
@@ -231,7 +232,7 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
         venue_id = venue_id_from_state(state)
         if venue_id:
             return venue_actions(ctx, state, venue_id)
-    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode:
+    if state.inventory_mode or state.spell_mode or state.options_mode or state.element_mode or state.stats_mode:
         return []
     if not any(
         (
@@ -378,6 +379,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
             state.menu_cursor = enabled[0] if enabled else -1
             state.inventory_mode = False
+            state.stats_mode = False
             state.spell_mode = False
             state.element_mode = False
             state.alchemist_mode = False
@@ -438,6 +440,44 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 return None, None
             cmd = actions[state.menu_cursor].get("command")
             state.options_mode = False
+            return cmd, None
+        return None, None
+
+    if state.stats_mode:
+        menu = ctx.menus.get("stats", {})
+        actions = []
+        for entry in menu.get("actions", []):
+            if not entry.get("command"):
+                continue
+            cmd_entry = dict(entry)
+            if cmd_entry.get("command", "").startswith("STAT_") and state.player.stat_points <= 0:
+                cmd_entry["_disabled"] = True
+            actions.append(cmd_entry)
+        if not actions:
+            return None, None
+        enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
+        if not enabled:
+            state.menu_cursor = -1
+        elif state.menu_cursor not in enabled:
+            state.menu_cursor = enabled[0]
+        else:
+            state.menu_cursor = max(0, min(state.menu_cursor, len(actions) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            if enabled:
+                pos = enabled.index(state.menu_cursor) if state.menu_cursor in enabled else 0
+                pos = (pos + direction) % len(enabled)
+                state.menu_cursor = enabled[pos]
+            return None, None
+        if action == "BACK":
+            state.stats_mode = False
+            return None, None
+        if action == "CONFIRM":
+            if state.menu_cursor < 0:
+                return None, None
+            if actions[state.menu_cursor].get("_disabled"):
+                return None, None
+            cmd = actions[state.menu_cursor].get("command")
             return cmd, None
         return None, None
 
@@ -683,6 +723,7 @@ def apply_router_command(
         hall_mode=state.hall_mode,
         hall_view=state.hall_view,
         inn_mode=state.inn_mode,
+        stats_mode=state.stats_mode,
         spell_mode=state.spell_mode,
         element_mode=state.element_mode,
         alchemist_mode=state.alchemist_mode,
@@ -721,6 +762,7 @@ def apply_router_command(
     state.hall_mode = cmd_state.hall_mode
     state.hall_view = cmd_state.hall_view
     state.inn_mode = cmd_state.inn_mode
+    state.stats_mode = cmd_state.stats_mode
     state.spell_mode = cmd_state.spell_mode
     state.element_mode = cmd_state.element_mode
     state.alchemist_mode = cmd_state.alchemist_mode
@@ -1136,13 +1178,13 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     state.battle_cursor = state.action_cursor
     if state.loot_bank["xp"] or state.loot_bank["gold"]:
         pre_level = state.player.level
-        state.player.gain_xp(state.loot_bank["xp"])
+        levels_gained = state.player.gain_xp(state.loot_bank["xp"])
         state.player.gold += state.loot_bank["gold"]
         push_battle_message(state, (
             f"You gain {state.loot_bank['xp']} XP and "
             f"{state.loot_bank['gold']} gold."
         ))
-        if state.player.needs_level_up():
+        if levels_gained > 0:
             state.leveling_mode = True
             spell_notes = spell_level_up_notes(ctx, pre_level, state.player.level)
             element_notes = element_unlock_notes(ctx, state.player, pre_level, state.player.level)

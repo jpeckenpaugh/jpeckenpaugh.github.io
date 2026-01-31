@@ -15,10 +15,10 @@
 - [x] Investigate defend action flow/turn progression
 
 ## Phase 3 - Fix Plan & Implementation
-- [ ] Define data/logic changes per issue
-- [ ] Implement fixes in priority order
+- [x] Define data/logic changes per issue
+- [x] Implement fixes in priority order
 - [ ] Add tests or debug checks where feasible
-- [ ] Update any related UI text
+- [x] Update any related UI text
 
 ## Phase 4 - Verification
 - [ ] Re-test all 5 QA issues
@@ -30,3 +30,4 @@
 - [ ] 2026-01-31: Created QA triage todo from testing_feedback.md.
 
 - [x] 2026-01-31: Implemented fixes for banked points, unequip toggle, fusion naming ranks, flee chance, and defend flow.
+- [x] 2026-01-31: Phase 3 implemented: banking, unequip toggle, fuse naming ranks, flee chance, defend flow, UI updated.

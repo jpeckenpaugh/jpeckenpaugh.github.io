@@ -37,6 +37,10 @@
         "enabled_when": "has_items"
       },
       {
+        "label": "Stats",
+        "command": "STATS"
+      },
+      {
         "label": "Spellbook",
         "command": "SPELLBOOK",
         "enabled_when": "has_mp"
@@ -44,6 +48,41 @@
       {
         "label": "Quit",
         "command": "QUIT"
+      }
+    ]
+  },
+  "stats": {
+    "title": "Stats",
+    "open_message": "View stats and spend points.",
+    "close_message": "Closed stats.",
+    "actions": [
+      {
+        "label": "+HP",
+        "command": "STAT_HP"
+      },
+      {
+        "label": "+MP",
+        "command": "STAT_MP"
+      },
+      {
+        "label": "+ATK",
+        "command": "STAT_ATK"
+      },
+      {
+        "label": "+DEF",
+        "command": "STAT_DEF"
+      },
+      {
+        "label": "Balanced allocation",
+        "command": "STAT_BALANCED"
+      },
+      {
+        "label": "Random allocation",
+        "command": "STAT_RANDOM"
+      },
+      {
+        "label": "Back",
+        "command": "B_KEY"
       }
     ]
   },
