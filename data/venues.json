@@ -658,28 +658,28 @@
     "objects": [
       {
         "id": "water",
-        "repeat": 6
+        "repeat": 4
       },
       {
         "id": "town_wall"
       },
       {
-        "id": "grass",
+        "id": "water",
         "repeat": 2
+      },
+      {
+        "id": "flower_box",
+         "align": 0
+      },
+      {
+        "id": "space",
+        "repeat": 3
       },
       {
         "id": "fairy_companion_right"
       },
       {
-        "id": "grass",
-        "repeat": 1
-      },
-      {
-        "id": "space",
-        "width": 1
-      },
-      {
-        "id": "flower_box",
+        "id": "flower_box_small",
         "align": 0
       },
       {
@@ -695,7 +695,7 @@
         "width": 5
       },
       {
-        "id": "flower_box",
+        "id": "flower_box_small",
         "align": 0
       },
       {
@@ -703,15 +703,23 @@
         "align": 0
       },
       {
+        "id": "space",
+        "repeat": 3
+      },
+      {
         "id": "flower_box",
         "align": 0
       },
       {
-        "id": "grass",
+        "id": "water",
         "repeat": 2
       },
       {
         "id": "town_wall"
+      },
+      {
+        "id": "water",
+        "repeat": 4
       }
     ]
   },
