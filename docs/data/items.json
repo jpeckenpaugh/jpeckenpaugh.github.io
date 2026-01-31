@@ -405,6 +405,7 @@
     "name": "Oak Wand",
     "type": "gear",
     "slot": "wand",
+    "element": "base",
     "atk": 0,
     "defense": 0,
     "price": 30,

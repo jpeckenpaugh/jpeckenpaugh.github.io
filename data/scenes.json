@@ -231,10 +231,7 @@
     "confirm_narrative": [
       "Lokarta - World Maker",
       "",
-      "Overwrite existing save?",
-      "",
-      "[Y] Yes, start new",
-      "[N] No, go back"
+      "Overwrite existing save?"
     ],
     "confirm_commands": [
       {
@@ -248,6 +245,29 @@
       {
         "label": "Quit",
         "command": "QUIT"
+      }
+    ],
+    "fortune_narrative": [
+      "Lokarta - World Maker",
+      "",
+      "Choose your starting fortune."
+    ],
+    "fortune_commands": [
+      {
+        "label": "Poor (10 GP)",
+        "command": "FORTUNE_POOR"
+      },
+      {
+        "label": "Well-Off (100 GP)",
+        "command": "FORTUNE_WELL_OFF"
+      },
+      {
+        "label": "Royalty (1,000 GP)",
+        "command": "FORTUNE_ROYALTY"
+      },
+      {
+        "label": "Back",
+        "command": "TITLE_FORTUNE_BACK"
       }
     ]
   }

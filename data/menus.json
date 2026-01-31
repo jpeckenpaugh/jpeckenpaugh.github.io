@@ -47,29 +47,6 @@
       }
     ]
   },
-  "fortune": {
-    "title": "Fortune",
-    "open_message": "Select your starting fortune.",
-    "close_message": "Closed fortune.",
-    "actions": [
-      {
-        "label": "Poor (10 GP)",
-        "command": "FORTUNE_POOR"
-      },
-      {
-        "label": "Well-Off (100 GP)",
-        "command": "FORTUNE_WELL_OFF"
-      },
-      {
-        "label": "Royalty (1,000 GP)",
-        "command": "FORTUNE_ROYALTY"
-      },
-      {
-        "label": "Back",
-        "command": "B_KEY"
-      }
-    ]
-  },
   "elements": {
     "title": "Elements",
     "open_message": "Select an element.",

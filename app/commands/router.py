@@ -45,11 +45,11 @@ class CommandState:
     element_mode: bool
     alchemist_mode: bool
     alchemy_first: Optional[str]
+    alchemy_selecting: bool
     temple_mode: bool
     smithy_mode: bool
     portal_mode: bool
     options_mode: bool
-    fortune_mode: bool
     action_cmd: Optional[str]
     target_index: Optional[int] = None
     command_target_override: Optional[str] = None
@@ -289,6 +289,11 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         if venue_id and handle_venue_command(ctx, state, venue_id, command_id):
             return True
 
+    if state.alchemist_mode:
+        venue_id = venue_id_from_state(state)
+        if venue_id and handle_venue_command(ctx, state, venue_id, command_id):
+            return True
+
     if command_id == "INVENTORY":
         menu = ctx.menus.get("inventory", {})
         state.inventory_items = state.player.list_inventory_items(ctx.items)
@@ -321,33 +326,6 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             else:
                 state.last_message = "Invalid item selection."
             return True
-
-    if state.alchemist_mode and command_id.startswith("ALCHEMY_PICK:"):
-        idx_raw = command_id.split(":", 1)[1]
-        if not idx_raw.isdigit():
-            return False
-        gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]
-        idx = int(idx_raw) - 1
-        if idx < 0 or idx >= len(gear_items):
-            return False
-        gear_id = gear_items[idx].get("id")
-        if not gear_id:
-            return False
-        if not state.alchemy_first:
-            state.alchemy_first = gear_id
-            state.last_message = "Select a second item to fuse."
-            return True
-        if state.alchemy_first == gear_id:
-            state.last_message = "Choose a different item."
-            return True
-        fused = state.player.fuse_gear(state.alchemy_first, gear_id)
-        state.alchemy_first = None
-        if fused:
-            state.last_message = f"Fused into {fused.get('name', 'gear')}."
-            ctx.save_data.save_player(state.player)
-        else:
-            state.last_message = "Fusion failed."
-        return True
 
     if state.element_mode and command_id.startswith("ELEMENT:"):
         element_id = command_id.split(":", 1)[1]
@@ -449,7 +427,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
     if command_id == "TITLE_CONFIRM_YES":
         ctx.save_data.delete()
         state.player.title_confirm = False
-        state.fortune_mode = True
+        state.player.title_fortune = True
         return True
     if command_id == "TITLE_CONFIRM_NO":
         state.player.title_confirm = False
@@ -459,7 +437,10 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.player.title_confirm = True
             return True
         state.player.title_confirm = False
-        state.fortune_mode = True
+        state.player.title_fortune = True
+        return True
+    if command_id == "TITLE_FORTUNE_BACK":
+        state.player.title_fortune = False
         return True
     if command_id in ("FORTUNE_POOR", "FORTUNE_WELL_OFF", "FORTUNE_ROYALTY"):
         fortune_gold = {
@@ -472,6 +453,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         sync_player_elements(ctx, state.player)
         state.player.location = "Town"
         state.player.title_confirm = False
+        state.player.title_fortune = False
         state.player.has_save = False
         state.opponents = []
         state.loot_bank = {"xp": 0, "gold": 0}
@@ -486,7 +468,6 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.temple_mode = False
         state.smithy_mode = False
         state.portal_mode = False
-        state.fortune_mode = False
         state.last_message = "You arrive in town."
         return True
     if command_id == "TITLE_CONTINUE":
@@ -498,6 +479,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         sync_player_elements(ctx, state.player)
         state.player.location = "Town"
         state.player.title_confirm = False
+        state.player.title_fortune = False
         state.player.has_save = ctx.save_data.exists()
         state.opponents = []
         state.loot_bank = {"xp": 0, "gold": 0}

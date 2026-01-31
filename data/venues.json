@@ -637,7 +637,7 @@
     "leave_message": "You leave the temple.",
     "commands": [
       {
-        "label": "Overcharge Wands",
+        "label": "Charge Your Wand",
         "command": "USE_SERVICE",
         "target": "town_temple",
         "service_id": "overcharge"

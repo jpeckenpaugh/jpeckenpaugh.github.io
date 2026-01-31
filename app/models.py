@@ -144,7 +144,11 @@ class Player:
     def _charges_from_points(self, elem_points: dict) -> dict:
         charges = {}
         for element, points in elem_points.items():
-            charges[element] = max(0, int(points) // 3)
+            value = max(0, int(points))
+            if value > 0:
+                charges[element] = max(1, value // 3)
+            else:
+                charges[element] = 0
         return charges
 
     def _create_gear_instance(self, item_id: str, items_data, overrides: Optional[dict] = None) -> dict:

@@ -75,11 +75,11 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.element_mode,
         state.alchemist_mode,
         state.alchemy_first,
+        state.alchemy_selecting,
         state.temple_mode,
         state.smithy_mode,
         state.portal_mode,
         state.options_mode,
-        state.fortune_mode,
         state.action_cursor,
         state.menu_cursor,
         state.spell_cast_rank,
@@ -203,6 +203,8 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
         title_scene = ctx.scenes.get("title", {})
         if getattr(state.player, "title_confirm", False):
             return title_scene.get("confirm_commands", [])
+        if getattr(state.player, "title_fortune", False):
+            return title_scene.get("fortune_commands", [])
         return scene_commands(
             ctx.scenes,
             ctx.commands_data,
@@ -424,29 +426,6 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return cmd, None
         return None, None
 
-    if state.fortune_mode:
-        menu = ctx.menus.get("fortune", {})
-        actions = [entry for entry in menu.get("actions", []) if entry.get("command")]
-        if not actions:
-            return None, None
-        state.menu_cursor = max(0, min(state.menu_cursor, len(actions) - 1))
-        if action in ("UP", "DOWN"):
-            direction = -1 if action == "UP" else 1
-            state.menu_cursor = (state.menu_cursor + direction) % len(actions)
-            return None, None
-        if action == "BACK":
-            state.fortune_mode = False
-            state.menu_cursor = 0
-            return None, None
-        if action == "CONFIRM":
-            cmd = actions[state.menu_cursor].get("command")
-            if cmd == "B_KEY":
-                state.fortune_mode = False
-                state.menu_cursor = 0
-                return None, None
-            return cmd, None
-        return None, None
-
     if state.inventory_mode:
         items = state.inventory_items or []
         count = min(len(items), 9)
@@ -651,7 +630,7 @@ def element_unlock_notes(ctx, player, prev_level: int, new_level: int) -> list[s
             element_name = ctx.continents.name_for(element) if hasattr(ctx, "continents") else element.title()
             if element not in player.elements:
                 player.elements.append(element)
-            notes.append(f"Element unlocked: {element_name}")
+            notes.append(f"Portal Unlocked: {element_name}")
     if not player.elements:
         player.elements.append(order[0])
     if order:
@@ -690,11 +669,11 @@ def apply_router_command(
         element_mode=state.element_mode,
         alchemist_mode=state.alchemist_mode,
         alchemy_first=state.alchemy_first,
+        alchemy_selecting=state.alchemy_selecting,
         temple_mode=state.temple_mode,
         smithy_mode=state.smithy_mode,
         portal_mode=state.portal_mode,
         options_mode=state.options_mode,
-        fortune_mode=state.fortune_mode,
         action_cmd=action_cmd,
         target_index=state.target_index,
         command_target_override=command_meta.get("target") if command_meta else None,
@@ -728,10 +707,10 @@ def apply_router_command(
     state.element_mode = cmd_state.element_mode
     state.alchemist_mode = cmd_state.alchemist_mode
     state.alchemy_first = cmd_state.alchemy_first
+    state.alchemy_selecting = cmd_state.alchemy_selecting
     state.temple_mode = cmd_state.temple_mode
     state.smithy_mode = cmd_state.smithy_mode
     state.portal_mode = cmd_state.portal_mode
-    state.fortune_mode = cmd_state.fortune_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
     if state.spell_mode and not pre_spell_mode:

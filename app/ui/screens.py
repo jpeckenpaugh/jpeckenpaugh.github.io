@@ -393,11 +393,11 @@ def generate_frame(
     element_mode: bool = False,
     alchemist_mode: bool = False,
     alchemy_first: Optional[str] = None,
+    alchemy_selecting: bool = False,
     temple_mode: bool = False,
     smithy_mode: bool = False,
     portal_mode: bool = False,
     options_mode: bool = False,
-    fortune_mode: bool = False,
     action_cursor: int = 0,
     menu_cursor: int = 0,
     spell_cast_rank: int = 1,
@@ -474,6 +474,7 @@ def generate_frame(
             inn_mode=inn_mode,
             alchemist_mode=alchemist_mode,
             alchemy_first=alchemy_first,
+            alchemy_selecting=alchemy_selecting,
             temple_mode=temple_mode,
             smithy_mode=smithy_mode,
             portal_mode=portal_mode,
@@ -517,23 +518,6 @@ def generate_frame(
         else:
             body.append("No options available.")
         actions = format_menu_actions(options_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
-        art_lines = []
-        art_color = ANSI.FG_WHITE
-    elif fortune_mode:
-        fortune_menu = ctx.menus.get("fortune", {})
-        title = fortune_menu.get("title", "Fortune")
-        display_location = title
-        body = []
-        actions_list = [entry for entry in fortune_menu.get("actions", []) if entry.get("command")]
-        if actions_list:
-            menu_cursor = max(0, min(menu_cursor, len(actions_list) - 1))
-            for idx, entry in enumerate(actions_list):
-                label = str(entry.get("label", "")).strip() or entry.get("command", "")
-                prefix = "> " if idx == menu_cursor else "  "
-                body.append(f"{prefix}{label}")
-        else:
-            body.append("No fortune options available.")
-        actions = format_menu_actions(fortune_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif inventory_mode:
@@ -814,7 +798,25 @@ def generate_frame(
             )
         if getattr(player, "title_confirm", False):
             body = scene_data.get("confirm_narrative", [])
-            actions = format_command_lines(scene_data.get("confirm_commands", []), selected_index=action_cursor if action_cursor >= 0 else None)
+            actions = format_command_lines(
+                scene_data.get("confirm_commands", []),
+                selected_index=action_cursor if action_cursor >= 0 else None,
+            )
+        elif getattr(player, "title_fortune", False):
+            body = scene_data.get("fortune_narrative", [])
+            fortune_lines = {
+                0: "Ain't nobody ever gave me nothing.",
+                1: "Some of us start a little ahead.",
+                2: "Yeah, some of us just have it easier in life, what can I say?",
+            }
+            if fortune_lines:
+                body = list(body)
+                body.append("")
+                body.append(fortune_lines.get(action_cursor, "Choose your starting fortune."))
+            actions = format_command_lines(
+                scene_data.get("fortune_commands", []),
+                selected_index=action_cursor if action_cursor >= 0 else None,
+            )
         else:
             body = scene_data.get("narrative", [])
             actions = format_command_lines(
