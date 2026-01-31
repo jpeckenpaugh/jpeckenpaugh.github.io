@@ -1,252 +1,333 @@
 {
-  "slime": {
-    "name": "Slime",
-    "level": 2,
-    "hp": 10,
-    "atk": 5,
-    "defense": 5,
-    "action_chance": 0.8,
-    "arrival": "oozes into view",
-    "desc": "A wobbling blob that absorbs weak blows.",
-    "art": [
-      " o____o",
-      " / oo \\",
-      "|  ..  |",
-      "|      |",
-      " \\____/",
-      " (_)(_)"
-    ],
-    "color_map": [
-      " gGGGGg",
-      " g XX g",
-      "g  xx  g",
-      "g      g",
-      " gGGGGg",
-      " gxggxg"
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "base"
+  "base_opponents": {
+    "slime": {
+      "name": "Slime",
+      "level": 2,
+      "hp": 10,
+      "atk": 5,
+      "defense": 5,
+      "action_chance": 0.8,
+      "arrival": "oozes into view",
+      "desc": "A wobbling blob that absorbs weak blows.",
+      "art": [
+        " o____o",
+        " / oo \\",
+        "|  ..  |",
+        "|      |",
+        " \\____/",
+        " (_)(_)"
+      ],
+      "color_map": [
+        " gGGGGg",
+        " g XX g",
+        "g  xx  g",
+        "g      g",
+        " gGGGGg",
+        " gxggxg"
+      ],
+      "variation": 0.06,
+      "jitter_stability": false,
+      "element": "base"
+    },
+    "rat": {
+      "name": "Rat",
+      "level": 1,
+      "hp": 20,
+      "atk": 20,
+      "defense": 20,
+      "action_chance": 0.6,
+      "arrival": "scurries into view",
+      "desc": "A quick scavenger with a nasty bite.",
+      "art": [
+        " /\\__/\\",
+        "( o..o )",
+        " >[==]< ",
+        "}=/  \\={",
+        " |    |",
+        " \\____/",
+        " =+  +="
+      ],
+      "color_map": [
+        " dddddd",
+        "d cDDc d",
+        " dDHHDd",
+        "hdD  Ddh",
+        " d    d",
+        " dDddDd",
+        " hD  Dh "
+      ],
+      "variation": 0.06,
+      "jitter_stability": false,
+      "element": "base",
+      "max_hp": 20
+    },
+    "ant": {
+      "name": "Ant",
+      "level": 1,
+      "hp": 15,
+      "atk": 15,
+      "defense": 15,
+      "action_chance": 0.7,
+      "arrival": "scurries in",
+      "desc": "A skittering ant with sharp mandibles.",
+      "art": [
+        "*}  {*",
+        " (oo) ",
+        "  \\/",
+        "\\/  \\/",
+        "/\\__/\\",
+        "\\/  \\/",
+        "/\\__/\\"
+      ],
+      "color_map": [
+        "lL  Ll",
+        " xXXx",
+        "  AA",
+        "Xx  xX",
+        "xxxxxx",
+        "Xx  xX",
+        "xxxxxx"
+      ],
+      "variation": 0.06,
+      "jitter_stability": false,
+      "element": "base",
+      "max_hp": 15
+    },
+    "turtle": {
+      "name": "Turtle",
+      "level": 3,
+      "hp": 16,
+      "atk": 6,
+      "defense": 7,
+      "action_chance": 0.65,
+      "arrival": "trudges in with a heavy shell",
+      "desc": "A hardy turtle with a crushing bite.",
+      "art": [
+        "  ____  ",
+        " / __ \\ ",
+        "| /  \\ |",
+        "| |__| |",
+        "|  __  |",
+        " \\____/ ",
+        "  /  \\  "
+      ],
+      "color_map": [
+        "  gggg  ",
+        " g ggg g",
+        "g g  g g",
+        "g ggg g ",
+        "g  gg  g",
+        " gggggg ",
+        "  g  g  "
+      ],
+      "variation": 0.06,
+      "jitter_stability": false,
+      "element": "base"
+    }
   },
-  "rat": {
-    "name": "Rat",
-    "level": 1,
-    "hp": 20,
-    "atk": 20,
-    "defense": 20,
-    "action_chance": 0.6,
-    "arrival": "scurries into view",
-    "desc": "A quick scavenger with a nasty bite.",
-    "art": [
-      " /\\__/\\",
-      "( o..o )",
-      " >[==]< ",
-      "}=/  \\={",
-      " |    |",
-      " \\____/",
-      " =+  +="
-    ],
-    "color_map": [
-      " dddddd",
-      "d cDDc d",
-      " dDHHDd",
-      "hdD  Ddh",
-      " d    d",
-      " dDddDd",
-      " hD  Dh "
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "base",
-    "max_hp": 20
-  },
-  "ant": {
-    "name": "Ant",
-    "level": 1,
-    "hp": 15,
-    "atk": 15,
-    "defense": 15,
-    "action_chance": 0.7,
-    "arrival": "scurries in",
-    "desc": "A skittering ant with sharp mandibles.",
-    "art": [
-      "*}  {*",
-      " (oo) ",
-      "  \\/",
-      "\\/  \\/",
-      "/\\__/\\",
-      "\\/  \\/",
-      "/\\__/\\"
-    ],
-    "color_map": [
-      "lL  Ll",
-      " xXXx",
-      "  AA",
-      "Xx  xX",
-      "xxxxxx",
-      "Xx  xX",
-      "xxxxxx"
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "base",
-    "max_hp": 15
-  },
-  "turtle": {
-    "name": "Turtle",
-    "level": 3,
-    "hp": 16,
-    "atk": 6,
-    "defense": 7,
-    "action_chance": 0.65,
-    "arrival": "trudges in with a heavy shell",
-    "desc": "A hardy turtle with a crushing bite.",
-    "art": [
-      "  ____  ",
-      " / __ \\ ",
-      "| /  \\ |",
-      "| |__| |",
-      "|  __  |",
-      " \\____/ ",
-      "  /  \\  "
-    ],
-    "color_map": [
-      "  gggg  ",
-      " g ggg g",
-      "g g  g g",
-      "g ggg g ",
-      "g  gg  g",
-      " gggggg ",
-      "  g  g  "
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "base"
-  },
-  "ant_fire": {
-    "name": "Fire Ant",
-    "level": 3,
-    "hp": 10,
-    "atk": 5,
-    "defense": 3,
-    "action_chance": 0.75,
-    "arrival": "skitters in wreathed in embers",
-    "desc": "A fierce ant with a burning bite.",
-    "art": [
-      "*}  {*",
-      " (oo) ",
-      "  \\/",
-      "\\/  \\/",
-      "/\\__/\\",
-      "\\/  \\/",
-      "/\\__/\\"
-    ],
-    "color_map": [
-      "lL  Ll",
-      " xXXx",
-      "  AA",
-      "Xx  xX",
-      "xxxxxx",
-      "Xx  xX",
-      "xxxxxx"
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "fire",
-    "base_id": "ant"
-  },
-  "rat_fire": {
-    "name": "Cinder Rat",
-    "level": 3,
-    "hp": 11,
-    "atk": 5,
-    "defense": 4,
-    "action_chance": 0.65,
-    "arrival": "pads in trailing sparks",
-    "desc": "A heat-hardened scavenger with a nasty bite.",
-    "art": [
-      " /\\__/\\",
-      "( o..o )",
-      " >[==]< ",
-      "}=/  \\={",
-      " |    |",
-      " \\____/",
-      " =+  +="
-    ],
-    "color_map": [
-      " dddddd",
-      "d cDDc d",
-      " dDHHDd",
-      "hdD  Ddh",
-      " d    d",
-      " dDddDd",
-      " hD  Dh "
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "fire",
-    "base_id": "rat"
-  },
-  "slime_fire": {
-    "name": "Ember Slime",
-    "level": 4,
-    "hp": 14,
-    "atk": 6,
-    "defense": 6,
-    "action_chance": 0.8,
-    "arrival": "bubbles with heat",
-    "desc": "A molten blob that smolders with each pulse.",
-    "art": [
-      " o____o",
-      " / oo \\",
-      "|  ..  |",
-      "|      |",
-      " \\____/",
-      " (_)(_)"
-    ],
-    "color_map": [
-      " gGGGGg",
-      " g XX g",
-      "g  xx  g",
-      "g      g",
-      " gGGGGg",
-      " gxggxg"
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "fire",
-    "base_id": "slime"
-  },
-  "turtle_fire": {
-    "name": "Ash Turtle",
-    "level": 5,
-    "hp": 20,
-    "atk": 7,
-    "defense": 9,
-    "action_chance": 0.7,
-    "arrival": "lumbers in under a scorched shell",
-    "desc": "A hardened shell protects a fierce bite.",
-    "art": [
-      "  ____  ",
-      " / __ \\ ",
-      "| /  \\ |",
-      "| |__| |",
-      "|  __  |",
-      " \\____/ ",
-      "  /  \\  "
-    ],
-    "color_map": [
-      "  gggg  ",
-      " g ggg g",
-      "g g  g g",
-      "g ggg g ",
-      "g  gg  g",
-      " gggggg ",
-      "  g  g  "
-    ],
-    "variation": 0.06,
-    "jitter_stability": false,
-    "element": "fire",
-    "base_id": "turtle"
+  "element_variants": {
+    "meta": {
+      "elements": [
+        "base",
+        "earth",
+        "wind",
+        "fire",
+        "water",
+        "light",
+        "lightning",
+        "dark",
+        "ice"
+      ],
+      "level_offsets": {
+        "base": 0,
+        "earth": 1,
+        "wind": 2,
+        "fire": 3,
+        "water": 4,
+        "light": 5,
+        "lightning": 6,
+        "dark": 7,
+        "ice": 8
+      },
+      "stat_multipliers": {
+        "base": {
+          "hp": 1.0,
+          "atk": 1.0,
+          "defense": 1.0,
+          "speed": 1.0
+        },
+        "earth": {
+          "hp": 1.15,
+          "atk": 1.0,
+          "defense": 1.2,
+          "speed": 0.95
+        },
+        "wind": {
+          "hp": 0.95,
+          "atk": 1.05,
+          "defense": 0.95,
+          "speed": 1.2
+        },
+        "fire": {
+          "hp": 1.0,
+          "atk": 1.2,
+          "defense": 0.95,
+          "speed": 1.05
+        },
+        "water": {
+          "hp": 1.1,
+          "atk": 1.0,
+          "defense": 1.1,
+          "speed": 1.0
+        },
+        "light": {
+          "hp": 1.05,
+          "atk": 1.1,
+          "defense": 1.05,
+          "speed": 1.05
+        },
+        "lightning": {
+          "hp": 0.95,
+          "atk": 1.25,
+          "defense": 0.9,
+          "speed": 1.25
+        },
+        "dark": {
+          "hp": 1.05,
+          "atk": 1.15,
+          "defense": 1.1,
+          "speed": 0.95
+        },
+        "ice": {
+          "hp": 1.1,
+          "atk": 1.05,
+          "defense": 1.2,
+          "speed": 0.9
+        }
+      },
+      "color_palettes": {
+        "base": {
+          "1": "w",
+          "2": "s",
+          "3": "K"
+        },
+        "earth": {
+          "1": "q",
+          "2": "Q",
+          "3": "h"
+        },
+        "wind": {
+          "1": "s",
+          "2": "S",
+          "3": "w"
+        },
+        "fire": {
+          "1": "r",
+          "2": "O",
+          "3": "y"
+        },
+        "water": {
+          "1": "u",
+          "2": "b",
+          "3": "c"
+        },
+        "light": {
+          "1": "y",
+          "2": "w",
+          "3": "L"
+        },
+        "lightning": {
+          "1": "Y",
+          "2": "y",
+          "3": "b"
+        },
+        "dark": {
+          "1": "s",
+          "2": "S",
+          "3": "i"
+        },
+        "ice": {
+          "1": "b",
+          "2": "B",
+          "3": "C"
+        }
+      }
+    },
+    "names": {
+      "slime_base": "Slime",
+      "slime_earth": "Stone Slime",
+      "slime_wind": "Gale Slime",
+      "slime_fire": "Ember Slime",
+      "slime_water": "Tide Slime",
+      "slime_light": "Lumen Slime",
+      "slime_lightning": "Storm Slime",
+      "slime_dark": "Gloom Slime",
+      "slime_ice": "Frost Slime",
+      "rat_base": "Rat",
+      "rat_earth": "Stone Rat",
+      "rat_wind": "Gale Rat",
+      "rat_fire": "Ember Rat",
+      "rat_water": "Tide Rat",
+      "rat_light": "Lumen Rat",
+      "rat_lightning": "Storm Rat",
+      "rat_dark": "Gloom Rat",
+      "rat_ice": "Frost Rat",
+      "ant_base": "Ant",
+      "ant_earth": "Stone Ant",
+      "ant_wind": "Gale Ant",
+      "ant_fire": "Ember Ant",
+      "ant_water": "Tide Ant",
+      "ant_light": "Lumen Ant",
+      "ant_lightning": "Storm Ant",
+      "ant_dark": "Gloom Ant",
+      "ant_ice": "Frost Ant",
+      "turtle_base": "Turtle",
+      "turtle_earth": "Stone Turtle",
+      "turtle_wind": "Gale Turtle",
+      "turtle_fire": "Ember Turtle",
+      "turtle_water": "Tide Turtle",
+      "turtle_light": "Lumen Turtle",
+      "turtle_lightning": "Storm Turtle",
+      "turtle_dark": "Gloom Turtle",
+      "turtle_ice": "Frost Turtle"
+    },
+    "descriptions": {
+      "slime_base": "A quivering blob of mundane ooze.",
+      "slime_earth": "Its body is packed with grit and stone.",
+      "slime_wind": "It ripples like a breeze caught in gel.",
+      "slime_fire": "Heat shimmers within its molten core.",
+      "slime_water": "It sloshes with tidal force.",
+      "slime_light": "A soft glow pulses through its jelly.",
+      "slime_lightning": "It crackles with volatile charge.",
+      "slime_dark": "Shadow clings to its shifting mass.",
+      "slime_ice": "Its surface glitters with frozen sheen.",
+      "rat_base": "A scrappy rat with sharp instincts.",
+      "rat_earth": "Its fur is matted with dusty grit.",
+      "rat_wind": "It darts like a sudden gust.",
+      "rat_fire": "Its breath smells of embers.",
+      "rat_water": "It moves with slick, tidal grace.",
+      "rat_light": "Its eyes gleam with pale light.",
+      "rat_lightning": "It crackles with quick sparks.",
+      "rat_dark": "It slips between shadows.",
+      "rat_ice": "Frost clings to its whiskers.",
+      "ant_base": "A relentless ant with a fierce bite.",
+      "ant_earth": "Its shell is hardened like stone.",
+      "ant_wind": "It skitters in sudden bursts.",
+      "ant_fire": "Heat radiates from its mandibles.",
+      "ant_water": "Its steps splash with damp fury.",
+      "ant_light": "It glints with radiant armor.",
+      "ant_lightning": "Its legs hum with electric speed.",
+      "ant_dark": "It stalks in a hushed shadow.",
+      "ant_ice": "Its armor glazes with frost.",
+      "turtle_base": "A sturdy turtle with a heavy shell.",
+      "turtle_earth": "Its shell is layered with rock.",
+      "turtle_wind": "It rides a rolling gale.",
+      "turtle_fire": "Its shell sears with heat.",
+      "turtle_water": "It swims through air like a current.",
+      "turtle_light": "Its shell gleams like a beacon.",
+      "turtle_lightning": "It crackles with sudden force.",
+      "turtle_dark": "Its shell absorbs the light around it.",
+      "turtle_ice": "Its shell is rimed with chill."
+    }
   }
 }
