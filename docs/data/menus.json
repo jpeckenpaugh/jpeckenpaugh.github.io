@@ -1,0 +1,83 @@
+{
+  "inventory": {
+    "title": "Inventory",
+    "open_message": "Choose an item to use or equip.",
+    "close_message": "Closed inventory.",
+    "empty": "Inventory is empty.",
+    "actions": [
+      {
+        "label": "Use/Equip",
+        "command": "NUM"
+      },
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "spellbook": {
+    "title": "Spellbook",
+    "open_message": "Open spellbook.",
+    "close_message": "Closed spellbook.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "options": {
+    "title": "Options",
+    "open_message": "Options menu.",
+    "close_message": "Closed options.",
+    "actions": [
+      {
+        "label": "Inventory",
+        "command": "INVENTORY",
+        "enabled_when": "has_items"
+      },
+      {
+        "label": "Spellbook",
+        "command": "SPELLBOOK",
+        "enabled_when": "has_mp"
+      },
+      {
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ]
+  },
+  "elements": {
+    "title": "Elements",
+    "open_message": "Select an element.",
+    "close_message": "Closed elements.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "alchemist": {
+    "title": "Alchemist",
+    "open_message": "Select two items to fuse.",
+    "close_message": "Closed alchemist.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "portal": {
+    "title": "Portal",
+    "open_message": "Select a continent.",
+    "close_message": "Closed portal.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  }
+}

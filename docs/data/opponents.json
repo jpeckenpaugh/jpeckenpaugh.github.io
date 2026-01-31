@@ -1,0 +1,252 @@
+{
+  "slime": {
+    "name": "Slime",
+    "level": 2,
+    "hp": 10,
+    "atk": 5,
+    "defense": 5,
+    "action_chance": 0.8,
+    "arrival": "oozes into view",
+    "desc": "A wobbling blob that absorbs weak blows.",
+    "art": [
+      " o____o",
+      " / oo \\",
+      "|  ..  |",
+      "|      |",
+      " \\____/",
+      " (_)(_)"
+    ],
+    "color_map": [
+      " gGGGGg",
+      " g XX g",
+      "g  xx  g",
+      "g      g",
+      " gGGGGg",
+      " gxggxg"
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "base"
+  },
+  "rat": {
+    "name": "Rat",
+    "level": 1,
+    "hp": 20,
+    "atk": 20,
+    "defense": 20,
+    "action_chance": 0.6,
+    "arrival": "scurries into view",
+    "desc": "A quick scavenger with a nasty bite.",
+    "art": [
+      " /\\__/\\",
+      "( o..o )",
+      " >[==]< ",
+      "}=/  \\={",
+      " |    |",
+      " \\____/",
+      " =+  +="
+    ],
+    "color_map": [
+      " dddddd",
+      "d cDDc d",
+      " dDHHDd",
+      "hdD  Ddh",
+      " d    d",
+      " dDddDd",
+      " hD  Dh "
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "base",
+    "max_hp": 20
+  },
+  "ant": {
+    "name": "Ant",
+    "level": 1,
+    "hp": 15,
+    "atk": 15,
+    "defense": 15,
+    "action_chance": 0.7,
+    "arrival": "scurries in",
+    "desc": "A skittering ant with sharp mandibles.",
+    "art": [
+      "*}  {*",
+      " (oo) ",
+      "  \\/",
+      "\\/  \\/",
+      "/\\__/\\",
+      "\\/  \\/",
+      "/\\__/\\"
+    ],
+    "color_map": [
+      "lL  Ll",
+      " xXXx",
+      "  AA",
+      "Xx  xX",
+      "xxxxxx",
+      "Xx  xX",
+      "xxxxxx"
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "base",
+    "max_hp": 15
+  },
+  "turtle": {
+    "name": "Turtle",
+    "level": 3,
+    "hp": 16,
+    "atk": 6,
+    "defense": 7,
+    "action_chance": 0.65,
+    "arrival": "trudges in with a heavy shell",
+    "desc": "A hardy turtle with a crushing bite.",
+    "art": [
+      "  ____  ",
+      " / __ \\ ",
+      "| /  \\ |",
+      "| |__| |",
+      "|  __  |",
+      " \\____/ ",
+      "  /  \\  "
+    ],
+    "color_map": [
+      "  gggg  ",
+      " g ggg g",
+      "g g  g g",
+      "g ggg g ",
+      "g  gg  g",
+      " gggggg ",
+      "  g  g  "
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "base"
+  },
+  "ant_fire": {
+    "name": "Fire Ant",
+    "level": 3,
+    "hp": 10,
+    "atk": 5,
+    "defense": 3,
+    "action_chance": 0.75,
+    "arrival": "skitters in wreathed in embers",
+    "desc": "A fierce ant with a burning bite.",
+    "art": [
+      "*}  {*",
+      " (oo) ",
+      "  \\/",
+      "\\/  \\/",
+      "/\\__/\\",
+      "\\/  \\/",
+      "/\\__/\\"
+    ],
+    "color_map": [
+      "lL  Ll",
+      " xXXx",
+      "  AA",
+      "Xx  xX",
+      "xxxxxx",
+      "Xx  xX",
+      "xxxxxx"
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "fire",
+    "base_id": "ant"
+  },
+  "rat_fire": {
+    "name": "Cinder Rat",
+    "level": 3,
+    "hp": 11,
+    "atk": 5,
+    "defense": 4,
+    "action_chance": 0.65,
+    "arrival": "pads in trailing sparks",
+    "desc": "A heat-hardened scavenger with a nasty bite.",
+    "art": [
+      " /\\__/\\",
+      "( o..o )",
+      " >[==]< ",
+      "}=/  \\={",
+      " |    |",
+      " \\____/",
+      " =+  +="
+    ],
+    "color_map": [
+      " dddddd",
+      "d cDDc d",
+      " dDHHDd",
+      "hdD  Ddh",
+      " d    d",
+      " dDddDd",
+      " hD  Dh "
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "fire",
+    "base_id": "rat"
+  },
+  "slime_fire": {
+    "name": "Ember Slime",
+    "level": 4,
+    "hp": 14,
+    "atk": 6,
+    "defense": 6,
+    "action_chance": 0.8,
+    "arrival": "bubbles with heat",
+    "desc": "A molten blob that smolders with each pulse.",
+    "art": [
+      " o____o",
+      " / oo \\",
+      "|  ..  |",
+      "|      |",
+      " \\____/",
+      " (_)(_)"
+    ],
+    "color_map": [
+      " gGGGGg",
+      " g XX g",
+      "g  xx  g",
+      "g      g",
+      " gGGGGg",
+      " gxggxg"
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "fire",
+    "base_id": "slime"
+  },
+  "turtle_fire": {
+    "name": "Ash Turtle",
+    "level": 5,
+    "hp": 20,
+    "atk": 7,
+    "defense": 9,
+    "action_chance": 0.7,
+    "arrival": "lumbers in under a scorched shell",
+    "desc": "A hardened shell protects a fierce bite.",
+    "art": [
+      "  ____  ",
+      " / __ \\ ",
+      "| /  \\ |",
+      "| |__| |",
+      "|  __  |",
+      " \\____/ ",
+      "  /  \\  "
+    ],
+    "color_map": [
+      "  gggg  ",
+      " g ggg g",
+      "g g  g g",
+      "g ggg g ",
+      "g  gg  g",
+      " gggggg ",
+      "  g  g  "
+    ],
+    "variation": 0.06,
+    "jitter_stability": false,
+    "element": "fire",
+    "base_id": "turtle"
+  }
+}
