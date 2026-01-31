@@ -349,6 +349,13 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if action is None:
         return None, None
 
+    if (
+        action == "BACK"
+        and state.player.location == "Forest"
+        and not any(m.hp > 0 for m in state.opponents)
+    ):
+        return "ENTER_SCENE", {"target": "town"}
+
     if action == "BACK" and (
         state.current_venue_id
         or state.shop_mode

@@ -6,6 +6,8 @@
     "anim": "heal",
     "mp_cost": 2,
     "requires_target": false,
+    "art_id": "potion",
+    "element": "base",
     "desc": "Raise max HP by 10 over a brief surge.",
     "level_required": 0,
     "class": "support"
@@ -160,6 +162,7 @@
     "level_required": 0,
     "effect_loops_rank2": 3,
     "effect_loops_rank3": 4,
+    "art_id": "potion",
     "desc": "Raise ATK and DEF by 10 over a brief surge."
   },
   "tide": {
