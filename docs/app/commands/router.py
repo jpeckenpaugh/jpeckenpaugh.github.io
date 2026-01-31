@@ -41,6 +41,7 @@ class CommandState:
     hall_mode: bool
     hall_view: str
     inn_mode: bool
+    stats_mode: bool
     spell_mode: bool
     element_mode: bool
     alchemist_mode: bool
@@ -301,6 +302,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.last_message = menu.get("empty", "Inventory is empty.")
             return True
         state.inventory_mode = True
+        state.stats_mode = False
         state.shop_mode = False
         state.hall_mode = False
         state.spell_mode = False
@@ -308,11 +310,62 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.last_message = menu.get("open_message", "Choose an item to use.")
         return True
 
+    if command_id == "STATS":
+        menu = ctx.menus.get("stats", {})
+        state.stats_mode = True
+        state.menu_cursor = 0
+        state.inventory_mode = False
+        state.shop_mode = False
+        state.hall_mode = False
+        state.spell_mode = False
+        state.options_mode = False
+        state.last_message = menu.get("open_message", "View stats and spend points.")
+        return True
+
     if state.inventory_mode:
         menu = ctx.menus.get("inventory", {})
         if command_id == "B_KEY":
             state.inventory_mode = False
             state.last_message = menu.get("close_message", "Closed inventory.")
+            return True
+
+    if state.stats_mode:
+        menu = ctx.menus.get("stats", {})
+        if command_id == "B_KEY":
+            state.stats_mode = False
+            state.last_message = menu.get("close_message", "Closed stats.")
+            return True
+        if command_id in ("STAT_HP", "STAT_MP", "STAT_ATK", "STAT_DEF"):
+            if state.player.stat_points <= 0:
+                state.last_message = "No stat points to spend."
+                return True
+            mapping = {
+                "STAT_HP": "HP",
+                "STAT_MP": "MP",
+                "STAT_ATK": "ATK",
+                "STAT_DEF": "DEF",
+            }
+            stat = mapping.get(command_id)
+            if stat:
+                state.player.spend_stat_point(stat)
+                ctx.save_data.save_player(state.player)
+                state.last_message = f"{stat} increased by 1."
+            return True
+        if command_id == "STAT_BALANCED":
+            if state.player.stat_points <= 0:
+                state.last_message = "No stat points to spend."
+                return True
+            state.player.allocate_balanced()
+            ctx.save_data.save_player(state.player)
+            state.last_message = "Balanced allocation complete."
+            return True
+        if command_id == "STAT_RANDOM":
+            if state.player.stat_points <= 0:
+                state.last_message = "No stat points to spend."
+                return True
+            state.player.allocate_random()
+            ctx.save_data.save_player(state.player)
+            state.last_message = "Random allocation complete."
             return True
         if command_id.startswith("NUM"):
             idx = int(command_id.replace("NUM", "")) - 1

@@ -19,6 +19,7 @@ class GameState:
     hall_mode: bool
     hall_view: str
     inn_mode: bool
+    stats_mode: bool
     spell_mode: bool
     quit_confirm: bool
     title_mode: bool

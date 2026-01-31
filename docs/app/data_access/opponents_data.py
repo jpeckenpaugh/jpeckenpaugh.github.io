@@ -11,14 +11,21 @@ class OpponentsData:
     def __init__(self, path: str):
         self._path = path
         self._opponents: Dict[str, dict] = {}
+        self._variants: Dict[str, dict] = {}
         self.load()
 
     def load(self):
         try:
             with open(self._path, "r", encoding="utf-8") as f:
-                self._opponents = json.load(f)
+                data = json.load(f)
         except (OSError, json.JSONDecodeError):
-            self._opponents = {}
+            data = {}
+        if isinstance(data, dict) and "base_opponents" in data:
+            self._opponents = data.get("base_opponents", {}) or {}
+            self._variants = data.get("element_variants", {}) or {}
+        else:
+            self._opponents = data if isinstance(data, dict) else {}
+            self._variants = {}
 
     def all(self) -> Dict[str, dict]:
         return self._opponents
@@ -36,6 +43,59 @@ class OpponentsData:
             lines.append(f"{name}: {desc}")
         return lines
 
+    def _variant_meta(self) -> dict:
+        return self._variants.get("meta", {}) if isinstance(self._variants, dict) else {}
+
+    def _variant_names(self) -> dict:
+        return self._variants.get("names", {}) if isinstance(self._variants, dict) else {}
+
+    def _variant_desc(self) -> dict:
+        return self._variants.get("descriptions", {}) if isinstance(self._variants, dict) else {}
+
+    def _colorize_map(self, color_map: dict, element: str) -> dict:
+        if not isinstance(color_map, dict):
+            return color_map
+        meta = self._variant_meta()
+        palette = meta.get("color_palettes", {}).get(element) if isinstance(meta, dict) else None
+        # palette can be injected later; if missing, keep placeholders
+        if not isinstance(palette, dict):
+            return color_map
+        mapped = {}
+        for key, value in color_map.items():
+            if str(value) in ("1", "2", "3"):
+                mapped[key] = palette.get(str(value), value)
+            else:
+                mapped[key] = value
+        return mapped
+
+    def build_variant(self, base_id: str, element: str) -> dict:
+        base = dict(self._opponents.get(base_id, {}))
+        if not base:
+            return {}
+        meta = self._variant_meta()
+        level_offsets = meta.get("level_offsets", {})
+        multipliers = meta.get("stat_multipliers", {})
+        offset = int(level_offsets.get(element, 0) or 0)
+        mult = multipliers.get(element, {}) if isinstance(multipliers, dict) else {}
+        hp_mult = float(mult.get("hp", 1.0) or 1.0)
+        atk_mult = float(mult.get("atk", 1.0) or 1.0)
+        def_mult = float(mult.get("defense", 1.0) or 1.0)
+        spd_mult = float(mult.get("speed", 1.0) or 1.0)
+        base["level"] = int(base.get("level", 1)) + offset
+        base["hp"] = max(1, int(int(base.get("hp", 1)) * hp_mult))
+        base["atk"] = max(1, int(int(base.get("atk", 1)) * atk_mult))
+        base["defense"] = max(0, int(int(base.get("defense", 0)) * def_mult))
+        base["action_chance"] = float(base.get("action_chance", 1.0)) * spd_mult
+        base["element"] = element
+        key = f"{base_id}_{element}"
+        names = self._variant_names()
+        descs = self._variant_desc()
+        if key in names:
+            base["name"] = names[key]
+        if key in descs:
+            base["desc"] = descs[key]
+        return base
+
     def create(self, data: dict, art_color: str) -> Opponent:
         name = data.get("name", "Slime")
         element = data.get("element", "base")
@@ -49,6 +109,8 @@ class OpponentsData:
         arrival = data.get("arrival", "appears")
         variation = data.get("variation", 0.0)
         jitter_stability = data.get("jitter_stability", True)
+        if element and self._variants:
+            color_map = self._colorize_map(color_map, element)
         return Opponent(
             name=name,
             element=element,
@@ -76,9 +138,12 @@ class OpponentsData:
     ) -> List[Opponent]:
         if not self._opponents:
             return []
-        candidates = [m for m in self._opponents.values() if m.get("element", "base") == element]
+        base_ids = list(self._opponents.keys())
+        candidates = [self.build_variant(base_id, element) for base_id in base_ids]
+        candidates = [c for c in candidates if c]
         if not candidates:
-            candidates = [m for m in self._opponents.values() if m.get("element", "base") == "base"]
+            candidates = [self.build_variant(base_id, "base") for base_id in base_ids]
+            candidates = [c for c in candidates if c]
         total_level = 0
         spawned = []
         attempts = 0

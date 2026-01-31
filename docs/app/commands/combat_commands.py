@@ -42,6 +42,15 @@ def _handle_defend(ctx: CommandContext) -> str:
 
 
 def _handle_flee(ctx: CommandContext) -> str:
+    alive = [opp for opp in ctx.opponents if opp.hp > 0]
+    if not alive:
+        return "There is nothing to flee from."
+    highest = max(opp.level for opp in alive)
+    diff = ctx.player.level - highest
+    chance = 0.5 + (diff * 0.08)
+    chance = max(0.1, min(0.9, chance))
+    if random.random() > chance:
+        return "You fail to flee."
     ctx.opponents.clear()
     ctx.loot["xp"] = 0
     ctx.loot["gold"] = 0

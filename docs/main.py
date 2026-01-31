@@ -81,6 +81,7 @@ def main():
         hall_mode=False,
         hall_view="menu",
         inn_mode=False,
+        stats_mode=False,
         spell_mode=False,
         element_mode=False,
         alchemist_mode=False,
@@ -140,6 +141,7 @@ def main():
                 state.hall_mode,
                 state.hall_view,
                 state.inn_mode,
+                state.stats_mode,
                 state.spell_mode,
                 state.element_mode,
                 state.alchemist_mode,
@@ -166,6 +168,7 @@ def main():
             state.hall_mode = False
             state.hall_view = "menu"
             state.inn_mode = False
+            state.stats_mode = False
             state.spell_mode = False
             state.element_mode = False
             state.alchemist_mode = False
@@ -199,6 +202,7 @@ def main():
                 state.hall_mode,
                 state.hall_view,
                 state.inn_mode,
+                state.stats_mode,
                 state.spell_mode,
                 state.element_mode,
                 state.alchemist_mode,
@@ -259,6 +263,7 @@ def main():
                 "hall_mode": state.hall_mode,
                 "hall_view": state.hall_view,
                 "inn_mode": state.inn_mode,
+                "stats_mode": state.stats_mode,
                 "spell_mode": state.spell_mode,
                 "element_mode": state.element_mode,
                 "alchemist_mode": state.alchemist_mode,
@@ -318,6 +323,7 @@ def main():
                     pre_snapshot["hall_mode"],
                     pre_snapshot["hall_view"],
                     pre_snapshot["inn_mode"],
+                    pre_snapshot.get("stats_mode", False),
                     pre_snapshot["spell_mode"],
                     pre_snapshot.get("element_mode", False),
                     pre_snapshot.get("alchemist_mode", False),
@@ -346,6 +352,7 @@ def main():
                     state.hall_mode,
                     state.hall_view,
                     state.inn_mode,
+                    state.stats_mode,
                     state.spell_mode,
                     state.element_mode,
                     state.alchemist_mode,
@@ -405,9 +412,6 @@ def main():
                     remaining = max(0, max_stack - current)
                     gain = min(gain_per_cast, remaining)
                     animate_life_boost_gain(APP, render_frame, state, generate_frame, gain)
-        if state.player.needs_level_up() and not any(opponent.hp > 0 for opponent in state.opponents):
-            state.leveling_mode = True
-
         handle_offensive_action(APP, state, action_cmd)
         if action_cmd:
             state.target_index = None

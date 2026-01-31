@@ -390,6 +390,7 @@ def generate_frame(
     hall_mode: bool = False,
     hall_view: str = "menu",
     inn_mode: bool = False,
+    stats_mode: bool = False,
     spell_mode: bool = False,
     element_mode: bool = False,
     alchemist_mode: bool = False,
@@ -439,6 +440,7 @@ def generate_frame(
             "  +DEF",
             "  Balanced allocation",
             "  Random allocation",
+            "  Bank points",
         ]
         level_cursor = max(0, min(level_cursor, len(level_options) - 1))
         level_lines = []
@@ -533,6 +535,38 @@ def generate_frame(
         else:
             body.append(inventory_menu.get("empty", "Inventory is empty."))
         actions = format_menu_actions(inventory_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
+        art_lines = []
+        art_color = ANSI.FG_WHITE
+    elif stats_mode:
+        stats_menu = ctx.menus.get("stats", {})
+        title = stats_menu.get("title", "Stats")
+        display_location = title
+        atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))
+        def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0))
+        temp_hp = int(getattr(player, "temp_hp_bonus", 0))
+        hp_total = player.max_hp + temp_hp
+        hp_line = f"HP: {player.hp} / {player.max_hp}"
+        if temp_hp:
+            hp_line = f"HP: {player.hp} / {player.max_hp} (+{temp_hp})"
+        body = [
+            hp_line,
+            f"MP: {player.mp} / {player.max_mp}",
+            f"ATK: {player.atk} (+{atk_bonus})",
+            f"DEF: {player.defense} (+{def_bonus})",
+            f"Level: {player.level}  XP: {player.xp}  GP: {player.gold}",
+            f"Stat points available: {player.stat_points}",
+        ]
+        actions_list = []
+        for entry in stats_menu.get("actions", []):
+            if not entry.get("command"):
+                continue
+            cmd_entry = dict(entry)
+            if cmd_entry.get("command", "").startswith("STAT_") and player.stat_points <= 0:
+                cmd_entry["_disabled"] = True
+            actions_list.append(cmd_entry)
+        stats_menu = dict(stats_menu)
+        stats_menu["actions"] = actions_list
+        actions = format_menu_actions(stats_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif spell_mode:
