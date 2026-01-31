@@ -87,6 +87,21 @@
     ],
     "commands": [
       {
+        "label": "Hunting",
+        "command": "ENTER_SCENE",
+        "target": "forest",
+        "anim": "battle_start"
+      },
+      {
+        "label": "Portal",
+        "command": "ENTER_VENUE",
+        "target": "town_portal"
+      },
+      {
+        "label": "Options",
+        "command": "OPTIONS"
+      },
+      {
         "label": "Shop",
         "command": "ENTER_VENUE",
         "target": "town_shop"
@@ -102,30 +117,19 @@
         "target": "town_inn"
       },
       {
-        "label": "Alchemist",
-        "command": "ENTER_VENUE",
-        "target": "town_alchemist"
-      },
-      {
         "label": "Temple",
         "command": "ENTER_VENUE",
         "target": "town_temple"
       },
       {
+        "label": "Alchemist",
+        "command": "ENTER_VENUE",
+        "target": "town_alchemist"
+      },
+      {
         "label": "Smithy",
         "command": "ENTER_VENUE",
         "target": "town_smithy"
-      },
-      {
-        "label": "Hunting",
-        "command": "ENTER_SCENE",
-        "target": "forest",
-        "anim": "battle_start"
-      },
-      {
-        "label": "Portal",
-        "command": "ENTER_VENUE",
-        "target": "town_portal"
       }
     ]
   },

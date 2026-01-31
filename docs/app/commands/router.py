@@ -19,6 +19,7 @@ from app.data_access.objects_data import ObjectsData
 from app.data_access.save_data import SaveData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
+from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
@@ -228,6 +229,27 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.last_message = menu.get("open_message", "Select an element.")
         return True
 
+    if command_id == "OPTIONS":
+        menu = ctx.menus.get("options", {})
+        if state.options_mode:
+            state.options_mode = False
+            state.menu_cursor = 0
+            state.last_message = menu.get("close_message", "Closed options.")
+            return True
+        actions = []
+        for entry in menu.get("actions", []):
+            if not entry.get("command"):
+                continue
+            cmd_entry = dict(entry)
+            if not command_is_enabled(cmd_entry, state.player, state.opponents):
+                cmd_entry["_disabled"] = True
+            actions.append(cmd_entry)
+        enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
+        state.menu_cursor = enabled[0] if enabled else -1
+        state.options_mode = True
+        state.last_message = menu.get("open_message", "Options menu.")
+        return True
+
     if state.portal_mode and command_id.startswith("PORTAL:"):
         element_id = command_id.split(":", 1)[1]
         if element_id and element_id in getattr(state.player, "elements", []):
@@ -328,6 +350,21 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.inventory_mode = False
             state.last_message = menu.get("close_message", "Closed inventory.")
             return True
+        if command_id == "NUM":
+            state.last_message = menu.get("open_message", "Choose an item to use.")
+            return True
+        if command_id.startswith("NUM"):
+            idx = int(command_id.replace("NUM", "")) - 1
+            if 0 <= idx < len(state.inventory_items):
+                item_id, _ = state.inventory_items[idx]
+                state.last_message = state.player.use_item(item_id, ctx.items)
+                ctx.save_data.save_player(state.player)
+                state.inventory_items = state.player.list_inventory_items(ctx.items)
+                if not state.inventory_items:
+                    state.inventory_mode = False
+            else:
+                state.last_message = "Invalid item selection."
+            return True
 
     if state.stats_mode:
         menu = ctx.menus.get("stats", {})
@@ -367,19 +404,6 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             ctx.save_data.save_player(state.player)
             state.last_message = "Random allocation complete."
             return True
-        if command_id.startswith("NUM"):
-            idx = int(command_id.replace("NUM", "")) - 1
-            if 0 <= idx < len(state.inventory_items):
-                item_id, _ = state.inventory_items[idx]
-                state.last_message = state.player.use_item(item_id, ctx.items)
-                ctx.save_data.save_player(state.player)
-                state.inventory_items = state.player.list_inventory_items(ctx.items)
-                if not state.inventory_items:
-                    state.inventory_mode = False
-            else:
-                state.last_message = "Invalid item selection."
-            return True
-
     if state.element_mode and command_id.startswith("ELEMENT:"):
         element_id = command_id.split(":", 1)[1]
         if element_id and element_id in getattr(state.player, "elements", []):
@@ -461,13 +485,15 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         items_data=ctx.items,
         target_index=state.target_index,
     )
-    if command_id in ("ATTACK", "SPARK", "HEAL"):
+    if command_id in ("ATTACK", "SPARK", "HEAL", "DEFEND"):
         state.action_cmd = command_id
         return True
 
     message = dispatch_command(ctx.registry, command_id, ctx_data)
     if message != "Unknown action.":
         state.last_message = message
+        if command_id == "FLEE":
+            state.action_cmd = command_id
         return True
 
     return False

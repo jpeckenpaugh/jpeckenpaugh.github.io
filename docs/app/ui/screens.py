@@ -324,9 +324,13 @@ def _spell_effect_with_art(ctx: ScreenContext, spell: dict) -> Optional[dict]:
     if not isinstance(spell, dict):
         return None
     effect = spell.get("effect")
-    if not isinstance(effect, dict):
-        return None
-    effect_override = dict(effect)
+    if isinstance(effect, dict):
+        effect_override = dict(effect)
+    else:
+        art_id = spell.get("art_id")
+        if not art_id:
+            return None
+        effect_override = {"art_id": art_id}
     art_id = effect_override.get("art_id")
     if art_id and hasattr(ctx, "spells_art"):
         art = ctx.spells_art.get(art_id)

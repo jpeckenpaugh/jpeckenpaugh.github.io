@@ -1492,7 +1492,13 @@ def render_scene_art(
             gap_width = max(gap_width, content_width)
         art_lines = []
         max_opp_rows = max((len(block["lines"]) for block in opponent_blocks), default=0)
-        max_rows = max(len(left), len(right), max_opp_rows)
+        base_rows = max(len(left), len(right))
+        max_rows = max(base_rows, max_opp_rows)
+        bottom_objects = scene_data.get("objects_bottom", [])
+        bottom_len = len(bottom_objects) if isinstance(bottom_objects, list) else 0
+        art_target = int(scene_data.get("art_height", 10))
+        left_offset = max_rows - len(left) if max_rows > len(left) else 0
+        right_offset = max_rows - len(right) if max_rows > len(right) else 0
         def _ansi_cells(text: str) -> list[tuple[str, str]]:
             cells = []
             i = 0
@@ -1640,8 +1646,10 @@ def render_scene_art(
         if start_row < 0:
             start_row = 0
         for i in range(max_rows):
-            left_line = left[i] if i < len(left) else (" " * max_left)
-            right_line = right[i] if i < len(right) else (" " * max_right)
+            left_idx = i - left_offset
+            right_idx = i - right_offset
+            left_line = left[left_idx] if 0 <= left_idx < len(left) else (" " * max_left)
+            right_line = right[right_idx] if 0 <= right_idx < len(right) else (" " * max_right)
             gap_fill = " " * gap_width
             if opponent_blocks and start_row <= i < start_row + max_opp_rows:
                 row_index = i - start_row
@@ -1673,7 +1681,16 @@ def render_scene_art(
                 )
             art_lines.append(left_line + gap_fill + right_line)
         bottom_objects = scene_data.get("objects_bottom", [])
-        if isinstance(bottom_objects, list) and bottom_objects and objects_data is not None:
+        if (
+            isinstance(bottom_objects, list)
+            and bottom_objects
+            and objects_data is not None
+            and art_target > 0
+        ):
+            total_rows = max_rows + len(bottom_objects)
+            if total_rows > art_target:
+                keep = max(0, art_target - max_rows)
+                bottom_objects = bottom_objects[:keep]
             layout_seed = scene_data.get("layout_seed")
             if not isinstance(layout_seed, int):
                 layout_seed = _random_seed_base(f"scene:{scene_data.get('name', 'forest')}")

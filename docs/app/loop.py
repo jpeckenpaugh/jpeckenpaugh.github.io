@@ -349,6 +349,13 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if action is None:
         return None, None
 
+    if (
+        action == "BACK"
+        and state.player.location == "Forest"
+        and not any(m.hp > 0 for m in state.opponents)
+    ):
+        return "ENTER_SCENE", {"target": "town"}
+
     if action == "BACK" and (
         state.current_venue_id
         or state.shop_mode
@@ -637,7 +644,11 @@ def push_battle_message(state: GameState, message: str, max_lines: int = 7) -> N
     state.last_message = message
     if state.player.location != "Forest":
         return
+    if message == "You flee to safety.":
+        state.battle_log = []
     if message:
+        if message == "There is nothing to flee from." and state.battle_log and state.battle_log[-1] == "You flee to safety.":
+            return
         if state.battle_log and state.battle_log[-1] == message:
             return
         if not state.battle_log and _is_arrival_message(state, message):
@@ -754,6 +765,8 @@ def apply_router_command(
         commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
         state.action_cursor = state.battle_cursor
         clamp_action_cursor(state, commands)
+    if cmd == "FLEE" and cmd_state.last_message == "You flee to safety.":
+        state.battle_log = []
     push_battle_message(state, cmd_state.last_message)
     state.shop_mode = cmd_state.shop_mode
     state.shop_view = cmd_state.shop_view
@@ -771,6 +784,7 @@ def apply_router_command(
     state.temple_mode = cmd_state.temple_mode
     state.smithy_mode = cmd_state.smithy_mode
     state.portal_mode = cmd_state.portal_mode
+    state.options_mode = cmd_state.options_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
     post_title_slot_select = getattr(state.player, "title_slot_select", False)
