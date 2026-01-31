@@ -218,6 +218,114 @@
     ],
     "align": 0
   },
+  "fireplace": {
+    "art": [
+      "     , ,        ,",
+      "  ___#_#______#_#___",
+      " [__________________]",
+      "  |=_= =_ == _ =_ =|",
+      "  |_.------------.=|",
+      "  |=| o        o |=|",
+      " _|-| !   `(   ! |-|_",
+      "/==_| ! _(_.)_ ! |=_-\\",
+      "|=_ |/^\\^=^^=^/^\\| _=|"
+    ],
+    "color_mask": [
+      "     y y        y",
+      "  ssssssssssssssssss",
+      " ssssssssssssssssssss",
+      "  ssss ss ss s ss ss",
+      "  ssyssssssssssssyss",
+      "  sss r        r sss",
+      " ssss r   ys   r ssss",
+      "sssss r sssyss r sssss",
+      "sss ssssssssssssss sss"
+    ],
+    "align": 0,
+    "variation": 0.06,
+    "jitter_stability": true
+  },
+  "fairy_companion": {
+    "art": [
+      "   ,@@@@",
+      "_ ),\\\\(\\ _,;",
+      "\\\\\\_(((\\),:;",
+      "`._,)))))::`,",
+      "     \\  (`:::.",
+      "      ) .. `:;",
+      "      / ))  `'",
+      "      `.\\\\",
+      "       \\(("
+    ],
+    "color_mask": [
+      "   yyyyy",
+      "1 1y1111 1yy",
+      "111111111y1y",
+      "yy1y1111111yy",
+      "     1  1y111y",
+      "      1 yy y1y",
+      "      1 11  y1",
+      "      yy11",
+      "       111"
+    ],
+    "align": 0,
+    "variation": 0.06,
+    "jitter_stability": true
+  },
+  "fairy_companion_right": {
+    "art": [
+      "@@@@,   ",
+      ";,_ /)//,( _",
+      ";:,(/)))_///",
+      ",`::(((((,_.`",
+      ".:::`)  /     ",
+      ";:` .. (      ",
+      "'`  (( \\      ",
+      "//.`      ",
+      "))/       "
+    ],
+    "color_mask": [
+      "yyyyy   ",
+      "yy1 1111y1 1",
+      "y1y111111111",
+      "yy1111111y1yy",
+      "y111y1  1     ",
+      "y1y yy 1      ",
+      "1y  11 1      ",
+      "11yy      ",
+      "111       "
+    ],
+    "align": 0,
+    "variation": 0.06,
+    "jitter_stability": true
+  },
+  "large_pedistle": {
+    "art": [
+      ",-'            `'=-:.",
+      ":.                 .' |",
+      "| '._______._...-'    ,",
+      "`.                _,.'",
+      "   `--..__________.-'",
+      "     \\..|   |.|  |../",
+      "      |.|   |_|  |.|",
+      "     _|.|        |.|_",
+      "    (__/          \\__)"
+    ],
+    "color_mask": [
+      "ysy            yysssy",
+      "sy                 yy s",
+      "s yysssssssysyyysy    y",
+      "yy                syyy",
+      "   yssyyssssssssssysy",
+      "     yyys   sys  syys",
+      "      sys   sss  sys",
+      "     ssys        syss",
+      "    ssss          ysss"
+    ],
+    "align": 0,
+    "variation": 0.05,
+    "jitter_stability": true
+  },
   "grass": {
     "art": [
       "~~~"

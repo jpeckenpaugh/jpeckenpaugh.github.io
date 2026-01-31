@@ -356,7 +356,7 @@
       },
       {
         "id": "space",
-        "width": 4
+        "width": 1
       },
       {
         "id": "npc",
@@ -364,10 +364,10 @@
       },
       {
         "id": "space",
-        "width": 7
+        "width": 2
       },
       {
-        "id": "lamp",
+        "id": "fireplace",
         "align": 0
       },
       {
@@ -658,7 +658,7 @@
     "objects": [
       {
         "id": "water",
-        "repeat": 2
+        "repeat": 6
       },
       {
         "id": "town_wall"
@@ -668,26 +668,18 @@
         "repeat": 2
       },
       {
-        "id": "bush_small"
+        "id": "fairy_companion_right"
       },
       {
         "id": "grass",
         "repeat": 1
       },
       {
-        "id": "house_wall_left"
-      },
-      {
-        "id": "roof",
-        "mode": "span_until",
-        "target": "house_wall_right"
-      },
-      {
         "id": "space",
         "width": 1
       },
       {
-        "id": "table_shop",
+        "id": "flower_box",
         "align": 0
       },
       {
@@ -703,30 +695,23 @@
         "width": 5
       },
       {
-        "id": "bookshelf",
+        "id": "flower_box",
         "align": 0
       },
       {
-        "id": "space",
-        "width": 4
+        "id": "fairy_companion",
+        "align": 0
       },
       {
-        "id": "house_wall_right"
+        "id": "flower_box",
+        "align": 0
       },
       {
         "id": "grass",
         "repeat": 2
       },
       {
-        "id": "flower_box",
-        "repeat": 1
-      },
-      {
-        "id": "grass",
-        "repeat": 1
-      },
-      {
-        "id": "house_wall_left"
+        "id": "town_wall"
       }
     ]
   },
@@ -791,7 +776,7 @@
         "width": 5
       },
       {
-        "id": "bookshelf",
+        "id": "fireplace",
         "align": 0
       },
       {
