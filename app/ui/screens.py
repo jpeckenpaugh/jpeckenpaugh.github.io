@@ -58,6 +58,7 @@ class ScreenContext:
     elements: ElementsData
     spells_art: SpellsArtData
     glyphs: GlyphsData
+    save_data: object
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -800,6 +801,42 @@ def generate_frame(
             body = scene_data.get("confirm_narrative", [])
             actions = format_command_lines(
                 scene_data.get("confirm_commands", []),
+                selected_index=action_cursor if action_cursor >= 0 else None,
+            )
+        elif getattr(player, "title_slot_select", False):
+            summaries = []
+            if hasattr(ctx, "save_data") and ctx.save_data:
+                summaries = ctx.save_data.slot_summaries()
+            body = ["Select a save slot.", ""]
+            for summary in summaries:
+                slot_num = summary.get("slot", 0)
+                if summary.get("empty"):
+                    line = f"Slot {slot_num}: Empty"
+                else:
+                    level = summary.get("level", 1)
+                    location = summary.get("location", "Town")
+                    gold = summary.get("gold", 0)
+                    created = summary.get("created_at", "")
+                    last_played = summary.get("last_played", "")
+                    line = (
+                        f"Slot {slot_num}: Lv{level} {location} GP{gold} "
+                        f"C {created} L {last_played}"
+                    )
+                body.append(line)
+            mode = getattr(player, "title_slot_mode", "continue")
+            commands = []
+            for summary in summaries:
+                slot_num = summary.get("slot", 0)
+                label = f"Slot {slot_num}"
+                if summary.get("empty"):
+                    label = f"{label} (Empty)"
+                entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
+                if mode == "continue" and summary.get("empty"):
+                    entry["_disabled"] = True
+                commands.append(entry)
+            commands.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
+            actions = format_command_lines(
+                commands,
                 selected_index=action_cursor if action_cursor >= 0 else None,
             )
         elif getattr(player, "title_fortune", False):

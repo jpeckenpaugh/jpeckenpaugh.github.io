@@ -31,6 +31,28 @@ def _append_leave(commands: list[dict]) -> list[dict]:
     return commands
 
 
+def _fusable_gear(state: Any, first_id: Optional[str] = None) -> list[dict]:
+    gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]
+    if first_id:
+        first = next((g for g in gear_items if g.get("id") == first_id), None)
+        if not first:
+            return []
+        slot = first.get("slot")
+        if not slot:
+            return []
+        return [g for g in gear_items if g.get("id") != first_id and g.get("slot") == slot]
+    slot_counts: dict[str, int] = {}
+    for gear in gear_items:
+        slot = str(gear.get("slot", "") or "")
+        if not slot:
+            continue
+        slot_counts[slot] = slot_counts.get(slot, 0) + 1
+    return [
+        g for g in gear_items
+        if slot_counts.get(str(g.get("slot", "") or ""), 0) >= 2
+    ]
+
+
 def _truecolor(hex_code: str) -> str:
     value = hex_code.lstrip("#")
     if len(value) != 6:
@@ -139,13 +161,20 @@ def venue_actions(ctx: Any, state: Any, venue_id: str) -> list[dict]:
         return commands
     if venue_id == "town_alchemist":
         commands: list[dict] = []
-        gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]
-        for idx, gear in enumerate(gear_items[:9], start=1):
+        if not getattr(state, "alchemy_selecting", False):
+            can_fuse = len(_fusable_gear(state)) >= 2
+            entry = {"label": "Fuse", "command": "ALCHEMY_FUSE"}
+            if not can_fuse:
+                entry["_disabled"] = True
+            commands.append(entry)
+            return _append_leave(commands)
+        candidates = _fusable_gear(state, getattr(state, "alchemy_first", None))
+        for idx, gear in enumerate(candidates[:9], start=1):
             label = gear.get("name", "Gear")
             command = f"ALCHEMY_PICK:{idx}"
             commands.append({"label": label, "command": command})
         if not commands:
-            commands.append({"label": "No gear to fuse.", "_disabled": True})
+            commands.append({"label": "No compatible gear.", "_disabled": True})
         return _append_leave(commands)
 
     if venue_id == "town_portal":
@@ -180,6 +209,7 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
         state.inn_mode = False
         state.alchemist_mode = False
         state.alchemy_first = None
+        state.alchemy_selecting = False
         state.temple_mode = False
         state.smithy_mode = False
         state.portal_mode = False
@@ -220,6 +250,46 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                     state.last_message = sell_item(state.player, ctx.items, item_id)
                     ctx.save_data.save_player(state.player)
                 return True
+
+    if venue_id == "town_alchemist":
+        if command_id == "ALCHEMY_FUSE":
+            if len(_fusable_gear(state)) < 2:
+                state.last_message = "You need at least two compatible items."
+                return True
+            state.alchemy_selecting = True
+            state.alchemy_first = None
+            state.action_cursor = 0
+            state.last_message = "Select the first item to fuse."
+            return True
+        if command_id.startswith("ALCHEMY_PICK:"):
+            idx_raw = command_id.split(":", 1)[1]
+            if not idx_raw.isdigit():
+                return False
+            candidates = _fusable_gear(state, getattr(state, "alchemy_first", None))
+            idx = int(idx_raw) - 1
+            if idx < 0 or idx >= len(candidates):
+                return False
+            gear_id = candidates[idx].get("id")
+            if not gear_id:
+                return False
+            if not state.alchemy_first:
+                state.alchemy_first = gear_id
+                state.action_cursor = 0
+                state.last_message = "Select a second item to fuse."
+                return True
+            if state.alchemy_first == gear_id:
+                state.last_message = "Choose a different item."
+                return True
+            fused = state.player.fuse_gear(state.alchemy_first, gear_id)
+            state.alchemy_first = None
+            state.alchemy_selecting = False
+            state.action_cursor = 0
+            if fused:
+                state.last_message = f"Fused into {fused.get('name', 'gear')}."
+                ctx.save_data.save_player(state.player)
+            else:
+                state.last_message = "Fusion failed."
+            return True
 
     return False
 

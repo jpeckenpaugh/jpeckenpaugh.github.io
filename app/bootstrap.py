@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from app.commands import build_registry
 from app.commands.router import RouterContext
 from app.commands.scene_commands import command_ids_by_anim, command_ids_by_type
-from app.config import DATA_DIR, SAVE_PATH
+from app.config import DATA_DIR, SAVE_DIR, SAVE_PATH
 from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
 from app.data_access.continents_data import ContinentsData
@@ -121,7 +121,7 @@ def _load_continents() -> ContinentsData:
 
 
 def _load_save() -> SaveData:
-    return SaveData(SAVE_PATH)
+    return SaveData(SAVE_DIR)
 
 
 def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
@@ -201,6 +201,7 @@ def create_app() -> AppContext:
         elements=elements,
         spells_art=spells_art,
         glyphs=glyphs,
+        save_data=save_data,
     )
 
     return AppContext(

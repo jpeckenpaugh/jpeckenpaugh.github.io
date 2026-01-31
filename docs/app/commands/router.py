@@ -45,6 +45,7 @@ class CommandState:
     element_mode: bool
     alchemist_mode: bool
     alchemy_first: Optional[str]
+    alchemy_selecting: bool
     temple_mode: bool
     smithy_mode: bool
     portal_mode: bool
@@ -288,6 +289,11 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         if venue_id and handle_venue_command(ctx, state, venue_id, command_id):
             return True
 
+    if state.alchemist_mode:
+        venue_id = venue_id_from_state(state)
+        if venue_id and handle_venue_command(ctx, state, venue_id, command_id):
+            return True
+
     if command_id == "INVENTORY":
         menu = ctx.menus.get("inventory", {})
         state.inventory_items = state.player.list_inventory_items(ctx.items)
@@ -320,33 +326,6 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             else:
                 state.last_message = "Invalid item selection."
             return True
-
-    if state.alchemist_mode and command_id.startswith("ALCHEMY_PICK:"):
-        idx_raw = command_id.split(":", 1)[1]
-        if not idx_raw.isdigit():
-            return False
-        gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]
-        idx = int(idx_raw) - 1
-        if idx < 0 or idx >= len(gear_items):
-            return False
-        gear_id = gear_items[idx].get("id")
-        if not gear_id:
-            return False
-        if not state.alchemy_first:
-            state.alchemy_first = gear_id
-            state.last_message = "Select a second item to fuse."
-            return True
-        if state.alchemy_first == gear_id:
-            state.last_message = "Choose a different item."
-            return True
-        fused = state.player.fuse_gear(state.alchemy_first, gear_id)
-        state.alchemy_first = None
-        if fused:
-            state.last_message = f"Fused into {fused.get('name', 'gear')}."
-            ctx.save_data.save_player(state.player)
-        else:
-            state.last_message = "Fusion failed."
-        return True
 
     if state.element_mode and command_id.startswith("ELEMENT:"):
         element_id = command_id.split(":", 1)[1]
@@ -446,38 +425,87 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.action_cmd = "QUIT"
         return True
     if command_id == "TITLE_CONFIRM_YES":
-        ctx.save_data.delete()
-        state.player = Player.from_dict({})
-        state.player.location = "Town"
+        pending_slot = getattr(state.player, "title_pending_slot", None)
+        if pending_slot:
+            ctx.save_data.delete(pending_slot)
         state.player.title_confirm = False
-        state.player.has_save = False
-        state.opponents = []
-        state.loot_bank = {"xp": 0, "gold": 0}
-        state.shop_mode = False
-        state.inventory_mode = False
-        state.hall_mode = False
-        state.inn_mode = False
-        state.spell_mode = False
-        state.element_mode = False
-        state.alchemist_mode = False
-        state.alchemy_first = None
-        state.temple_mode = False
-        state.smithy_mode = False
-        state.portal_mode = False
-        state.last_message = "You arrive in town."
+        state.player.title_fortune = True
+        state.player.title_slot_select = False
         return True
     if command_id == "TITLE_CONFIRM_NO":
         state.player.title_confirm = False
+        state.player.title_slot_select = True
         return True
     if command_id == "TITLE_NEW":
-        if ctx.save_data.exists():
-            state.player.title_confirm = True
+        state.player.title_confirm = False
+        state.player.title_fortune = False
+        state.player.title_slot_select = True
+        state.player.title_slot_mode = "new"
+        return True
+    if command_id == "TITLE_FORTUNE_BACK":
+        state.player.title_fortune = False
+        state.player.title_slot_select = True
+        return True
+    if command_id == "TITLE_SLOT_BACK":
+        state.player.title_slot_select = False
+        state.player.title_slot_mode = None
+        state.player.title_pending_slot = None
+        return True
+    if command_id.startswith("TITLE_SLOT_"):
+        slot_raw = command_id.replace("TITLE_SLOT_", "")
+        if not slot_raw.isdigit():
+            return False
+        slot = int(slot_raw)
+        mode = getattr(state.player, "title_slot_mode", "continue")
+        if mode == "continue":
+            if not ctx.save_data.exists(slot):
+                state.last_message = "That slot is empty."
+                return True
+            loaded = ctx.save_data.load_player(slot)
+            state.player = loaded if loaded else Player.from_dict({})
+            state.player.sync_items(ctx.items)
+            sync_player_elements(ctx, state.player)
+            state.player.location = "Town"
+            state.player.title_confirm = False
+            state.player.title_fortune = False
+            state.player.title_slot_select = False
+            state.player.title_slot_mode = None
+            state.player.title_pending_slot = None
+            state.player.has_save = True
+            state.opponents = []
+            state.loot_bank = {"xp": 0, "gold": 0}
+            state.shop_mode = False
+            state.inventory_mode = False
+            state.hall_mode = False
+            state.inn_mode = False
+            state.spell_mode = False
+            state.last_message = "You arrive in town."
             return True
-        state.player = Player.from_dict({})
+        if ctx.save_data.exists(slot):
+            state.player.title_confirm = True
+            state.player.title_pending_slot = slot
+            return True
+        state.player.title_pending_slot = slot
+        state.player.title_fortune = True
+        state.player.title_slot_select = False
+        return True
+    if command_id in ("FORTUNE_POOR", "FORTUNE_WELL_OFF", "FORTUNE_ROYALTY"):
+        fortune_gold = {
+            "FORTUNE_POOR": 10,
+            "FORTUNE_WELL_OFF": 100,
+            "FORTUNE_ROYALTY": 1000,
+        }
+        pending_slot = getattr(state.player, "title_pending_slot", None) or 1
+        ctx.save_data.set_current_slot(pending_slot)
+        state.player = Player.from_dict({"gold": fortune_gold.get(command_id, 10)})
         state.player.sync_items(ctx.items)
         sync_player_elements(ctx, state.player)
         state.player.location = "Town"
         state.player.title_confirm = False
+        state.player.title_fortune = False
+        state.player.title_slot_select = False
+        state.player.title_slot_mode = None
+        state.player.title_pending_slot = None
         state.player.has_save = False
         state.opponents = []
         state.loot_bank = {"xp": 0, "gold": 0}
@@ -493,25 +521,15 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.smithy_mode = False
         state.portal_mode = False
         state.last_message = "You arrive in town."
+        ctx.save_data.save_player(state.player)
         return True
     if command_id == "TITLE_CONTINUE":
         if not ctx.save_data.exists():
             return True
-        loaded = ctx.save_data.load_player()
-        state.player = loaded if loaded else Player.from_dict({})
-        state.player.sync_items(ctx.items)
-        sync_player_elements(ctx, state.player)
-        state.player.location = "Town"
+        state.player.title_slot_select = True
+        state.player.title_slot_mode = "continue"
         state.player.title_confirm = False
-        state.player.has_save = ctx.save_data.exists()
-        state.opponents = []
-        state.loot_bank = {"xp": 0, "gold": 0}
-        state.shop_mode = False
-        state.inventory_mode = False
-        state.hall_mode = False
-        state.inn_mode = False
-        state.spell_mode = False
-        state.last_message = "You arrive in town."
+        state.player.title_fortune = False
         return True
     return False
 

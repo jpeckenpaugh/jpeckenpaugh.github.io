@@ -205,6 +205,21 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
             return title_scene.get("confirm_commands", [])
         if getattr(state.player, "title_fortune", False):
             return title_scene.get("fortune_commands", [])
+        if getattr(state.player, "title_slot_select", False):
+            mode = getattr(state.player, "title_slot_mode", "continue")
+            summaries = ctx.save_data.slot_summaries()
+            commands = []
+            for summary in summaries:
+                slot_num = summary.get("slot", 0)
+                label = f"Slot {slot_num}"
+                if summary.get("empty"):
+                    label = f"{label} (Empty)"
+                entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
+                if mode == "continue" and summary.get("empty"):
+                    entry["_disabled"] = True
+                commands.append(entry)
+            commands.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
+            return commands
         return scene_commands(
             ctx.scenes,
             ctx.commands_data,
@@ -652,6 +667,9 @@ def apply_router_command(
     pre_in_forest = state.player.location == "Forest"
     pre_alive = any(m.hp > 0 for m in state.opponents)
     pre_spell_mode = state.spell_mode
+    pre_title_slot_select = getattr(state.player, "title_slot_select", False)
+    pre_title_fortune = getattr(state.player, "title_fortune", False)
+    pre_title_confirm = getattr(state.player, "title_confirm", False)
     cmd_state = CommandState(
         player=state.player,
         opponents=state.opponents,
@@ -713,6 +731,30 @@ def apply_router_command(
     state.portal_mode = cmd_state.portal_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
+    post_title_slot_select = getattr(state.player, "title_slot_select", False)
+    post_title_fortune = getattr(state.player, "title_fortune", False)
+    post_title_confirm = getattr(state.player, "title_confirm", False)
+    if post_title_slot_select and not pre_title_slot_select:
+        last_slot = ctx.save_data.last_played_slot()
+        commands = action_commands_for_state(ctx, state)
+        if last_slot:
+            idx = max(0, min(len(commands) - 1, last_slot - 1))
+            if idx < len(commands) and not commands[idx].get("_disabled"):
+                state.action_cursor = idx
+            else:
+                for i, cmd in enumerate(commands):
+                    if not cmd.get("_disabled") and cmd.get("command", "").startswith("TITLE_SLOT_"):
+                        state.action_cursor = i
+                        break
+        else:
+            for i, cmd in enumerate(commands):
+                if not cmd.get("_disabled") and cmd.get("command", "").startswith("TITLE_SLOT_"):
+                    state.action_cursor = i
+                    break
+    if post_title_fortune and not pre_title_fortune:
+        state.action_cursor = 0
+    if post_title_confirm and not pre_title_confirm:
+        state.action_cursor = 0
     if state.spell_mode and not pre_spell_mode:
         state.menu_cursor = state.spell_cursor
         keys = spell_menu_keys(ctx, state.player)

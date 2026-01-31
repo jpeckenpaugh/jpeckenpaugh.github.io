@@ -26,6 +26,7 @@ class GameState:
     element_mode: bool = False
     alchemist_mode: bool = False
     alchemy_first: Optional[str] = None
+    alchemy_selecting: bool = False
     temple_mode: bool = False
     smithy_mode: bool = False
     portal_mode: bool = False
