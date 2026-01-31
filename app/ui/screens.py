@@ -543,12 +543,22 @@ def generate_frame(
                 name = spell.get("name", "Spell")
                 base_cost = int(spell.get("mp_cost", 0))
                 max_rank = ctx.spells.rank_for(spell, player.level)
+                element = spell.get("element")
+                has_charge = False
+                if element:
+                    charges = player.wand_charges()
+                    has_charge = int(charges.get(str(element), 0)) > 0
+                max_affordable = max_rank
+                if not has_charge and base_cost > 0:
+                    max_affordable = min(max_rank, player.mp // base_cost)
+                disabled = (max_affordable < 1)
                 selected_rank = max_rank
                 if idx == menu_cursor:
                     selected_rank = max(1, min(spell_cast_rank, max_rank))
+                    if not has_charge and max_affordable >= 1:
+                        selected_rank = min(selected_rank, max_affordable)
                 mp_cost = base_cost * max(1, selected_rank)
                 prefix = "> " if idx == menu_cursor else "  "
-                element = spell.get("element")
                 star_color = ""
                 if element and hasattr(ctx, "elements"):
                     colors = ctx.elements.colors_for(str(element))
@@ -561,7 +571,10 @@ def generate_frame(
                 if disabled:
                     disabled = f"{ANSI.FG_WHITE}{ANSI.DIM}{disabled}{ANSI.RESET}"
                 rank_bar = f"[{(enabled + disabled).ljust(3)}]"
-                body.append(f"{prefix}{name} ({mp_cost} MP) {rank_bar}")
+                line = f"{prefix}{name} ({mp_cost} MP) {rank_bar}"
+                if disabled:
+                    line = f"{ANSI.DIM}{line}{ANSI.RESET}"
+                body.append(line)
             selection = max(0, min(menu_cursor, len(available_spells) - 1))
             _, spell = available_spells[selection]
             effect = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None

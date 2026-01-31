@@ -450,6 +450,20 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return None, None
         state.spell_cursor = max(0, min(state.spell_cursor, len(keys) - 1))
         state.menu_cursor = state.spell_cursor
+        spell_entry = ctx.spells.by_command_id(keys[state.spell_cursor])
+        spell = spell_entry[1] if spell_entry else None
+        max_rank = ctx.spells.rank_for(spell, state.player.level) if spell else 1
+        base_cost = int(spell.get("mp_cost", 0)) if isinstance(spell, dict) else 0
+        element = spell.get("element") if isinstance(spell, dict) else None
+        has_charge = False
+        if element:
+            charges = state.player.wand_charges()
+            has_charge = int(charges.get(str(element), 0)) > 0
+        max_affordable = max_rank
+        if not has_charge and base_cost > 0:
+            max_affordable = min(max_rank, state.player.mp // base_cost)
+        if max_affordable >= 1 and state.spell_cast_rank > max_affordable:
+            state.spell_cast_rank = max_affordable
         if action in ("UP", "DOWN"):
             direction = -1 if action == "UP" else 1
             state.spell_cursor = (state.spell_cursor + direction) % len(keys)
@@ -458,19 +472,28 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if spell_entry:
                 _, spell = spell_entry
                 max_rank = ctx.spells.rank_for(spell, state.player.level)
-                state.spell_cast_rank = max_rank
+                base_cost = int(spell.get("mp_cost", 0))
+                element = spell.get("element")
+                has_charge = False
+                if element:
+                    charges = state.player.wand_charges()
+                    has_charge = int(charges.get(str(element), 0)) > 0
+                max_affordable = max_rank
+                if not has_charge and base_cost > 0:
+                    max_affordable = min(max_rank, state.player.mp // base_cost)
+                state.spell_cast_rank = max(1, max_affordable) if max_affordable >= 1 else 1
             return None, None
         if action in ("LEFT", "RIGHT"):
-            spell_entry = ctx.spells.by_command_id(keys[state.spell_cursor])
-            if spell_entry:
-                _, spell = spell_entry
-                max_rank = ctx.spells.rank_for(spell, state.player.level)
-                if action == "LEFT":
-                    state.spell_cast_rank = max(1, state.spell_cast_rank - 1)
-                else:
-                    state.spell_cast_rank = min(max_rank, state.spell_cast_rank + 1)
+            if max_affordable < 1:
+                return None, None
+            if action == "LEFT":
+                state.spell_cast_rank = max(1, state.spell_cast_rank - 1)
+            else:
+                state.spell_cast_rank = min(max_affordable, state.spell_cast_rank + 1)
             return None, None
         if action == "CONFIRM":
+            if max_affordable < 1:
+                return None, None
             cmd = keys[state.spell_cursor]
             return cmd, None
         if action == "BACK":
@@ -692,7 +715,17 @@ def apply_router_command(
             spell_entry = ctx.spells.by_command_id(keys[state.menu_cursor])
             if spell_entry:
                 _, spell = spell_entry
-                state.spell_cast_rank = ctx.spells.rank_for(spell, state.player.level)
+                max_rank = ctx.spells.rank_for(spell, state.player.level)
+                base_cost = int(spell.get("mp_cost", 0))
+                element = spell.get("element")
+                has_charge = False
+                if element:
+                    charges = state.player.wand_charges()
+                    has_charge = int(charges.get(str(element), 0)) > 0
+                max_affordable = max_rank
+                if not has_charge and base_cost > 0:
+                    max_affordable = min(max_rank, state.player.mp // base_cost)
+                state.spell_cast_rank = max(1, max_affordable) if max_affordable >= 1 else 1
     if cmd == "ENTER_VENUE":
         commands = action_commands_for_state(ctx, state)
         state.action_cursor = 0
@@ -766,7 +799,19 @@ def resolve_player_action(
         spell_id, spell = spell_entry
         name = spell.get("name", spell_id.title())
         max_rank = ctx.spells.rank_for(spell, state.player.level)
-        rank = max(1, min(state.spell_cast_rank, max_rank))
+        base_cost = int(spell.get("mp_cost", 2))
+        element = spell.get("element")
+        has_charge = False
+        if element:
+            charges = state.player.wand_charges()
+            has_charge = int(charges.get(str(element), 0)) > 0
+        max_affordable = max_rank
+        if not has_charge and base_cost > 0:
+            max_affordable = min(max_rank, state.player.mp // base_cost)
+        if max_affordable < 1:
+            state.last_message = f"Not enough MP to cast {name}."
+            return None
+        rank = max(1, min(state.spell_cast_rank, max_rank, max_affordable))
         state.spell_cast_rank = rank
         if rank >= 2:
             state.last_spell_targets = [
@@ -780,12 +825,7 @@ def resolve_player_action(
             return None
         if spell_id == "healing":
             pass
-        mp_cost = int(spell.get("mp_cost", 2)) * max(1, rank)
-        element = spell.get("element")
-        has_charge = False
-        if element:
-            charges = state.player.wand_charges()
-            has_charge = int(charges.get(str(element), 0)) > 0
+        mp_cost = base_cost * max(1, rank)
         if state.player.mp < mp_cost and not has_charge:
             state.last_message = f"Not enough MP to cast {name}."
             return None
