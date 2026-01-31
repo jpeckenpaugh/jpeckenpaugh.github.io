@@ -390,7 +390,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         return None, None
 
     if state.leveling_mode:
-        options = ["NUM1", "NUM2", "NUM3", "NUM4", "B_KEY", "X_KEY"]
+        options = ["NUM1", "NUM2", "NUM3", "NUM4", "B_KEY", "X_KEY", "BANK"]
         if action in ("UP", "DOWN"):
             direction = -1 if action == "UP" else 1
             state.level_cursor = (state.level_cursor + direction) % len(options)
@@ -824,23 +824,24 @@ def resolve_player_action(
 ) -> Optional[str]:
     if handled_by_router:
         return action_cmd
-    if cmd != "DEFEND":
-        state.defend_active = False
-        state.defend_bonus = 0
-        state.defend_evasion = 0.0
+    if cmd == "DEFEND":
+        alive = [opp for opp in state.opponents if opp.hp > 0]
+        highest = max((opp.level for opp in alive), default=state.player.level)
+        lower_level = highest < state.player.level
+        defense_bonus = max(2, state.player.total_defense() // 2)
+        evasion_bonus = 0.15 if lower_level else 0.05
+        state.defend_active = True
+        state.defend_bonus = defense_bonus
+        state.defend_evasion = evasion_bonus
         state.action_effect_override = None
         state.last_spell_targets = []
-        if cmd == "DEFEND":
-            alive = [opp for opp in state.opponents if opp.hp > 0]
-            highest = max((opp.level for opp in alive), default=state.player.level)
-            lower_level = highest < state.player.level
-            defense_bonus = max(2, state.player.total_defense() // 2)
-            evasion_bonus = 0.15 if lower_level else 0.05
-            state.defend_active = True
-            state.defend_bonus = defense_bonus
-            state.defend_evasion = evasion_bonus
-            push_battle_message(state, "You brace for impact.")
-            return cmd
+        push_battle_message(state, "You brace for impact.")
+        return cmd
+    state.defend_active = False
+    state.defend_bonus = 0
+    state.defend_evasion = 0.0
+    state.action_effect_override = None
+    state.last_spell_targets = []
     spell_entry = ctx.spells.by_command_id(cmd)
     if spell_entry:
         spell_id, spell = spell_entry

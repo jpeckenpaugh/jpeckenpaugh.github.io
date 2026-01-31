@@ -151,6 +151,30 @@ class Player:
                 charges[element] = 0
         return charges
 
+    def _fusion_rank(self, gear: Optional[dict]) -> int:
+        if not isinstance(gear, dict):
+            return 0
+        try:
+            return int(gear.get("fuse_rank", 0))
+        except (TypeError, ValueError):
+            return 0
+
+    def _fusion_base_name(self, name: str) -> str:
+        if not name:
+            return "Gear"
+        prefixes = (
+            "Fused ",
+            "Empowered ",
+            "Mythic ",
+            "Legendary ",
+            "Godly ",
+            "Omnipotent ",
+        )
+        for prefix in prefixes:
+            if name.startswith(prefix):
+                return name[len(prefix):].strip() or "Gear"
+        return name
+
     def _create_gear_instance(self, item_id: str, items_data, overrides: Optional[dict] = None) -> dict:
         item = items_data.get(item_id, {})
         elem_points = self._normalize_elem_points(item.get("elem_points"))
@@ -189,6 +213,10 @@ class Player:
         slot = gear.get("slot")
         if not slot:
             return "That item cannot be equipped."
+        if self.equipment.get(slot) == gear_id:
+            self.equipment.pop(slot, None)
+            self._recalc_gear()
+            return f"Unequipped {gear.get('name', 'gear')}."
         self.equipment[slot] = gear_id
         self._recalc_gear()
         return f"Equipped {gear.get('name', 'gear')}."
@@ -425,6 +453,10 @@ class Player:
         second = self.gear_instance(gear_b)
         if not first or not second:
             return None
+        rank = max(self._fusion_rank(first), self._fusion_rank(second)) + 1
+        ranks = ["Fused", "Empowered", "Mythic", "Legendary", "Godly", "Omnipotent"]
+        title = ranks[min(rank - 1, len(ranks) - 1)]
+        base_name = self._fusion_base_name(first.get("name", "Gear"))
         merged_points = {}
         for points in (first.get("elem_points", {}), second.get("elem_points", {})):
             if not isinstance(points, dict):
@@ -434,12 +466,13 @@ class Player:
         fused = {
             "id": self._next_gear_id(),
             "item_id": first.get("item_id") or second.get("item_id"),
-            "name": f"Fused {first.get('name', 'Gear')}",
+            "name": f"{title} {base_name}",
             "slot": first.get("slot") or second.get("slot"),
             "atk": int(first.get("atk", 0)) + int(second.get("atk", 0)),
             "defense": int(first.get("defense", 0)) + int(second.get("defense", 0)),
             "elem_points": merged_points,
             "price": int(first.get("price", 0)) + int(second.get("price", 0)),
+            "fuse_rank": rank,
         }
         if fused.get("slot") == "wand":
             charges = self._charges_from_points(merged_points)
@@ -523,6 +556,9 @@ class Player:
         elif cmd == "X_KEY":
             self.allocate_random()
             message = "Random allocation complete."
+        elif cmd == "BANK":
+            self.finish_level_up()
+            return "Stat points banked.", True
         elif cmd in ("NUM1", "NUM2", "NUM3", "NUM4"):
             if self.stat_points <= 0:
                 message = "No stat points to spend."

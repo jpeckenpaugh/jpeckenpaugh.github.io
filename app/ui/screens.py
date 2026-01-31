@@ -439,6 +439,7 @@ def generate_frame(
             "  +DEF",
             "  Balanced allocation",
             "  Random allocation",
+            "  Bank points",
         ]
         level_cursor = max(0, min(level_cursor, len(level_options) - 1))
         level_lines = []
