@@ -117,6 +117,7 @@ class Player:
     def add_gear(self, item_id: str, items_data) -> dict:
         gear = self._create_gear_instance(item_id, items_data)
         self.gear_inventory.append(gear)
+        self.auto_equip_if_best(gear.get("id"))
         return gear
 
     def _next_gear_id(self) -> str:
@@ -187,6 +188,36 @@ class Player:
         self.equipment[slot] = gear_id
         self._recalc_gear()
         return f"Equipped {gear.get('name', 'gear')}."
+
+    def _gear_score(self, gear: dict) -> int:
+        if not isinstance(gear, dict):
+            return 0
+        atk = int(gear.get("atk", 0))
+        defense = int(gear.get("defense", 0))
+        elem_points = self._normalize_elem_points(gear.get("elem_points", {}))
+        elem_total = sum(int(value) for value in elem_points.values())
+        return atk + defense + elem_total
+
+    def auto_equip_if_best(self, gear_id: Optional[str]) -> bool:
+        if not gear_id:
+            return False
+        gear = self.gear_instance(str(gear_id))
+        if not gear:
+            return False
+        slot = gear.get("slot")
+        if not slot:
+            return False
+        if not isinstance(self.equipment, dict):
+            self.equipment = {}
+        current_id = self.equipment.get(slot)
+        current = self.gear_instance(current_id) if current_id else None
+        new_score = self._gear_score(gear)
+        current_score = self._gear_score(current) if current else -1
+        if current and new_score < current_score:
+            return False
+        self.equipment[slot] = gear.get("id")
+        self._recalc_gear()
+        return True
 
     def total_atk(self) -> int:
         return self.atk + int(self.gear_atk) + int(self.temp_atk_bonus)
@@ -419,6 +450,7 @@ class Player:
                 self.equipment.pop(slot, None)
         self.gear_inventory.append(fused)
         self._recalc_gear()
+        self.auto_equip_if_best(fused.get("id"))
         return fused
 
     def gain_xp(self, amount: int) -> int:

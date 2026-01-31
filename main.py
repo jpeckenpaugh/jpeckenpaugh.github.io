@@ -90,6 +90,7 @@ def main():
         portal_mode=False,
         quit_confirm=False,
         title_mode=True,
+        fortune_mode=False,
         spell_cursor=0,
         battle_cursor=0,
         current_venue_id=None,
@@ -148,6 +149,7 @@ def main():
                 state.smithy_mode,
                 state.portal_mode,
                 state.options_mode,
+                state.fortune_mode,
                 state.action_cursor,
                 state.menu_cursor,
                 state.spell_cast_rank,
@@ -173,6 +175,7 @@ def main():
             state.smithy_mode = False
             state.portal_mode = False
             state.options_mode = False
+            state.fortune_mode = False
             state.target_select = False
             state.target_index = None
             state.target_command = None
@@ -206,6 +209,7 @@ def main():
                 state.smithy_mode,
                 state.portal_mode,
                 state.options_mode,
+                state.fortune_mode,
                 state.action_cursor,
                 state.menu_cursor,
                 state.spell_cast_rank,
@@ -265,6 +269,7 @@ def main():
                 "smithy_mode": state.smithy_mode,
                 "portal_mode": state.portal_mode,
                 "options_mode": state.options_mode,
+                "fortune_mode": state.fortune_mode,
                 "action_cursor": state.action_cursor,
                 "menu_cursor": state.menu_cursor,
                 "spell_cast_rank": state.spell_cast_rank,
@@ -323,6 +328,7 @@ def main():
                     pre_snapshot.get("smithy_mode", False),
                     pre_snapshot.get("portal_mode", False),
                     pre_snapshot.get("options_mode", False),
+                    pre_snapshot.get("fortune_mode", False),
                     pre_snapshot.get("action_cursor", 0),
                     pre_snapshot.get("menu_cursor", 0),
                     pre_snapshot.get("spell_cast_rank", 1),
@@ -350,6 +356,7 @@ def main():
                     state.smithy_mode,
                     state.portal_mode,
                     state.options_mode,
+                    state.fortune_mode,
                     state.action_cursor,
                     state.menu_cursor,
                     state.spell_cast_rank,

@@ -397,6 +397,7 @@ def generate_frame(
     smithy_mode: bool = False,
     portal_mode: bool = False,
     options_mode: bool = False,
+    fortune_mode: bool = False,
     action_cursor: int = 0,
     menu_cursor: int = 0,
     spell_cast_rank: int = 1,
@@ -516,6 +517,23 @@ def generate_frame(
         else:
             body.append("No options available.")
         actions = format_menu_actions(options_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
+        art_lines = []
+        art_color = ANSI.FG_WHITE
+    elif fortune_mode:
+        fortune_menu = ctx.menus.get("fortune", {})
+        title = fortune_menu.get("title", "Fortune")
+        display_location = title
+        body = []
+        actions_list = [entry for entry in fortune_menu.get("actions", []) if entry.get("command")]
+        if actions_list:
+            menu_cursor = max(0, min(menu_cursor, len(actions_list) - 1))
+            for idx, entry in enumerate(actions_list):
+                label = str(entry.get("label", "")).strip() or entry.get("command", "")
+                prefix = "> " if idx == menu_cursor else "  "
+                body.append(f"{prefix}{label}")
+        else:
+            body.append("No fortune options available.")
+        actions = format_menu_actions(fortune_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif inventory_mode:

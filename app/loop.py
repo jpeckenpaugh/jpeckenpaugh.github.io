@@ -79,6 +79,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.smithy_mode,
         state.portal_mode,
         state.options_mode,
+        state.fortune_mode,
         state.action_cursor,
         state.menu_cursor,
         state.spell_cast_rank,
@@ -423,6 +424,29 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return cmd, None
         return None, None
 
+    if state.fortune_mode:
+        menu = ctx.menus.get("fortune", {})
+        actions = [entry for entry in menu.get("actions", []) if entry.get("command")]
+        if not actions:
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, len(actions) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % len(actions)
+            return None, None
+        if action == "BACK":
+            state.fortune_mode = False
+            state.menu_cursor = 0
+            return None, None
+        if action == "CONFIRM":
+            cmd = actions[state.menu_cursor].get("command")
+            if cmd == "B_KEY":
+                state.fortune_mode = False
+                state.menu_cursor = 0
+                return None, None
+            return cmd, None
+        return None, None
+
     if state.inventory_mode:
         items = state.inventory_items or []
         count = min(len(items), 9)
@@ -670,6 +694,7 @@ def apply_router_command(
         smithy_mode=state.smithy_mode,
         portal_mode=state.portal_mode,
         options_mode=state.options_mode,
+        fortune_mode=state.fortune_mode,
         action_cmd=action_cmd,
         target_index=state.target_index,
         command_target_override=command_meta.get("target") if command_meta else None,
@@ -706,6 +731,7 @@ def apply_router_command(
     state.temple_mode = cmd_state.temple_mode
     state.smithy_mode = cmd_state.smithy_mode
     state.portal_mode = cmd_state.portal_mode
+    state.fortune_mode = cmd_state.fortune_mode
     action_cmd = cmd_state.action_cmd
     target_index = cmd_state.target_index
     if state.spell_mode and not pre_spell_mode:

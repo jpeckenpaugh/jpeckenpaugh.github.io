@@ -30,6 +30,7 @@ class GameState:
     smithy_mode: bool = False
     portal_mode: bool = False
     options_mode: bool = False
+    fortune_mode: bool = False
     target_select: bool = False
     target_index: Optional[int] = None
     target_command: Optional[str] = None

@@ -49,6 +49,7 @@ class CommandState:
     smithy_mode: bool
     portal_mode: bool
     options_mode: bool
+    fortune_mode: bool
     action_cmd: Optional[str]
     target_index: Optional[int] = None
     command_target_override: Optional[str] = None
@@ -447,24 +448,8 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         return True
     if command_id == "TITLE_CONFIRM_YES":
         ctx.save_data.delete()
-        state.player = Player.from_dict({})
-        state.player.location = "Town"
         state.player.title_confirm = False
-        state.player.has_save = False
-        state.opponents = []
-        state.loot_bank = {"xp": 0, "gold": 0}
-        state.shop_mode = False
-        state.inventory_mode = False
-        state.hall_mode = False
-        state.inn_mode = False
-        state.spell_mode = False
-        state.element_mode = False
-        state.alchemist_mode = False
-        state.alchemy_first = None
-        state.temple_mode = False
-        state.smithy_mode = False
-        state.portal_mode = False
-        state.last_message = "You arrive in town."
+        state.fortune_mode = True
         return True
     if command_id == "TITLE_CONFIRM_NO":
         state.player.title_confirm = False
@@ -473,7 +458,16 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         if ctx.save_data.exists():
             state.player.title_confirm = True
             return True
-        state.player = Player.from_dict({})
+        state.player.title_confirm = False
+        state.fortune_mode = True
+        return True
+    if command_id in ("FORTUNE_POOR", "FORTUNE_WELL_OFF", "FORTUNE_ROYALTY"):
+        fortune_gold = {
+            "FORTUNE_POOR": 10,
+            "FORTUNE_WELL_OFF": 100,
+            "FORTUNE_ROYALTY": 1000,
+        }
+        state.player = Player.from_dict({"gold": fortune_gold.get(command_id, 10)})
         state.player.sync_items(ctx.items)
         sync_player_elements(ctx, state.player)
         state.player.location = "Town"
@@ -492,6 +486,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.temple_mode = False
         state.smithy_mode = False
         state.portal_mode = False
+        state.fortune_mode = False
         state.last_message = "You arrive in town."
         return True
     if command_id == "TITLE_CONTINUE":
