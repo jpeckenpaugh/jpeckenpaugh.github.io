@@ -485,7 +485,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         items_data=ctx.items,
         target_index=state.target_index,
     )
-    if command_id in ("ATTACK", "SPARK", "HEAL"):
+    if command_id in ("ATTACK", "SPARK", "HEAL", "DEFEND", "FLEE"):
         state.action_cmd = command_id
         return True
 
