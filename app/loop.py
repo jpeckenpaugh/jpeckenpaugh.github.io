@@ -644,7 +644,11 @@ def push_battle_message(state: GameState, message: str, max_lines: int = 7) -> N
     state.last_message = message
     if state.player.location != "Forest":
         return
+    if message == "You flee to safety.":
+        state.battle_log = []
     if message:
+        if message == "There is nothing to flee from." and state.battle_log and state.battle_log[-1] == "You flee to safety.":
+            return
         if state.battle_log and state.battle_log[-1] == message:
             return
         if not state.battle_log and _is_arrival_message(state, message):
