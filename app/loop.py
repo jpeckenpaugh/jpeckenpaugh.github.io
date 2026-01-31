@@ -761,6 +761,8 @@ def apply_router_command(
         commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
         state.action_cursor = state.battle_cursor
         clamp_action_cursor(state, commands)
+    if cmd == "FLEE" and cmd_state.last_message == "You flee to safety.":
+        state.battle_log = []
     push_battle_message(state, cmd_state.last_message)
     state.shop_mode = cmd_state.shop_mode
     state.shop_view = cmd_state.shop_view
