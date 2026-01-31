@@ -52,21 +52,32 @@ class OpponentsData:
     def _variant_desc(self) -> dict:
         return self._variants.get("descriptions", {}) if isinstance(self._variants, dict) else {}
 
-    def _colorize_map(self, color_map: dict, element: str) -> dict:
-        if not isinstance(color_map, dict):
-            return color_map
+    def _colorize_map(self, color_map, element: str):
         meta = self._variant_meta()
         palette = meta.get("color_palettes", {}).get(element) if isinstance(meta, dict) else None
-        # palette can be injected later; if missing, keep placeholders
         if not isinstance(palette, dict):
             return color_map
-        mapped = {}
-        for key, value in color_map.items():
-            if str(value) in ("1", "2", "3"):
-                mapped[key] = palette.get(str(value), value)
-            else:
-                mapped[key] = value
-        return mapped
+        if isinstance(color_map, dict):
+            mapped = {}
+            for key, value in color_map.items():
+                if str(value) in ("1", "2", "3"):
+                    mapped[key] = palette.get(str(value), value)
+                else:
+                    mapped[key] = value
+            return mapped
+        if isinstance(color_map, list):
+            trans = {}
+            for digit in ("1", "2", "3"):
+                key = palette.get(digit)
+                if isinstance(key, str) and len(key) == 1:
+                    trans[digit] = key
+            if not trans:
+                return color_map
+            return [
+                "".join(trans.get(ch, ch) for ch in line)
+                for line in color_map
+            ]
+        return color_map
 
     def build_variant(self, base_id: str, element: str) -> dict:
         base = dict(self._opponents.get(base_id, {}))

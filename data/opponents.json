@@ -103,22 +103,20 @@
       "arrival": "trudges in with a heavy shell",
       "desc": "A hardy turtle with a crushing bite.",
       "art": [
-        "  ____  ",
-        " / __ \\ ",
-        "| /  \\ |",
-        "| |__| |",
-        "|  __  |",
-        " \\____/ ",
-        "  /  \\  "
+        "               __",
+        "    .,-;-;-,. /'_\\",
+        "  _/_/_/_|_\\_\\) /",
+        "'-<_><_><_><_>=/\\",
+        "  `/_/====/_/-'\\_\\",
+        "   \"\"     \"\"    \"\""
       ],
       "color_map": [
-        "  gggg  ",
-        " g ggg g",
-        "g g  g g",
-        "g ggg g ",
-        "g  gg  g",
-        " gggggg ",
-        "  g  g  "
+        "               gg",
+        "    ggggggggg g13g",
+        "  gg3g3g3g3g3gg g",
+        "gg121121121121qgg",
+        "  gg3gqqqqg3gqgg3g",
+        "   11     11    11"
       ],
       "variation": 0.06,
       "jitter_stability": false,
