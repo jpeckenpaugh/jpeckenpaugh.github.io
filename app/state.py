@@ -41,6 +41,9 @@ class GameState:
     menu_cursor: int = 0
     spell_cursor: int = 0
     spell_cast_rank: int = 1
+    spell_target_mode: bool = False
+    spell_target_cursor: int = 0
+    spell_target_command: Optional[str] = None
     battle_cursor: int = 0
     level_cursor: int = 0
     defend_active: bool = False
@@ -49,6 +52,8 @@ class GameState:
     action_effect_override: Optional[dict] = None
     level_up_notes: list[str] = field(default_factory=list)
     last_spell_targets: list[int] = field(default_factory=list)
+    team_target_index: Optional[int] = None
+    last_team_target_player: Optional[bool] = None
     current_venue_id: Optional[str] = None
     follower_dismiss_pending: Optional[int] = None
     followers_focus: str = "list"

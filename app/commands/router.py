@@ -82,6 +82,7 @@ class RouterContext:
     stories: StoriesData
     title_screen: object
     portal_screen: object
+    spellbook_screen: object
     registry: CommandRegistry
 
 
@@ -330,7 +331,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         if not spell_entry:
             return False
         _, spell = spell_entry
-        state.spell_mode = False
+        in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
+        state.spell_mode = not in_battle
         state.action_cmd = spell.get("command_id")
         return True
 

@@ -25,12 +25,20 @@ from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.stories_data import StoriesData
 from app.data_access.portal_screen_data import PortalScreenData
+from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
 from app.models import Frame, Player, Opponent
-from app.ui.ansi import ANSI
-from app.ui.layout import format_action_lines, format_command_lines, format_menu_actions, pad_or_trim_ansi, strip_ansi
+from app.ui.ansi import ANSI, color
+from app.ui.layout import (
+    center_ansi,
+    format_action_lines,
+    format_command_lines,
+    format_menu_actions,
+    pad_or_trim_ansi,
+    strip_ansi,
+)
 from app.ui.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from app.ui.rendering import (
     COLOR_BY_NAME,
@@ -68,6 +76,7 @@ class ScreenContext:
     stories: StoriesData
     title_screen: TitleScreenData
     portal_screen: PortalScreenData
+    spellbook_screen: SpellbookScreenData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -730,6 +739,9 @@ def generate_frame(
     followers_focus: str = "list",
     followers_action_cursor: int = 0,
     spell_cast_rank: int = 1,
+    spell_target_mode: bool = False,
+    spell_target_cursor: int = 0,
+    spell_target_command: Optional[str] = None,
     level_cursor: int = 0,
     level_up_notes: Optional[List[str]] = None,
     suppress_actions: bool = False
@@ -1186,12 +1198,57 @@ def generate_frame(
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif spell_mode:
+        spell_data = ctx.spellbook_screen.all() if hasattr(ctx, "spellbook_screen") else {}
+        layout = spell_data.get("layout", {}) if isinstance(spell_data, dict) else {}
+        menu_cfg = layout.get("menu", {}) if isinstance(layout, dict) else {}
+        art_cfg = layout.get("art", {}) if isinstance(layout, dict) else {}
+        desc_cfg = layout.get("description", {}) if isinstance(layout, dict) else {}
+
+        def _box_lines(width: int, height: int, content: list[str], *, margin: int, style: str) -> list[str]:
+            width = max(2, width)
+            height = max(2, height)
+            box = _draw_box(width, height, style=style)
+            inner_width = width - 2
+            inner_height = height - 2
+            pad_margin = max(0, min(margin, max(0, inner_width // 2)))
+            content_lines = [" " * inner_width for _ in range(inner_height)]
+            inner_content_width = max(0, inner_width - (pad_margin * 2))
+            row = pad_margin
+            for line in content:
+                if row >= inner_height - pad_margin:
+                    break
+                content_lines[row] = (" " * pad_margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * pad_margin)
+                row += 1
+            for i in range(inner_height):
+                box[i + 1] = "|" + content_lines[i] + "|"
+            return box
+
         spell_menu = ctx.menus.get("spellbook", {})
         available_spells = ctx.spells.available(player, ctx.items)
         display_location = spell_menu.get("title", "Spellbook")
-        body = []
-        if available_spells:
-            color_codes = _color_codes_by_key(ctx.colors.all())
+        selected_spell = None
+        if spell_target_mode and spell_target_command:
+            spell_entry = ctx.spells.by_command_id(spell_target_command)
+            selected_spell = spell_entry[1] if spell_entry else None
+            spell_name = selected_spell.get("name", spell_target_command) if isinstance(selected_spell, dict) else spell_target_command
+            targets = [player.name]
+            followers = getattr(player, "followers", []) or []
+            if isinstance(followers, list):
+                for follower in followers:
+                    if isinstance(follower, dict):
+                        targets.append(follower.get("name", "Follower"))
+            target_lines = [
+                _menu_line(name, idx == spell_target_cursor)
+                for idx, name in enumerate(targets)
+            ]
+            menu_labels = [f"Select target for {spell_name}", "", *target_lines]
+            base_labels = [f"Select target for {spell_name}"] + [name for name in targets]
+        elif not available_spells:
+            menu_labels = ["No spells learned."]
+            base_labels = ["No spells learned."]
+        else:
+            menu_labels = []
+            base_labels = []
             for idx, (_, spell) in enumerate(available_spells):
                 name = spell.get("name", "Spell")
                 base_cost = int(spell.get("mp_cost", 0))
@@ -1204,14 +1261,14 @@ def generate_frame(
                 max_affordable = max_rank
                 if not has_charge and base_cost > 0:
                     max_affordable = min(max_rank, player.mp // base_cost)
-                disabled = (max_affordable < 1)
+                is_disabled = (max_affordable < 1)
                 selected_rank = max_rank
                 if idx == menu_cursor:
                     selected_rank = max(1, min(spell_cast_rank, max_rank))
                     if not has_charge and max_affordable >= 1:
                         selected_rank = min(selected_rank, max_affordable)
+                    selected_spell = spell
                 mp_cost = base_cost * max(1, selected_rank)
-                prefix = "> " if idx == menu_cursor else "  "
                 star_color = ""
                 if element and hasattr(ctx, "elements"):
                     colors = ctx.elements.colors_for(str(element))
@@ -1223,21 +1280,45 @@ def generate_frame(
                     enabled = f"{star_color}{enabled}{ANSI.RESET}"
                 if disabled:
                     disabled = f"{ANSI.FG_WHITE}{ANSI.DIM}{disabled}{ANSI.RESET}"
-                rank_bar = f"[{(enabled + disabled).ljust(3)}]"
-                line = f"{prefix}{name} ({mp_cost} MP) {rank_bar}"
-                if disabled:
+                rank_bar = f"{{{(enabled + disabled).ljust(3)}}}"
+                label = f"{name} ({mp_cost} MP) {rank_bar}"
+                base_labels.append(strip_ansi(label))
+                line = _menu_line(label, idx == menu_cursor)
+                if is_disabled:
                     line = f"{ANSI.DIM}{line}{ANSI.RESET}"
-                body.append(line)
+                menu_labels.append(line)
+
+        max_label = max((len(label) for label in base_labels), default=0)
+        if max_label:
+            max_label += 4
+        menu_margin = int(menu_cfg.get("margin", 1) or 1)
+        menu_style = str(menu_cfg.get("frame_style", "round") or "round")
+        menu_width = max(10, max_label + 2 + (menu_margin * 2))
+        menu_center_x = int(menu_cfg.get("x", 2) or 2)
+        menu_center_y = int(menu_cfg.get("y", 1) or 1)
+        menu_height = max(3, len(menu_labels) + 2 + (menu_margin * 2))
+        menu_height = min(menu_height, SCREEN_HEIGHT - 2)
+        menu_x = max(0, min(SCREEN_WIDTH - menu_width, menu_center_x - (menu_width // 2)))
+        menu_y = max(0, min(SCREEN_HEIGHT - menu_height, menu_center_y - (menu_height // 2)))
+
+        art_margin = int(art_cfg.get("margin", 1) or 1)
+        art_style = str(art_cfg.get("frame_style", "round") or "round")
+        art_center_x = int(art_cfg.get("x", menu_x + menu_width + 2) or (menu_x + menu_width + 2))
+        art_center_y = int(art_cfg.get("y", menu_y) or menu_y)
+        spell_art = []
+        desc_text = ""
+        if selected_spell is None and available_spells:
             selection = max(0, min(menu_cursor, len(available_spells) - 1))
-            _, spell = available_spells[selection]
-            effect = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None
-            rank = ctx.spells.rank_for(spell, player.level)
+            _, selected_spell = available_spells[selection]
+        if isinstance(selected_spell, dict):
+            effect = _spell_effect_with_art(ctx, selected_spell) if isinstance(selected_spell, dict) else None
+            rank = ctx.spells.rank_for(selected_spell, player.level)
             color_key = ""
             if isinstance(effect, dict):
                 if rank >= 3:
-                    color_key = str(spell.get("overlay_color_key_rank3", ""))[:1]
+                    color_key = str(selected_spell.get("overlay_color_key_rank3", ""))[:1]
                 elif rank >= 2:
-                    color_key = str(spell.get("overlay_color_key_rank2", ""))[:1]
+                    color_key = str(selected_spell.get("overlay_color_key_rank2", ""))[:1]
                 if not color_key:
                     color_key = str(effect.get("color_key", ""))[:1]
             color_code = _color_code_for_key(ctx.colors.all(), color_key)
@@ -1249,26 +1330,127 @@ def generate_frame(
             frame_count = len(frames) if isinstance(frames, list) else 0
             tick = int(time.time() / max(0.01, delay))
             effect_index = tick % max(frame_count, 1)
-            art_lines = _spell_preview_lines(
+            spell_art = _spell_preview_lines(
                 frame_art,
                 effect,
                 color_code,
                 effect_index,
-                color_codes=color_codes,
+                color_codes=_color_codes_by_key(ctx.colors.all()),
                 color_map=effect.get("color_map") if isinstance(effect, dict) else None,
                 glyph=effect.get("glyph") if isinstance(effect, dict) else None,
             )
+            desc_text = str(selected_spell.get("desc", "") or "")
+
+        art_inner_width = max((len(strip_ansi(line)) for line in spell_art), default=0)
+        art_width = max(10, art_inner_width + 2 + (art_margin * 2))
+        art_height = max(3, len(spell_art) + 2 + (art_margin * 2))
+        art_width = min(art_width, SCREEN_WIDTH - 2)
+        art_height = min(art_height, SCREEN_HEIGHT - 2)
+        art_x = max(0, min(SCREEN_WIDTH - art_width, art_center_x - (art_width // 2)))
+        art_y = max(0, min(SCREEN_HEIGHT - art_height, art_center_y - (art_height // 2)))
+
+        desc_margin = int(desc_cfg.get("margin", 1) or 1)
+        desc_style = str(desc_cfg.get("frame_style", "round") or "round")
+        desc_width = max(10, int(desc_cfg.get("width", 96) or 96))
+        desc_width = min(desc_width, SCREEN_WIDTH - 2)
+        desc_center_x = int(desc_cfg.get("x", 2) or 2)
+        anchor = str(desc_cfg.get("anchor", "") or "").lower()
+        desc_inner_width = max(1, desc_width - 2 - (desc_margin * 2))
+        if spell_target_mode:
+            targets = [player]
+            followers = getattr(player, "followers", []) or []
+            if isinstance(followers, list):
+                for follower in followers:
+                    if isinstance(follower, dict):
+                        targets.append(follower)
+            target = targets[spell_target_cursor] if 0 <= spell_target_cursor < len(targets) else player
+            if target is player:
+                base_max_hp = int(player.max_hp)
+                temp_hp = int(getattr(player, "temp_hp_bonus", 0) or 0)
+                hp = int(player.hp)
+                mp = int(player.mp)
+                max_mp = int(player.max_mp)
+                atk_total = int(player.total_atk())
+                def_total = int(player.total_defense())
+                atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0) or 0)
+                def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0) or 0)
+                hp_text = f"HP: {hp} / {base_max_hp}"
+                if temp_hp:
+                    hp_text = f"{hp_text} (+{temp_hp})"
+                mp_text = f"MP: {mp} / {max_mp}"
+                atk_text = f"ATK: {atk_total}"
+                if atk_bonus:
+                    atk_text = f"{atk_text} (+{atk_bonus})"
+                def_text = f"DEF: {def_total}"
+                if def_bonus:
+                    def_text = f"{def_text} (+{def_bonus})"
+            else:
+                base_max_hp = int(target.get("max_hp", 0) or 0)
+                temp_hp = int(target.get("temp_hp_bonus", 0) or 0)
+                max_hp = int(player.follower_total_max_hp(target))
+                hp = int(target.get("hp", max_hp) or max_hp)
+                max_mp = int(target.get("max_mp", 0) or 0)
+                mp = int(target.get("mp", max_mp) or max_mp)
+                atk_total = int(player.follower_total_atk(target))
+                def_total = int(player.follower_total_defense(target))
+                atk_bonus = atk_total - int(target.get("atk", 0) or 0)
+                def_bonus = def_total - int(target.get("defense", 0) or 0)
+                hp_text = f"HP: {hp} / {base_max_hp}"
+                if temp_hp:
+                    hp_text = f"{hp_text} (+{temp_hp})"
+                mp_text = f"MP: {mp} / {max_mp}"
+                atk_text = f"ATK: {atk_total}"
+                if atk_bonus:
+                    atk_text = f"{atk_text} (+{atk_bonus})"
+                def_text = f"DEF: {def_total}"
+                if def_bonus:
+                    def_text = f"{def_text} (+{def_bonus})"
+            stat_line = (
+                f"{color(hp_text, ANSI.FG_GREEN)}  "
+                f"{color(mp_text, ANSI.FG_MAGENTA)}  "
+                f"{color(atk_text, ANSI.DIM)}  "
+                f"{color(def_text, ANSI.DIM)}"
+            )
+            desc_lines = [center_ansi(stat_line, desc_inner_width)]
         else:
-            body.append("  No spells learned.")
-            art_lines = []
-        actions = format_menu_actions(
-            spell_menu,
-            replacements={
-                "{heal_name}": heal_name,
-                "{spark_name}": spark_name,
-            },
-            selected_index=menu_cursor if menu_cursor >= 0 else None,
-        )
+            desc_lines = textwrap.wrap(desc_text, width=desc_inner_width) if desc_text else [""]
+        desc_height = max(3, len(desc_lines) + 2 + (desc_margin * 2))
+        if anchor == "bottom":
+            desc_center_y = SCREEN_HEIGHT - (desc_height // 2) - 1
+        else:
+            desc_center_y = int(desc_cfg.get("y", SCREEN_HEIGHT - desc_height - 1) or (SCREEN_HEIGHT - desc_height - 1))
+        desc_height = min(desc_height, SCREEN_HEIGHT - 2)
+        desc_x = max(0, min(SCREEN_WIDTH - desc_width, desc_center_x - (desc_width // 2)))
+        desc_y = max(0, min(SCREEN_HEIGHT - desc_height, desc_center_y - (desc_height // 2)))
+
+        menu_box = _box_lines(menu_width, menu_height, menu_labels, margin=menu_margin, style=menu_style)
+        art_box = _box_lines(art_width, art_height, spell_art, margin=art_margin, style=art_style)
+        desc_box = _box_lines(desc_width, desc_height, desc_lines, margin=desc_margin, style=desc_style)
+
+        canvas = [" " * SCREEN_WIDTH for _ in range(SCREEN_HEIGHT)]
+
+        def _overlay_box(box_lines: list[str], start_x: int, start_y: int) -> None:
+            for idx, line in enumerate(box_lines):
+                row = start_y + idx
+                if 0 <= row < SCREEN_HEIGHT:
+                    overlay = pad_or_trim_ansi((" " * start_x) + line, SCREEN_WIDTH)
+                    base_cells = _ansi_cells(canvas[row])
+                    overlay_cells = _ansi_cells(overlay)
+                    merged = []
+                    for (base_ch, base_code), (over_ch, over_code) in zip(base_cells, overlay_cells):
+                        if over_ch == " ":
+                            merged.append(ANSI.RESET + base_code + base_ch)
+                        else:
+                            merged.append(ANSI.RESET + over_code + over_ch)
+                    canvas[row] = "".join(merged) + ANSI.RESET
+
+        _overlay_box(menu_box, menu_x, menu_y)
+        _overlay_box(art_box, art_x, art_y)
+        _overlay_box(desc_box, desc_x, desc_y)
+
+        body = []
+        actions = []
+        raw_lines = canvas
         art_color = ANSI.FG_WHITE
     elif element_mode:
         elements_menu = ctx.menus.get("elements", {})

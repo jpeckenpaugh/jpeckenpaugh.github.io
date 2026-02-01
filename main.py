@@ -98,6 +98,11 @@ def main():
         battle_cursor=0,
         current_venue_id=None,
         title_menu_stack=[],
+        spell_target_mode=False,
+        spell_target_cursor=0,
+        spell_target_command=None,
+        team_target_index=None,
+        last_team_target_player=None,
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
@@ -162,6 +167,9 @@ def main():
                 state.followers_focus,
                 state.followers_action_cursor,
                 state.spell_cast_rank,
+                state.spell_target_mode,
+                state.spell_target_cursor,
+                state.spell_target_command,
                 state.level_cursor,
                 state.level_up_notes,
             )
@@ -186,6 +194,9 @@ def main():
             state.inn_mode = False
             state.stats_mode = False
             state.spell_mode = False
+            state.spell_target_mode = False
+            state.spell_target_cursor = 0
+            state.spell_target_command = None
             state.followers_mode = False
             state.follower_equip_mode = False
             state.follower_equip_target = None
@@ -208,6 +219,8 @@ def main():
             state.level_cursor = 0
             state.level_up_notes = []
             state.last_spell_targets = []
+            state.team_target_index = None
+            state.last_team_target_player = None
             state.follower_dismiss_pending = None
             state.followers_focus = "list"
             state.followers_action_cursor = 0
@@ -242,6 +255,9 @@ def main():
                 state.followers_focus,
                 state.followers_action_cursor,
                 state.spell_cast_rank,
+                state.spell_target_mode,
+                state.spell_target_cursor,
+                state.spell_target_command,
                 state.level_cursor,
                 state.level_up_notes,
             )
@@ -378,6 +394,9 @@ def main():
                     pre_snapshot.get("followers_focus", "list"),
                     pre_snapshot.get("followers_action_cursor", 0),
                     pre_snapshot.get("spell_cast_rank", 1),
+                    pre_snapshot.get("spell_target_mode", False),
+                    pre_snapshot.get("spell_target_cursor", 0),
+                    pre_snapshot.get("spell_target_command", None),
                     pre_snapshot.get("level_cursor", 0),
                     pre_snapshot.get("level_up_notes", []),
                 )
@@ -411,6 +430,9 @@ def main():
                     state.followers_focus,
                     state.followers_action_cursor,
                     state.spell_cast_rank,
+                    state.spell_target_mode,
+                    state.spell_target_cursor,
+                    state.spell_target_command,
                     state.level_cursor,
                     state.level_up_notes,
                 )
@@ -441,7 +463,7 @@ def main():
             action_cmd,
             handled_by_router,
         )
-        if action_cmd in ("STRENGTH", "HEAL"):
+        if action_cmd in ("STRENGTH", "HEAL") and state.last_team_target_player:
             spell_entry = APP.spells.by_command_id(action_cmd)
             if spell_entry:
                 _, spell = spell_entry
@@ -458,6 +480,8 @@ def main():
                     remaining = max(0, max_stack - current)
                     gain = min(gain_per_cast, remaining)
                     animate_life_boost_gain(APP, render_frame, state, generate_frame, gain)
+        if action_cmd in ("STRENGTH", "HEAL"):
+            state.last_team_target_player = None
         handle_offensive_action(APP, state, action_cmd)
         if action_cmd:
             state.target_index = None

@@ -90,6 +90,9 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.followers_focus,
         state.followers_action_cursor,
         state.spell_cast_rank,
+        state.spell_target_mode,
+        state.spell_target_cursor,
+        state.spell_target_command,
         state.level_cursor,
         state.level_up_notes,
         suppress_actions=suppress_actions,
@@ -860,6 +863,34 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         return None, None
 
     if state.spell_mode:
+        if state.spell_target_mode:
+            targets = [state.player.name]
+            followers = getattr(state.player, "followers", []) or []
+            if isinstance(followers, list):
+                for follower in followers:
+                    if isinstance(follower, dict):
+                        targets.append(follower.get("name", "Follower"))
+            if not targets:
+                state.spell_target_mode = False
+                state.spell_target_command = None
+                return None, None
+            state.spell_target_cursor = max(0, min(state.spell_target_cursor, len(targets) - 1))
+            if action in ("UP", "DOWN"):
+                direction = -1 if action == "UP" else 1
+                state.spell_target_cursor = (state.spell_target_cursor + direction) % len(targets)
+                return None, None
+            if action == "CONFIRM":
+                cmd = state.spell_target_command
+                state.team_target_index = state.spell_target_cursor
+                state.spell_target_mode = False
+                state.spell_target_command = None
+                return cmd, None
+            if action == "BACK":
+                state.spell_target_mode = False
+                state.spell_target_command = None
+                return None, None
+            return None, None
+
         keys = spell_menu_keys(ctx, state.player)
         if not keys:
             if action == "BACK":
@@ -912,8 +943,15 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if max_affordable < 1:
                 return None, None
             cmd = keys[state.spell_cursor]
+            if spell and spell.get("class") == "support":
+                state.spell_target_mode = True
+                state.spell_target_command = cmd
+                state.spell_target_cursor = 0
+                return None, None
             return cmd, None
         if action == "BACK":
+            state.spell_target_mode = False
+            state.spell_target_command = None
             return "B_KEY", None
         return None, None
 
@@ -1509,6 +1547,7 @@ def resolve_player_action(
     state.defend_evasion = 0.0
     state.action_effect_override = None
     state.last_spell_targets = []
+    state.last_team_target_player = None
     spell_entry = ctx.spells.by_command_id(cmd)
     if spell_entry:
         spell_id, spell = spell_entry
@@ -1542,18 +1581,26 @@ def resolve_player_action(
             if state.player.mp < base_cost and not has_charge:
                 state.last_message = f"Not enough MP to cast {name}."
                 return None
-            target_type, target_ref = state.player.select_team_target(mode="combined")
+            if state.team_target_index is not None:
+                if state.team_target_index == 0:
+                    target_type, target_ref = "player", state.player
+                else:
+                    followers = getattr(state.player, "followers", []) or []
+                    idx = state.team_target_index - 1
+                    if isinstance(followers, list) and 0 <= idx < len(followers):
+                        target_type, target_ref = "follower", followers[idx]
+                    else:
+                        target_type, target_ref = state.player.select_team_target(mode="combined")
+            else:
+                target_type, target_ref = state.player.select_team_target(mode="combined")
+            state.team_target_index = None
             if target_type == "none":
                 state.last_message = "HP and MP are already full."
                 return None
             if not has_charge:
                 state.player.mp -= base_cost
-            if target_type == "player":
-                if spell_id == "healing":
-                    animate_life_boost_gain(ctx, render_frame, state, generate_frame, 1)
-                else:
-                    animate_strength_gain(ctx, render_frame, state, generate_frame, 1)
-            else:
+            state.last_team_target_player = (target_type == "player")
+            if target_type != "player":
                 if spell_id == "healing":
                     target_ref["temp_hp_bonus"] = int(target_ref.get("temp_hp_bonus", 0) or 0) + 1
                     max_hp = state.player.follower_total_max_hp(target_ref)
