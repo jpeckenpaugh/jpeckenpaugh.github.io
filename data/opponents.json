@@ -216,6 +216,79 @@
       "variation": 0.06,
       "jitter_stability": false
     },
+    "fairy_baby": {
+      "name": "Fairy",
+      "element": "base",
+      "level": 1,
+      "hp": 5,
+      "atk": 8,
+      "defense": 8,
+      "action_chance": 1.05,
+      "recruitable": true,
+      "recruit_cost": 60,
+      "recruit_chance": 0.9,
+      "follower_type": "fairy_baby",
+      "follower_names": [
+        "Aeri",
+        "Nivi",
+        "Sylvi",
+        "Mirae",
+        "Feyra",
+        "Tansy"
+      ],
+      "desc": "A tiny fairy learning her first sparks of magic.",
+      "ai": {
+        "type": "support_heal_then_attack",
+        "heal_item_id": "fairy_tea",
+        "heal_chance": 0.2,
+        "heal_target": "most_missing_hp"
+      },
+      "arrival": "twirls into view",
+      "art": [
+        "(''\\./'')",
+        " \\('_')/",
+        " /')'('\\\\",
+        "(_/'''\\_)",
+        "  wWwWw"
+      ],
+      "color_map": [
+        "111111111",
+        " 1111111",
+        " 1111111",
+        "11111111",
+        "  1111"
+      ]
+    },
+    "fairy_teen": {
+      "name": "Fairy Teen",
+      "element": "base",
+      "level": 3,
+      "hp": 10,
+      "atk": 14,
+      "defense": 12,
+      "action_chance": 1.1,
+      "recruitable": false,
+      "desc": "A young fairy with growing confidence.",
+      "arrival": "glimmers into view",
+      "art": [
+        "('''\\./''')",
+        " \\((_'_))/",
+        "  ).)o(.(",
+        " /'')x(''\\",
+        "(''/'''\\'')",
+        " \\/~~~~~\\/",
+        "  wWwWwWw"
+      ],
+      "color_map": [
+        "1111111111",
+        " 111111111",
+        " 11111111",
+        " 11111111",
+        "111111111",
+        " 1111111",
+        "  111111"
+      ]
+    },
     "mushroom": {
       "name": "Mushroom",
       "element": "base",

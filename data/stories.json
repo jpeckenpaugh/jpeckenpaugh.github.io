@@ -4,6 +4,8 @@
     "intro": "A mushroom companion warns that the forest will shred an unprepared traveler. With basic white magic, a level 1 fighter can stand a chance.",
     "quests": [
       "mushy_01",
+      "mushy_02",
+      "mushy_03",
       "fuse_fairies",
       "gather_wolves"
     ],

@@ -36,6 +36,9 @@ def _objective_key(obj: dict) -> Optional[str]:
     if obj_type == "visit_scene":
         scene_id = str(obj.get("id", ""))
         return f"visit_scene:{scene_id}"
+    if obj_type == "fuse_gear":
+        item_id = str(obj.get("item_id", ""))
+        return f"fuse_gear:{item_id}"
     return None
 
 
@@ -55,9 +58,22 @@ def _requirements_met(player: Player, quest: dict) -> bool:
     return True
 
 
-def _objectives_met(progress: dict, objectives: Iterable[dict]) -> bool:
+def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict]) -> bool:
     for obj in objectives:
         if not isinstance(obj, dict):
+            continue
+        obj_type = str(obj.get("type", ""))
+        if obj_type == "equip_slots":
+            slots = obj.get("slots", [])
+            if not isinstance(slots, list):
+                slots = []
+            needed = int(obj.get("count", 0) or 0)
+            if not needed:
+                needed = len(slots)
+            equipment = player.equipment if isinstance(player.equipment, dict) else {}
+            equipped = sum(1 for slot in slots if equipment.get(str(slot)))
+            if equipped < needed:
+                return False
             continue
         key = _objective_key(obj)
         if not key:
@@ -213,7 +229,7 @@ def evaluate_quests(player: Player, quests_data, items_data: Optional[object] = 
                     if fuse_count >= needed:
                         progress[_objective_key(obj)] = needed
                 qstate["progress"] = progress
-            if not _objectives_met(qstate.get("progress", {}), objectives):
+            if not _objectives_met(player, qstate.get("progress", {}), objectives):
                 continue
             qstate["status"] = "complete"
             _apply_rewards(player, quest_id, quest, items_data)
@@ -243,6 +259,10 @@ def record_event(
             obj_type = str(obj.get("type", ""))
             if obj_type != event_type:
                 continue
+            if event_type == "fuse_gear":
+                item_id = str(obj.get("item_id", ""))
+                if item_id and item_id != str(payload.get("item_id", "")):
+                    continue
             if event_type in ("recruit_follower", "fuse_followers"):
                 follower_type = str(obj.get("follower_type", ""))
                 if follower_type and follower_type != str(payload.get("follower_type", "")):
@@ -257,7 +277,11 @@ def record_event(
             qstate = _quest_state(player, quest_id)
             progress = qstate.get("progress", {})
             current = int(progress.get(key, 0) or 0)
-            progress[key] = current + int(payload.get("count", 1) or 1)
+            if event_type == "fuse_gear":
+                rank = int(payload.get("rank", payload.get("count", 1)) or 1)
+                progress[key] = max(current, rank)
+            else:
+                progress[key] = current + int(payload.get("count", 1) or 1)
             qstate["progress"] = progress
 
 

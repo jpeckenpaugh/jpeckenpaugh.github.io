@@ -55,6 +55,79 @@
       "xp": 0
     }
   },
+  "mushy_02": {
+    "title": "Wandcraft",
+    "continent": "base",
+    "summary_pre": "The alchemist can fuse gear into stronger forms.",
+    "summary_active": "Fuse oak wands until you craft a rank 3 wand.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "mushroom_baby",
+    "dialog": [
+      "Wands can store charges, letting you cast spells without spending MP.",
+      "To use a wand in battle, you must equip it on yourself.",
+      "The Alchemist can fuse gear to combine and increase its power.",
+      "Fuse oak wands until you forge a rank 3 wand."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_01_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "fuse_gear",
+        "item_id": "oak_wand",
+        "count": 3
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "quest_mushy_02_complete"
+      ],
+      "items": [],
+      "xp": 0
+    }
+  },
+  "mushy_03": {
+    "title": "Gear up",
+    "continent": "base",
+    "summary_pre": "Mushy urges you to gear up before the next trials.",
+    "summary_active": "Buy and equip one of each gear type.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "mushroom_teen",
+    "dialog": [
+      "Before we push further, we should gear up. Each slot boosts your stats in a different way.",
+      "Swords raise Attack, shields and armor bolster Defense, and rings and bracelets add smaller bonuses.",
+      "As you already know, wands hold elemental charges for spells, so be sure to keep one equiped if you plan to cast in battle.",
+      "Visit the Shop to buy gear, then equip one item in each slot from your inventory."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_02_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "equip_slots",
+        "slots": [
+          "sword",
+          "shield",
+          "armor",
+          "ring",
+          "bracelet",
+          "wand"
+        ],
+        "count": 6
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "quest_mushy_03_complete"
+      ],
+      "items": [],
+      "xp": 0
+    }
+  },
   "fuse_fairies": {
     "title": "Fairy fusion",
     "continent": "base",

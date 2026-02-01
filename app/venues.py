@@ -5,6 +5,7 @@ import time
 from typing import Any, Optional
 
 from app.shop import shop_commands, shop_inventory, shop_sell_inventory, purchase_item, sell_item
+from app.questing import handle_event
 from app.ui.ansi import ANSI
 from app.ui.constants import SCREEN_WIDTH
 from app.ui.rendering import render_venue_art, render_venue_objects
@@ -296,6 +297,14 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                     if follower:
                         state.player.assign_gear_to_follower(follower, fused.get("id"))
                 state.last_message = f"Fused into {fused.get('name', 'gear')}."
+                if hasattr(ctx, "quests") and ctx.quests is not None:
+                    handle_event(
+                        state.player,
+                        ctx.quests,
+                        "fuse_gear",
+                        {"item_id": fused.get("item_id", ""), "rank": int(fused.get("fuse_rank", 1) or 1)},
+                        ctx.items,
+                    )
                 ctx.save_data.save_player(state.player)
             else:
                 state.last_message = "Fusion failed."

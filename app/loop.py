@@ -1342,12 +1342,14 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         if not isinstance(follower, dict):
             continue
         follower_type = str(follower.get("type", ""))
-        if follower_type == "mushroom_baby":
+        if follower_type in ("mushroom_baby", "fairy_baby"):
+            ability_key = "mushroom_tea_brew" if follower_type == "mushroom_baby" else "fairy_tea_brew"
+            fallback_item = "mushroom_tea" if follower_type == "mushroom_baby" else "fairy_tea"
             missing = _team_missing_total(state.player)
-            ability = ctx.abilities.get("mushroom_tea_brew", {}) if hasattr(ctx, "abilities") else {}
+            ability = ctx.abilities.get(ability_key, {}) if hasattr(ctx, "abilities") else {}
             chance = float(ability.get("chance", 0.2) or 0.2) if isinstance(ability, dict) else 0.2
             if missing > 0 and random.random() < chance:
-                item_id = str(ability.get("item_id", "mushroom_tea") or "mushroom_tea")
+                item_id = str(ability.get("item_id", fallback_item) or fallback_item)
                 item = ctx.items.get(item_id, {}) if hasattr(ctx, "items") else {}
                 if isinstance(item, dict):
                     candidates = [("player", None, _team_missing_total(state.player, mode="combined"))]
@@ -1370,7 +1372,7 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
                         if healed_mp:
                             parts.append(f"{healed_mp} MP")
                         restored = " and ".join(parts)
-                        label = ability.get("label", "Mushroom Tea") if isinstance(ability, dict) else "Mushroom Tea"
+                        label = ability.get("label", "Tea") if isinstance(ability, dict) else "Tea"
                         push_battle_message(state, f"{name} uses {label} on {target_name}, restoring {restored}.")
                         continue
             alive = [opp for opp in state.opponents if opp.hp > 0]

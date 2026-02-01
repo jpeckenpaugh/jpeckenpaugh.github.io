@@ -561,10 +561,12 @@ class Player:
         fused_type = follower_type
         if follower_type == "mushroom_baby":
             fused_type = "mushroom_teen"
+        elif follower_type == "fairy_baby":
+            fused_type = "fairy_teen"
         base_name = fused_type.replace("_", " ").title() or "Follower"
         abilities = []
         active = ""
-        if fused_type == "fairy":
+        if fused_type in ("fairy", "fairy_teen"):
             abilities = ["fairy_heal", "fairy_mana"]
             active = "fairy_heal"
         if fused_type.startswith("mushroom"):
@@ -797,7 +799,7 @@ class Player:
         second = self.gear_instance(gear_b)
         if not first or not second:
             return None
-        rank = max(self._fusion_rank(first), self._fusion_rank(second)) + 1
+        rank = max(1, self._fusion_rank(first)) + max(1, self._fusion_rank(second))
         ranks = ["Fused", "Empowered", "Mythic", "Legendary", "Godly", "Omnipotent"]
         title = ranks[min(rank - 1, len(ranks) - 1)]
         base_name = self._fusion_base_name(first.get("name", "Gear"))

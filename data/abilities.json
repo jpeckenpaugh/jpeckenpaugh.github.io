@@ -26,6 +26,14 @@
     "item_id": "mushroom_tea",
     "chance": 0.25
   },
+  "fairy_tea_brew": {
+    "label": "Fairy Tea",
+    "desc": "Has a chance to share a small tea boost with the team.",
+    "type": "item",
+    "timing": "end_round",
+    "item_id": "fairy_tea",
+    "chance": 0.25
+  },
   "wolf_meat_toss": {
     "label": "Meat Toss",
     "desc": "Has a chance to toss meat to the most wounded ally.",

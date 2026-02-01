@@ -31,6 +31,14 @@
     "price": 5,
     "desc": "A simple mushroom tea, that grants a small bit of vitality."
   },
+  "fairy_tea": {
+    "name": "Fairy Tea",
+    "type": "healing",
+    "hp": 1,
+    "mp": 2,
+    "price": 5,
+    "desc": "A light fairy tea that refreshes mind and spirit."
+  },
   "meat": {
     "name": "Meat",
     "type": "healing",
@@ -619,6 +627,9 @@
     "atk": 0,
     "defense": 0,
     "price": 30,
+    "elem_points": {
+      "base": 3
+    },
     "desc": "A simple wand for channeling energy."
   },
   "lightning_wand": {
