@@ -116,14 +116,6 @@
         "label": "Fuse",
         "command": "FOLLOWER_FUSE",
         "enabled_when": "in_temple"
-      },
-      {
-        "label": "Dismiss",
-        "command": "FOLLOWER_DISMISS"
-      },
-      {
-        "label": "Back",
-        "command": "B_KEY"
       }
     ]
   },

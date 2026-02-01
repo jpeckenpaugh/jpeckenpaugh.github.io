@@ -59,14 +59,13 @@
     "title": "Wandcraft",
     "continent": "base",
     "summary_pre": "The alchemist can fuse gear into stronger forms.",
-    "summary_active": "Fuse oak wands until you craft a rank 3 wand.",
+    "summary_active": "Buy 3 Oak Wands and fuse them into 1 by visiting the Alchemist.",
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Wands can store charges, letting you cast spells without spending MP.",
-      "To use a wand in battle, you must equip it on yourself.",
-      "The Alchemist can fuse gear to combine and increase its power.",
-      "Fuse oak wands until you forge a rank 3 wand."
+      "Wands can store charges, letting you cast spells without spending MP. To use a wand in battle, you must equip it on yourself.",
+      "Wands can be bought in the Shop, and the Alchemist can fuse gear to combine and increase its power.",
+      "Buy 3 Oak Wands and fuse them into one at the Alchemist."
     ],
     "requirements": {
       "flags_required": [
@@ -195,7 +194,7 @@
     },
     "on_complete": {
       "clear_recruit_only": true,
-      "follower_cap": 1
+      "follower_cap": 3
     },
     "summary_pre": "A young wolf longs to run beneath the wandering tower’s shadow.",
     "summary_active": "Recruit three wolf pups and fuse them into a full wolf.",

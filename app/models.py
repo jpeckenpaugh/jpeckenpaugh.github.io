@@ -859,10 +859,15 @@ class Player:
     def gain_xp(self, amount: int) -> int:
         self.xp += amount
         levels_gained = 0
-        while self.xp >= self.level * 50:
+        threshold = 100
+        for _ in range(1, self.level):
+            threshold *= 2
+        while self.xp >= threshold:
+            self.xp -= threshold
             self.level += 1
             self.stat_points += 10
             levels_gained += 1
+            threshold *= 2
         return levels_gained
 
     def needs_level_up(self) -> bool:

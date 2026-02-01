@@ -906,6 +906,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 if not isinstance(equip, dict) or not equip:
                     cmd_entry["_disabled"] = True
             actions.append(cmd_entry)
+        actions.append({"label": "Back", "command": "FOLLOWER_BACK"})
         if not actions:
             actions = [{"label": "Back", "command": "B_KEY"}]
 
@@ -930,6 +931,10 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.follower_dismiss_pending = None
                 return None, None
             cmd = actions[state.followers_action_cursor].get("command")
+            if cmd == "FOLLOWER_BACK":
+                state.followers_focus = "list"
+                state.follower_dismiss_pending = None
+                return None, None
             if cmd == "FOLLOWER_DISMISS":
                 if state.follower_dismiss_pending != state.menu_cursor:
                     follower = followers[state.menu_cursor]
@@ -956,7 +961,9 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 if not fused:
                     state.last_message = "Need three followers of the same type to fuse."
                     return None, None
-                state.last_message = f"{fused.get('name', 'Follower')} joins your party."
+                fused_name = fused.get("name", "Follower")
+                fused_type = fused.get("type", "follower")
+                state.last_message = f"{fused_name} is promoted to {fused_type.replace('_', ' ').title()}."
                 if hasattr(ctx, "quests") and ctx.quests is not None:
                     quest_messages = handle_event(
                         state.player,
@@ -997,7 +1004,10 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return None, None
         if action == "BACK":
             state.follower_dismiss_pending = None
-            state.followers_mode = False
+            if state.followers_focus == "actions":
+                state.followers_focus = "list"
+            else:
+                state.followers_mode = False
             return None, None
         return None, None
 
@@ -2340,15 +2350,40 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
                     threshold = 100
                     for _ in range(1, level):
                         threshold *= 2
+                    stat_breakdown = {"HP": 0, "MP": 0, "ATK": 0, "DEF": 0}
                     while level < max_level and xp >= threshold:
                         xp -= threshold
                         level += 1
+                        rolls = [random.choice(["HP", "MP", "ATK", "DEF"]) for _ in range(10)]
+                        follower["stat_points"] = int(follower.get("stat_points", 0) or 0) + 10
+                        for stat_roll in rolls:
+                            stat_breakdown[stat_roll] = stat_breakdown.get(stat_roll, 0) + 1
+                            if stat_roll == "HP":
+                                max_hp = int(follower.get("max_hp", 0) or 0) + 1
+                                follower["max_hp"] = max_hp
+                                hp = int(follower.get("hp", max_hp) or max_hp)
+                                follower["hp"] = min(max_hp, hp + 1)
+                            elif stat_roll == "MP":
+                                max_mp = int(follower.get("max_mp", 0) or 0) + 1
+                                follower["max_mp"] = max_mp
+                                mp = int(follower.get("mp", max_mp) or max_mp)
+                                follower["mp"] = min(max_mp, mp + 1)
+                            elif stat_roll == "ATK":
+                                follower["atk"] = int(follower.get("atk", 0) or 0) + 1
+                            else:
+                                follower["defense"] = int(follower.get("defense", 0) or 0) + 1
                         threshold *= 2
                     follower["xp"] = xp
                     follower["level"] = level
                     if level > start_level:
                         name = follower.get("name", "Follower")
-                        push_battle_message(state, f"{name} leveled up to {level}!")
+                        stat_parts = []
+                        for key in ("HP", "MP", "ATK", "DEF"):
+                            value = stat_breakdown.get(key, 0)
+                            if value:
+                                stat_parts.append(f"{key}+{value}")
+                        bonus_text = " ".join(stat_parts) if stat_parts else "No stats"
+                        push_battle_message(state, f"{name} leveled up to {level}! {bonus_text}")
         push_battle_message(state, (
             f"You gain {state.loot_bank['xp']} XP and "
             f"{state.loot_bank['gold']} gold."

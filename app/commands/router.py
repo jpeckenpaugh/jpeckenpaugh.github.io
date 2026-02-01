@@ -89,6 +89,7 @@ class RouterContext:
     portal_screen: object
     spellbook_screen: object
     quests_screen: object
+    followers_screen: object
     registry: CommandRegistry
 
 
@@ -339,7 +340,9 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.last_message = "Need three followers of the same type to fuse."
             return True
         state.player.gold = max(0, state.player.gold - 100)
-        state.last_message = f"{fused.get('name', 'Follower')} joins your party."
+        fused_name = fused.get("name", "Follower")
+        fused_type = fused.get("type", "follower")
+        state.last_message = f"{fused_name} is promoted to {fused_type.replace('_', ' ').title()}."
         if hasattr(ctx, "quests") and ctx.quests is not None:
             quest_messages = handle_event(
                 state.player,

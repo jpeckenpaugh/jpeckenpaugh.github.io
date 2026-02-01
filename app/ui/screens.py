@@ -27,6 +27,7 @@ from app.data_access.stories_data import StoriesData
 from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.quests_screen_data import QuestsScreenData
 from app.data_access.spellbook_screen_data import SpellbookScreenData
+from app.data_access.followers_screen_data import FollowersScreenData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
@@ -80,6 +81,7 @@ class ScreenContext:
     portal_screen: PortalScreenData
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
+    followers_screen: FollowersScreenData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -1389,75 +1391,225 @@ def generate_frame(
         art_lines = []
         art_color = ANSI.FG_WHITE
     elif followers_mode:
+        followers_data = ctx.followers_screen.all() if hasattr(ctx, "followers_screen") else {}
+        layout = followers_data.get("layout", {}) if isinstance(followers_data, dict) else {}
+        menu_cfg = layout.get("menu", {}) if isinstance(layout, dict) else {}
+        art_cfg = layout.get("art", {}) if isinstance(layout, dict) else {}
+        desc_cfg = layout.get("description", {}) if isinstance(layout, dict) else {}
+
+        def _box_lines(width: int, height: int, content: list[str], *, margin: int, style: str) -> list[str]:
+            width = max(2, width)
+            height = max(2, height)
+            box = _draw_box(width, height, style=style)
+            inner_width = width - 2
+            inner_height = height - 2
+            pad_margin = max(0, min(margin, max(0, inner_width // 2)))
+            content_lines = [" " * inner_width for _ in range(inner_height)]
+            inner_content_width = max(0, inner_width - (pad_margin * 2))
+            row = pad_margin
+            for line in content:
+                if row >= inner_height - pad_margin:
+                    break
+                content_lines[row] = (" " * pad_margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * pad_margin)
+                row += 1
+            for i in range(inner_height):
+                box[i + 1] = "|" + content_lines[i] + "|"
+            return box
+
         followers_menu = ctx.menus.get("followers", {})
         followers = list(getattr(player, "followers", []) or [])
-        title = followers_menu.get("title", "Followers")
-        display_location = title
-        body = [f"Followers: {len(followers)}/{player.follower_limit()}"]
-        body.append("")
-        if followers:
-            for idx, follower in enumerate(followers):
-                name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
-                f_type = follower.get("type", "follower") if isinstance(follower, dict) else "follower"
-                effect = ""
-                if f_type == "fairy":
-                    effect = "Heals after each round."
-                label = f"{name} ({f_type})"
-                if effect:
-                    label = f"{label} - {effect}"
-                body.append(_menu_line(label, idx == menu_cursor and followers_focus == "list"))
+        count = len(followers)
+        menu_cursor = max(0, min(menu_cursor, max(0, count - 1))) if count else 0
+        selected_follower = followers[menu_cursor] if followers and 0 <= menu_cursor < len(followers) else {}
+
+        menu_labels = []
+        base_labels = []
+        menu_header = f"Followers: {count}/{player.follower_limit()}"
+        menu_labels.append(center_ansi(menu_header, max(1, len(menu_header))))
+        menu_labels.append("")
+
+        if followers_focus == "actions":
+            actions_list = []
+            selected_type = selected_follower.get("type") if isinstance(selected_follower, dict) else None
+            type_count = 0
+            if selected_type:
+                type_count = sum(
+                    1
+                    for follower in followers
+                    if isinstance(follower, dict) and follower.get("type") == selected_type
+                )
+            gear_items = player.list_gear_items() if hasattr(player, "list_gear_items") else []
+            for entry in followers_menu.get("actions", []):
+                cmd_entry = dict(entry)
+                if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
+                    cmd_entry["_disabled"] = True
+                if cmd_entry.get("command") == "FOLLOWER_FUSE" and type_count < 3:
+                    cmd_entry["_disabled"] = True
+                if cmd_entry.get("command") == "FOLLOWER_EQUIP" and not gear_items:
+                    cmd_entry["_disabled"] = True
+                if cmd_entry.get("command") == "FOLLOWER_UNEQUIP":
+                    equip = selected_follower.get("equipment", {}) if isinstance(selected_follower, dict) else {}
+                    if not isinstance(equip, dict) or not equip:
+                        cmd_entry["_disabled"] = True
+                actions_list.append(cmd_entry)
+            actions_list.append({"label": "Back", "command": "FOLLOWER_BACK"})
+            followers_action_cursor = max(0, min(followers_action_cursor, len(actions_list) - 1)) if actions_list else 0
+            for idx, entry in enumerate(actions_list):
+                label = str(entry.get("label", "")).strip() or entry.get("command", "")
+                base_labels.append(label)
+                line = _menu_line(label, idx == followers_action_cursor)
+                if entry.get("_disabled"):
+                    line = f"{ANSI.DIM}{line}{ANSI.RESET}"
+                menu_labels.append(line)
         else:
-            body.append("No followers.")
-        followers_actions = []
-        if followers and 0 <= menu_cursor < len(followers) and isinstance(followers[menu_cursor], dict):
-            abilities = followers[menu_cursor].get("abilities", [])
-            if isinstance(abilities, list):
+            if followers:
+                for idx, follower in enumerate(followers):
+                    name = follower.get("name", "Follower") if isinstance(follower, dict) else "Follower"
+                    label = f"{name}"
+                    base_labels.append(label)
+                    menu_labels.append(_menu_line(label, idx == menu_cursor))
+            else:
+                base_labels.append("No followers.")
+                menu_labels.append("No followers.")
+
+        menu_margin = int(menu_cfg.get("margin", 1) or 1)
+        menu_style = str(menu_cfg.get("frame_style", "round") or "round")
+        max_label = max((len(label) for label in base_labels), default=len(menu_header))
+        max_label = max(max_label, len(menu_header))
+        menu_width = max(10, max_label + 4 + (menu_margin * 2))
+
+        desc_margin = int(desc_cfg.get("margin", 1) or 1)
+        desc_style = str(desc_cfg.get("frame_style", "round") or "round")
+        desc_x = int(desc_cfg.get("x", 2) or 2)
+        desc_width = max(10, int(desc_cfg.get("width", 20) or 20))
+        desc_inner_width = max(1, desc_width - 2 - (desc_margin * 2))
+
+        desc_lines = []
+        if isinstance(selected_follower, dict) and selected_follower:
+            name = selected_follower.get("name", "Follower")
+            f_type = selected_follower.get("type", "follower")
+            type_label = f_type.replace("_", " ").title()
+            level = int(selected_follower.get("level", 1) or 1)
+            xp = int(selected_follower.get("xp", 0) or 0)
+            max_level = int(selected_follower.get("max_level", 5) or 5)
+            max_hp = player.follower_total_max_hp(selected_follower)
+            hp = int(selected_follower.get("hp", max_hp) or max_hp)
+            max_mp = int(selected_follower.get("max_mp", 0) or 0)
+            mp = int(selected_follower.get("mp", max_mp) or max_mp)
+            atk_total = int(player.follower_total_atk(selected_follower))
+            def_total = int(player.follower_total_defense(selected_follower))
+            desc_lines.append(f"Name: {name}")
+            desc_lines.append(f"Type: {type_label}")
+            desc_lines.append(f"Level {level}/{max_level}  XP {xp}")
+            desc_lines.append(f"HP {hp}/{max_hp}  MP {mp}/{max_mp}  ATK {atk_total}  DEF {def_total}")
+
+            abilities = selected_follower.get("abilities", [])
+            if isinstance(abilities, list) and abilities:
+                ability_labels = []
                 for ability_id in abilities:
                     label = str(ability_id)
-                    min_level = 1
                     if hasattr(ctx, "abilities"):
                         ability = ctx.abilities.get(ability_id, {})
                         if isinstance(ability, dict):
                             label = ability.get("label", label)
-                            min_level = int(ability.get("min_level", 1) or 1)
-                    cmd_entry = {
-                        "label": f"Enable {label}",
-                        "command": f"FOLLOWER_ABILITY:{ability_id}",
-                    }
-                    if int(followers[menu_cursor].get("level", 1) or 1) < min_level:
-                        cmd_entry["_disabled"] = True
-                        cmd_entry["label"] = f"{label} (Level {min_level}+)"
-                    followers_actions.append(cmd_entry)
-            active_label = ""
-            active_id = str(followers[menu_cursor].get("active_ability", "") or "")
-            if active_id and hasattr(ctx, "abilities"):
-                ability = ctx.abilities.get(active_id, {})
-                if isinstance(ability, dict):
-                    active_label = ability.get("label", active_id)
-            if active_label:
-                followers_actions.insert(0, {"label": f"Active: {active_label}", "_disabled": True})
-        gear_items = player.list_gear_items() if hasattr(player, "list_gear_items") else []
-        selected_follower = followers[menu_cursor] if followers and 0 <= menu_cursor < len(followers) else {}
-        for entry in followers_menu.get("actions", []):
-            cmd_entry = dict(entry)
-            if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
-                cmd_entry["_disabled"] = True
-            if cmd_entry.get("command") == "FOLLOWER_EQUIP" and not gear_items:
-                cmd_entry["_disabled"] = True
-            if cmd_entry.get("command") == "FOLLOWER_UNEQUIP":
-                equip = selected_follower.get("equipment", {}) if isinstance(selected_follower, dict) else {}
-                if not isinstance(equip, dict) or not equip:
-                    cmd_entry["_disabled"] = True
-            followers_actions.append(cmd_entry)
-        followers_menu = dict(followers_menu)
-        followers_menu["actions"] = followers_actions
-        action_selected = followers_action_cursor if followers_focus == "actions" else None
-        actions = format_menu_actions(followers_menu, selected_index=action_selected)
-        if followers:
-            body.append("")
-            body.append("Use left/right to switch list and actions.")
+                    ability_labels.append(label)
+                desc_lines.append(f"Abilities: {', '.join(ability_labels)}")
+            else:
+                desc_lines.append("Abilities: None")
+
+            equip = selected_follower.get("equipment", {}) if isinstance(selected_follower, dict) else {}
+            equip_parts = []
+            if isinstance(equip, dict):
+                for slot in ("sword", "shield", "armor", "ring", "bracelet", "wand"):
+                    gear_id = equip.get(slot)
+                    if not gear_id:
+                        continue
+                    gear = player.gear_instance(gear_id) if hasattr(player, "gear_instance") else None
+                    name_part = gear.get("name", slot.title()) if isinstance(gear, dict) else slot.title()
+                    equip_parts.append(f"{slot[:2].title()}: {name_part}")
+            equip_line = "Equipment: " + (", ".join(equip_parts) if equip_parts else "None")
+            desc_lines.append(equip_line)
+
+            if hasattr(ctx, "opponents"):
+                opp_entry = ctx.opponents.get(str(f_type), {})
+                if isinstance(opp_entry, dict):
+                    desc = str(opp_entry.get("desc", "") or "")
+                    if desc:
+                        desc_lines.append(desc)
+        else:
+            desc_lines.append("No followers.")
+
+        desc_lines = [line for part in desc_lines for line in (textwrap.wrap(part, width=desc_inner_width) if part else [""])]
+        desc_height = max(3, len(desc_lines) + 2 + (desc_margin * 2))
+        desc_center_x = int(desc_cfg.get("x", 2) or 2)
+        anchor = str(desc_cfg.get("anchor", "") or "").lower()
+        if anchor == "bottom":
+            desc_center_y = SCREEN_HEIGHT - (desc_height // 2) - 1
+        else:
+            desc_center_y = int(desc_cfg.get("y", SCREEN_HEIGHT - desc_height - 1) or (SCREEN_HEIGHT - desc_height - 1))
+        desc_height = min(desc_height, SCREEN_HEIGHT - 2)
+        desc_width = min(desc_width, SCREEN_WIDTH - 2)
+        desc_x = max(0, min(SCREEN_WIDTH - desc_width, desc_center_x - (desc_width // 2)))
+        desc_y = max(0, min(SCREEN_HEIGHT - desc_height, desc_center_y - (desc_height // 2)))
+        desc_inner_height = max(1, desc_height - 2 - (desc_margin * 2))
+        if len(desc_lines) > desc_inner_height:
+            desc_lines = desc_lines[:desc_inner_height]
+
+        menu_center_x = int(menu_cfg.get("x", 2) or 2)
+        menu_center_y = int(menu_cfg.get("y", 1) or 1)
+        menu_height = max(3, len(menu_labels) + 2 + (menu_margin * 2))
+        menu_height = min(menu_height, max(3, desc_y - 1))
+        menu_x = max(0, min(SCREEN_WIDTH - menu_width, menu_center_x - (menu_width // 2)))
+        menu_y = max(0, min(SCREEN_HEIGHT - menu_height, menu_center_y - (menu_height // 2)))
+
+        art_margin = int(art_cfg.get("margin", 1) or 1)
+        art_style = str(art_cfg.get("frame_style", "round") or "round")
         art_lines = []
-        art_color = ANSI.FG_WHITE
+        if isinstance(selected_follower, dict):
+            art_id = str(selected_follower.get("type", "") or "").strip()
+            if art_id and hasattr(ctx, "opponents"):
+                opp_entry = ctx.opponents.get(art_id, {})
+                if isinstance(opp_entry, dict):
+                    art_lines = opp_entry.get("art", []) if isinstance(opp_entry.get("art"), list) else []
+        art_inner_width = max((len(strip_ansi(line)) for line in art_lines), default=0)
+        art_width = max(10, art_inner_width + 2 + (art_margin * 2))
+        art_height = max(3, len(art_lines) + 2 + (art_margin * 2))
+        art_center_x = int(art_cfg.get("x", menu_x + menu_width + 2) or (menu_x + menu_width + 2))
+        art_center_y = int(art_cfg.get("y", menu_y) or menu_y)
+        art_width = min(art_width, SCREEN_WIDTH - 2)
+        art_height = min(art_height, SCREEN_HEIGHT - 2)
+        art_x = max(0, min(SCREEN_WIDTH - art_width, art_center_x - (art_width // 2)))
+        art_y = max(0, min(SCREEN_HEIGHT - art_height, art_center_y - (art_height // 2)))
+
+        menu_box = _box_lines(menu_width, menu_height, menu_labels, margin=menu_margin, style=menu_style)
+        art_box = _box_lines(art_width, art_height, art_lines, margin=art_margin, style=art_style)
+        desc_box = _box_lines(desc_width, desc_height, desc_lines, margin=desc_margin, style=desc_style)
+
+        canvas = [" " * SCREEN_WIDTH for _ in range(SCREEN_HEIGHT)]
+
+        def _overlay_box(box_lines: list[str], start_x: int, start_y: int) -> None:
+            for idx, line in enumerate(box_lines):
+                row = start_y + idx
+                if 0 <= row < SCREEN_HEIGHT:
+                    overlay = pad_or_trim_ansi((" " * start_x) + line, SCREEN_WIDTH)
+                    base_cells = _ansi_cells(canvas[row])
+                    overlay_cells = _ansi_cells(overlay)
+                    merged = []
+                    for (base_ch, base_code), (over_ch, over_code) in zip(base_cells, overlay_cells):
+                        if over_ch == " ":
+                            merged.append(ANSI.RESET + base_code + base_ch)
+                        else:
+                            merged.append(ANSI.RESET + over_code + over_ch)
+                    canvas[row] = "".join(merged) + ANSI.RESET
+
+        _overlay_box(menu_box, menu_x, menu_y)
+        _overlay_box(art_box, art_x, art_y)
+        _overlay_box(desc_box, desc_x, desc_y)
+
+        body = []
+        actions = []
+        display_location = "Followers"
+        raw_lines = canvas
     elif inventory_mode:
         inventory_menu = ctx.menus.get("inventory", {})
         items = inventory_items or []
