@@ -219,7 +219,7 @@
     "mushroom": {
       "name": "Mushroom",
       "element": "base",
-      "level": 1,
+      "level": 3,
       "hp": 10,
       "atk": 8,
       "defense": 6,
@@ -265,6 +265,12 @@
         "Bud"
       ],
       "desc": "A tiny mushroom still fresh from the soil.",
+      "ai": {
+        "type": "support_heal_then_attack",
+        "heal_item_id": "mushroom_tea",
+        "heal_chance": 0.2,
+        "heal_target": "most_missing_hp"
+      },
       "arrival": "pokes up from the dirt",
       "art": [
         "  __",

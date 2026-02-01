@@ -153,6 +153,7 @@ def quest_entries(player: Player, quests_data) -> List[dict]:
         qstate = player.quests.get(quest_id)
         status = qstate.get("status") if isinstance(qstate, dict) else None
         if status == "complete":
+            entries.append({"id": quest_id, "quest": quest, "status": "complete"})
             continue
         if status == "active":
             entries.append({"id": quest_id, "quest": quest, "status": "active"})

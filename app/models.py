@@ -962,3 +962,4 @@ class Opponent:
     follower_names: List[str] = field(default_factory=list)
     variation: float = 0.0
     jitter_stability: bool = True
+    ai: Optional[dict] = None

@@ -854,18 +854,6 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     for follower in followers
                     if isinstance(follower, dict) and follower.get("type") == selected_type
                 )
-            abilities = selected_follower.get("abilities", [])
-            if isinstance(abilities, list):
-                for ability_id in abilities:
-                    label = str(ability_id)
-                    if hasattr(ctx, "abilities"):
-                        ability = ctx.abilities.get(ability_id, {})
-                        if isinstance(ability, dict):
-                            label = ability.get("label", label)
-                    actions.append({
-                        "label": f"Enable {label}",
-                        "command": f"FOLLOWER_ABILITY:{ability_id}",
-                    })
         for entry in menu.get("actions", []):
             cmd_entry = dict(entry)
             if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
@@ -903,19 +891,6 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.follower_dismiss_pending = None
                 return None, None
             cmd = actions[state.followers_action_cursor].get("command")
-            if isinstance(cmd, str) and cmd.startswith("FOLLOWER_ABILITY:"):
-                ability_id = cmd.split(":", 1)[1]
-                follower = followers[state.menu_cursor]
-                if isinstance(follower, dict):
-                    follower["active_ability"] = ability_id
-                    label = ability_id
-                    if hasattr(ctx, "abilities"):
-                        ability = ctx.abilities.get(ability_id, {})
-                        if isinstance(ability, dict):
-                            label = ability.get("label", label)
-                    state.last_message = f"{follower.get('name', 'Follower')} activates {label}."
-                state.follower_dismiss_pending = None
-                return None, None
             if cmd == "FOLLOWER_DISMISS":
                 if state.follower_dismiss_pending != state.menu_cursor:
                     follower = followers[state.menu_cursor]
@@ -1346,6 +1321,56 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         return
     for follower in state.player.followers:
         if not isinstance(follower, dict):
+            continue
+        follower_type = str(follower.get("type", ""))
+        if follower_type == "mushroom_baby":
+            missing = _team_missing_total(state.player)
+            ability = ctx.abilities.get("mushroom_tea_brew", {}) if hasattr(ctx, "abilities") else {}
+            chance = float(ability.get("chance", 0.2) or 0.2) if isinstance(ability, dict) else 0.2
+            if missing > 0 and random.random() < chance:
+                item_id = str(ability.get("item_id", "mushroom_tea") or "mushroom_tea")
+                item = ctx.items.get(item_id, {}) if hasattr(ctx, "items") else {}
+                if isinstance(item, dict):
+                    candidates = [("player", None, _team_missing_total(state.player, mode="combined"))]
+                    for teammate in state.player.followers:
+                        if not isinstance(teammate, dict):
+                            continue
+                        candidates.append(("follower", teammate, _team_missing_total(state.player, teammate, mode="combined")))
+                    target_type, target_ref, _missing = max(candidates, key=lambda entry: entry[2])
+                    healed_hp, healed_mp = _apply_item_heal(
+                        target_ref if target_type == "follower" else "player",
+                        item,
+                        state.player,
+                    )
+                    if healed_hp > 0 or healed_mp > 0:
+                        target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
+                        name = follower.get("name", "Follower")
+                        parts = []
+                        if healed_hp:
+                            parts.append(f"{healed_hp} HP")
+                        if healed_mp:
+                            parts.append(f"{healed_mp} MP")
+                        restored = " and ".join(parts)
+                        label = ability.get("label", "Mushroom Tea") if isinstance(ability, dict) else "Mushroom Tea"
+                        push_battle_message(state, f"{name} uses {label} on {target_name}, restoring {restored}.")
+                        continue
+            alive = [opp for opp in state.opponents if opp.hp > 0]
+            if not alive:
+                continue
+            opponent = min(alive, key=lambda opp: opp.hp)
+            damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), opponent.defense)
+            name = follower.get("name", "Follower")
+            if miss:
+                push_battle_message(state, f"{name} misses the {opponent.name}.")
+                continue
+            opponent.hp = max(0, opponent.hp - damage)
+            if opponent.hp == 0:
+                push_battle_message(state, f"{name} strikes down the {opponent.name}.")
+                continue
+            if crit:
+                push_battle_message(state, f"Critical hit! {name} hits the {opponent.name} for {damage}.")
+            else:
+                push_battle_message(state, f"{name} hits the {opponent.name} for {damage}.")
             continue
         spells = follower.get("spells", [])
         if not isinstance(spells, list):
@@ -2029,6 +2054,28 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
             template = ctx.texts.get("battle", "opponent_hesitates", "The {name} hesitates.")
             push_battle_message(state, format_text(template, name=m.name))
         else:
+            ai = getattr(m, "ai", None)
+            if isinstance(ai, dict) and ai.get("type") == "support_heal_then_attack":
+                chance = float(ai.get("heal_chance", 0.0) or 0.0)
+                item_id = str(ai.get("heal_item_id", "") or "")
+                if item_id and chance > 0:
+                    missing_targets = [
+                        opp for opp in state.opponents
+                        if opp.hp > 0 and opp.hp < opp.max_hp
+                    ]
+                    if missing_targets and random.random() < chance:
+                        item = ctx.items.get(item_id, {}) if hasattr(ctx, "items") else {}
+                        hp_gain = int(item.get("hp", 0) or 0) if isinstance(item, dict) else 0
+                        if hp_gain > 0:
+                            if str(ai.get("heal_target", "")) == "most_missing_hp":
+                                target = max(missing_targets, key=lambda opp: (opp.max_hp - opp.hp))
+                            else:
+                                target = missing_targets[0]
+                            healed = min(hp_gain, target.max_hp - target.hp)
+                            target.hp += healed
+                            label = item.get("name", "Item") if isinstance(item, dict) else "Item"
+                            push_battle_message(state, f"The {m.name} uses {label} on the {target.name}, restoring {healed} HP.")
+                            continue
             defense_value = state.player.total_defense() + state.defend_bonus
             damage, crit, miss = roll_damage(m.atk, defense_value)
             if not miss:
@@ -2101,6 +2148,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
     if state.player.followers:
         for follower in state.player.followers:
             if not isinstance(follower, dict):
+                continue
+            if str(follower.get("type", "")) == "mushroom_baby":
                 continue
             abilities_list = follower.get("abilities", [])
             if not isinstance(abilities_list, list):

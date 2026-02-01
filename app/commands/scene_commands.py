@@ -32,6 +32,18 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         getattr(opponent, "recruitable", False) and opponent.hp > 0
         for opponent in opponents
     )
+    has_fusion = False
+    followers = getattr(player, "followers", [])
+    if isinstance(followers, list):
+        counts = {}
+        for follower in followers:
+            if not isinstance(follower, dict):
+                continue
+            f_type = str(follower.get("type", ""))
+            if not f_type:
+                continue
+            counts[f_type] = counts.get(f_type, 0) + 1
+        has_fusion = any(count >= 3 for count in counts.values())
     in_town = getattr(player, "location", "") == "Town"
     in_temple = bool(getattr(player, "location", "") == "Town" and getattr(player, "current_venue_id", "") == "town_temple")
     can_recruit = False
@@ -61,6 +73,8 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         if cond == "has_elements" and not has_elements:
             return False
         if cond == "in_temple" and not in_temple:
+            return False
+        if cond == "has_fusion" and not has_fusion:
             return False
         if cond == "in_town" and not in_town:
             return False

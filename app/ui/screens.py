@@ -953,7 +953,13 @@ def generate_frame(
                 desc_text = dialog_lines[quest_detail_page]
         elif quest_id:
             quest = selected_entry.get("quest", {})
-            desc_text = str(quest.get("summary", "") or "")
+            status = selected_entry.get("status", "")
+            if status == "complete":
+                desc_text = str(quest.get("summary_complete", "Quest complete.") or "Quest complete.")
+            elif status == "active":
+                desc_text = str(quest.get("summary_active", "") or quest.get("summary_pre", "") or "")
+            else:
+                desc_text = str(quest.get("summary_pre", "") or "")
         elif hasattr(ctx, "continents"):
             entry = ctx.continents.continents().get(selected_element, {})
             if isinstance(entry, dict):
@@ -2046,6 +2052,9 @@ def generate_frame(
             )
             for line in atlas_lines
         ]
+        if atlas_colored:
+            atlas_width = max((len(strip_ansi(line)) for line in atlas_colored), default=0)
+            atlas_colored = [pad_or_trim_ansi(line, atlas_width).ljust(atlas_width) for line in atlas_colored]
 
         follower_art_blocks = []
         if title_followers and hasattr(ctx, "opponents"):
@@ -2069,18 +2078,25 @@ def generate_frame(
                     follower_art_blocks.append(art)
 
         follower_lines = []
+        follower_span_width = 0
         if follower_art_blocks:
             heights = [len(block) for block in follower_art_blocks]
-            widths = [max((len(strip_ansi(line)) for line in block), default=0) for block in follower_art_blocks]
+            widths = [max((len(strip_ansi(line).rstrip()) for line in block), default=0) for block in follower_art_blocks]
+            if widths:
+                follower_span_width = sum(widths) + max(0, len(widths) - 1)
             total_height = max(heights, default=0)
             for row in range(total_height):
                 parts = []
                 for block, height, width in zip(follower_art_blocks, heights, widths):
                     start = total_height - height
                     idx = row - start
-                    line = block[idx] if 0 <= idx < height else ""
+                    if 0 <= idx < height:
+                        raw = block[idx].rstrip()
+                        line = raw.ljust(width)
+                    else:
+                        line = " " * width
                     parts.append(pad_or_trim_ansi(line, width))
-                follower_lines.append(" ".join(parts).rstrip())
+                follower_lines.append(" ".join(parts).ljust(follower_span_width))
 
         span_height = max(len(atlas_colored), len(follower_lines))
         if span_height:

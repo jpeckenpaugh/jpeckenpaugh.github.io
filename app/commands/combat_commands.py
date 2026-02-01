@@ -74,7 +74,7 @@ def _handle_socialize(ctx: CommandContext) -> str:
         if isinstance(qstate, dict) and qstate.get("status") == "active":
             if not ctx.player.flags.get("quest_intro_spellcraft_complete", False):
                 if getattr(opponent, "follower_type", "") != "mushroom_baby":
-                    return "Your quest calls for baby mushrooms right now."
+                    return "Why would I want to join your group?"
     if not getattr(opponent, "recruitable", False):
         return f"The {opponent.name} shows no interest."
     if getattr(ctx.player, "follower_slots_remaining", lambda: 0)() <= 0:

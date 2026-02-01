@@ -27,7 +27,7 @@
     "name": "Mushroom Tea",
     "type": "healing",
     "hp": 2,
-    "mp": 2,
+    "mp": 1,
     "price": 5,
     "desc": "A simple mushroom tea, that grants a small bit of vitality."
   },

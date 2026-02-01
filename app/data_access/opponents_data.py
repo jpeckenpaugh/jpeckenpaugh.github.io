@@ -127,6 +127,9 @@ class OpponentsData:
         follower_names = data.get("follower_names", [])
         if not isinstance(follower_names, list):
             follower_names = []
+        ai = data.get("ai")
+        if not isinstance(ai, dict):
+            ai = None
         if element and self._variants:
             color_map = self._colorize_map(color_map, element)
         return Opponent(
@@ -150,7 +153,8 @@ class OpponentsData:
             follower_type=follower_type,
             follower_names=follower_names,
             variation=variation,
-            jitter_stability=bool(jitter_stability)
+            jitter_stability=bool(jitter_stability),
+            ai=ai
         )
 
     def spawn(

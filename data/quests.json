@@ -2,7 +2,9 @@
   "intro_spellcraft": {
     "title": "Gather the Fairies",
     "short_name": "Once upon a time...",
-    "summary": "A mushroom companion warns the forest is deadly. Recruit three mushroom babies and fuse them at the temple into a mushroom teen.",
+    "summary_pre": "A tiny mushroom offers help but warns the forest is deadly.",
+    "summary_active": "Recruit three mushroom babies and fuse them at the temple to grow stronger.",
+    "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
       "Hi there! I’m Mushy. Nice to meet you! You and I may be low-level now. If we head into the forest like this, we won’t stand much chance against the monsters we’d find.",
@@ -41,7 +43,9 @@
   "fuse_fairies": {
     "title": "Fuse the Fairies",
     "short_name": "Fairy fusion",
-    "summary": "Combine the strength of your three fairies into a single, stronger ally.",
+    "summary_pre": "Three fairies can weave their power into one.",
+    "summary_active": "Fuse three fairies into a stronger ally.",
+    "summary_complete": "Quest complete.",
     "art_opponent": "fairy",
     "dialog": [
       "Three fairies can weave their power into one.",
@@ -70,7 +74,9 @@
   "gather_wolves": {
     "title": "Gather the Wolves",
     "short_name": "Gather wolves",
-    "summary": "As the rumors of a moving Ancient Tower grow, recruit a pack strong enough to endure the forest’s deepest threats.",
+    "summary_pre": "Rumors of the moving tower grow louder each night.",
+    "summary_active": "Recruit three wolves to face the forest’s deepest threats.",
+    "summary_complete": "Quest complete.",
     "art_opponent": "wolf",
     "dialog": [
       "Rumors of the moving tower grow louder each night.",
@@ -100,7 +106,9 @@
   "unlock_continent_01": {
     "title": "[PLACEHOLDER_TITLE]",
     "short_name": "[PLACEHOLDER_SHORT]",
-    "summary": "[PLACEHOLDER_SUMMARY]",
+    "summary_pre": "[PLACEHOLDER_SUMMARY_PRE]",
+    "summary_active": "[PLACEHOLDER_SUMMARY_ACTIVE]",
+    "summary_complete": "[PLACEHOLDER_SUMMARY_COMPLETE]",
     "art_opponent": "[PLACEHOLDER_OPPONENT_ID]",
     "dialog": [
       "[PLACEHOLDER_DIALOG_LINE_1]",

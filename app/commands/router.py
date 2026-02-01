@@ -23,6 +23,7 @@ from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
+from app.questing import handle_event
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
@@ -301,6 +302,51 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.followers_focus = "list"
         state.followers_action_cursor = 0
         state.last_message = menu.get("open_message", "View your followers.")
+        return True
+
+    if command_id == "FOLLOWER_FUSE_AUTO":
+        if state.current_venue_id != "town_temple":
+            state.last_message = "Fusing is only possible at the temple."
+            return True
+        if state.player.gold < 100:
+            state.last_message = "Not enough GP to fuse followers."
+            return True
+        followers = getattr(state.player, "followers", [])
+        if not isinstance(followers, list):
+            followers = []
+        counts = {}
+        for follower in followers:
+            if not isinstance(follower, dict):
+                continue
+            f_type = str(follower.get("type", ""))
+            if not f_type:
+                continue
+            counts[f_type] = counts.get(f_type, 0) + 1
+        fuse_type = None
+        for f_type, count in counts.items():
+            if count >= 3:
+                fuse_type = f_type
+                break
+        if not fuse_type:
+            state.last_message = "Need three followers of the same type to fuse."
+            return True
+        fused = state.player.fuse_followers(fuse_type, 3)
+        if not fused:
+            state.last_message = "Need three followers of the same type to fuse."
+            return True
+        state.player.gold = max(0, state.player.gold - 100)
+        state.last_message = f"{fused.get('name', 'Follower')} joins your party."
+        if hasattr(ctx, "quests") and ctx.quests is not None:
+            quest_messages = handle_event(
+                state.player,
+                ctx.quests,
+                "fuse_followers",
+                {"follower_type": fuse_type, "count": 3},
+                ctx.items,
+            )
+            if quest_messages:
+                state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+        ctx.save_data.save_player(state.player)
         return True
 
     if command_id == "ELEMENTS":
