@@ -83,6 +83,7 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.temple_mode,
         state.smithy_mode,
         state.portal_mode,
+        state.title_menu_stack,
         state.options_mode,
         state.action_cursor,
         state.menu_cursor,
@@ -204,35 +205,86 @@ def move_action_cursor(index: int, direction: str, commands: list[dict]) -> int:
     return index
 
 
-def action_commands_for_state(ctx, state: GameState) -> list[dict]:
-    if state.title_mode:
+def _title_screen_state_key(player) -> str:
+    if getattr(player, "title_confirm", False):
+        return "title_confirm"
+    if getattr(player, "title_fortune", False):
+        return "title_fortune"
+    if getattr(player, "title_slot_select", False):
+        return "title_slot_select"
+    return ""
+
+
+def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
+    title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
+    if title_data.get("version") != 2:
         title_scene = ctx.scenes.get("title", {})
-        if getattr(state.player, "title_confirm", False):
-            return title_scene.get("confirm_commands", [])
-        if getattr(state.player, "title_fortune", False):
-            return title_scene.get("fortune_commands", [])
-        if getattr(state.player, "title_slot_select", False):
-            mode = getattr(state.player, "title_slot_mode", "continue")
-            summaries = ctx.save_data.slot_summaries()
-            commands = []
-            for summary in summaries:
-                slot_num = summary.get("slot", 0)
-                label = f"Slot {slot_num}"
-                if summary.get("empty"):
-                    label = f"{label} (Empty)"
-                entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
-                if mode == "continue" and summary.get("empty"):
-                    entry["_disabled"] = True
-                commands.append(entry)
-            commands.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
-            return commands
-        return scene_commands(
+        return title_scene.get("narrative", []), scene_commands(
             ctx.scenes,
             ctx.commands_data,
             "title",
             state.player,
             state.opponents,
         )
+    menus = title_data.get("menus", {}) if isinstance(title_data, dict) else {}
+    root_menu = title_data.get("root_menu", "title_root")
+    if not state.title_menu_stack:
+        state.title_menu_stack = [root_menu]
+    menu_id = state.title_menu_stack[-1] if state.title_menu_stack else root_menu
+    override = _title_screen_state_key(state.player)
+    if override:
+        menu_id = override
+    menu_data = menus.get(menu_id, {}) if isinstance(menus, dict) else {}
+    narrative = menu_data.get("narrative", [])
+    if not isinstance(narrative, list):
+        narrative = []
+    items = menu_data.get("items", [])
+    if items == "slot_select":
+        mode = getattr(state.player, "title_slot_mode", "continue")
+        summaries = ctx.save_data.slot_summaries()
+        built = []
+        for summary in summaries:
+            slot_num = summary.get("slot", 0)
+            label = f"Slot {slot_num}"
+            if summary.get("empty"):
+                label = f"{label} (Empty)"
+            entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
+            if mode == "continue" and summary.get("empty"):
+                entry["_disabled"] = True
+            built.append(entry)
+        built.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
+        items = built
+    if not isinstance(items, list):
+        items = []
+    commands = []
+    for entry in items:
+        if not isinstance(entry, dict):
+            continue
+        cmd_entry = dict(entry)
+        if cmd_entry.get("submenu"):
+            cmd_entry["command"] = f"TITLE_MENU_SUB:{cmd_entry.get('submenu')}"
+        if cmd_entry.get("back"):
+            cmd_entry["command"] = "TITLE_MENU_BACK"
+        commands.append(cmd_entry)
+    filtered = []
+    for entry in commands:
+        if not isinstance(entry, dict):
+            continue
+        when = entry.get("when")
+        if when == "has_save" and not getattr(state.player, "has_save", False):
+            continue
+        cmd_entry = dict(entry)
+        if not command_is_enabled(cmd_entry, state.player, state.opponents):
+            cmd_entry["_disabled"] = True
+        filtered.append(cmd_entry)
+    commands = filtered
+    return narrative, commands
+
+
+def action_commands_for_state(ctx, state: GameState) -> list[dict]:
+    if state.title_mode:
+        _narrative, commands = _title_screen_config(ctx, state)
+        return commands
     if state.shop_mode or state.hall_mode or state.inn_mode or state.temple_mode or state.smithy_mode or state.alchemist_mode or state.portal_mode:
         venue_id = venue_id_from_state(state)
         if venue_id:
@@ -789,6 +841,48 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if action == "BACK":
             return "B_KEY", None
 
+    if state.title_mode:
+        commands = action_commands_for_state(ctx, state)
+        clamp_action_cursor(state, commands)
+        if action in ("UP", "DOWN"):
+            enabled = _enabled_indices(commands)
+            if enabled:
+                pos = enabled.index(state.action_cursor) if state.action_cursor in enabled else 0
+                direction = -1 if action == "UP" else 1
+                pos = (pos + direction) % len(enabled)
+                state.action_cursor = enabled[pos]
+            return None, None
+        if action in ("LEFT", "RIGHT"):
+            return None, None
+        if action == "BACK":
+            if len(state.title_menu_stack) > 1:
+                state.title_menu_stack.pop()
+                commands = action_commands_for_state(ctx, state)
+                clamp_action_cursor(state, commands)
+            return None, None
+        if action == "CONFIRM":
+            if not commands or state.action_cursor < 0:
+                return None, None
+            command_meta = commands[state.action_cursor]
+            if command_meta.get("_disabled"):
+                return None, None
+            cmd = command_meta.get("command")
+            if isinstance(cmd, str) and cmd.startswith("TITLE_MENU_SUB:"):
+                menu_id = cmd.split(":", 1)[1]
+                if menu_id:
+                    state.title_menu_stack.append(menu_id)
+                    commands = action_commands_for_state(ctx, state)
+                    clamp_action_cursor(state, commands)
+                return None, None
+            if cmd == "TITLE_MENU_BACK":
+                if len(state.title_menu_stack) > 1:
+                    state.title_menu_stack.pop()
+                commands = action_commands_for_state(ctx, state)
+                clamp_action_cursor(state, commands)
+                return None, None
+            return cmd, command_meta
+        return None, None
+
     commands = action_commands_for_state(ctx, state)
     clamp_action_cursor(state, commands)
     if action in ("UP", "DOWN", "LEFT", "RIGHT"):
@@ -1186,6 +1280,14 @@ def apply_router_command(
         state.action_cursor = 0
     if post_title_confirm and not pre_title_confirm:
         state.action_cursor = 0
+    if (
+        (pre_title_fortune and not post_title_fortune)
+        or (pre_title_confirm and not post_title_confirm)
+        or (pre_title_slot_select and not post_title_slot_select)
+    ):
+        commands = action_commands_for_state(ctx, state)
+        state.action_cursor = 0
+        clamp_action_cursor(state, commands)
     if state.spell_mode and not pre_spell_mode:
         state.menu_cursor = state.spell_cursor
         keys = spell_menu_keys(ctx, state.player)

@@ -24,6 +24,7 @@ from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.stories_data import StoriesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.text_data import TextData
 from app.data_access.venues_data import VenuesData
 from app.ui.screens import ScreenContext
@@ -51,6 +52,7 @@ class AppContext:
     save_data: SaveData
     quests: QuestsData
     stories: StoriesData
+    title_screen: TitleScreenData
     registry: object
     router_ctx: RouterContext
     screen_ctx: ScreenContext
@@ -141,6 +143,10 @@ def _load_stories() -> StoriesData:
     return StoriesData(f"{DATA_DIR}/stories.json")
 
 
+def _load_title_screen() -> TitleScreenData:
+    return TitleScreenData(f"{DATA_DIR}/title_screen.json")
+
+
 def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
     spell_commands = {
         spell.get("command_id")
@@ -181,6 +187,7 @@ def create_app() -> AppContext:
     save_data = _load_save()
     quests = _load_quests()
     stories = _load_stories()
+    title_screen = _load_title_screen()
 
     spell_commands, targeted_spell_commands, flash_spell_commands = _spell_command_sets(spells)
     combat_actions = command_ids_by_type(scenes, "combat") | spell_commands
@@ -206,6 +213,7 @@ def create_app() -> AppContext:
         registry=registry,
         quests=quests,
         stories=stories,
+        title_screen=title_screen,
     )
     screen_ctx = ScreenContext(
         items=items,
@@ -228,6 +236,7 @@ def create_app() -> AppContext:
         save_data=save_data,
         quests=quests,
         stories=stories,
+        title_screen=title_screen,
     )
 
     return AppContext(
@@ -251,6 +260,7 @@ def create_app() -> AppContext:
         save_data=save_data,
         quests=quests,
         stories=stories,
+        title_screen=title_screen,
         registry=registry,
         router_ctx=router_ctx,
         screen_ctx=screen_ctx,

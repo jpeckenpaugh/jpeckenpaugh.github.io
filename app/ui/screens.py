@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import List, Optional
 
-from app.commands.scene_commands import command_is_enabled, scene_commands
+from app.commands.scene_commands import command_is_enabled, format_commands, scene_commands
 from app.data_access.commands_data import CommandsData
 from app.data_access.colors_data import ColorsData
 from app.data_access.continents_data import ContinentsData
@@ -24,12 +24,13 @@ from app.data_access.quests_data import QuestsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.stories_data import StoriesData
+from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
 from app.models import Frame, Player, Opponent
 from app.ui.ansi import ANSI
-from app.ui.layout import format_action_lines, format_command_lines, format_menu_actions, strip_ansi
-from app.ui.constants import SCREEN_WIDTH
+from app.ui.layout import format_action_lines, format_command_lines, format_menu_actions, pad_or_trim_ansi, strip_ansi
+from app.ui.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from app.ui.rendering import (
     COLOR_BY_NAME,
     element_color_map,
@@ -64,6 +65,7 @@ class ScreenContext:
     save_data: object
     quests: QuestsData
     stories: StoriesData
+    title_screen: TitleScreenData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -123,6 +125,160 @@ def _slice_ansi(text: str, start: int, width: int) -> str:
         vis_idx += 1
         i += 1
     return "".join(out)
+
+
+def _title_state_config(
+    ctx: ScreenContext,
+    player,
+    selected_index: int,
+    menu_stack: list[str],
+) -> tuple[list[str], list[dict], list[str]]:
+    title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
+    if title_data.get("version") != 2:
+        scene_data = ctx.scenes.get("title", {})
+        return scene_data.get("narrative", []), scene_commands(ctx.scenes, ctx.commands, "title", player, []), []
+    menus = title_data.get("menus", {}) if isinstance(title_data, dict) else {}
+    menu_id = menu_stack[-1] if menu_stack else title_data.get("root_menu", "title_root")
+    if getattr(player, "title_confirm", False):
+        menu_id = "title_confirm"
+    if getattr(player, "title_fortune", False):
+        menu_id = "title_fortune"
+    if getattr(player, "title_slot_select", False):
+        menu_id = "title_slot_select"
+    menu_data = menus.get(menu_id, {}) if isinstance(menus, dict) else {}
+    narrative = menu_data.get("narrative", [])
+    if not isinstance(narrative, list):
+        narrative = []
+    items = menu_data.get("items", [])
+    if items == "slot_select":
+        summaries = []
+        if hasattr(ctx, "save_data") and ctx.save_data:
+            summaries = ctx.save_data.slot_summaries()
+        narrative = list(narrative)
+        for summary in summaries:
+            slot_num = summary.get("slot", 0)
+            if summary.get("empty"):
+                line = f"Slot {slot_num}: Empty"
+            else:
+                level = summary.get("level", 1)
+                location = summary.get("location", "Town")
+                gold = summary.get("gold", 0)
+                created = summary.get("created_at", "")
+                last_played = summary.get("last_played", "")
+                line = (
+                    f"Slot {slot_num}: Lv{level} {location} GP{gold} "
+                    f"C {created} L {last_played}"
+                )
+            narrative.append(line)
+        mode = getattr(player, "title_slot_mode", "continue")
+        built = []
+        for summary in summaries:
+            slot_num = summary.get("slot", 0)
+            label = f"Slot {slot_num}"
+            if summary.get("empty"):
+                label = f"{label} (Empty)"
+            entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
+            if mode == "continue" and summary.get("empty"):
+                entry["_disabled"] = True
+            built.append(entry)
+        built.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
+        items = built
+    detail_lines = menu_data.get("detail_lines", [])
+    if isinstance(detail_lines, list) and detail_lines:
+        narrative = list(narrative)
+        narrative.append("")
+        narrative.append(detail_lines[min(max(selected_index, 0), len(detail_lines) - 1)])
+    if not isinstance(items, list):
+        items = []
+    commands = []
+    for entry in items:
+        if not isinstance(entry, dict):
+            continue
+        cmd_entry = dict(entry)
+        if cmd_entry.get("submenu"):
+            cmd_entry["command"] = f"TITLE_MENU_SUB:{cmd_entry.get('submenu')}"
+        if cmd_entry.get("back"):
+            cmd_entry["command"] = "TITLE_MENU_BACK"
+        commands.append(cmd_entry)
+    filtered = []
+    for entry in commands:
+        if not isinstance(entry, dict):
+            continue
+        when = entry.get("when")
+        if when == "has_save" and not getattr(player, "has_save", False):
+            continue
+        cmd_entry = dict(entry)
+        if not command_is_enabled(cmd_entry, player, []):
+            cmd_entry["_disabled"] = True
+        filtered.append(cmd_entry)
+    commands = filtered
+    return narrative, commands, detail_lines if isinstance(detail_lines, list) else []
+
+
+def _draw_box(width: int, height: int, *, style: str = "round") -> list[str]:
+    width = max(2, width)
+    height = max(2, height)
+    if style == "round":
+        tl = tr = bl = br = "o"
+    else:
+        tl = tr = bl = br = "+"
+    top = tl + ("-" * (width - 2)) + tr
+    bottom = bl + ("-" * (width - 2)) + br
+    middle = "|" + (" " * (width - 2)) + "|"
+    lines = [top]
+    for _ in range(height - 2):
+        lines.append(middle)
+    lines.append(bottom)
+    return lines
+
+
+def _title_menu_lines(
+    menu_cfg: dict,
+    narrative: list[str],
+    commands: list[dict],
+    selected_index: int,
+    detail_lines: Optional[list[str]] = None,
+) -> tuple[list[str], int]:
+    center_x = int(menu_cfg.get("x", SCREEN_WIDTH // 2) or (SCREEN_WIDTH // 2))
+    center_y = int(menu_cfg.get("y", SCREEN_HEIGHT // 2) or (SCREEN_HEIGHT // 2))
+    width = int(menu_cfg.get("width", 0) or 0)
+    height = int(menu_cfg.get("height", 0) or 0)
+    style = str(menu_cfg.get("frame_style", "round") or "round")
+    box_lines = _draw_box(width, height, style=style)
+    content_lines = list(narrative)
+    if content_lines and content_lines[-1] != "":
+        content_lines.append("")
+    labels = format_commands(commands)
+    for idx, line in enumerate(labels):
+        if selected_index >= 0 and idx == selected_index:
+            line = f"> {line.strip()}"
+        content_lines.append(line)
+    max_content = max((len(strip_ansi(line)) for line in content_lines), default=0)
+    if detail_lines:
+        max_detail = max((len(strip_ansi(line)) for line in detail_lines), default=0)
+        max_content = max(max_content, max_detail)
+    if width <= 0:
+        width = min(SCREEN_WIDTH - 2, max(10, max_content + 2))
+    if height <= 0:
+        height = min(SCREEN_HEIGHT - 2, max(3, len(content_lines) + 2))
+    width = min(width, SCREEN_WIDTH - 2)
+    height = max(3, min(height, SCREEN_HEIGHT - 2))
+    box_lines = _draw_box(width, height, style=style)
+    inner_width = width - 2
+    inner_height = height - 2
+    content = []
+    for i in range(inner_height):
+        line = content_lines[i] if i < len(content_lines) else ""
+        content.append(pad_or_trim_ansi(line, inner_width))
+    for i in range(inner_height):
+        box_lines[i + 1] = "|" + content[i] + "|"
+    menu_lines = []
+    start_x = max(0, min(SCREEN_WIDTH - width, center_x - (width // 2)))
+    start_y = max(0, min(SCREEN_HEIGHT - height, center_y - (height // 2)))
+    for line in box_lines:
+        prefix = " " * max(0, start_x)
+        menu_lines.append(pad_or_trim_ansi(prefix + line, SCREEN_WIDTH))
+    return menu_lines, start_y
 
 
 def _truecolor(hex_code: str) -> str:
@@ -409,6 +565,7 @@ def generate_frame(
     temple_mode: bool = False,
     smithy_mode: bool = False,
     portal_mode: bool = False,
+    title_menu_stack: Optional[list[str]] = None,
     options_mode: bool = False,
     action_cursor: int = 0,
     menu_cursor: int = 0,
@@ -444,6 +601,7 @@ def generate_frame(
     portal_desc = None
     color_map_override = element_color_map(ctx.colors.all(), player.current_element)
     art_anchor_x = None
+    raw_lines = None
     if leveling_mode:
         level_options = [
             "  +HP",
@@ -479,6 +637,7 @@ def generate_frame(
         actions = format_action_lines([])
         art_lines = []
         art_color = ANSI.FG_WHITE
+        art_lines = []
     elif player.location == "Town" and (shop_mode or hall_mode or inn_mode or alchemist_mode or temple_mode or smithy_mode or portal_mode):
         view_state = SimpleNamespace(
             player=player,
@@ -779,21 +938,24 @@ def generate_frame(
         if hasattr(ctx, "continents"):
             display_location = ctx.continents.name_for(player.current_element)
     elif player.location == "Title":
-        scene_data = ctx.scenes.get("title", {})
-        art_lines = scene_data.get("art", [])
-        art_color = COLOR_BY_NAME.get(scene_data.get("color", "cyan").lower(), ANSI.FG_WHITE)
-        scroll_cfg = scene_data.get("scroll") if isinstance(scene_data.get("scroll"), dict) else None
+        title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
+        layout = title_data.get("layout", {}) if isinstance(title_data, dict) else {}
+        menu_cfg = layout.get("menu", {}) if isinstance(layout, dict) else {}
+        scroll_cfg = title_data.get("scroll") if isinstance(title_data.get("scroll"), dict) else None
+        menu_height = int(menu_cfg.get("height", 9) or 9)
+        art_color = ANSI.FG_WHITE
+        art_lines = []
         if scroll_cfg:
             height = int(scroll_cfg.get("height", 10) or 10)
             speed = float(scroll_cfg.get("speed", 1) or 1)
             forest_scale = float(scroll_cfg.get("forest_width_scale", 1) or 1)
             forest_scale = max(0.1, min(1.0, forest_scale))
-            pano_lines = scene_data.get("_panorama_lines")
-            pano_width = scene_data.get("_panorama_width")
+            pano_lines = title_data.get("_panorama_lines")
+            pano_width = title_data.get("_panorama_width")
             if not pano_lines or not pano_width:
                 forest_scene = ctx.scenes.get("forest", {})
                 gap_min = int(forest_scene.get("gap_min", 0) or 0)
-                base_width = max(0, (SCREEN_WIDTH - 2 - gap_min) // 2)
+                base_width = max(0, (SCREEN_WIDTH - gap_min) // 2)
                 target_width = max(1, int(base_width * forest_scale))
                 objects_data = ctx.objects
                 if objects_data:
@@ -842,17 +1004,18 @@ def generate_frame(
                 )
                 def pad_height(lines: list[str], height: int) -> list[str]:
                     if len(lines) >= height:
-                        return lines[-height:]
-                    return ([" " * len(strip_ansi(lines[0]))] * (height - len(lines))) + lines
+                        return lines[:height]
+                    pad_width = len(strip_ansi(lines[0])) if lines else SCREEN_WIDTH
+                    return lines + ([" " * pad_width] * (height - len(lines)))
                 forest_lines = pad_height(forest_lines, height)
                 town_lines = pad_height(town_lines, height)
                 pano_lines = []
                 for row in range(height):
                     pano_lines.append(forest_lines[row] + town_lines[row] + forest_lines[row])
                 pano_width = len(strip_ansi(pano_lines[0])) if pano_lines else 0
-                scene_data["_panorama_lines"] = pano_lines
-                scene_data["_panorama_width"] = pano_width
-            view_width = SCREEN_WIDTH - 2
+                title_data["_panorama_lines"] = pano_lines
+                title_data["_panorama_width"] = pano_width
+            view_width = SCREEN_WIDTH
             offset = int(time.time() * speed) % max(pano_width, 1)
             art_lines = [
                 _slice_ansi_wrap(line, offset, view_width)
@@ -862,10 +1025,11 @@ def generate_frame(
             logo_lines = []
             blocking_map = []
             blocking_char = None
-            if scene_data.get("objects"):
+            logo_object_id = title_data.get("logo_object_id")
+            if logo_object_id:
                 venue_stub = {
-                    "objects": scene_data.get("objects"),
-                    "color": scene_data.get("color", "white"),
+                    "objects": [{"id": logo_object_id}],
+                    "color": "white",
                 }
                 logo_lines, _logo_color, _ = render_venue_objects(
                     venue_stub,
@@ -873,17 +1037,14 @@ def generate_frame(
                     ctx.objects,
                     ctx.colors.all(),
                 )
-                first_obj = scene_data.get("objects")[0] if scene_data.get("objects") else None
-                obj_id = first_obj.get("id") if isinstance(first_obj, dict) else None
-                if isinstance(obj_id, str):
-                    obj_def = ctx.objects.get(obj_id, {})
-                    blocking_char = obj_def.get("blocking_space")
-                    if isinstance(blocking_char, str) and len(blocking_char) == 1:
-                        art = obj_def.get("art", [])
-                        if isinstance(art, list):
-                            for line in art:
-                                row = [(ch == blocking_char) for ch in line]
-                                blocking_map.append(row)
+                obj_def = ctx.objects.get(str(logo_object_id), {})
+                blocking_char = obj_def.get("blocking_space")
+                if isinstance(blocking_char, str) and len(blocking_char) == 1:
+                    art = obj_def.get("art", [])
+                    if isinstance(art, list):
+                        for line in art:
+                            row = [(ch == blocking_char) for ch in line]
+                            blocking_map.append(row)
             if logo_lines:
                 logo_height = len(logo_lines)
                 logo_width = max((len(strip_ansi(line)) for line in logo_lines), default=0)
@@ -907,77 +1068,26 @@ def generate_frame(
                         if 0 <= pos < len(base_cells):
                             base_cells[pos] = (ch, code)
                     art_lines[target_row] = "".join(code + ch for ch, code in base_cells) + ANSI.RESET
-        elif scene_data.get("objects"):
-            art_lines, art_color = render_scene_art(
-                scene_data,
-                opponents,
-                objects_data=ctx.objects,
-                color_map_override=color_map_override,
-            )
-        if getattr(player, "title_confirm", False):
-            body = scene_data.get("confirm_narrative", [])
-            actions = format_command_lines(
-                scene_data.get("confirm_commands", []),
-                selected_index=action_cursor if action_cursor >= 0 else None,
-            )
-        elif getattr(player, "title_slot_select", False):
-            summaries = []
-            if hasattr(ctx, "save_data") and ctx.save_data:
-                summaries = ctx.save_data.slot_summaries()
-            body = ["Select a save slot.", ""]
-            for summary in summaries:
-                slot_num = summary.get("slot", 0)
-                if summary.get("empty"):
-                    line = f"Slot {slot_num}: Empty"
-                else:
-                    level = summary.get("level", 1)
-                    location = summary.get("location", "Town")
-                    gold = summary.get("gold", 0)
-                    created = summary.get("created_at", "")
-                    last_played = summary.get("last_played", "")
-                    line = (
-                        f"Slot {slot_num}: Lv{level} {location} GP{gold} "
-                        f"C {created} L {last_played}"
-                    )
-                body.append(line)
-            mode = getattr(player, "title_slot_mode", "continue")
-            commands = []
-            for summary in summaries:
-                slot_num = summary.get("slot", 0)
-                label = f"Slot {slot_num}"
-                if summary.get("empty"):
-                    label = f"{label} (Empty)"
-                entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
-                if mode == "continue" and summary.get("empty"):
-                    entry["_disabled"] = True
-                commands.append(entry)
-            commands.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
-            actions = format_command_lines(
-                commands,
-                selected_index=action_cursor if action_cursor >= 0 else None,
-            )
-        elif getattr(player, "title_fortune", False):
-            body = scene_data.get("fortune_narrative", [])
-            fortune_lines = {
-                0: "Ain't nobody ever gave me nothing.",
-                1: "Some of us start a little ahead.",
-                2: "Yeah, some of us just have it easier in life, what can I say?",
-            }
-            if fortune_lines:
-                body = list(body)
-                body.append("")
-                body.append(fortune_lines.get(action_cursor, "Choose your starting fortune."))
-            actions = format_command_lines(
-                scene_data.get("fortune_commands", []),
-                selected_index=action_cursor if action_cursor >= 0 else None,
-            )
-        else:
-            body = scene_data.get("narrative", [])
-            actions = format_command_lines(
-                scene_commands(ctx.scenes, ctx.commands, "title", player, opponents),
-                selected_index=action_cursor if action_cursor >= 0 else None,
-            )
+        narrative, commands, detail_lines = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
+        menu_lines, menu_y = _title_menu_lines(
+            menu_cfg,
+            narrative,
+            commands,
+            action_cursor,
+            detail_lines,
+        )
+        canvas = []
+        for idx in range(SCREEN_HEIGHT):
+            art_line = art_lines[idx] if idx < len(art_lines) else ""
+            canvas.append(pad_or_trim_ansi(art_line, SCREEN_WIDTH))
+        for idx, line in enumerate(menu_lines):
+            row = menu_y + idx
+            if 0 <= row < SCREEN_HEIGHT:
+                canvas[row] = pad_or_trim_ansi(line, SCREEN_WIDTH)
+        body = []
+        actions = []
         display_location = "Lokarta - World Maker"
+        raw_lines = canvas
     else:
         scene_data = ctx.scenes.get("forest", {})
         forest_art, art_color = render_scene_art(
@@ -1044,5 +1154,6 @@ def generate_frame(
         art_lines=art_lines,
         art_color=art_color,
         status_lines=status_lines,
+        raw_lines=raw_lines,
         art_anchor_x=art_anchor_x,
     )

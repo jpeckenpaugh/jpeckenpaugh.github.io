@@ -55,3 +55,4 @@ class GameState:
     followers_action_cursor: int = 0
     follower_equip_mode: bool = False
     follower_equip_target: Optional[int] = None
+    title_menu_stack: list[str] = field(default_factory=list)

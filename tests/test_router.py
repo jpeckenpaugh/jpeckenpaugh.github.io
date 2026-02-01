@@ -13,6 +13,7 @@ from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.stories_data import StoriesData
+from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.models import Player
 from app.commands import build_registry
@@ -43,6 +44,7 @@ class RouterTests(unittest.TestCase):
         self._write_json("spells.json", {})
         self._write_json("quests.json", {})
         self._write_json("stories.json", {})
+        self._write_json("title_screen.json", {"version": 1})
 
         self.items = ItemsData(os.path.join(self.data_dir, "items.json"))
         self.opponents = OpponentsData(os.path.join(self.data_dir, "opponents.json"))
@@ -53,6 +55,7 @@ class RouterTests(unittest.TestCase):
         self.spells = SpellsData(os.path.join(self.data_dir, "spells.json"))
         self.quests = QuestsData(os.path.join(self.data_dir, "quests.json"))
         self.stories = StoriesData(os.path.join(self.data_dir, "stories.json"))
+        self.title_screen = TitleScreenData(os.path.join(self.data_dir, "title_screen.json"))
         self.save_data = SaveData(os.path.join(self.data_dir, "save.json"))
         self.registry = build_registry()
 
@@ -67,6 +70,7 @@ class RouterTests(unittest.TestCase):
             menus=self.menus,
             quests=self.quests,
             stories=self.stories,
+            title_screen=self.title_screen,
             registry=self.registry,
         )
 

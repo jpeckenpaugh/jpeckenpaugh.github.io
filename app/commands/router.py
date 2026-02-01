@@ -80,6 +80,7 @@ class RouterContext:
     objects: ObjectsData
     quests: QuestsData
     stories: StoriesData
+    title_screen: object
     registry: CommandRegistry
 
 
@@ -592,12 +593,26 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
     if command_id == "TITLE_NEW":
         state.player.title_confirm = False
         state.player.title_fortune = False
-        state.player.title_slot_select = True
-        state.player.title_slot_mode = "new"
+        state.player.title_slot_select = False
+        state.player.title_slot_mode = None
+        next_slot = None
+        for slot in range(1, 6):
+            if not ctx.save_data.exists(slot):
+                next_slot = slot
+                break
+        if next_slot is None:
+            fallback_slot = ctx.save_data.last_played_slot() or 1
+            state.player.title_confirm = True
+            state.player.title_pending_slot = fallback_slot
+            return True
+        state.player.title_pending_slot = next_slot
+        state.player.title_fortune = True
         return True
     if command_id == "TITLE_FORTUNE_BACK":
         state.player.title_fortune = False
-        state.player.title_slot_select = True
+        state.player.title_slot_select = False
+        state.player.title_slot_mode = None
+        state.player.title_pending_slot = None
         return True
     if command_id == "TITLE_SLOT_BACK":
         state.player.title_slot_select = False

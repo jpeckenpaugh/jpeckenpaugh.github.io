@@ -97,6 +97,7 @@ def main():
         spell_cursor=0,
         battle_cursor=0,
         current_venue_id=None,
+        title_menu_stack=[],
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
@@ -154,6 +155,7 @@ def main():
                 state.temple_mode,
                 state.smithy_mode,
                 state.portal_mode,
+                state.title_menu_stack,
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
@@ -201,6 +203,7 @@ def main():
             state.follower_dismiss_pending = None
             state.followers_focus = "list"
             state.followers_action_cursor = 0
+            state.title_menu_stack = []
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -224,6 +227,7 @@ def main():
                 state.temple_mode,
                 state.smithy_mode,
                 state.portal_mode,
+                state.title_menu_stack,
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
@@ -296,6 +300,7 @@ def main():
                 "spell_cast_rank": state.spell_cast_rank,
                 "level_cursor": state.level_cursor,
                 "level_up_notes": list(state.level_up_notes),
+                "title_menu_stack": list(state.title_menu_stack),
             }
             pre_in_venue = (
                 state.shop_mode
@@ -351,6 +356,7 @@ def main():
                     pre_snapshot.get("temple_mode", False),
                     pre_snapshot.get("smithy_mode", False),
                     pre_snapshot.get("portal_mode", False),
+                    pre_snapshot.get("title_menu_stack", []),
                     pre_snapshot.get("options_mode", False),
                     pre_snapshot.get("action_cursor", 0),
                     pre_snapshot.get("menu_cursor", 0),
@@ -383,6 +389,7 @@ def main():
                     state.temple_mode,
                     state.smithy_mode,
                     state.portal_mode,
+                    state.title_menu_stack,
                     state.options_mode,
                     state.action_cursor,
                     state.menu_cursor,

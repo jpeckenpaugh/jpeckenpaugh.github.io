@@ -2565,6 +2565,16 @@ def render_frame(frame: Frame):
             out.append(_gradient_char(x, y, SCREEN_WIDTH, SCREEN_HEIGHT, ch))
         return "".join(out)
 
+    if isinstance(getattr(frame, "raw_lines", None), list):
+        for row_idx, line in enumerate(frame.raw_lines[:SCREEN_HEIGHT]):
+            line = pad_or_trim_ansi(line, SCREEN_WIDTH)
+            output.append(_compose_line(row_idx, _apply_bg(line, row_idx)))
+        while len(output) < SCREEN_HEIGHT:
+            output.append(_compose_line(len(output), _apply_bg(" " * SCREEN_WIDTH, len(output))))
+        sys.stdout.write("\n".join(output))
+        sys.stdout.flush()
+        return
+
     row_idx = 0
     abs_row_base = 0
     top_border = "+" + "-" * (SCREEN_WIDTH - 2) + "+"
