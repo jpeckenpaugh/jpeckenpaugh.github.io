@@ -93,9 +93,8 @@
         "anim": "battle_start"
       },
       {
-        "label": "Portal",
-        "command": "ENTER_VENUE",
-        "target": "town_portal"
+        "label": "Quest",
+        "command": "QUEST"
       },
       {
         "label": "Options",
@@ -184,7 +183,10 @@
       {
         "label": "Magic",
         "command": "SPELLBOOK",
-        "enabled_when": "has_mp"
+        "enabled_when": [
+          "has_spells",
+          "has_mp"
+        ]
       },
       {
         "label": "Socialize",

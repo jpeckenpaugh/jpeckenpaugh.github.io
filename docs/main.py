@@ -84,17 +84,30 @@ def main():
         stats_mode=False,
         spell_mode=False,
         followers_mode=False,
+        follower_equip_mode=False,
+        follower_equip_target=None,
         element_mode=False,
         alchemist_mode=False,
         alchemy_first=None,
         temple_mode=False,
         smithy_mode=False,
         portal_mode=False,
+        quest_mode=False,
+        quest_detail_mode=False,
         quit_confirm=False,
         title_mode=True,
         spell_cursor=0,
         battle_cursor=0,
         current_venue_id=None,
+        title_menu_stack=[],
+        spell_target_mode=False,
+        spell_target_cursor=0,
+        spell_target_command=None,
+        team_target_index=None,
+        last_team_target_player=None,
+        quest_continent_index=0,
+        quest_detail_id=None,
+        quest_detail_page=0,
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
@@ -152,18 +165,32 @@ def main():
                 state.temple_mode,
                 state.smithy_mode,
                 state.portal_mode,
+                state.quest_mode,
+                state.title_menu_stack,
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
                 state.followers_focus,
                 state.followers_action_cursor,
                 state.spell_cast_rank,
+                state.spell_target_mode,
+                state.spell_target_cursor,
+                state.spell_target_command,
+                state.quest_continent_index,
                 state.level_cursor,
                 state.level_up_notes,
             )
             state.title_mode = True
             state.player.location = "Title"
             state.player.title_confirm = False
+            state.player.title_name_select = False
+            state.player.title_name_input = False
+            state.player.title_start_confirm = False
+            state.player.title_pending_name = None
+            state.player.title_pending_fortune = None
+            state.player.title_name_cursor = (0, 0)
+            state.player.title_name_shift = True
+            state.player.has_save = SAVE_DATA.exists()
             state.leveling_mode = False
             state.shop_mode = False
             state.shop_view = "menu"
@@ -174,13 +201,20 @@ def main():
             state.inn_mode = False
             state.stats_mode = False
             state.spell_mode = False
+            state.spell_target_mode = False
+            state.spell_target_cursor = 0
+            state.spell_target_command = None
             state.followers_mode = False
+            state.follower_equip_mode = False
+            state.follower_equip_target = None
             state.element_mode = False
             state.alchemist_mode = False
             state.alchemy_first = None
             state.temple_mode = False
             state.smithy_mode = False
             state.portal_mode = False
+            state.quest_mode = False
+            state.quest_detail_mode = False
             state.options_mode = False
             state.target_select = False
             state.target_index = None
@@ -194,9 +228,15 @@ def main():
             state.level_cursor = 0
             state.level_up_notes = []
             state.last_spell_targets = []
+            state.team_target_index = None
+            state.last_team_target_player = None
             state.follower_dismiss_pending = None
             state.followers_focus = "list"
             state.followers_action_cursor = 0
+            state.title_menu_stack = []
+            state.quest_continent_index = 0
+            state.quest_detail_id = None
+            state.quest_detail_page = 0
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -220,12 +260,18 @@ def main():
                 state.temple_mode,
                 state.smithy_mode,
                 state.portal_mode,
+                state.quest_mode,
+                state.title_menu_stack,
                 state.options_mode,
                 state.action_cursor,
                 state.menu_cursor,
                 state.followers_focus,
                 state.followers_action_cursor,
                 state.spell_cast_rank,
+                state.spell_target_mode,
+                state.spell_target_cursor,
+                state.spell_target_command,
+                state.quest_continent_index,
                 state.level_cursor,
                 state.level_up_notes,
             )
@@ -242,7 +288,14 @@ def main():
                 state.level_up_notes = []
             continue
 
-        if cmd == "B_KEY" and not (state.shop_mode or state.hall_mode or state.inn_mode or state.spell_mode or state.inventory_mode):
+        if cmd == "B_KEY" and not (
+            state.shop_mode
+            or state.hall_mode
+            or state.inn_mode
+            or state.spell_mode
+            or state.inventory_mode
+            or state.portal_mode
+        ):
             continue
         if cmd == "X_KEY":
             continue
@@ -284,14 +337,23 @@ def main():
                 "temple_mode": state.temple_mode,
                 "smithy_mode": state.smithy_mode,
                 "portal_mode": state.portal_mode,
+                "quest_mode": state.quest_mode,
+                "quest_detail_mode": state.quest_detail_mode,
                 "options_mode": state.options_mode,
                 "action_cursor": state.action_cursor,
                 "menu_cursor": state.menu_cursor,
                 "followers_focus": state.followers_focus,
                 "followers_action_cursor": state.followers_action_cursor,
                 "spell_cast_rank": state.spell_cast_rank,
+                "spell_target_mode": state.spell_target_mode,
+                "spell_target_cursor": state.spell_target_cursor,
+                "spell_target_command": state.spell_target_command,
+                "quest_continent_index": state.quest_continent_index,
+                "quest_detail_id": state.quest_detail_id,
+                "quest_detail_page": state.quest_detail_page,
                 "level_cursor": state.level_cursor,
                 "level_up_notes": list(state.level_up_notes),
+                "title_menu_stack": list(state.title_menu_stack),
             }
             pre_in_venue = (
                 state.shop_mode
@@ -347,12 +409,21 @@ def main():
                     pre_snapshot.get("temple_mode", False),
                     pre_snapshot.get("smithy_mode", False),
                     pre_snapshot.get("portal_mode", False),
+                    pre_snapshot.get("quest_mode", False),
+                    pre_snapshot.get("quest_detail_mode", False),
+                    pre_snapshot.get("title_menu_stack", []),
                     pre_snapshot.get("options_mode", False),
                     pre_snapshot.get("action_cursor", 0),
                     pre_snapshot.get("menu_cursor", 0),
                     pre_snapshot.get("followers_focus", "list"),
                     pre_snapshot.get("followers_action_cursor", 0),
                     pre_snapshot.get("spell_cast_rank", 1),
+                    pre_snapshot.get("spell_target_mode", False),
+                    pre_snapshot.get("spell_target_cursor", 0),
+                    pre_snapshot.get("spell_target_command", None),
+                    pre_snapshot.get("quest_continent_index", 0),
+                    pre_snapshot.get("quest_detail_id", None),
+                    pre_snapshot.get("quest_detail_page", 0),
                     pre_snapshot.get("level_cursor", 0),
                     pre_snapshot.get("level_up_notes", []),
                 )
@@ -379,12 +450,21 @@ def main():
                     state.temple_mode,
                     state.smithy_mode,
                     state.portal_mode,
+                    state.quest_mode,
+                    state.quest_detail_mode,
+                    state.title_menu_stack,
                     state.options_mode,
                     state.action_cursor,
                     state.menu_cursor,
                     state.followers_focus,
                     state.followers_action_cursor,
                     state.spell_cast_rank,
+                    state.spell_target_mode,
+                    state.spell_target_cursor,
+                    state.spell_target_command,
+                    state.quest_continent_index,
+                    state.quest_detail_id,
+                    state.quest_detail_page,
                     state.level_cursor,
                     state.level_up_notes,
                 )
@@ -417,7 +497,16 @@ def main():
             handled_by_router,
             generate_frame,
         )
-        if action_cmd in ("STRENGTH", "HEAL"):
+        in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
+        if (
+            state.spell_mode
+            and not in_battle
+            and action_cmd in ("STRENGTH", "HEAL")
+        ):
+            state.spell_target_mode = True
+            if not state.spell_target_command:
+                state.spell_target_command = action_cmd
+        if action_cmd in ("STRENGTH", "HEAL") and state.last_team_target_player:
             spell_entry = APP.spells.by_command_id(action_cmd)
             if spell_entry:
                 _, spell = spell_entry
@@ -434,6 +523,8 @@ def main():
                     remaining = max(0, max_stack - current)
                     gain = min(gain_per_cast, remaining)
                     animate_life_boost_gain(APP, render_frame, state, generate_frame, gain)
+        if action_cmd in ("STRENGTH", "HEAL"):
+            state.last_team_target_player = None
         handle_offensive_action(APP, state, action_cmd)
         if action_cmd:
             state.target_index = None

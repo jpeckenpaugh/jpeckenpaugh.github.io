@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "layout": {
+    "menu": {
+      "x": 25,
+      "y": 12,
+      "margin": 1,
+      "frame_style": "round"
+    },
+    "art": {
+      "x": 75,
+      "y": 12,
+      "margin": 1,
+      "frame_style": "round"
+    },
+    "description": {
+      "x": 50,
+      "y": 26,
+      "width": 96,
+      "anchor": "bottom",
+      "margin": 1,
+      "frame_style": "round"
+    }
+  }
+}

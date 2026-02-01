@@ -1,0 +1,119 @@
+{
+  "version": 2,
+  "layout": {
+    "menu": {
+      "frame_style": "round",
+      "margin": 1
+    }
+  },
+  "scroll": {
+    "height": 10,
+    "speed": 1,
+    "forest_width_scale": 0.5
+  },
+  "logo_object_id": "lokarta_logo",
+  "root_menu": "title_root",
+  "menus": {
+    "title_root": {
+      "narrative": [
+        "Lokarta - World Maker - A modular engine for world creation"
+      ],
+      "items": [
+        {
+          "label": "Continue",
+          "command": "TITLE_CONTINUE",
+          "when": "has_save"
+        },
+        {
+          "label": "New Game",
+          "command": "TITLE_NEW"
+        },
+        {
+          "label": "Quit",
+          "command": "QUIT"
+        }
+      ]
+    },
+    "title_name": {
+      "narrative": [
+        "Choose your name."
+      ],
+      "items": [
+        { "label": "Custom...", "command": "TITLE_NAME_CUSTOM" },
+        { "label": "Random", "command": "TITLE_NAME_RANDOM" },
+        { "label": "Back", "command": "TITLE_NAME_BACK" }
+      ]
+    },
+    "title_start_confirm": {
+      "narrative": [
+        "Start a new game?",
+        "",
+        "Your save will be created now."
+      ],
+      "items": [
+        { "label": "Begin adventure", "command": "TITLE_START_CONFIRM_YES" },
+        { "label": "Back", "command": "TITLE_START_CONFIRM_NO" }
+      ]
+    },
+    "title_confirm": {
+      "narrative": [
+        "Overwrite existing save?"
+      ],
+      "items": [
+        {
+          "label": "Yes, start new",
+          "command": "TITLE_CONFIRM_YES"
+        },
+        {
+          "label": "No, go back",
+          "command": "TITLE_CONFIRM_NO"
+        },
+        {
+          "label": "Quit",
+          "command": "QUIT"
+        }
+      ]
+    },
+    "title_fortune": {
+      "narrative": [
+        "Choose your starting fortune."
+      ],
+      "items": [
+        {
+          "label": "Poor (10 GP)",
+          "command": "FORTUNE_POOR"
+        },
+        {
+          "label": "Well-Off (100 GP)",
+          "command": "FORTUNE_WELL_OFF"
+        },
+        {
+          "label": "Royalty (1,000 GP)",
+          "command": "FORTUNE_ROYALTY"
+        },
+        {
+          "label": "Back",
+          "command": "TITLE_FORTUNE_BACK"
+        }
+      ],
+      "detail_lines": [
+        "Ain't nobody ever gave me nothing.",
+        "Some of us start a little ahead.",
+        "Yeah, some of us just have it easier in life, what can I say?"
+      ]
+    },
+    "title_slot_select": {
+      "narrative": [
+        "Select a save slot.",
+        ""
+      ],
+      "items": "slot_select"
+    },
+    "title_name_input": {
+      "narrative": [
+        "Enter your name."
+      ],
+      "items": []
+    }
+  }
+}

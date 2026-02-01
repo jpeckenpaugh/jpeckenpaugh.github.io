@@ -13,6 +13,7 @@ class Frame:
     art_lines: List[str]
     art_color: str
     status_lines: List[str]
+    raw_lines: Optional[List[str]] = None
     art_anchor_x: Optional[int] = None
     location_gradient: Optional[Tuple[int, int, int, int, int, int]] = None
 
@@ -43,6 +44,8 @@ class Player:
     temp_atk_bonus: int = 0
     temp_def_bonus: int = 0
     temp_hp_bonus: int = 0
+    flags: dict = field(default_factory=dict)
+    quests: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -67,6 +70,8 @@ class Player:
             "elements": list(self.elements),
             "current_element": self.current_element,
             "followers": self.followers,
+            "flags": self.flags,
+            "quests": self.quests,
         }
 
     @staticmethod
@@ -90,6 +95,12 @@ class Player:
         followers = data.get("followers", [])
         if not isinstance(followers, list):
             followers = []
+        flags = data.get("flags", {})
+        if not isinstance(flags, dict):
+            flags = {}
+        quests = data.get("quests", {})
+        if not isinstance(quests, dict):
+            quests = {}
         return Player(
             name=data.get("name", "WARRIOR"),
             level=int(data.get("level", 1)),
@@ -115,15 +126,18 @@ class Player:
             temp_atk_bonus=0,
             temp_def_bonus=0,
             temp_hp_bonus=0,
+            flags=flags,
+            quests=quests,
         )
 
     def add_item(self, key: str, amount: int = 1):
         self.inventory[key] = int(self.inventory.get(key, 0)) + amount
 
-    def add_gear(self, item_id: str, items_data) -> dict:
+    def add_gear(self, item_id: str, items_data, *, auto_equip: bool = True) -> dict:
         gear = self._create_gear_instance(item_id, items_data)
         self.gear_inventory.append(gear)
-        self.auto_equip_if_best(gear.get("id"))
+        if auto_equip:
+            self.auto_equip_if_best(gear.get("id"))
         return gear
 
     def _next_gear_id(self) -> str:
@@ -267,7 +281,12 @@ class Player:
         return self.max_hp + int(self.temp_hp_bonus)
 
     def follower_limit(self) -> int:
-        return 5
+        base_limit = 5
+        if isinstance(getattr(self, "flags", None), dict):
+            cap = self.flags.get("follower_cap")
+            if isinstance(cap, int) and cap > 0:
+                return min(base_limit, cap)
+        return base_limit
 
     def follower_slots_remaining(self) -> int:
         return max(0, self.follower_limit() - len(self.followers))
@@ -277,8 +296,315 @@ class Player:
             return False
         if not isinstance(self.followers, list):
             self.followers = []
+        self._ensure_follower_id(follower)
         self.followers.append(follower)
         return True
+
+    def _next_follower_id(self) -> str:
+        current = 0
+        for follower in self.followers:
+            if not isinstance(follower, dict):
+                continue
+            follower_id = str(follower.get("id", ""))
+            if follower_id.startswith("f") and follower_id[1:].isdigit():
+                current = max(current, int(follower_id[1:]))
+        return f"f{current + 1}"
+
+    def _ensure_follower_id(self, follower: dict) -> None:
+        if not isinstance(follower, dict):
+            return
+        if follower.get("id"):
+            return
+        follower["id"] = self._next_follower_id()
+
+    def follower_by_id(self, follower_id: str) -> Optional[dict]:
+        if not follower_id:
+            return None
+        for follower in self.followers:
+            if isinstance(follower, dict) and follower.get("id") == follower_id:
+                return follower
+        return None
+
+    def gear_owner(self, gear_id: str) -> tuple[Optional[str], Optional[str]]:
+        if not gear_id:
+            return None, None
+        gear = self.gear_instance(gear_id)
+        slot = gear.get("slot") if isinstance(gear, dict) else ""
+        if slot and self.equipment.get(slot) == gear_id:
+            return "player", None
+        for follower in self.followers:
+            if not isinstance(follower, dict):
+                continue
+            equip = follower.get("equipment", {})
+            if not isinstance(equip, dict):
+                continue
+            if gear_id in equip.values():
+                return "follower", str(follower.get("id", ""))
+        return None, None
+
+    def gear_owner_label(self, gear_id: str) -> str:
+        if not gear_id:
+            return ""
+        gear = self.gear_instance(gear_id)
+        slot = gear.get("slot") if isinstance(gear, dict) else ""
+        if slot and self.equipment.get(slot) == gear_id:
+            return "Player"
+        for follower in self.followers:
+            if not isinstance(follower, dict):
+                continue
+            equipment = follower.get("equipment", {})
+            if not isinstance(equipment, dict):
+                continue
+            if gear_id in equipment.values():
+                return follower.get("name", "Follower")
+        return ""
+
+    def follower_equipment(self, follower: dict) -> dict:
+        if not isinstance(follower, dict):
+            return {}
+        equipment = follower.get("equipment", {})
+        if not isinstance(equipment, dict):
+            equipment = {}
+            follower["equipment"] = equipment
+        return equipment
+
+    def follower_gear_instance(self, follower: dict, slot: str) -> Optional[dict]:
+        equipment = self.follower_equipment(follower)
+        gear_id = equipment.get(slot)
+        if not gear_id:
+            return None
+        return self.gear_instance(gear_id)
+
+    def assign_gear_to_follower(self, follower: dict, gear_id: str) -> bool:
+        if not isinstance(follower, dict) or not gear_id:
+            return False
+        gear = self.gear_instance(gear_id)
+        if not gear:
+            return False
+        slot = gear.get("slot")
+        if not slot:
+            return False
+        self._ensure_follower_id(follower)
+        # remove from player equipment if needed
+        for eq_slot, eq_id in list(self.equipment.items()):
+            if eq_id == gear_id:
+                self.equipment.pop(eq_slot, None)
+        self._recalc_gear()
+        # remove from other followers
+        for other in self.followers:
+            if not isinstance(other, dict):
+                continue
+            equip = self.follower_equipment(other)
+            for eq_slot, eq_id in list(equip.items()):
+                if eq_id == gear_id:
+                    equip.pop(eq_slot, None)
+        equip = self.follower_equipment(follower)
+        equip[slot] = gear_id
+        return True
+
+    def unequip_follower_slot(self, follower: dict, slot: str) -> bool:
+        if not isinstance(follower, dict):
+            return False
+        equip = self.follower_equipment(follower)
+        if slot in equip:
+            equip.pop(slot, None)
+            return True
+        return False
+
+    def follower_total_atk(self, follower: dict) -> int:
+        base = int(follower.get("atk", 2) or 2)
+        temp = int(follower.get("temp_atk_bonus", 0) or 0)
+        equip = self.follower_equipment(follower)
+        bonus = 0
+        for gear_id in equip.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            bonus += int(gear.get("atk", 0) or 0)
+        return base + bonus + temp
+
+    def follower_total_defense(self, follower: dict) -> int:
+        base = int(follower.get("defense", 1) or 1)
+        temp = int(follower.get("temp_def_bonus", 0) or 0)
+        equip = self.follower_equipment(follower)
+        bonus = 0
+        for gear_id in equip.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            bonus += int(gear.get("defense", 0) or 0)
+        return base + bonus + temp
+
+    def follower_total_max_hp(self, follower: dict) -> int:
+        base = int(follower.get("max_hp", 0) or 0)
+        temp = int(follower.get("temp_hp_bonus", 0) or 0)
+        return base + temp
+
+    def team_missing_total(self, follower: Optional[dict] = None, *, mode: str = "combined") -> int:
+        if follower is None:
+            max_hp = self.total_max_hp()
+            max_mp = int(self.max_mp)
+            missing_hp = max_hp - int(self.hp)
+            missing_mp = max_mp - int(self.mp)
+        else:
+            if not isinstance(follower, dict):
+                return 0
+            max_hp = self.follower_total_max_hp(follower)
+            max_mp = int(follower.get("max_mp", 0) or 0)
+            hp = int(follower.get("hp", max_hp) or max_hp)
+            mp = int(follower.get("mp", max_mp) or max_mp)
+            missing_hp = max(0, max_hp - hp)
+            missing_mp = max(0, max_mp - mp)
+        if mode == "hp":
+            return missing_hp
+        return missing_hp + missing_mp
+
+    def select_team_target(self, *, mode: str = "combined") -> tuple[str, Optional[dict]]:
+        candidates: list[tuple[str, Optional[dict], int]] = [("player", None, self.team_missing_total(mode=mode))]
+        for follower in self.followers:
+            if not isinstance(follower, dict):
+                continue
+            candidates.append(("follower", follower, self.team_missing_total(follower, mode=mode)))
+        target_type, target_ref, missing = max(candidates, key=lambda entry: entry[2])
+        if missing <= 0:
+            return "none", None
+        return target_type, target_ref
+
+    def follower_element_points_total(self, follower: dict, element: str) -> int:
+        total = 0
+        equip = self.follower_equipment(follower)
+        for gear_id in equip.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            points = gear.get("elem_points", {})
+            if not isinstance(points, dict):
+                continue
+            total += int(points.get(element, 0) or 0)
+        return total
+
+    def follower_wand_charges(self, follower: dict) -> dict:
+        gear = self.follower_gear_instance(follower, "wand")
+        if not gear:
+            return {}
+        charges = gear.get("charges", {})
+        return charges if isinstance(charges, dict) else {}
+
+    def consume_follower_wand_charge(self, follower: dict, element: str) -> bool:
+        gear = self.follower_gear_instance(follower, "wand")
+        if not gear:
+            return False
+        charges = gear.get("charges", {})
+        if not isinstance(charges, dict):
+            return False
+        current = int(charges.get(element, 0) or 0)
+        if current <= 0:
+            return False
+        charges[element] = current - 1
+        gear["charges"] = charges
+        return True
+
+    def recharge_follower_wands(self) -> None:
+        for follower in self.followers:
+            if not isinstance(follower, dict):
+                continue
+            gear = self.follower_gear_instance(follower, "wand")
+            if not gear:
+                continue
+            points = self._normalize_elem_points(gear.get("elem_points", {}))
+            max_charges = self._charges_from_points(points)
+            gear["charges"] = dict(max_charges)
+            gear["max_charges"] = dict(max_charges)
+
+    def restore_follower_mp(self) -> None:
+        for follower in self.followers:
+            if not isinstance(follower, dict):
+                continue
+            max_mp = int(follower.get("max_mp", 0) or 0)
+            if max_mp > 0:
+                follower["mp"] = max_mp
+
+    def list_gear_items(self) -> List[tuple[str, str]]:
+        entries: List[tuple[str, str]] = []
+        for gear in self.gear_inventory:
+            if not isinstance(gear, dict):
+                continue
+            gear_id = str(gear.get("id", ""))
+            if not gear_id:
+                continue
+            name = gear.get("name", "Gear")
+            slot = gear.get("slot", "")
+            owner = self.gear_owner_label(gear_id)
+            suffix = f" ({slot})" if slot else ""
+            if owner:
+                suffix += f" [{owner}]"
+            entries.append((gear_id, f"{name}{suffix}"))
+        return entries
+
+    def fuse_followers(self, follower_type: str, count: int = 3) -> Optional[dict]:
+        if count <= 0:
+            return None
+        if not isinstance(self.followers, list):
+            return None
+        matches = [idx for idx, follower in enumerate(self.followers) if isinstance(follower, dict) and follower.get("type") == follower_type]
+        if len(matches) < count:
+            return None
+        remove_indices = set(matches[:count])
+        kept_names = []
+        kept = []
+        for idx, follower in enumerate(self.followers):
+            if idx in remove_indices:
+                if isinstance(follower, dict):
+                    kept_names.append(str(follower.get("name", "")))
+                continue
+            kept.append(follower)
+        fused_type = follower_type
+        if follower_type == "mushroom_baby":
+            fused_type = "mushroom_teen"
+        elif follower_type == "fairy_baby":
+            fused_type = "fairy_teen"
+        elif follower_type == "wolf_pup":
+            fused_type = "wolf"
+        base_name = fused_type.replace("_", " ").title() or "Follower"
+        abilities = []
+        active = ""
+        if fused_type in ("fairy", "fairy_teen"):
+            abilities = ["fairy_heal", "fairy_mana"]
+            active = "fairy_heal"
+        if fused_type.startswith("mushroom"):
+            abilities = ["mushroom_tea_brew"]
+        fused_name = f"Fused {base_name}"
+        if follower_type == "mushroom_baby":
+            fused_name = "Mushroom Teen"
+            if any(name == "Mushy" for name in kept_names):
+                fused_name = "Mushy"
+        if follower_type == "fairy_baby":
+            fused_name = "Fairy Teen"
+            if any(name == "Beba" for name in kept_names):
+                fused_name = "Beba"
+        if follower_type == "wolf_pup":
+            fused_name = "Wolf"
+            if any(name == "Chase" for name in kept_names):
+                fused_name = "Chase"
+        fused = {
+            "type": fused_type,
+            "name": fused_name,
+            "level": 1,
+            "xp": 0,
+            "max_level": 5,
+            "hp": 14,
+            "max_hp": 14,
+            "mp": 6,
+            "max_mp": 6,
+            "abilities": abilities,
+            "active_ability": active,
+            "fusion_rank": 1,
+            "equipment": {},
+        }
+        self._ensure_follower_id(fused)
+        kept.append(fused)
+        self.followers = kept
+        return fused
 
     def _recalc_gear(self) -> None:
         atk_bonus = 0
@@ -385,7 +711,7 @@ class Player:
             entries.append((f"gear:{gear_id}", f"{name} ({slot_text} {detail}){equipped}"))
         return entries
 
-    def use_item(self, key: str, items_data) -> str:
+    def use_item(self, key: str, items_data, *, target: Optional[dict] = None) -> str:
         if key.startswith("gear:"):
             gear_id = key.split(":", 1)[1]
             return self.equip_gear(gear_id)
@@ -396,12 +722,22 @@ class Player:
             return "That item is not available."
         if int(self.inventory.get(key, 0)) <= 0:
             return "You do not have that item."
-        if self.hp == self.max_hp and self.mp == self.max_mp:
-            return "HP and MP are already full."
         hp_gain = int(item.get("hp", 0))
         mp_gain = int(item.get("mp", 0))
-        self.hp = min(self.max_hp, self.hp + hp_gain)
-        self.mp = min(self.max_mp, self.mp + mp_gain)
+        if target is None:
+            if self.hp == self.max_hp and self.mp == self.max_mp:
+                return "HP and MP are already full."
+            self.hp = min(self.max_hp, self.hp + hp_gain)
+            self.mp = min(self.max_mp, self.mp + mp_gain)
+        else:
+            max_hp = int(target.get("max_hp", 0) or 0)
+            max_mp = int(target.get("max_mp", 0) or 0)
+            hp = int(target.get("hp", max_hp) or max_hp)
+            mp = int(target.get("mp", max_mp) or max_mp)
+            if hp >= max_hp and mp >= max_mp:
+                return "That follower is already full."
+            target["hp"] = min(max_hp, hp + hp_gain)
+            target["mp"] = min(max_mp, mp + mp_gain)
         self.inventory[key] = int(self.inventory.get(key, 0)) - 1
         if self.inventory[key] <= 0:
             self.inventory.pop(key, None)
@@ -468,12 +804,12 @@ class Player:
         gear["charges"] = charges
         gear["max_charges"] = max_charges
 
-    def fuse_gear(self, gear_a: str, gear_b: str) -> Optional[dict]:
+    def fuse_gear(self, gear_a: str, gear_b: str, *, auto_equip: bool = True) -> Optional[dict]:
         first = self.gear_instance(gear_a)
         second = self.gear_instance(gear_b)
         if not first or not second:
             return None
-        rank = max(self._fusion_rank(first), self._fusion_rank(second)) + 1
+        rank = max(1, self._fusion_rank(first)) + max(1, self._fusion_rank(second))
         ranks = ["Fused", "Empowered", "Mythic", "Legendary", "Godly", "Omnipotent"]
         title = ranks[min(rank - 1, len(ranks) - 1)]
         base_name = self._fusion_base_name(first.get("name", "Gear"))
@@ -505,18 +841,32 @@ class Player:
         for slot, gear_id in list(self.equipment.items()):
             if gear_id in {gear_a, gear_b}:
                 self.equipment.pop(slot, None)
+        for follower in self.followers:
+            if not isinstance(follower, dict):
+                continue
+            equip = follower.get("equipment", {})
+            if not isinstance(equip, dict):
+                continue
+            for slot, gear_id in list(equip.items()):
+                if gear_id in {gear_a, gear_b}:
+                    equip.pop(slot, None)
         self.gear_inventory.append(fused)
         self._recalc_gear()
-        self.auto_equip_if_best(fused.get("id"))
+        if auto_equip:
+            self.auto_equip_if_best(fused.get("id"))
         return fused
 
     def gain_xp(self, amount: int) -> int:
         self.xp += amount
         levels_gained = 0
-        while self.xp >= self.level * 50:
+        threshold = 100
+        for _ in range(1, self.level):
+            threshold *= 2
+        while self.xp >= threshold:
             self.level += 1
             self.stat_points += 10
             levels_gained += 1
+            threshold *= 2
         return levels_gained
 
     def needs_level_up(self) -> bool:
@@ -627,3 +977,4 @@ class Opponent:
     follower_names: List[str] = field(default_factory=list)
     variation: float = 0.0
     jitter_stability: bool = True
+    ai: Optional[dict] = None

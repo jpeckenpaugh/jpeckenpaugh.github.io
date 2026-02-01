@@ -32,6 +32,8 @@ class GameState:
     temple_mode: bool = False
     smithy_mode: bool = False
     portal_mode: bool = False
+    quest_mode: bool = False
+    quest_detail_mode: bool = False
     options_mode: bool = False
     target_select: bool = False
     target_index: Optional[int] = None
@@ -41,6 +43,9 @@ class GameState:
     menu_cursor: int = 0
     spell_cursor: int = 0
     spell_cast_rank: int = 1
+    spell_target_mode: bool = False
+    spell_target_cursor: int = 0
+    spell_target_command: Optional[str] = None
     battle_cursor: int = 0
     level_cursor: int = 0
     defend_active: bool = False
@@ -49,7 +54,15 @@ class GameState:
     action_effect_override: Optional[dict] = None
     level_up_notes: list[str] = field(default_factory=list)
     last_spell_targets: list[int] = field(default_factory=list)
+    team_target_index: Optional[int] = None
+    last_team_target_player: Optional[bool] = None
     current_venue_id: Optional[str] = None
     follower_dismiss_pending: Optional[int] = None
     followers_focus: str = "list"
     followers_action_cursor: int = 0
+    follower_equip_mode: bool = False
+    follower_equip_target: Optional[int] = None
+    title_menu_stack: list[str] = field(default_factory=list)
+    quest_continent_index: int = 0
+    quest_detail_id: Optional[str] = None
+    quest_detail_page: int = 0

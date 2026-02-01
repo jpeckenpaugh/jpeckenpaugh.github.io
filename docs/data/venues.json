@@ -717,6 +717,14 @@
         "command": "USE_SERVICE",
         "target": "town_temple",
         "service_id": "overcharge"
+      },
+      {
+        "label": "Fuse Followers",
+        "command": "FOLLOWER_FUSE_AUTO",
+        "enabled_when": [
+          "in_temple",
+          "has_fusion"
+        ]
       }
     ],
     "services": {

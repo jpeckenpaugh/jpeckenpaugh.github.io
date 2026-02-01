@@ -36,6 +36,15 @@
         "command": "INVENTORY",
         "enabled_when": "has_items"
       },
+    {
+      "label": "Portal",
+      "command": "PORTAL",
+      "enabled_when": "in_town"
+    },
+      {
+        "label": "Quest",
+        "command": "QUEST"
+      },
       {
         "label": "Stats",
         "command": "STATS"
@@ -96,12 +105,17 @@
     "close_message": "Closed followers.",
     "actions": [
       {
-        "label": "Dismiss",
-        "command": "FOLLOWER_DISMISS"
+        "label": "Equip Gear",
+        "command": "FOLLOWER_EQUIP"
       },
       {
-        "label": "Back",
-        "command": "B_KEY"
+        "label": "Unequip Gear",
+        "command": "FOLLOWER_UNEQUIP"
+      },
+      {
+        "label": "Fuse",
+        "command": "FOLLOWER_FUSE",
+        "enabled_when": "in_temple"
       }
     ]
   },

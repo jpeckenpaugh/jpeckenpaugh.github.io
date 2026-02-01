@@ -19,9 +19,16 @@ from app.data_access.menus_data import MenusData
 from app.data_access.npcs_data import NpcsData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
+from app.data_access.quests_data import QuestsData
 from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
+from app.data_access.stories_data import StoriesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.spellbook_screen_data import SpellbookScreenData
+from app.data_access.portal_screen_data import PortalScreenData
+from app.data_access.quests_screen_data import QuestsScreenData
+from app.data_access.followers_screen_data import FollowersScreenData
+from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.text_data import TextData
 from app.data_access.venues_data import VenuesData
 from app.ui.screens import ScreenContext
@@ -47,6 +54,13 @@ class AppContext:
     spells_art: SpellsArtData
     glyphs: GlyphsData
     save_data: SaveData
+    quests: QuestsData
+    stories: StoriesData
+    title_screen: TitleScreenData
+    portal_screen: PortalScreenData
+    spellbook_screen: SpellbookScreenData
+    quests_screen: QuestsScreenData
+    followers_screen: FollowersScreenData
     registry: object
     router_ctx: RouterContext
     screen_ctx: ScreenContext
@@ -129,6 +143,34 @@ def _load_save() -> SaveData:
     return SaveData(SAVE_DIR)
 
 
+def _load_quests() -> QuestsData:
+    return QuestsData(f"{DATA_DIR}/quests.json")
+
+
+def _load_stories() -> StoriesData:
+    return StoriesData(f"{DATA_DIR}/stories.json")
+
+
+def _load_title_screen() -> TitleScreenData:
+    return TitleScreenData(f"{DATA_DIR}/title_screen.json")
+
+
+def _load_portal_screen() -> PortalScreenData:
+    return PortalScreenData(f"{DATA_DIR}/portal_screen.json")
+
+
+def _load_spellbook_screen() -> SpellbookScreenData:
+    return SpellbookScreenData(f"{DATA_DIR}/spellbook_screen.json")
+
+
+def _load_quests_screen() -> QuestsScreenData:
+    return QuestsScreenData(f"{DATA_DIR}/quests_screen.json")
+
+
+def _load_followers_screen() -> FollowersScreenData:
+    return FollowersScreenData(f"{DATA_DIR}/followers_screen.json")
+
+
 def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
     spell_commands = {
         spell.get("command_id")
@@ -167,6 +209,13 @@ def create_app() -> AppContext:
     spells_art = _load_spells_art()
     continents = _load_continents()
     save_data = _load_save()
+    quests = _load_quests()
+    stories = _load_stories()
+    title_screen = _load_title_screen()
+    portal_screen = _load_portal_screen()
+    spellbook_screen = _load_spellbook_screen()
+    quests_screen = _load_quests_screen()
+    followers_screen = _load_followers_screen()
 
     spell_commands, targeted_spell_commands, flash_spell_commands = _spell_command_sets(spells)
     combat_actions = command_ids_by_type(scenes, "combat") | spell_commands
@@ -190,6 +239,13 @@ def create_app() -> AppContext:
         glyphs=glyphs,
         objects=objects,
         registry=registry,
+        quests=quests,
+        stories=stories,
+        title_screen=title_screen,
+        portal_screen=portal_screen,
+        spellbook_screen=spellbook_screen,
+        quests_screen=quests_screen,
+        followers_screen=followers_screen,
     )
     screen_ctx = ScreenContext(
         items=items,
@@ -210,6 +266,13 @@ def create_app() -> AppContext:
         spells_art=spells_art,
         glyphs=glyphs,
         save_data=save_data,
+        quests=quests,
+        stories=stories,
+        title_screen=title_screen,
+        portal_screen=portal_screen,
+        spellbook_screen=spellbook_screen,
+        quests_screen=quests_screen,
+        followers_screen=followers_screen,
     )
 
     return AppContext(
@@ -231,6 +294,13 @@ def create_app() -> AppContext:
         spells_art=spells_art,
         glyphs=glyphs,
         save_data=save_data,
+        quests=quests,
+        stories=stories,
+        title_screen=title_screen,
+        portal_screen=portal_screen,
+        spellbook_screen=spellbook_screen,
+        quests_screen=quests_screen,
+        followers_screen=followers_screen,
         registry=registry,
         router_ctx=router_ctx,
         screen_ctx=screen_ctx,

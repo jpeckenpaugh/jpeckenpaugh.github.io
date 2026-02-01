@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
 from app.data_access.items_data import ItemsData
+from app.data_access.quests_data import QuestsData
 from app.data_access.spells_data import SpellsData
 from app.models import Player, Opponent
 
@@ -17,6 +18,7 @@ class CommandContext:
     loot: dict
     spells_data: SpellsData
     items_data: ItemsData
+    quests_data: Optional[QuestsData] = None
     target_index: Optional[int] = None
 
 

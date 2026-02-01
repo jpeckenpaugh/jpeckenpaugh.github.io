@@ -256,6 +256,9 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
     if command_id == "B_KEY" and state.spell_mode:
         menu = ctx.menus.get("spellbook", {})
         state.spell_mode = False
+        state.spell_target_mode = False
+        state.spell_target_cursor = 0
+        state.spell_target_command = None
         state.last_message = menu.get("close_message", "Closed spellbook.")
         return True
 
@@ -287,6 +290,10 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
     if command_id == "SPELLBOOK":
         menu = ctx.menus.get("spellbook", {})
         state.spell_mode = True
+        state.spell_target_mode = False
+        state.spell_target_cursor = 0
+        state.spell_target_command = None
+        state.spell_cursor = 0
         state.shop_mode = False
         state.shop_view = "menu"
         state.inventory_mode = False

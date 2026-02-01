@@ -1,0 +1,22 @@
+{
+  "intro_arc": {
+    "title": "First Lessons",
+    "intro": "A mushroom companion warns that the forest will shred an unprepared traveler. With basic white magic, a level 1 fighter can stand a chance.",
+    "quests": [
+      "mushy_01",
+      "mushy_02",
+      "mushy_03",
+      "mushy_04",
+      "mushy_05"
+    ],
+    "notes": "These quests build a team strong enough to seek the moving Ancient Tower rumored to align with the moon."
+  },
+  "portal_arc": {
+    "title": "Portal Advances",
+    "intro": "The portal no longer opens by level alone. Prove stability through quests to unlock new continents.",
+    "quests": [
+      "unlock_continent_01"
+    ],
+    "notes": "Placeholder arc for continent unlocks."
+  }
+}

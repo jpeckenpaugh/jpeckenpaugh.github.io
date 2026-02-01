@@ -5,6 +5,7 @@ import time
 from typing import Any, Optional
 
 from app.shop import shop_commands, shop_inventory, shop_sell_inventory, purchase_item, sell_item
+from app.questing import evaluate_quests, handle_event
 from app.ui.ansi import ANSI
 from app.ui.constants import SCREEN_WIDTH
 from app.ui.rendering import render_venue_art, render_venue_objects
@@ -237,6 +238,24 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                 item_id = selection.get("item_id")
                 if item_id:
                     state.last_message = purchase_item(state.player, ctx.items, item_id)
+                    if hasattr(ctx, "quests") and ctx.quests is not None:
+                        quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+                        if quest_messages:
+                            state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                            state.quest_mode = True
+                            state.quest_detail_mode = False
+                            state.quest_detail_id = None
+                            state.quest_detail_page = 0
+                            state.shop_mode = False
+                            state.hall_mode = False
+                            state.inn_mode = False
+                            state.inventory_mode = False
+                            state.spell_mode = False
+                            state.element_mode = False
+                            state.alchemist_mode = False
+                            state.temple_mode = False
+                            state.smithy_mode = False
+                            state.portal_mode = False
                     ctx.save_data.save_player(state.player)
                 return True
         if state.shop_view == "sell":
@@ -280,12 +299,46 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
             if state.alchemy_first == gear_id:
                 state.last_message = "Choose a different item."
                 return True
-            fused = state.player.fuse_gear(state.alchemy_first, gear_id)
+            owner_type, owner_id = state.player.gear_owner(state.alchemy_first)
+            fused = state.player.fuse_gear(state.alchemy_first, gear_id, auto_equip=False)
             state.alchemy_first = None
             state.alchemy_selecting = False
             state.action_cursor = 0
             if fused:
+                if owner_type == "player":
+                    slot = fused.get("slot")
+                    if slot:
+                        state.player.equipment[slot] = fused.get("id")
+                        state.player._recalc_gear()
+                elif owner_type == "follower" and owner_id:
+                    follower = state.player.follower_by_id(owner_id)
+                    if follower:
+                        state.player.assign_gear_to_follower(follower, fused.get("id"))
                 state.last_message = f"Fused into {fused.get('name', 'gear')}."
+                if hasattr(ctx, "quests") and ctx.quests is not None:
+                    quest_messages = handle_event(
+                        state.player,
+                        ctx.quests,
+                        "fuse_gear",
+                        {"item_id": fused.get("item_id", ""), "rank": int(fused.get("fuse_rank", 1) or 1)},
+                        ctx.items,
+                    )
+                    if quest_messages:
+                        state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                        state.quest_mode = True
+                        state.quest_detail_mode = False
+                        state.quest_detail_id = None
+                        state.quest_detail_page = 0
+                        state.shop_mode = False
+                        state.hall_mode = False
+                        state.inn_mode = False
+                        state.inventory_mode = False
+                        state.spell_mode = False
+                        state.element_mode = False
+                        state.alchemist_mode = False
+                        state.temple_mode = False
+                        state.smithy_mode = False
+                        state.portal_mode = False
                 ctx.save_data.save_player(state.player)
             else:
                 state.last_message = "Fusion failed."

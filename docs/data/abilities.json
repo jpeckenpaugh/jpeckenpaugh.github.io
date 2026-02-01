@@ -17,5 +17,30 @@
     "base_max": 5,
     "per_level_bonus": 2,
     "min_level": 3
+  },
+  "mushroom_tea_brew": {
+    "label": "Mushroom Tea",
+    "desc": "Has a chance to share a small tea heal with the team.",
+    "type": "item",
+    "timing": "end_round",
+    "item_id": "mushroom_tea",
+    "chance": 0.25
+  },
+  "fairy_tea_brew": {
+    "label": "Fairy Tea",
+    "desc": "Has a chance to share a small tea boost with the team.",
+    "type": "item",
+    "timing": "end_round",
+    "item_id": "fairy_tea",
+    "chance": 0.25
+  },
+  "wolf_meat_toss": {
+    "label": "Meat Toss",
+    "desc": "Has a chance to toss meat to the most wounded ally.",
+    "type": "item",
+    "timing": "end_round",
+    "item_id": "meat",
+    "chance": 0.15,
+    "target": "hp"
   }
 }
