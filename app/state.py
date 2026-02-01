@@ -32,6 +32,8 @@ class GameState:
     temple_mode: bool = False
     smithy_mode: bool = False
     portal_mode: bool = False
+    quest_mode: bool = False
+    quest_detail_mode: bool = False
     options_mode: bool = False
     target_select: bool = False
     target_index: Optional[int] = None
@@ -61,3 +63,6 @@ class GameState:
     follower_equip_mode: bool = False
     follower_equip_target: Optional[int] = None
     title_menu_stack: list[str] = field(default_factory=list)
+    quest_continent_index: int = 0
+    quest_detail_id: Optional[str] = None
+    quest_detail_page: int = 0

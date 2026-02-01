@@ -8,7 +8,7 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import evaluate_quests, handle_event
+from app.questing import build_follower_from_entry, evaluate_quests, handle_event, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -83,6 +83,8 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.temple_mode,
         state.smithy_mode,
         state.portal_mode,
+        state.quest_mode,
+        state.quest_detail_mode,
         state.title_menu_stack,
         state.options_mode,
         state.action_cursor,
@@ -93,6 +95,9 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
         state.spell_target_mode,
         state.spell_target_cursor,
         state.spell_target_command,
+        state.quest_continent_index,
+        state.quest_detail_id,
+        state.quest_detail_page,
         state.level_cursor,
         state.level_up_notes,
         suppress_actions=suppress_actions,
@@ -170,7 +175,7 @@ def animate_follower_strength_gain(
 
 
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
-    if state.spell_mode or state.portal_mode:
+    if state.spell_mode or state.portal_mode or state.quest_mode:
         ch = read_keypress_timeout(0.2)
         return ch or ""
     return read_keypress()
@@ -623,6 +628,125 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return "B_KEY", None
         return None, None
 
+    if state.quest_mode:
+        elements = list(getattr(state.player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            if order:
+                elements = [e for e in order if e in elements] or elements
+        if not elements:
+            elements = ["base"]
+        if state.quest_detail_mode:
+            dialog = []
+            detail_quest = None
+            if state.quest_detail_id and hasattr(ctx, "quests"):
+                detail_quest = ctx.quests.get(state.quest_detail_id, {})
+            if isinstance(detail_quest, dict):
+                dialog = detail_quest.get("dialog", [])
+            if not isinstance(dialog, list):
+                dialog = []
+            total_pages = max(1, len(dialog))
+            state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
+            if action in ("UP", "DOWN"):
+                direction = -1 if action == "UP" else 1
+                state.action_cursor = (state.action_cursor + direction) % 2
+                return None, None
+            if action == "CONFIRM":
+                if state.action_cursor == 1:
+                    state.quest_detail_mode = False
+                    state.quest_detail_id = None
+                    state.quest_detail_page = 0
+                    return None, None
+                is_last = state.quest_detail_page >= total_pages - 1
+                if not is_last:
+                    state.quest_detail_page += 1
+                    return None, None
+                quest_id = state.quest_detail_id
+                if quest_id:
+                    qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
+                    if not isinstance(qstate, dict) or qstate.get("status") != "active":
+                        intro_message = None
+                        if quest_id == "intro_spellcraft":
+                            if not hasattr(state.player, "flags") or not isinstance(state.player.flags, dict):
+                                state.player.flags = {}
+                            if not state.player.flags.get("quest_intro_started", False):
+                                state.player.flags["quest_intro_started"] = True
+                                follower = build_follower_from_entry({"type": "mushroom_baby", "name": "Mushy"})
+                                if follower:
+                                    state.player.add_follower(follower)
+                                state.player.flags["spell_healing_enabled"] = True
+                                state.player.flags["spell_strength_enabled"] = True
+                                intro_message = "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
+                        if start_quest(state.player, quest_id):
+                            title = detail_quest.get("title", quest_id) if isinstance(detail_quest, dict) else quest_id
+                            if intro_message:
+                                state.last_message = intro_message
+                            else:
+                                state.last_message = f"Quest started: {title}."
+                        if hasattr(ctx, "save_data") and ctx.save_data:
+                            ctx.save_data.save_player(state.player)
+                state.quest_detail_mode = False
+                state.quest_detail_id = None
+                state.quest_detail_page = 0
+                return None, None
+            if action == "BACK":
+                state.quest_detail_mode = False
+                state.quest_detail_id = None
+                state.quest_detail_page = 0
+                return None, None
+            return None, None
+        if action in ("LEFT", "RIGHT"):
+            direction = -1 if action == "LEFT" else 1
+            state.quest_continent_index = (state.quest_continent_index + direction) % len(elements)
+            return None, None
+        entries = quest_entries(state.player, ctx.quests) if hasattr(ctx, "quests") else []
+        commands = [{"label": "Continent", "_disabled": True}]
+        if entries:
+            for entry in entries:
+                commands.append({
+                    "quest_id": entry.get("id"),
+                    "status": entry.get("status", "available"),
+                    "quest": entry.get("quest", {}),
+                })
+        else:
+            commands.append({"label": "No active quests.", "_disabled": True})
+        commands.append({"label": "Back", "command": "B_KEY"})
+        enabled = [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]
+        if not enabled:
+            state.action_cursor = -1
+        elif state.action_cursor not in enabled:
+            state.action_cursor = enabled[0]
+        else:
+            state.action_cursor = max(0, min(state.action_cursor, len(commands) - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            if enabled:
+                pos = enabled.index(state.action_cursor) if state.action_cursor in enabled else 0
+                pos = (pos + direction) % len(enabled)
+                state.action_cursor = enabled[pos]
+            return None, None
+        if action == "CONFIRM":
+            if 0 <= state.action_cursor < len(commands):
+                entry = commands[state.action_cursor]
+                if entry.get("command") == "B_KEY":
+                    state.quest_mode = False
+                    state.last_message = "Closed quests."
+                    return None, None
+                quest_id = entry.get("quest_id")
+                if quest_id:
+                    qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
+                    if not isinstance(qstate, dict) or qstate.get("status") != "active":
+                        state.quest_detail_mode = True
+                        state.quest_detail_id = quest_id
+                        state.quest_detail_page = 0
+                        state.action_cursor = 0
+            return None, None
+        if action == "BACK":
+            state.quest_mode = False
+            state.last_message = "Closed quests."
+            return None, None
+        return None, None
+
     if state.options_mode:
         menu = ctx.menus.get("options", {})
         actions = []
@@ -808,6 +932,9 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     state.menu_cursor = max(0, len(state.player.followers) - 1)
                 return None, None
             if cmd == "FOLLOWER_FUSE":
+                if state.current_venue_id != "town_temple":
+                    state.last_message = "Fusing is only possible at the temple."
+                    return None, None
                 if not selected_type:
                     state.last_message = "Select a follower to fuse."
                     return None, None
@@ -1411,6 +1538,7 @@ def apply_router_command(
     pre_title_fortune = getattr(state.player, "title_fortune", False)
     pre_title_confirm = getattr(state.player, "title_confirm", False)
     pre_portal_mode = state.portal_mode
+    pre_quest_mode = state.quest_mode
     pre_title_name_select = getattr(state.player, "title_name_select", False)
     pre_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     cmd_state = CommandState(
@@ -1436,8 +1564,13 @@ def apply_router_command(
         temple_mode=state.temple_mode,
         smithy_mode=state.smithy_mode,
         portal_mode=state.portal_mode,
+        quest_mode=state.quest_mode,
+        quest_detail_mode=state.quest_detail_mode,
         options_mode=state.options_mode,
         action_cmd=action_cmd,
+        quest_continent_index=state.quest_continent_index,
+        quest_detail_id=state.quest_detail_id,
+        quest_detail_page=state.quest_detail_page,
         target_index=state.target_index,
         command_target_override=command_meta.get("target") if command_meta else None,
         command_service_override=command_meta.get("service_id") if command_meta else None,
@@ -1478,13 +1611,19 @@ def apply_router_command(
     state.temple_mode = cmd_state.temple_mode
     state.smithy_mode = cmd_state.smithy_mode
     state.portal_mode = cmd_state.portal_mode
+    state.quest_mode = cmd_state.quest_mode
+    state.quest_detail_mode = cmd_state.quest_detail_mode
     state.options_mode = cmd_state.options_mode
     action_cmd = cmd_state.action_cmd
+    state.quest_continent_index = cmd_state.quest_continent_index
+    state.quest_detail_id = cmd_state.quest_detail_id
+    state.quest_detail_page = cmd_state.quest_detail_page
     target_index = cmd_state.target_index
     post_title_slot_select = getattr(state.player, "title_slot_select", False)
     post_title_fortune = getattr(state.player, "title_fortune", False)
     post_title_confirm = getattr(state.player, "title_confirm", False)
     post_portal_mode = state.portal_mode
+    post_quest_mode = state.quest_mode
     post_title_name_select = getattr(state.player, "title_name_select", False)
     post_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     if post_title_slot_select and not pre_title_slot_select:
@@ -1503,6 +1642,17 @@ def apply_router_command(
         commands = action_commands_for_state(ctx, state)
         enabled = _enabled_indices(commands)
         state.action_cursor = enabled[0] if enabled else 0
+    if post_quest_mode and not pre_quest_mode:
+        entries = quest_entries(state.player, ctx.quests) if hasattr(ctx, "quests") else []
+        commands = [{"_disabled": True}]
+        if entries:
+            for entry in entries:
+                commands.append({"_disabled": False})
+        else:
+            commands.append({"_disabled": True})
+        commands.append({"_disabled": False})
+        enabled = [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]
+        state.action_cursor = enabled[0] if enabled else -1
     if (
         (pre_title_fortune and not post_title_fortune)
         or (pre_title_confirm and not post_title_confirm)

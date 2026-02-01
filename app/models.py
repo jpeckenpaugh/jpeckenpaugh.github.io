@@ -281,7 +281,13 @@ class Player:
         return self.max_hp + int(self.temp_hp_bonus)
 
     def follower_limit(self) -> int:
-        return 5
+        base_limit = 5
+        if isinstance(getattr(self, "quests", None), dict):
+            qstate = self.quests.get("intro_spellcraft")
+            if isinstance(qstate, dict) and qstate.get("status") == "active":
+                if not self.flags.get("quest_intro_spellcraft_complete", False):
+                    return 3
+        return base_limit
 
     def follower_slots_remaining(self) -> int:
         return max(0, self.follower_limit() - len(self.followers))
@@ -545,22 +551,33 @@ class Player:
         if len(matches) < count:
             return None
         remove_indices = set(matches[:count])
+        kept_names = []
         kept = []
         for idx, follower in enumerate(self.followers):
             if idx in remove_indices:
+                if isinstance(follower, dict):
+                    kept_names.append(str(follower.get("name", "")))
                 continue
             kept.append(follower)
-        base_name = follower_type.replace("_", " ").title() or "Follower"
+        fused_type = follower_type
+        if follower_type == "mushroom_baby":
+            fused_type = "mushroom_teen"
+        base_name = fused_type.replace("_", " ").title() or "Follower"
         abilities = []
         active = ""
-        if follower_type == "fairy":
+        if fused_type == "fairy":
             abilities = ["fairy_heal", "fairy_mana"]
             active = "fairy_heal"
-        if follower_type.startswith("mushroom"):
+        if fused_type.startswith("mushroom"):
             abilities = ["mushroom_tea_brew"]
+        fused_name = f"Fused {base_name}"
+        if follower_type == "mushroom_baby":
+            fused_name = "Mushroom Teen"
+            if any(name == "Mushy" for name in kept_names):
+                fused_name = "Mushy"
         fused = {
-            "type": follower_type,
-            "name": f"Fused {base_name}",
+            "type": fused_type,
+            "name": fused_name,
             "level": 1,
             "xp": 0,
             "max_level": 5,

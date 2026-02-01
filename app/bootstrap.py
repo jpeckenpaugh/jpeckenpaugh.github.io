@@ -26,6 +26,7 @@ from app.data_access.stories_data import StoriesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.portal_screen_data import PortalScreenData
+from app.data_access.quests_screen_data import QuestsScreenData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.text_data import TextData
 from app.data_access.venues_data import VenuesData
@@ -57,6 +58,7 @@ class AppContext:
     title_screen: TitleScreenData
     portal_screen: PortalScreenData
     spellbook_screen: SpellbookScreenData
+    quests_screen: QuestsScreenData
     registry: object
     router_ctx: RouterContext
     screen_ctx: ScreenContext
@@ -159,6 +161,10 @@ def _load_spellbook_screen() -> SpellbookScreenData:
     return SpellbookScreenData(f"{DATA_DIR}/spellbook_screen.json")
 
 
+def _load_quests_screen() -> QuestsScreenData:
+    return QuestsScreenData(f"{DATA_DIR}/quests_screen.json")
+
+
 def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
     spell_commands = {
         spell.get("command_id")
@@ -202,6 +208,7 @@ def create_app() -> AppContext:
     title_screen = _load_title_screen()
     portal_screen = _load_portal_screen()
     spellbook_screen = _load_spellbook_screen()
+    quests_screen = _load_quests_screen()
 
     spell_commands, targeted_spell_commands, flash_spell_commands = _spell_command_sets(spells)
     combat_actions = command_ids_by_type(scenes, "combat") | spell_commands
@@ -230,6 +237,7 @@ def create_app() -> AppContext:
         title_screen=title_screen,
         portal_screen=portal_screen,
         spellbook_screen=spellbook_screen,
+        quests_screen=quests_screen,
     )
     screen_ctx = ScreenContext(
         items=items,
@@ -255,6 +263,7 @@ def create_app() -> AppContext:
         title_screen=title_screen,
         portal_screen=portal_screen,
         spellbook_screen=spellbook_screen,
+        quests_screen=quests_screen,
     )
 
     return AppContext(
@@ -281,6 +290,7 @@ def create_app() -> AppContext:
         title_screen=title_screen,
         portal_screen=portal_screen,
         spellbook_screen=spellbook_screen,
+        quests_screen=quests_screen,
         registry=registry,
         router_ctx=router_ctx,
         screen_ctx=screen_ctx,

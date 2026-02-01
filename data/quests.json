@@ -1,7 +1,19 @@
 {
   "intro_spellcraft": {
     "title": "Gather the Fairies",
-    "summary": "A mushroom companion joins your party and urges you to learn basic white magic before venturing deeper. Recruit three forest fairies and fuse their power to empower the team.",
+    "short_name": "Once upon a time...",
+    "summary": "A mushroom companion warns the forest is deadly. Recruit three mushroom babies and fuse them at the temple into a mushroom teen.",
+    "art_opponent": "mushroom_baby",
+    "dialog": [
+      "Hi there! I’m Mushy. Nice to meet you! You and I may be low-level now. If we head into the forest like this, we won’t stand much chance against the monsters we’d find.",
+      "But I have a little secret. I can teach you a couple basic spells to boost our stats. They’ll use MP, and the effects wear off over time.",
+      "Life Boost adds 10 HP to your max life, and Strength adds 10 points to both Attack and Defense.",
+      "Let me break it down: these effects cost MP to cast, and they stack. With a few casts, you’ll be strong enough to trample some monsters.",
+      "Stat boosts won’t carry into the next day, so if you rest at the Inn, the effects reset. Resting also fully restores your HP and MP, so the next day you can recast the spells and power up before heading out again.",
+      "If you take me with you, I’ll teach you these two spells and we can take down some enemies together. They’ll reward us with XP and GP. While battling, we can also recruit two more baby mushrooms using the “Socialize” feature. Once you have three baby mushrooms on the team, the priestess at the temple can merge us into a stronger Mushroom.",
+      "So what do you say? Let me join you, and let’s see how we fare against real monsters.",
+      "Let Mushy join your team and he’ll teach you Life Boost and Strength. (Start Quest)"
+    ],
     "requirements": {
       "flags_required": [],
       "level_min": 1
@@ -9,7 +21,12 @@
     "objectives": [
       {
         "type": "recruit_follower",
-        "follower_type": "fairy",
+        "follower_type": "mushroom_baby",
+        "count": 3
+      },
+      {
+        "type": "fuse_followers",
+        "follower_type": "mushroom_baby",
         "count": 3
       }
     ],
@@ -23,7 +40,13 @@
   },
   "fuse_fairies": {
     "title": "Fuse the Fairies",
+    "short_name": "Fairy fusion",
     "summary": "Combine the strength of your three fairies into a single, stronger ally.",
+    "art_opponent": "fairy",
+    "dialog": [
+      "Three fairies can weave their power into one.",
+      "Fuse them to temper your team for what comes next."
+    ],
     "requirements": {
       "flags_required": [
         "quest_intro_spellcraft_complete"
@@ -46,7 +69,13 @@
   },
   "gather_wolves": {
     "title": "Gather the Wolves",
+    "short_name": "Gather wolves",
     "summary": "As the rumors of a moving Ancient Tower grow, recruit a pack strong enough to endure the forest’s deepest threats.",
+    "art_opponent": "wolf",
+    "dialog": [
+      "Rumors of the moving tower grow louder each night.",
+      "A wolf pack will give you the bite and grit to endure."
+    ],
     "requirements": {
       "flags_required": [
         "quest_fuse_fairies_complete"
@@ -70,7 +99,13 @@
   },
   "unlock_continent_01": {
     "title": "[PLACEHOLDER_TITLE]",
+    "short_name": "[PLACEHOLDER_SHORT]",
     "summary": "[PLACEHOLDER_SUMMARY]",
+    "art_opponent": "[PLACEHOLDER_OPPONENT_ID]",
+    "dialog": [
+      "[PLACEHOLDER_DIALOG_LINE_1]",
+      "[PLACEHOLDER_DIALOG_LINE_2]"
+    ],
     "requirements": {
       "flags_required": [
         "[PLACEHOLDER_FLAG_ID]"

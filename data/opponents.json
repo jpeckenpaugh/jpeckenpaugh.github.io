@@ -216,6 +216,99 @@
       "variation": 0.06,
       "jitter_stability": false
     },
+    "mushroom": {
+      "name": "Mushroom",
+      "element": "base",
+      "level": 1,
+      "hp": 10,
+      "atk": 8,
+      "defense": 6,
+      "action_chance": 1.05,
+      "recruitable": false,
+      "desc": "A small mushroom wanderer with a gentle glow.",
+      "arrival": "peeks from the undergrowth",
+      "art": [
+        "  _,-=-._",
+        ",' _____ `.",
+        "'_( .-. )_'",
+        "   \\(_)/",
+        "    )\"(",
+        "    \"\"\""
+      ],
+      "color_map": [
+        "  1111111",
+        "1111111111",
+        "11111111111",
+        "   11111",
+        "    111",
+        "    111"
+      ]
+    },
+    "mushroom_baby": {
+      "name": "Mushroom",
+      "element": "base",
+      "level": 2,
+      "hp": 5,
+      "atk": 4,
+      "defense": 5,
+      "action_chance": 1.0,
+      "recruitable": true,
+      "recruit_cost": 40,
+      "recruit_chance": 0.9,
+      "follower_type": "mushroom_baby",
+      "follower_names": [
+        "Sprout",
+        "Pip",
+        "Moss",
+        "Nub",
+        "Cap",
+        "Bud"
+      ],
+      "desc": "A tiny mushroom still fresh from the soil.",
+      "arrival": "pokes up from the dirt",
+      "art": [
+        "  __",
+        ",'__'.",
+        "'(..)'",
+        "  )(",
+        "\"\"\"\"\"\""
+      ],
+      "color_map": [
+        "   11",
+        " 111111",
+        " 11111",
+        "   11",
+        "1111111"
+      ]
+    },
+    "mushroom_teen": {
+      "name": "Mushroom Teen",
+      "element": "base",
+      "level": 3,
+      "hp": 18,
+      "atk": 12,
+      "defense": 9,
+      "action_chance": 1.05,
+      "recruitable": false,
+      "desc": "A young mushroom with steady resolve.",
+      "arrival": "steps from the moss",
+      "art": [
+        "  _,-=-._",
+        ",' _____ `.",
+        "'_( .-. )_'",
+        "   \\(_)/",
+        "    )\"(",
+        "    \"\"\""
+      ],
+      "color_map": [
+        "  1111111",
+        "1111111111",
+        "11111111111",
+        "   11111",
+        "    111",
+        "    111"
+      ]
+    },
     "wolf": {
       "name": "Wolf",
       "element": "base",

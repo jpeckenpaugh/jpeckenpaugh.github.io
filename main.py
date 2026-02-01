@@ -92,6 +92,8 @@ def main():
         temple_mode=False,
         smithy_mode=False,
         portal_mode=False,
+        quest_mode=False,
+        quest_detail_mode=False,
         quit_confirm=False,
         title_mode=True,
         spell_cursor=0,
@@ -103,6 +105,9 @@ def main():
         spell_target_command=None,
         team_target_index=None,
         last_team_target_player=None,
+        quest_continent_index=0,
+        quest_detail_id=None,
+        quest_detail_page=0,
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
@@ -160,6 +165,7 @@ def main():
                 state.temple_mode,
                 state.smithy_mode,
                 state.portal_mode,
+                state.quest_mode,
                 state.title_menu_stack,
                 state.options_mode,
                 state.action_cursor,
@@ -170,6 +176,7 @@ def main():
                 state.spell_target_mode,
                 state.spell_target_cursor,
                 state.spell_target_command,
+                state.quest_continent_index,
                 state.level_cursor,
                 state.level_up_notes,
             )
@@ -206,6 +213,8 @@ def main():
             state.temple_mode = False
             state.smithy_mode = False
             state.portal_mode = False
+            state.quest_mode = False
+            state.quest_detail_mode = False
             state.options_mode = False
             state.target_select = False
             state.target_index = None
@@ -225,6 +234,9 @@ def main():
             state.followers_focus = "list"
             state.followers_action_cursor = 0
             state.title_menu_stack = []
+            state.quest_continent_index = 0
+            state.quest_detail_id = None
+            state.quest_detail_page = 0
             post_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -248,6 +260,7 @@ def main():
                 state.temple_mode,
                 state.smithy_mode,
                 state.portal_mode,
+                state.quest_mode,
                 state.title_menu_stack,
                 state.options_mode,
                 state.action_cursor,
@@ -258,6 +271,7 @@ def main():
                 state.spell_target_mode,
                 state.spell_target_cursor,
                 state.spell_target_command,
+                state.quest_continent_index,
                 state.level_cursor,
                 state.level_up_notes,
             )
@@ -323,12 +337,20 @@ def main():
                 "temple_mode": state.temple_mode,
                 "smithy_mode": state.smithy_mode,
                 "portal_mode": state.portal_mode,
+                "quest_mode": state.quest_mode,
+                "quest_detail_mode": state.quest_detail_mode,
                 "options_mode": state.options_mode,
                 "action_cursor": state.action_cursor,
                 "menu_cursor": state.menu_cursor,
                 "followers_focus": state.followers_focus,
                 "followers_action_cursor": state.followers_action_cursor,
                 "spell_cast_rank": state.spell_cast_rank,
+                "spell_target_mode": state.spell_target_mode,
+                "spell_target_cursor": state.spell_target_cursor,
+                "spell_target_command": state.spell_target_command,
+                "quest_continent_index": state.quest_continent_index,
+                "quest_detail_id": state.quest_detail_id,
+                "quest_detail_page": state.quest_detail_page,
                 "level_cursor": state.level_cursor,
                 "level_up_notes": list(state.level_up_notes),
                 "title_menu_stack": list(state.title_menu_stack),
@@ -387,6 +409,8 @@ def main():
                     pre_snapshot.get("temple_mode", False),
                     pre_snapshot.get("smithy_mode", False),
                     pre_snapshot.get("portal_mode", False),
+                    pre_snapshot.get("quest_mode", False),
+                    pre_snapshot.get("quest_detail_mode", False),
                     pre_snapshot.get("title_menu_stack", []),
                     pre_snapshot.get("options_mode", False),
                     pre_snapshot.get("action_cursor", 0),
@@ -397,6 +421,9 @@ def main():
                     pre_snapshot.get("spell_target_mode", False),
                     pre_snapshot.get("spell_target_cursor", 0),
                     pre_snapshot.get("spell_target_command", None),
+                    pre_snapshot.get("quest_continent_index", 0),
+                    pre_snapshot.get("quest_detail_id", None),
+                    pre_snapshot.get("quest_detail_page", 0),
                     pre_snapshot.get("level_cursor", 0),
                     pre_snapshot.get("level_up_notes", []),
                 )
@@ -423,6 +450,8 @@ def main():
                     state.temple_mode,
                     state.smithy_mode,
                     state.portal_mode,
+                    state.quest_mode,
+                    state.quest_detail_mode,
                     state.title_menu_stack,
                     state.options_mode,
                     state.action_cursor,
@@ -433,6 +462,9 @@ def main():
                     state.spell_target_mode,
                     state.spell_target_cursor,
                     state.spell_target_command,
+                    state.quest_continent_index,
+                    state.quest_detail_id,
+                    state.quest_detail_page,
                     state.level_cursor,
                     state.level_up_notes,
                 )

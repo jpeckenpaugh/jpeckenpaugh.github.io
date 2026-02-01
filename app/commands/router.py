@@ -5,7 +5,6 @@ import random
 from typing import List, Optional
 
 from app.combat import cast_spell, primary_opponent
-from app.questing import build_follower_from_entry, evaluate_quests, start_quest
 from app.data_access.commands_data import CommandsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.items_data import ItemsData
@@ -55,8 +54,13 @@ class CommandState:
     temple_mode: bool
     smithy_mode: bool
     portal_mode: bool
+    quest_mode: bool
     options_mode: bool
     action_cmd: Optional[str]
+    quest_continent_index: int = 0
+    quest_detail_mode: bool = False
+    quest_detail_id: Optional[str] = None
+    quest_detail_page: int = 0
     target_index: Optional[int] = None
     command_target_override: Optional[str] = None
     command_service_override: Optional[str] = None
@@ -83,6 +87,7 @@ class RouterContext:
     title_screen: object
     portal_screen: object
     spellbook_screen: object
+    quests_screen: object
     registry: CommandRegistry
 
 
@@ -201,24 +206,32 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         return True
 
     if command_id == "QUEST":
-        if not hasattr(state.player, "flags") or not isinstance(state.player.flags, dict):
-            state.player.flags = {}
-        if not state.player.flags.get("quest_intro_started", False):
-            state.player.flags["quest_intro_started"] = True
-            start_quest(state.player, "intro_spellcraft")
-            follower = build_follower_from_entry({"type": "mushroom", "name": "Mushroom"})
-            if follower:
-                state.player.add_follower(follower)
-            state.player.flags["spell_healing_enabled"] = True
-            state.player.flags["spell_strength_enabled"] = True
-            state.last_message = "A mushroom joins your party and teaches basic magic. Recruit 3 fairies in the forest."
-            ctx.save_data.save_player(state.player)
-            return True
-        quest_messages = []
-        if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
-        state.last_message = quest_messages[0] if quest_messages else "Your quests await."
-        ctx.save_data.save_player(state.player)
+        state.quest_mode = True
+        state.quest_detail_mode = False
+        state.quest_detail_id = None
+        state.quest_detail_page = 0
+        state.options_mode = False
+        state.shop_mode = False
+        state.hall_mode = False
+        state.inn_mode = False
+        state.inventory_mode = False
+        state.spell_mode = False
+        state.element_mode = False
+        state.alchemist_mode = False
+        state.temple_mode = False
+        state.smithy_mode = False
+        state.portal_mode = False
+        elements = list(getattr(state.player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            if order:
+                elements = [e for e in order if e in elements] or elements
+        current = getattr(state.player, "current_element", None)
+        if current in elements:
+            state.quest_continent_index = elements.index(current)
+        else:
+            state.quest_continent_index = 0
+        state.last_message = "Your quests await."
         return True
 
     if command_id == "ENTER_SCENE":
@@ -244,6 +257,14 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         menu = ctx.menus.get("elements", {})
         state.element_mode = False
         state.last_message = menu.get("close_message", "Closed elements.")
+        return True
+
+    if command_id == "B_KEY" and state.quest_mode:
+        state.quest_mode = False
+        state.quest_detail_mode = False
+        state.quest_detail_id = None
+        state.quest_detail_page = 0
+        state.last_message = "Closed quests."
         return True
 
     if command_id == "B_KEY" and state.options_mode:

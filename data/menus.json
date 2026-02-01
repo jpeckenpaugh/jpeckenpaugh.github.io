@@ -114,7 +114,8 @@
       },
       {
         "label": "Fuse",
-        "command": "FOLLOWER_FUSE"
+        "command": "FOLLOWER_FUSE",
+        "enabled_when": "in_temple"
       },
       {
         "label": "Dismiss",

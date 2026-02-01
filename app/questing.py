@@ -142,6 +142,26 @@ def start_quest(player: Player, quest_id: str) -> bool:
     return True
 
 
+def quest_entries(player: Player, quests_data) -> List[dict]:
+    _ensure_player_quest_state(player)
+    entries: List[dict] = []
+    if not quests_data:
+        return entries
+    for quest_id, quest in quests_data.all().items():
+        if not isinstance(quest, dict):
+            continue
+        qstate = player.quests.get(quest_id)
+        status = qstate.get("status") if isinstance(qstate, dict) else None
+        if status == "complete":
+            continue
+        if status == "active":
+            entries.append({"id": quest_id, "quest": quest, "status": "active"})
+            continue
+        if _requirements_met(player, quest):
+            entries.append({"id": quest_id, "quest": quest, "status": "available"})
+    return entries
+
+
 def evaluate_quests(player: Player, quests_data, items_data: Optional[object] = None) -> List[str]:
     _ensure_player_quest_state(player)
     messages: List[str] = []

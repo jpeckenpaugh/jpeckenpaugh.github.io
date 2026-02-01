@@ -33,6 +33,7 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         for opponent in opponents
     )
     in_town = getattr(player, "location", "") == "Town"
+    in_temple = bool(getattr(player, "location", "") == "Town" and getattr(player, "current_venue_id", "") == "town_temple")
     can_recruit = False
     if has_recruitable:
         min_cost = None
@@ -58,6 +59,8 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         if cond == "has_mp" and not has_mp:
             return False
         if cond == "has_elements" and not has_elements:
+            return False
+        if cond == "in_temple" and not in_temple:
             return False
         if cond == "in_town" and not in_town:
             return False

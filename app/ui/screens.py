@@ -25,11 +25,13 @@ from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.stories_data import StoriesData
 from app.data_access.portal_screen_data import PortalScreenData
+from app.data_access.quests_screen_data import QuestsScreenData
 from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
 from app.models import Frame, Player, Opponent
+from app.questing import quest_entries
 from app.ui.ansi import ANSI, color
 from app.ui.layout import (
     center_ansi,
@@ -77,6 +79,7 @@ class ScreenContext:
     title_screen: TitleScreenData
     portal_screen: PortalScreenData
     spellbook_screen: SpellbookScreenData
+    quests_screen: QuestsScreenData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -732,6 +735,8 @@ def generate_frame(
     temple_mode: bool = False,
     smithy_mode: bool = False,
     portal_mode: bool = False,
+    quest_mode: bool = False,
+    quest_detail_mode: bool = False,
     title_menu_stack: Optional[list[str]] = None,
     options_mode: bool = False,
     action_cursor: int = 0,
@@ -742,6 +747,9 @@ def generate_frame(
     spell_target_mode: bool = False,
     spell_target_cursor: int = 0,
     spell_target_command: Optional[str] = None,
+    quest_continent_index: int = 0,
+    quest_detail_id: Optional[str] = None,
+    quest_detail_page: int = 0,
     level_cursor: int = 0,
     level_up_notes: Optional[List[str]] = None,
     suppress_actions: bool = False
@@ -751,6 +759,16 @@ def generate_frame(
     spark = ctx.spells.get("spark", {})
     heal_name = healing.get("name", "Healing")
     spark_name = spark.get("name", "Spark")
+    if not isinstance(menu_cursor, int):
+        try:
+            menu_cursor = int(menu_cursor)
+        except (TypeError, ValueError):
+            menu_cursor = -1
+    if not isinstance(action_cursor, int):
+        try:
+            action_cursor = int(action_cursor)
+        except (TypeError, ValueError):
+            action_cursor = -1
     display_location = player.location
     continent_prefix = None
     if hasattr(ctx, "continents"):
@@ -809,6 +827,280 @@ def generate_frame(
         art_lines = []
         art_color = ANSI.FG_WHITE
         art_lines = []
+    elif quest_mode:
+        quest_data = ctx.quests_screen.all() if hasattr(ctx, "quests_screen") else {}
+        layout = quest_data.get("layout", {}) if isinstance(quest_data, dict) else {}
+        menu_cfg = layout.get("menu", {}) if isinstance(layout, dict) else {}
+        atlas_cfg = layout.get("atlas", {}) if isinstance(layout, dict) else {}
+        desc_cfg = layout.get("description", {}) if isinstance(layout, dict) else {}
+
+        def _box_lines(width: int, height: int, content: list[str], *, margin: int, style: str) -> list[str]:
+            width = max(2, width)
+            height = max(2, height)
+            box = _draw_box(width, height, style=style)
+            inner_width = width - 2
+            inner_height = height - 2
+            pad_margin = max(0, min(margin, max(0, inner_width // 2)))
+            content_lines = [" " * inner_width for _ in range(inner_height)]
+            inner_content_width = max(0, inner_width - (pad_margin * 2))
+            row = pad_margin
+            for line in content:
+                if row >= inner_height - pad_margin:
+                    break
+                content_lines[row] = (" " * pad_margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * pad_margin)
+                row += 1
+            for i in range(inner_height):
+                box[i + 1] = "|" + content_lines[i] + "|"
+            return box
+
+        elements = list(getattr(player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            if order:
+                elements = [e for e in order if e in elements] or elements
+        if not elements:
+            elements = ["base"]
+        quest_continent_index = max(0, min(quest_continent_index, len(elements) - 1))
+        selected_element = elements[quest_continent_index]
+        continent_label = ctx.continents.name_for(selected_element) if hasattr(ctx, "continents") else str(selected_element).title()
+        continent_label = f"<{{([ {continent_label} ])}}>"
+
+        entries = quest_entries(player, ctx.quests) if hasattr(ctx, "quests") else []
+        commands = []
+        detail_quest = None
+        dialog_lines = []
+        if quest_detail_mode and quest_detail_id:
+            detail_quest = ctx.quests.get(quest_detail_id, {}) if hasattr(ctx, "quests") else {}
+            dialog = detail_quest.get("dialog", [])
+            if not isinstance(dialog, list):
+                dialog = []
+            dialog_lines = [str(line) for line in dialog if line is not None]
+            total_pages = max(1, len(dialog_lines))
+            quest_detail_page = max(0, min(quest_detail_page, total_pages - 1))
+            is_last = quest_detail_page >= total_pages - 1
+            commands = [
+                {"label": "Start Quest" if is_last else "Next"},
+                {"label": "Cancel", "command": "B_KEY"},
+            ]
+        else:
+            commands = [
+                {"label": continent_label, "_disabled": True, "_header": True},
+                {"label": "", "_disabled": True, "_spacer": True},
+            ]
+            if entries:
+                for entry in entries:
+                    quest = entry.get("quest", {})
+                    quest_id = entry.get("id", "")
+                    short_name = str(quest.get("short_name") or "").strip()
+                    if not short_name:
+                        summary = str(quest.get("summary") or quest.get("title") or quest_id)
+                        words = summary.split()
+                        short_name = " ".join(words[:5]) if words else str(quest_id)
+                    commands.append({
+                        "label": short_name,
+                        "quest_id": quest_id,
+                        "status": entry.get("status", "available"),
+                        "quest": quest,
+                    })
+            else:
+                commands.append({"label": "No active quests.", "_disabled": True})
+            commands.append({"label": "Back", "command": "B_KEY"})
+
+        enabled = [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]
+        if not enabled:
+            action_cursor = -1
+        elif action_cursor not in enabled:
+            action_cursor = enabled[0]
+        else:
+            action_cursor = max(0, min(action_cursor, len(commands) - 1))
+
+        menu_labels = []
+        base_menu_labels = []
+        for idx, entry in enumerate(commands):
+            label = str(entry.get("label", ""))
+            if entry.get("_header"):
+                label = label.strip()
+            base_menu_labels.append(label.strip() if entry.get("_header") else label.strip())
+        max_label = max((len(label) for label in base_menu_labels), default=0)
+        if max_label:
+            max_label += 4
+        menu_margin = int(menu_cfg.get("margin", 1) or 1)
+        menu_style = str(menu_cfg.get("frame_style", "round") or "round")
+        menu_width = max(10, max_label + 2 + (menu_margin * 2))
+
+        menu_inner_width = max(1, menu_width - 2 - (menu_margin * 2))
+        for idx, entry in enumerate(commands):
+            label = str(entry.get("label", ""))
+            if entry.get("_header"):
+                line = center_ansi(label.strip(), menu_inner_width)
+            elif entry.get("_spacer"):
+                line = " " * menu_inner_width
+            else:
+                line = _menu_line(label.strip(), idx == action_cursor)
+            if entry.get("_disabled") and not entry.get("_spacer"):
+                line = f"{ANSI.DIM}{line}{ANSI.RESET}"
+            menu_labels.append(line)
+
+        desc_margin = int(desc_cfg.get("margin", 1) or 1)
+        desc_style = str(desc_cfg.get("frame_style", "round") or "round")
+        desc_width = max(10, int(desc_cfg.get("width", 20) or 20))
+        desc_inner_width = max(1, desc_width - 2 - (desc_margin * 2))
+        desc_text = ""
+        selected_entry = commands[action_cursor] if 0 <= action_cursor < len(commands) else {}
+        quest_id = selected_entry.get("quest_id")
+        if quest_detail_mode and detail_quest:
+            if dialog_lines:
+                desc_text = dialog_lines[quest_detail_page]
+        elif quest_id:
+            quest = selected_entry.get("quest", {})
+            desc_text = str(quest.get("summary", "") or "")
+        elif hasattr(ctx, "continents"):
+            entry = ctx.continents.continents().get(selected_element, {})
+            if isinstance(entry, dict):
+                desc_text = str(entry.get("description", "") or "")
+        descriptions = []
+        if quest_detail_mode and detail_quest:
+            descriptions.extend(dialog_lines or [""])
+        else:
+            for entry in entries:
+                quest = entry.get("quest", {})
+                desc = str(quest.get("summary", "") or "")
+                descriptions.append(desc)
+            if hasattr(ctx, "continents"):
+                for element in elements:
+                    entry = ctx.continents.continents().get(element, {})
+                    if isinstance(entry, dict):
+                        descriptions.append(str(entry.get("description", "") or ""))
+        wrapped_sets = [
+            textwrap.wrap(desc, width=desc_inner_width) if desc else [""]
+            for desc in descriptions
+        ]
+        max_desc_lines = max((len(lines) for lines in wrapped_sets), default=1)
+        desc_lines = textwrap.wrap(desc_text, width=desc_inner_width) if desc_text else [""]
+        desc_height = max(3, max_desc_lines + 2 + (desc_margin * 2))
+        desc_center_x = int(desc_cfg.get("x", 2) or 2)
+        anchor = str(desc_cfg.get("anchor", "") or "").lower()
+        if anchor == "bottom":
+            desc_center_y = SCREEN_HEIGHT - (desc_height // 2) - 1
+        else:
+            desc_center_y = int(desc_cfg.get("y", SCREEN_HEIGHT - desc_height - 1) or (SCREEN_HEIGHT - desc_height - 1))
+        desc_height = min(desc_height, SCREEN_HEIGHT - 2)
+        desc_width = min(desc_width, SCREEN_WIDTH - 2)
+        desc_x = max(0, min(SCREEN_WIDTH - desc_width, desc_center_x - (desc_width // 2)))
+        desc_y = max(0, min(SCREEN_HEIGHT - desc_height, desc_center_y - (desc_height // 2)))
+        desc_inner_height = max(1, desc_height - 2 - (desc_margin * 2))
+        if len(desc_lines) > desc_inner_height:
+            desc_lines = desc_lines[:desc_inner_height]
+
+        menu_center_x = int(menu_cfg.get("x", 2) or 2)
+        menu_center_y = int(menu_cfg.get("y", 1) or 1)
+        menu_height = max(3, len(menu_labels) + 2 + (menu_margin * 2))
+        menu_height = min(menu_height, max(3, desc_y - 1))
+        menu_x = max(0, min(SCREEN_WIDTH - menu_width, menu_center_x - (menu_width // 2)))
+        menu_y = max(0, min(SCREEN_HEIGHT - menu_height, menu_center_y - (menu_height // 2)))
+
+        atlas_margin = int(atlas_cfg.get("margin", 1) or 1)
+        atlas_style = str(atlas_cfg.get("frame_style", "round") or "round")
+        atlas_lines = []
+        art_opponent_id = None
+        if quest_detail_mode and detail_quest:
+            art_opponent_id = str(detail_quest.get("art_opponent") or "").strip()
+        if art_opponent_id and hasattr(ctx, "opponents"):
+            opponent_entry = ctx.opponents.get(art_opponent_id, {})
+            if isinstance(opponent_entry, dict):
+                atlas_lines = opponent_entry.get("art", []) if isinstance(opponent_entry.get("art"), list) else []
+        if not atlas_lines:
+            atlas_id = atlas_cfg.get("glyph_id", "atlas")
+            atlas = ctx.glyphs.get(atlas_id, {}) if hasattr(ctx, "glyphs") else {}
+            atlas_lines = atlas.get("art", []) if isinstance(atlas, dict) else []
+        atlas_inner_width = max((len(strip_ansi(line)) for line in atlas_lines), default=0)
+        atlas_width = max(10, atlas_inner_width + 2 + (atlas_margin * 2))
+        atlas_height = max(3, len(atlas_lines) + 2 + (atlas_margin * 2))
+        atlas_center_x = int(atlas_cfg.get("x", menu_x + menu_width + 2) or (menu_x + menu_width + 2))
+        atlas_center_y = int(atlas_cfg.get("y", menu_y) or menu_y)
+        atlas_width = min(atlas_width, SCREEN_WIDTH - 2)
+        atlas_height = min(atlas_height, SCREEN_HEIGHT - 2)
+        atlas_x = max(0, min(SCREEN_WIDTH - atlas_width, atlas_center_x - (atlas_width // 2)))
+        atlas_y = max(0, min(SCREEN_HEIGHT - atlas_height, atlas_center_y - (atlas_height // 2)))
+
+        digit_colors = {}
+        flicker_digit = None
+        flicker_on = True
+        if selected_element and hasattr(ctx, "elements"):
+            colors = ctx.colors.all()
+            elem_colors = {
+                "1": ("base", ctx.elements.colors_for("base")),
+                "2": ("earth", ctx.elements.colors_for("earth")),
+                "3": ("wind", ctx.elements.colors_for("wind")),
+                "4": ("fire", ctx.elements.colors_for("fire")),
+                "5": ("water", ctx.elements.colors_for("water")),
+                "6": ("light", ctx.elements.colors_for("light")),
+                "7": ("lightning", ctx.elements.colors_for("lightning")),
+                "8": ("dark", ctx.elements.colors_for("dark")),
+                "9": ("ice", ctx.elements.colors_for("ice")),
+            }
+            unlocked_set = set(str(e) for e in elements)
+            for digit, (element_key, palette) in elem_colors.items():
+                if palette and element_key in unlocked_set:
+                    digit_colors[digit] = _color_code_for_key(colors, palette[0])
+            selected_map = {
+                "base": "1",
+                "earth": "2",
+                "wind": "3",
+                "air": "3",
+                "fire": "4",
+                "water": "5",
+                "light": "6",
+                "lightning": "7",
+                "dark": "8",
+                "ice": "9",
+            }
+            if selected_element in selected_map:
+                flicker_digit = selected_map[selected_element]
+                flicker_on = int(time.time() / 0.35) % 2 == 0
+        if art_opponent_id and atlas_lines:
+            colored_atlas = list(atlas_lines)
+        else:
+            colored_atlas = [
+                _colorize_atlas_line(
+                    line,
+                    digit_colors,
+                    flicker_digit,
+                    flicker_on,
+                    f"{ANSI.FG_WHITE}{ANSI.DIM}",
+                )
+                for line in atlas_lines
+            ]
+
+        menu_box = _box_lines(menu_width, menu_height, menu_labels, margin=menu_margin, style=menu_style)
+        atlas_box = _box_lines(atlas_width, atlas_height, colored_atlas, margin=atlas_margin, style=atlas_style)
+        desc_box = _box_lines(desc_width, desc_height, desc_lines, margin=desc_margin, style=desc_style)
+
+        canvas = [" " * SCREEN_WIDTH for _ in range(SCREEN_HEIGHT)]
+
+        def _overlay_box(box_lines: list[str], start_x: int, start_y: int) -> None:
+            for idx, line in enumerate(box_lines):
+                row = start_y + idx
+                if 0 <= row < SCREEN_HEIGHT:
+                    overlay = pad_or_trim_ansi((" " * start_x) + line, SCREEN_WIDTH)
+                    base_cells = _ansi_cells(canvas[row])
+                    overlay_cells = _ansi_cells(overlay)
+                    merged = []
+                    for (base_ch, base_code), (over_ch, over_code) in zip(base_cells, overlay_cells):
+                        if over_ch == " ":
+                            merged.append(ANSI.RESET + base_code + base_ch)
+                        else:
+                            merged.append(ANSI.RESET + over_code + over_ch)
+                    canvas[row] = "".join(merged) + ANSI.RESET
+
+        _overlay_box(menu_box, menu_x, menu_y)
+        _overlay_box(atlas_box, atlas_x, atlas_y)
+        _overlay_box(desc_box, desc_x, desc_y)
+
+        body = []
+        actions = []
+        display_location = "Quests"
+        raw_lines = canvas
     elif player.location == "Town" and (shop_mode or hall_mode or inn_mode or alchemist_mode or temple_mode or smithy_mode or portal_mode):
         if portal_mode:
             portal_data = ctx.portal_screen.all() if hasattr(ctx, "portal_screen") else {}
@@ -1081,6 +1373,11 @@ def generate_frame(
                     body.append(line)
         else:
             body.append("No options available.")
+        if not isinstance(menu_cursor, int):
+            try:
+                menu_cursor = int(menu_cursor)
+            except (TypeError, ValueError):
+                menu_cursor = -1
         actions = format_menu_actions(options_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
         art_lines = []
         art_color = ANSI.FG_WHITE
