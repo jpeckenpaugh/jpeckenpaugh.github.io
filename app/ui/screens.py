@@ -238,7 +238,7 @@ def _title_menu_lines(
     commands: list[dict],
     selected_index: int,
     detail_lines: Optional[list[str]] = None,
-) -> tuple[list[str], int]:
+) -> tuple[list[str], int, int, int]:
     center_x = int(menu_cfg.get("x", SCREEN_WIDTH // 2) or (SCREEN_WIDTH // 2))
     center_y = int(menu_cfg.get("y", SCREEN_HEIGHT // 2) or (SCREEN_HEIGHT // 2))
     width = int(menu_cfg.get("width", 0) or 0)
@@ -278,7 +278,7 @@ def _title_menu_lines(
     for line in box_lines:
         prefix = " " * max(0, start_x)
         menu_lines.append(pad_or_trim_ansi(prefix + line, SCREEN_WIDTH))
-    return menu_lines, start_y
+    return menu_lines, start_y, start_x, width
 
 
 def _truecolor(hex_code: str) -> str:
@@ -1069,7 +1069,7 @@ def generate_frame(
                             base_cells[pos] = (ch, code)
                     art_lines[target_row] = "".join(code + ch for ch, code in base_cells) + ANSI.RESET
         narrative, commands, detail_lines = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
-        menu_lines, menu_y = _title_menu_lines(
+        menu_lines, menu_y, menu_x, menu_w = _title_menu_lines(
             menu_cfg,
             narrative,
             commands,
@@ -1083,7 +1083,19 @@ def generate_frame(
         for idx, line in enumerate(menu_lines):
             row = menu_y + idx
             if 0 <= row < SCREEN_HEIGHT:
-                canvas[row] = pad_or_trim_ansi(line, SCREEN_WIDTH)
+                base_cells = _ansi_cells(canvas[row])
+                overlay_cells = _ansi_cells(pad_or_trim_ansi(line, SCREEN_WIDTH))
+                merged = []
+                for col, ((base_ch, base_code), (over_ch, over_code)) in enumerate(zip(base_cells, overlay_cells)):
+                    in_box = menu_x <= col < (menu_x + menu_w)
+                    if in_box:
+                        if col == menu_x:
+                            merged.append(ANSI.RESET + over_code + over_ch)
+                        else:
+                            merged.append(over_code + over_ch)
+                    else:
+                        merged.append(base_code + base_ch)
+                canvas[row] = "".join(merged) + ANSI.RESET
         body = []
         actions = []
         display_location = "Lokarta - World Maker"
