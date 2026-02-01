@@ -300,6 +300,24 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
     if state.title_mode:
         _narrative, commands = _title_screen_config(ctx, state)
         return commands
+    if state.portal_mode:
+        elements = []
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            elements = order or list(ctx.continents.continents().keys())
+        unlocked = set(getattr(state.player, "elements", []) or [])
+        commands = []
+        current_element = getattr(state.player, "current_element", None)
+        for element in elements:
+            label = ctx.continents.name_for(element) if hasattr(ctx, "continents") else str(element).title()
+            entry = {"label": label, "command": f"PORTAL:{element}"}
+            if element not in unlocked or element == current_element:
+                entry["_disabled"] = True
+            commands.append(entry)
+        if not commands:
+            commands.append({"label": "No continents available.", "_disabled": True})
+        commands.append({"label": "Back", "command": "B_KEY"})
+        return commands
     if state.shop_mode or state.hall_mode or state.inn_mode or state.temple_mode or state.smithy_mode or state.alchemist_mode or state.portal_mode:
         venue_id = venue_id_from_state(state)
         if venue_id:
@@ -969,6 +987,33 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return cmd, command_meta
         return None, None
 
+    if state.portal_mode:
+        commands = action_commands_for_state(ctx, state)
+        clamp_action_cursor(state, commands)
+        if action in ("UP", "DOWN"):
+            enabled = _enabled_indices(commands)
+            if enabled:
+                pos = enabled.index(state.action_cursor) if state.action_cursor in enabled else 0
+                direction = -1 if action == "UP" else 1
+                pos = (pos + direction) % len(enabled)
+                state.action_cursor = enabled[pos]
+            return None, None
+        if action in ("LEFT", "RIGHT"):
+            return None, None
+        if action == "BACK":
+            cmd = "B_KEY"
+            command_meta = find_command_meta(commands, cmd)
+            return cmd if command_meta else cmd, command_meta
+        if action == "CONFIRM":
+            if not commands or state.action_cursor < 0:
+                return None, None
+            command_meta = commands[state.action_cursor]
+            if command_meta.get("_disabled"):
+                return None, None
+            cmd = command_meta.get("command")
+            return cmd, command_meta
+        return None, None
+
     commands = action_commands_for_state(ctx, state)
     clamp_action_cursor(state, commands)
     if action in ("UP", "DOWN", "LEFT", "RIGHT"):
@@ -1274,6 +1319,7 @@ def apply_router_command(
     pre_title_slot_select = getattr(state.player, "title_slot_select", False)
     pre_title_fortune = getattr(state.player, "title_fortune", False)
     pre_title_confirm = getattr(state.player, "title_confirm", False)
+    pre_portal_mode = state.portal_mode
     pre_title_name_select = getattr(state.player, "title_name_select", False)
     pre_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     cmd_state = CommandState(
@@ -1347,6 +1393,7 @@ def apply_router_command(
     post_title_slot_select = getattr(state.player, "title_slot_select", False)
     post_title_fortune = getattr(state.player, "title_fortune", False)
     post_title_confirm = getattr(state.player, "title_confirm", False)
+    post_portal_mode = state.portal_mode
     post_title_name_select = getattr(state.player, "title_name_select", False)
     post_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     if post_title_slot_select and not pre_title_slot_select:
@@ -1361,6 +1408,10 @@ def apply_router_command(
         state.action_cursor = 0
     if post_title_start_confirm and not pre_title_start_confirm:
         state.action_cursor = 0
+    if post_portal_mode and not pre_portal_mode:
+        commands = action_commands_for_state(ctx, state)
+        enabled = _enabled_indices(commands)
+        state.action_cursor = enabled[0] if enabled else 0
     if (
         (pre_title_fortune and not post_title_fortune)
         or (pre_title_confirm and not post_title_confirm)

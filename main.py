@@ -258,7 +258,14 @@ def main():
                 state.level_up_notes = []
             continue
 
-        if cmd == "B_KEY" and not (state.shop_mode or state.hall_mode or state.inn_mode or state.spell_mode or state.inventory_mode):
+        if cmd == "B_KEY" and not (
+            state.shop_mode
+            or state.hall_mode
+            or state.inn_mode
+            or state.spell_mode
+            or state.inventory_mode
+            or state.portal_mode
+        ):
             continue
         if cmd == "X_KEY":
             continue

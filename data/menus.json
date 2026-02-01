@@ -36,10 +36,11 @@
         "command": "INVENTORY",
         "enabled_when": "has_items"
       },
-      {
-        "label": "Portal",
-        "command": "PORTAL"
-      },
+    {
+      "label": "Portal",
+      "command": "PORTAL",
+      "enabled_when": "in_town"
+    },
       {
         "label": "Quest",
         "command": "QUEST"

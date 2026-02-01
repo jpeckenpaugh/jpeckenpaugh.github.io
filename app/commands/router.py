@@ -81,6 +81,7 @@ class RouterContext:
     quests: QuestsData
     stories: StoriesData
     title_screen: object
+    portal_screen: object
     registry: CommandRegistry
 
 

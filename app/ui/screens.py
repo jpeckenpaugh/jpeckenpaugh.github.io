@@ -24,6 +24,7 @@ from app.data_access.quests_data import QuestsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.stories_data import StoriesData
+from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
@@ -66,6 +67,7 @@ class ScreenContext:
     quests: QuestsData
     stories: StoriesData
     title_screen: TitleScreenData
+    portal_screen: PortalScreenData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -85,6 +87,13 @@ def _ansi_cells(text: str) -> list[tuple[str, str]]:
         cells.append((ch, current))
         i += 1
     return cells
+
+
+def _menu_line(label: str, selected: bool) -> str:
+    text = label.strip()
+    if selected:
+        return f"[ {text} ]"
+    return f"  {text}"
 
 
 def _slice_ansi_wrap(text: str, start: int, width: int) -> str:
@@ -263,11 +272,18 @@ def _title_menu_lines(
     spacer = content_lines and content_lines[-1] != ""
     labels = format_commands(commands)
     display_labels = []
+    base_labels = []
     for idx, line in enumerate(labels):
-        if selected_index >= 0 and idx == selected_index:
-            line = f"> {line.strip()}"
+        is_dim = ANSI.DIM in line
+        base = strip_ansi(line)
+        base_labels.append(base)
+        line = _menu_line(base, selected_index >= 0 and idx == selected_index)
+        if is_dim:
+            line = f"{ANSI.DIM}{line}{ANSI.RESET}"
         display_labels.append(line)
-    max_label_len = max((len(strip_ansi(line)) for line in display_labels), default=0)
+    max_label_len = max((len(label) for label in base_labels), default=0)
+    if max_label_len:
+        max_label_len += 4
     max_content = max((len(strip_ansi(line)) for line in content_lines), default=0)
     max_content = max(max_content, max_label_len)
     if detail_lines:
@@ -744,6 +760,8 @@ def generate_frame(
     color_map_override = element_color_map(ctx.colors.all(), player.current_element)
     art_anchor_x = None
     raw_lines = None
+    art_lines = []
+    art_color = ANSI.FG_WHITE
     if leveling_mode:
         level_options = [
             "  +HP",
@@ -757,8 +775,7 @@ def generate_frame(
         level_cursor = max(0, min(level_cursor, len(level_options) - 1))
         level_lines = []
         for idx, line in enumerate(level_options):
-            prefix = "> " if idx == level_cursor else "  "
-            level_lines.append(f"{prefix}{line.strip()}")
+            level_lines.append(_menu_line(line, idx == level_cursor))
             if idx == 3:
                 level_lines.append("")
         body = [
@@ -781,35 +798,251 @@ def generate_frame(
         art_color = ANSI.FG_WHITE
         art_lines = []
     elif player.location == "Town" and (shop_mode or hall_mode or inn_mode or alchemist_mode or temple_mode or smithy_mode or portal_mode):
-        view_state = SimpleNamespace(
-            player=player,
-            shop_mode=shop_mode,
-            shop_view=shop_view,
-            hall_mode=hall_mode,
-            hall_view=hall_view,
-            inn_mode=inn_mode,
-            alchemist_mode=alchemist_mode,
-            alchemy_first=alchemy_first,
-            alchemy_selecting=alchemy_selecting,
-            temple_mode=temple_mode,
-            smithy_mode=smithy_mode,
-            portal_mode=portal_mode,
-            action_cursor=action_cursor,
-            current_venue_id=None,
-        )
-        venue_id = venue_id_from_state(view_state)
-        venue_render = render_venue_body(ctx, view_state, venue_id or "", color_map_override=color_map_override)
-        display_location = _continent_title(venue_render.title or display_location)
-        body = venue_render.body
-        art_lines = venue_render.art_lines
-        art_color = venue_render.art_color
-        art_anchor_x = venue_render.art_anchor_x
-        actions = format_command_lines(
-            venue_render.actions,
-            selected_index=action_cursor if action_cursor >= 0 else None
-        )
-        if venue_render.message:
-            portal_desc = venue_render.message
+        if portal_mode:
+            portal_data = ctx.portal_screen.all() if hasattr(ctx, "portal_screen") else {}
+            layout = portal_data.get("layout", {}) if isinstance(portal_data, dict) else {}
+            menu_cfg = layout.get("menu", {}) if isinstance(layout, dict) else {}
+            atlas_cfg = layout.get("atlas", {}) if isinstance(layout, dict) else {}
+            desc_cfg = layout.get("description", {}) if isinstance(layout, dict) else {}
+
+            def _box_lines(width: int, height: int, content: list[str], *, margin: int, style: str) -> list[str]:
+                width = max(2, width)
+                height = max(2, height)
+                box = _draw_box(width, height, style=style)
+                inner_width = width - 2
+                inner_height = height - 2
+                pad_margin = max(0, min(margin, max(0, inner_width // 2)))
+                content_lines = [" " * inner_width for _ in range(inner_height)]
+                inner_content_width = max(0, inner_width - (pad_margin * 2))
+                row = pad_margin
+                for line in content:
+                    if row >= inner_height - pad_margin:
+                        break
+                    content_lines[row] = (" " * pad_margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * pad_margin)
+                    row += 1
+                for i in range(inner_height):
+                    box[i + 1] = "|" + content_lines[i] + "|"
+                return box
+
+            elements = list(ctx.continents.order() or []) if hasattr(ctx, "continents") else []
+            if not elements and hasattr(ctx, "continents"):
+                elements = list(ctx.continents.continents().keys())
+            unlocked = set(getattr(player, "elements", []) or [])
+            current_element = getattr(player, "current_element", None)
+            commands = []
+            for element in elements:
+                label = ctx.continents.name_for(element) if hasattr(ctx, "continents") else str(element).title()
+                entry = {"label": label, "command": f"PORTAL:{element}"}
+                if element not in unlocked:
+                    entry["_disabled"] = True
+                if element == current_element:
+                    entry["_current"] = True
+                    entry["_disabled"] = True
+                commands.append(entry)
+            if not commands:
+                commands.append({"label": "No continents available.", "_disabled": True})
+            commands.append({"label": "Back", "command": "B_KEY"})
+
+            action_cursor = max(0, min(action_cursor, len(commands) - 1)) if commands else -1
+            selected_command = commands[action_cursor] if 0 <= action_cursor < len(commands) else {}
+            selected_element = current_element
+            cmd_id = str(selected_command.get("command", ""))
+            if cmd_id.startswith("PORTAL:"):
+                selected_element = cmd_id.split(":", 1)[1]
+
+            menu_labels = []
+            base_menu_labels = []
+            for idx, entry in enumerate(commands):
+                label = str(entry.get("label", "")).strip()
+                base_menu_labels.append(label)
+                line = _menu_line(label, idx == action_cursor)
+                if entry.get("_current"):
+                    wrapped = f"< {label} >"
+                    line = _menu_line(wrapped, idx == action_cursor)
+                    line = f"{ANSI.FG_YELLOW}{ANSI.BOLD}{line}{ANSI.RESET}"
+                elif entry.get("_disabled"):
+                    line = f"{ANSI.DIM}{line}{ANSI.RESET}"
+                menu_labels.append(line)
+            max_label = max((len(label) for label in base_menu_labels), default=0)
+            current_label_len = 0
+            if current_element:
+                current_name = ctx.continents.name_for(current_element) if hasattr(ctx, "continents") else str(current_element).title()
+                current_label_len = len(f"< {current_name} >")
+            max_label = max(max_label, current_label_len)
+            if max_label:
+                max_label += 4
+            menu_margin = int(menu_cfg.get("margin", 1) or 1)
+            menu_style = str(menu_cfg.get("frame_style", "round") or "round")
+            menu_width = max(10, max_label + 2 + (menu_margin * 2))
+
+            desc_margin = int(desc_cfg.get("margin", 1) or 1)
+            desc_style = str(desc_cfg.get("frame_style", "round") or "round")
+            desc_x = int(desc_cfg.get("x", 2) or 2)
+            desc_width = max(10, int(desc_cfg.get("width", 20) or 20))
+            desc_inner_width = max(1, desc_width - 2 - (desc_margin * 2))
+            descriptions = []
+            if hasattr(ctx, "continents"):
+                for element, entry in ctx.continents.continents().items():
+                    if not isinstance(entry, dict):
+                        continue
+                    desc = str(entry.get("description", "") or "")
+                    descriptions.append(desc)
+            wrapped_sets = [
+                textwrap.wrap(desc, width=desc_inner_width) if desc else [""]
+                for desc in descriptions
+            ]
+            max_desc_lines = max((len(lines) for lines in wrapped_sets), default=1)
+            desc_height = max(3, max_desc_lines + 2 + (desc_margin * 2))
+            desc_center_x = int(desc_cfg.get("x", 2) or 2)
+            anchor = str(desc_cfg.get("anchor", "") or "").lower()
+            if anchor == "bottom":
+                desc_center_y = SCREEN_HEIGHT - (desc_height // 2) - 1
+            else:
+                desc_center_y = int(desc_cfg.get("y", SCREEN_HEIGHT - desc_height - 1) or (SCREEN_HEIGHT - desc_height - 1))
+            desc_height = min(desc_height, SCREEN_HEIGHT - 2)
+            desc_width = min(desc_width, SCREEN_WIDTH - 2)
+            desc_x = max(0, min(SCREEN_WIDTH - desc_width, desc_center_x - (desc_width // 2)))
+            desc_y = max(0, min(SCREEN_HEIGHT - desc_height, desc_center_y - (desc_height // 2)))
+            desc_inner_height = max(1, desc_height - 2 - (desc_margin * 2))
+
+            menu_center_x = int(menu_cfg.get("x", 2) or 2)
+            menu_center_y = int(menu_cfg.get("y", 1) or 1)
+            menu_height = max(3, len(menu_labels) + 2 + (menu_margin * 2))
+            menu_height = min(menu_height, max(3, desc_y - 1))
+            menu_x = max(0, min(SCREEN_WIDTH - menu_width, menu_center_x - (menu_width // 2)))
+            menu_y = max(0, min(SCREEN_HEIGHT - menu_height, menu_center_y - (menu_height // 2)))
+
+            atlas_margin = int(atlas_cfg.get("margin", 1) or 1)
+            atlas_style = str(atlas_cfg.get("frame_style", "round") or "round")
+            atlas_id = atlas_cfg.get("glyph_id", "atlas")
+            atlas = ctx.glyphs.get(atlas_id, {}) if hasattr(ctx, "glyphs") else {}
+            atlas_lines = atlas.get("art", []) if isinstance(atlas, dict) else []
+            atlas_inner_width = max((len(strip_ansi(line)) for line in atlas_lines), default=0)
+            atlas_width = max(10, atlas_inner_width + 2 + (atlas_margin * 2))
+            atlas_height = max(3, len(atlas_lines) + 2 + (atlas_margin * 2))
+            atlas_center_x = int(atlas_cfg.get("x", menu_x + menu_width + 2) or (menu_x + menu_width + 2))
+            atlas_center_y = int(atlas_cfg.get("y", menu_y) or menu_y)
+            atlas_width = min(atlas_width, SCREEN_WIDTH - 2)
+            atlas_height = min(atlas_height, SCREEN_HEIGHT - 2)
+            atlas_x = max(0, min(SCREEN_WIDTH - atlas_width, atlas_center_x - (atlas_width // 2)))
+            atlas_y = max(0, min(SCREEN_HEIGHT - atlas_height, atlas_center_y - (atlas_height // 2)))
+
+            digit_colors = {}
+            flicker_digit = None
+            flicker_on = True
+            if selected_element and hasattr(ctx, "elements"):
+                colors = ctx.colors.all()
+                elem_colors = {
+                    "1": ("base", ctx.elements.colors_for("base")),
+                    "2": ("earth", ctx.elements.colors_for("earth")),
+                    "3": ("wind", ctx.elements.colors_for("wind")),
+                    "4": ("fire", ctx.elements.colors_for("fire")),
+                    "5": ("water", ctx.elements.colors_for("water")),
+                    "6": ("light", ctx.elements.colors_for("light")),
+                    "7": ("lightning", ctx.elements.colors_for("lightning")),
+                    "8": ("dark", ctx.elements.colors_for("dark")),
+                    "9": ("ice", ctx.elements.colors_for("ice")),
+                }
+                unlocked_set = set(str(e) for e in unlocked)
+                for digit, (element_key, palette) in elem_colors.items():
+                    if palette and element_key in unlocked_set:
+                        digit_colors[digit] = _color_code_for_key(colors, palette[0])
+                selected_map = {
+                    "base": "1",
+                    "earth": "2",
+                    "wind": "3",
+                    "air": "3",
+                    "fire": "4",
+                    "water": "5",
+                    "light": "6",
+                    "lightning": "7",
+                    "dark": "8",
+                    "ice": "9",
+                }
+                if selected_element in selected_map:
+                    flicker_digit = selected_map[selected_element]
+                    flicker_on = int(time.time() / 0.35) % 2 == 0
+            colored_atlas = [
+                _colorize_atlas_line(
+                    line,
+                    digit_colors,
+                    flicker_digit,
+                    flicker_on,
+                    f"{ANSI.FG_WHITE}{ANSI.DIM}",
+                )
+                for line in atlas_lines
+            ]
+
+            desc_text = ""
+            if hasattr(ctx, "continents") and selected_element:
+                entry = ctx.continents.continents().get(selected_element, {})
+                if isinstance(entry, dict):
+                    desc_text = str(entry.get("description", "") or "")
+            desc_lines = textwrap.wrap(desc_text, width=desc_inner_width) if desc_text else [""]
+            if len(desc_lines) > desc_inner_height:
+                desc_lines = desc_lines[:desc_inner_height]
+
+            menu_box = _box_lines(menu_width, menu_height, menu_labels, margin=menu_margin, style=menu_style)
+            atlas_box = _box_lines(atlas_width, atlas_height, colored_atlas, margin=atlas_margin, style=atlas_style)
+            desc_box = _box_lines(desc_width, desc_height, desc_lines, margin=desc_margin, style=desc_style)
+
+            canvas = [" " * SCREEN_WIDTH for _ in range(SCREEN_HEIGHT)]
+
+            def _overlay_box(box_lines: list[str], start_x: int, start_y: int) -> None:
+                for idx, line in enumerate(box_lines):
+                    row = start_y + idx
+                    if 0 <= row < SCREEN_HEIGHT:
+                        overlay = pad_or_trim_ansi((" " * start_x) + line, SCREEN_WIDTH)
+                        base_cells = _ansi_cells(canvas[row])
+                        overlay_cells = _ansi_cells(overlay)
+                        merged = []
+                        for (base_ch, base_code), (over_ch, over_code) in zip(base_cells, overlay_cells):
+                            if over_ch == " ":
+                                merged.append(ANSI.RESET + base_code + base_ch)
+                            else:
+                                merged.append(ANSI.RESET + over_code + over_ch)
+                        canvas[row] = "".join(merged) + ANSI.RESET
+
+            _overlay_box(menu_box, menu_x, menu_y)
+            _overlay_box(atlas_box, atlas_x, atlas_y)
+            _overlay_box(desc_box, desc_x, desc_y)
+
+            body = []
+            actions = []
+            display_location = "Portal"
+            raw_lines = canvas
+        else:
+            view_state = SimpleNamespace(
+                player=player,
+                shop_mode=shop_mode,
+                shop_view=shop_view,
+                hall_mode=hall_mode,
+                hall_view=hall_view,
+                inn_mode=inn_mode,
+                alchemist_mode=alchemist_mode,
+                alchemy_first=alchemy_first,
+                alchemy_selecting=alchemy_selecting,
+                temple_mode=temple_mode,
+                smithy_mode=smithy_mode,
+                portal_mode=portal_mode,
+                action_cursor=action_cursor,
+                current_venue_id=None,
+            )
+            venue_id = venue_id_from_state(view_state)
+            venue_render = render_venue_body(ctx, view_state, venue_id or "", color_map_override=color_map_override)
+            display_location = _continent_title(venue_render.title or display_location)
+            body = venue_render.body
+            art_lines = venue_render.art_lines
+            art_color = venue_render.art_color
+            art_anchor_x = venue_render.art_anchor_x
+            actions = format_command_lines(
+                venue_render.actions,
+                selected_index=action_cursor if action_cursor >= 0 else None
+            )
+            if venue_render.message:
+                portal_desc = venue_render.message
+            if portal_mode:
+                portal_desc = None
     elif options_mode:
         options_menu = ctx.menus.get("options", {})
         options_actions = []
@@ -826,11 +1059,11 @@ def generate_frame(
         if options_actions:
             for idx, entry in enumerate(options_actions):
                 label = str(entry.get("label", "")).strip() or entry.get("command", "")
-                prefix = "> " if idx == menu_cursor else "  "
+                line = _menu_line(label, idx == menu_cursor)
                 if entry.get("_disabled"):
-                    body.append(f"{ANSI.DIM}{prefix}{label}{ANSI.RESET}")
+                    body.append(f"{ANSI.DIM}{line}{ANSI.RESET}")
                 else:
-                    body.append(f"{prefix}{label}")
+                    body.append(line)
         else:
             body.append("No options available.")
         actions = format_menu_actions(options_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
@@ -853,8 +1086,7 @@ def generate_frame(
                 label = f"{name} ({f_type})"
                 if effect:
                     label = f"{label} - {effect}"
-                prefix = "> " if idx == menu_cursor and followers_focus == "list" else "  "
-                body.append(f"{prefix}{label}")
+                body.append(_menu_line(label, idx == menu_cursor and followers_focus == "list"))
         else:
             body.append("No followers.")
         followers_actions = []
@@ -1054,8 +1286,7 @@ def generate_frame(
                 else:
                     label = element.title()
                 suffix = " (current)" if element == player.current_element else ""
-                prefix = "> " if idx == menu_cursor else "  "
-                body.append(f"{prefix}{label}{suffix}")
+                body.append(_menu_line(f"{label}{suffix}", idx == menu_cursor))
         else:
             body.append("No elements unlocked.")
         actions = format_menu_actions(elements_menu, selected_index=menu_cursor if menu_cursor >= 0 else None)
@@ -1089,6 +1320,7 @@ def generate_frame(
         art_lines = []
         title_element = None
         unlocked_elements = ["base"]
+        title_followers = []
         if hasattr(ctx, "save_data") and ctx.save_data:
             if getattr(player, "title_slot_select", False):
                 _narrative, commands, _detail = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
@@ -1109,6 +1341,9 @@ def generate_frame(
                                     elements = slot_player.get("elements")
                                     if isinstance(elements, list) and elements:
                                         unlocked_elements = elements
+                                    followers = slot_player.get("followers")
+                                    if isinstance(followers, list):
+                                        title_followers = followers
             if not title_element:
                 last_slot = ctx.save_data.last_played_slot()
                 if last_slot:
@@ -1123,6 +1358,9 @@ def generate_frame(
                             elements = slot_player.get("elements")
                             if isinstance(elements, list) and elements:
                                 unlocked_elements = elements
+                            followers = slot_player.get("followers")
+                            if isinstance(followers, list):
+                                title_followers = followers
         title_color_map = element_color_map(ctx.colors.all(), title_element or "base")
         if scroll_cfg:
             height = int(scroll_cfg.get("height", 10) or 10)
@@ -1279,62 +1517,112 @@ def generate_frame(
             atlas = ctx.glyphs.get("element_atlas", {}) if ctx.glyphs else {}
             if isinstance(atlas, dict):
                 atlas_lines = atlas.get("art", []) if isinstance(atlas.get("art"), list) else []
-        if atlas_lines:
-            start_y = SCREEN_HEIGHT - len(atlas_lines)
-            digit_colors = {}
-            flicker_digit = None
-            flicker_on = True
-            if title_element and hasattr(ctx, "elements"):
-                colors = ctx.colors.all()
-                elem_colors = {
-                    "1": ("base", ctx.elements.colors_for("base")),
-                    "2": ("earth", ctx.elements.colors_for("earth")),
-                    "3": ("wind", ctx.elements.colors_for("wind")),
-                    "4": ("fire", ctx.elements.colors_for("fire")),
-                    "5": ("water", ctx.elements.colors_for("water")),
-                    "6": ("light", ctx.elements.colors_for("light")),
-                    "7": ("lightning", ctx.elements.colors_for("lightning")),
-                    "8": ("dark", ctx.elements.colors_for("dark")),
-                    "9": ("ice", ctx.elements.colors_for("ice")),
-                }
-                unlocked = set(str(e) for e in (unlocked_elements or []))
-                for digit, (element_key, palette) in elem_colors.items():
-                    if palette and element_key in unlocked:
-                        digit_colors[digit] = _color_code_for_key(colors, palette[0])
-                selected_map = {
-                    "base": "1",
-                    "earth": "2",
-                    "wind": "3",
-                    "air": "3",
-                    "fire": "4",
-                    "water": "5",
-                    "light": "6",
-                    "lightning": "7",
-                    "dark": "8",
-                    "ice": "9",
-                }
-                if title_element in selected_map:
-                    flicker_digit = selected_map[title_element]
-                    flicker_on = int(time.time() / 0.35) % 2 == 0
-            for idx, line in enumerate(atlas_lines):
-                row = start_y + idx
-                if 0 <= row < SCREEN_HEIGHT:
-                    colored = ANSI.RESET + _colorize_element_atlas_line(
-                        line,
-                        digit_colors,
-                        flicker_digit,
-                        flicker_on,
-                        f"{ANSI.FG_WHITE}{ANSI.DIM}",
-                    )
-                    base_cells = _ansi_cells(canvas[row])
-                    overlay_cells = _ansi_cells(pad_or_trim_ansi(colored, SCREEN_WIDTH))
+
+        digit_colors = {}
+        flicker_digit = None
+        flicker_on = True
+        if title_element and hasattr(ctx, "elements"):
+            colors = ctx.colors.all()
+            elem_colors = {
+                "1": ("base", ctx.elements.colors_for("base")),
+                "2": ("earth", ctx.elements.colors_for("earth")),
+                "3": ("wind", ctx.elements.colors_for("wind")),
+                "4": ("fire", ctx.elements.colors_for("fire")),
+                "5": ("water", ctx.elements.colors_for("water")),
+                "6": ("light", ctx.elements.colors_for("light")),
+                "7": ("lightning", ctx.elements.colors_for("lightning")),
+                "8": ("dark", ctx.elements.colors_for("dark")),
+                "9": ("ice", ctx.elements.colors_for("ice")),
+            }
+            unlocked = set(str(e) for e in (unlocked_elements or []))
+            for digit, (element_key, palette) in elem_colors.items():
+                if palette and element_key in unlocked:
+                    digit_colors[digit] = _color_code_for_key(colors, palette[0])
+            selected_map = {
+                "base": "1",
+                "earth": "2",
+                "wind": "3",
+                "air": "3",
+                "fire": "4",
+                "water": "5",
+                "light": "6",
+                "lightning": "7",
+                "dark": "8",
+                "ice": "9",
+            }
+            if title_element in selected_map:
+                flicker_digit = selected_map[title_element]
+                flicker_on = int(time.time() / 0.35) % 2 == 0
+
+        atlas_colored = [
+            ANSI.RESET + _colorize_element_atlas_line(
+                line,
+                digit_colors,
+                flicker_digit,
+                flicker_on,
+                f"{ANSI.FG_WHITE}{ANSI.DIM}",
+            )
+            for line in atlas_lines
+        ]
+
+        follower_art_blocks = []
+        if title_followers and hasattr(ctx, "opponents"):
+            opponent_ids = set(ctx.opponents.all().keys()) if hasattr(ctx.opponents, "all") else set()
+            fallback_map = {
+                "mushroom": "mushroom_miranda",
+                "mushroom_mage": "mushroom_miranda",
+                "fairy": "fairy",
+                "wolf": "wolf",
+            }
+            for follower in title_followers:
+                if not isinstance(follower, dict):
+                    continue
+                f_type = str(follower.get("type", ""))
+                opp_id = f_type if f_type in opponent_ids else fallback_map.get(f_type, "")
+                if not opp_id:
+                    continue
+                opp = ctx.opponents.get(opp_id, {}) if hasattr(ctx.opponents, "get") else {}
+                art = opp.get("art", []) if isinstance(opp, dict) else []
+                if isinstance(art, list) and art:
+                    follower_art_blocks.append(art)
+
+        follower_lines = []
+        if follower_art_blocks:
+            heights = [len(block) for block in follower_art_blocks]
+            widths = [max((len(strip_ansi(line)) for line in block), default=0) for block in follower_art_blocks]
+            total_height = max(heights, default=0)
+            for row in range(total_height):
+                parts = []
+                for block, height, width in zip(follower_art_blocks, heights, widths):
+                    start = total_height - height
+                    idx = row - start
+                    line = block[idx] if 0 <= idx < height else ""
+                    parts.append(pad_or_trim_ansi(line, width))
+                follower_lines.append(" ".join(parts).rstrip())
+
+        span_height = max(len(atlas_colored), len(follower_lines))
+        if span_height:
+            start_y = SCREEN_HEIGHT - span_height
+            for row in range(span_height):
+                atlas_idx = row - (span_height - len(atlas_colored))
+                follower_idx = row - (span_height - len(follower_lines))
+                left = atlas_colored[atlas_idx] if 0 <= atlas_idx < len(atlas_colored) else ""
+                right = follower_lines[follower_idx] if 0 <= follower_idx < len(follower_lines) else ""
+                if left and right:
+                    line = f"{left} {right}"
+                else:
+                    line = left or right
+                row_idx = start_y + row
+                if 0 <= row_idx < SCREEN_HEIGHT and line:
+                    base_cells = _ansi_cells(canvas[row_idx])
+                    overlay_cells = _ansi_cells(pad_or_trim_ansi(line, SCREEN_WIDTH))
                     merged = []
                     for (base_ch, base_code), (over_ch, over_code) in zip(base_cells, overlay_cells):
                         if over_ch == " ":
                             merged.append(ANSI.RESET + base_code + base_ch)
                         else:
                             merged.append(ANSI.RESET + over_code + over_ch)
-                    canvas[row] = "".join(merged) + ANSI.RESET
+                    canvas[row_idx] = "".join(merged) + ANSI.RESET
         for idx, line in enumerate(menu_lines):
             row = menu_y + idx
             if 0 <= row < SCREEN_HEIGHT:
