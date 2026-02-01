@@ -168,6 +168,7 @@ def main():
             state.title_mode = True
             state.player.location = "Title"
             state.player.title_confirm = False
+            state.player.has_save = SAVE_DATA.exists()
             state.leveling_mode = False
             state.shop_mode = False
             state.shop_view = "menu"

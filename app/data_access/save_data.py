@@ -8,6 +8,9 @@ from typing import Any, Dict, Optional
 from app.models import Player
 
 
+MAX_SAVE_SLOTS = 100
+
+
 class SaveData:
     def __init__(self, base_dir: str):
         self._base_dir = base_dir
@@ -16,7 +19,7 @@ class SaveData:
         os.makedirs(base_dir, exist_ok=True)
 
     def _slot_path(self, slot: int) -> str:
-        slot_num = max(1, min(5, int(slot)))
+        slot_num = max(1, min(MAX_SAVE_SLOTS, int(slot)))
         return os.path.join(self._base_dir, f"slot{slot_num}.json")
 
     def _now(self) -> str:
@@ -31,7 +34,7 @@ class SaveData:
         if not isinstance(data, dict):
             return None
         slot = data.get("last_slot")
-        if isinstance(slot, int) and 1 <= slot <= 5:
+        if isinstance(slot, int) and 1 <= slot <= MAX_SAVE_SLOTS:
             return slot
         return None
 
@@ -39,7 +42,7 @@ class SaveData:
         return self._load_last_slot()
 
     def set_current_slot(self, slot: int) -> None:
-        self._current_slot = max(1, min(5, int(slot)))
+        self._current_slot = max(1, min(MAX_SAVE_SLOTS, int(slot)))
         try:
             with open(self._last_slot_path, "w", encoding="utf-8") as f:
                 json.dump({"last_slot": self._current_slot}, f, indent=2)
@@ -101,7 +104,7 @@ class SaveData:
 
     def exists(self, slot: Optional[int] = None) -> bool:
         if slot is None:
-            return any(self.exists(idx) for idx in range(1, 6))
+            return any(self.exists(idx) for idx in range(1, MAX_SAVE_SLOTS + 1))
         try:
             with open(self._slot_path(slot), "r", encoding="utf-8"):
                 return True
@@ -133,4 +136,59 @@ class SaveData:
         }
 
     def slot_summaries(self) -> list[dict]:
-        return [self.slot_summary(idx) for idx in range(1, 6)]
+        return [self.slot_summary(idx) for idx in range(1, MAX_SAVE_SLOTS + 1)]
+
+    def _slot_numbers(self, max_slots: Optional[int] = None) -> list[int]:
+        limit = max(1, min(MAX_SAVE_SLOTS, int(max_slots or MAX_SAVE_SLOTS)))
+        slots = []
+        try:
+            for entry in os.listdir(self._base_dir):
+                if not entry.startswith("slot") or not entry.endswith(".json"):
+                    continue
+                raw = entry[len("slot"):-len(".json")]
+                if not raw.isdigit():
+                    continue
+                slot = int(raw)
+                if 1 <= slot <= limit:
+                    slots.append(slot)
+        except OSError:
+            return []
+        return sorted(set(slots))
+
+    def _parse_timestamp(self, value: str) -> Optional[datetime]:
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d %H:%M")
+        except ValueError:
+            return None
+
+    def slot_summaries_sorted(self, max_slots: Optional[int] = None, include_empty: bool = False) -> list[dict]:
+        limit = max(1, min(MAX_SAVE_SLOTS, int(max_slots or MAX_SAVE_SLOTS)))
+        if include_empty:
+            slots = list(range(1, limit + 1))
+        else:
+            slots = self._slot_numbers(limit)
+        summaries = [self.slot_summary(slot) for slot in slots]
+
+        def sort_key(summary: dict) -> tuple[int, float]:
+            if summary.get("empty"):
+                return (0, 0.0)
+            last_played = self._parse_timestamp(str(summary.get("last_played") or ""))
+            if last_played:
+                return (1, last_played.timestamp())
+            path = self._slot_path(int(summary.get("slot", 0) or 0))
+            try:
+                return (1, os.path.getmtime(path))
+            except OSError:
+                return (1, 0.0)
+
+        summaries.sort(key=sort_key, reverse=True)
+        return summaries
+
+    def next_empty_slot(self, max_slots: Optional[int] = None) -> Optional[int]:
+        limit = max(1, min(MAX_SAVE_SLOTS, int(max_slots or MAX_SAVE_SLOTS)))
+        for slot in range(1, limit + 1):
+            if not self.exists(slot):
+                return slot
+        return None

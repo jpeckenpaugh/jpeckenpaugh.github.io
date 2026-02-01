@@ -595,11 +595,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_fortune = False
         state.player.title_slot_select = False
         state.player.title_slot_mode = None
-        next_slot = None
-        for slot in range(1, 6):
-            if not ctx.save_data.exists(slot):
-                next_slot = slot
-                break
+        next_slot = ctx.save_data.next_empty_slot(max_slots=100)
         if next_slot is None:
             fallback_slot = ctx.save_data.last_played_slot() or 1
             state.player.title_confirm = True

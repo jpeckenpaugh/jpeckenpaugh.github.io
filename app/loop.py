@@ -241,17 +241,22 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
     items = menu_data.get("items", [])
     if items == "slot_select":
         mode = getattr(state.player, "title_slot_mode", "continue")
-        summaries = ctx.save_data.slot_summaries()
+        summaries = ctx.save_data.slot_summaries_sorted(max_slots=100)
         built = []
         for summary in summaries:
             slot_num = summary.get("slot", 0)
-            label = f"Slot {slot_num}"
             if summary.get("empty"):
-                label = f"{label} (Empty)"
+                label = f"Slot {slot_num} (Empty)"
+            else:
+                level = summary.get("level", 1)
+                location = summary.get("location", "Town")
+                gold = summary.get("gold", 0)
+                label = f"Slot {slot_num}: Lv{level} {location} GP{gold}"
             entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
-            if mode == "continue" and summary.get("empty"):
-                entry["_disabled"] = True
             built.append(entry)
+        if not built:
+            narrative = list(narrative)
+            narrative.append("No save data found.")
         built.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
         items = built
     if not isinstance(items, list):
@@ -1260,22 +1265,9 @@ def apply_router_command(
     post_title_fortune = getattr(state.player, "title_fortune", False)
     post_title_confirm = getattr(state.player, "title_confirm", False)
     if post_title_slot_select and not pre_title_slot_select:
-        last_slot = ctx.save_data.last_played_slot()
         commands = action_commands_for_state(ctx, state)
-        if last_slot:
-            idx = max(0, min(len(commands) - 1, last_slot - 1))
-            if idx < len(commands) and not commands[idx].get("_disabled"):
-                state.action_cursor = idx
-            else:
-                for i, cmd in enumerate(commands):
-                    if not cmd.get("_disabled") and cmd.get("command", "").startswith("TITLE_SLOT_"):
-                        state.action_cursor = i
-                        break
-        else:
-            for i, cmd in enumerate(commands):
-                if not cmd.get("_disabled") and cmd.get("command", "").startswith("TITLE_SLOT_"):
-                    state.action_cursor = i
-                    break
+        state.action_cursor = 0
+        clamp_action_cursor(state, commands)
     if post_title_fortune and not pre_title_fortune:
         state.action_cursor = 0
     if post_title_confirm and not pre_title_confirm:

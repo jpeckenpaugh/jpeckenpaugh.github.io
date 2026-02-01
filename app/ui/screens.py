@@ -153,34 +153,23 @@ def _title_state_config(
     if items == "slot_select":
         summaries = []
         if hasattr(ctx, "save_data") and ctx.save_data:
-            summaries = ctx.save_data.slot_summaries()
-        narrative = list(narrative)
-        for summary in summaries:
-            slot_num = summary.get("slot", 0)
-            if summary.get("empty"):
-                line = f"Slot {slot_num}: Empty"
-            else:
-                level = summary.get("level", 1)
-                location = summary.get("location", "Town")
-                gold = summary.get("gold", 0)
-                created = summary.get("created_at", "")
-                last_played = summary.get("last_played", "")
-                line = (
-                    f"Slot {slot_num}: Lv{level} {location} GP{gold} "
-                    f"C {created} L {last_played}"
-                )
-            narrative.append(line)
+            summaries = ctx.save_data.slot_summaries_sorted(max_slots=100)
         mode = getattr(player, "title_slot_mode", "continue")
         built = []
         for summary in summaries:
             slot_num = summary.get("slot", 0)
-            label = f"Slot {slot_num}"
             if summary.get("empty"):
-                label = f"{label} (Empty)"
+                label = f"Slot {slot_num} (Empty)"
+            else:
+                level = summary.get("level", 1)
+                location = summary.get("location", "Town")
+                gold = summary.get("gold", 0)
+                label = f"Slot {slot_num}: Lv{level} {location} GP{gold}"
             entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
-            if mode == "continue" and summary.get("empty"):
-                entry["_disabled"] = True
             built.append(entry)
+        if not built:
+            narrative = list(narrative)
+            narrative.append("No save data found.")
         built.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
         items = built
     detail_lines = menu_data.get("detail_lines", [])
@@ -241,35 +230,66 @@ def _title_menu_lines(
 ) -> tuple[list[str], int, int, int]:
     center_x = int(menu_cfg.get("x", SCREEN_WIDTH // 2) or (SCREEN_WIDTH // 2))
     center_y = int(menu_cfg.get("y", SCREEN_HEIGHT // 2) or (SCREEN_HEIGHT // 2))
+    margin = int(menu_cfg.get("margin", 1) or 1)
+    margin = max(0, min(margin, 10))
     width = int(menu_cfg.get("width", 0) or 0)
     height = int(menu_cfg.get("height", 0) or 0)
     style = str(menu_cfg.get("frame_style", "round") or "round")
     box_lines = _draw_box(width, height, style=style)
     content_lines = list(narrative)
-    if content_lines and content_lines[-1] != "":
-        content_lines.append("")
+    spacer = content_lines and content_lines[-1] != ""
     labels = format_commands(commands)
+    display_labels = []
     for idx, line in enumerate(labels):
         if selected_index >= 0 and idx == selected_index:
             line = f"> {line.strip()}"
-        content_lines.append(line)
+        display_labels.append(line)
+    max_label_len = max((len(strip_ansi(line)) for line in display_labels), default=0)
     max_content = max((len(strip_ansi(line)) for line in content_lines), default=0)
+    max_content = max(max_content, max_label_len)
     if detail_lines:
         max_detail = max((len(strip_ansi(line)) for line in detail_lines), default=0)
         max_content = max(max_content, max_detail)
     if width <= 0:
-        width = min(SCREEN_WIDTH - 2, max(10, max_content + 2))
+        width = min(SCREEN_WIDTH - 2, max(10, max_content + 2 + (margin * 2)))
     if height <= 0:
-        height = min(SCREEN_HEIGHT - 2, max(3, len(content_lines) + 2))
+        desired = len(content_lines) + (1 if spacer else 0) + len(display_labels) + 2 + (margin * 2)
+        height = min(SCREEN_HEIGHT - 2, max(3, desired))
     width = min(width, SCREEN_WIDTH - 2)
     height = max(3, min(height, SCREEN_HEIGHT - 2))
     box_lines = _draw_box(width, height, style=style)
     inner_width = width - 2
     inner_height = height - 2
-    content = []
-    for i in range(inner_height):
-        line = content_lines[i] if i < len(content_lines) else ""
-        content.append(pad_or_trim_ansi(line, inner_width))
+    available_lines = max(0, inner_height - (margin * 2))
+    if content_lines:
+        if spacer:
+            content_lines.append("")
+        available_lines = max(1, available_lines - len(content_lines))
+    offset = 0
+    if display_labels and selected_index >= 0:
+        if selected_index < offset:
+            offset = selected_index
+        elif selected_index >= offset + available_lines:
+            offset = selected_index - available_lines + 1
+    visible_labels = display_labels[offset:offset + available_lines]
+    content = [" " * inner_width for _ in range(inner_height)]
+    inner_content_width = max(0, inner_width - (margin * 2))
+    cursor_row = margin
+    if content_lines:
+        for line in content_lines:
+            if cursor_row >= inner_height - margin:
+                break
+            content[cursor_row] = (
+                (" " * margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * margin)
+            )
+            cursor_row += 1
+    for line in visible_labels:
+        if cursor_row >= inner_height - margin:
+            break
+        content[cursor_row] = (
+            (" " * margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * margin)
+        )
+        cursor_row += 1
     for i in range(inner_height):
         box_lines[i + 1] = "|" + content[i] + "|"
     menu_lines = []
