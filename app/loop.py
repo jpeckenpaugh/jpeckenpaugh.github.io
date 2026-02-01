@@ -565,6 +565,22 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         action == "BACK"
         and state.player.location == "Forest"
         and not any(m.hp > 0 for m in state.opponents)
+        and not (
+            state.inventory_mode
+            or state.spell_mode
+            or state.options_mode
+            or state.element_mode
+            or state.stats_mode
+            or state.followers_mode
+            or state.quest_mode
+            or state.shop_mode
+            or state.hall_mode
+            or state.inn_mode
+            or state.alchemist_mode
+            or state.temple_mode
+            or state.smithy_mode
+            or state.portal_mode
+        )
     ):
         return "ENTER_SCENE", {"target": "town"}
 
