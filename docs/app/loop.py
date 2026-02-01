@@ -970,11 +970,13 @@ def apply_router_command(
 
 def resolve_player_action(
     ctx,
+    render_frame,
     state: GameState,
     cmd: Optional[str],
     command_meta: Optional[dict],
     action_cmd: Optional[str],
     handled_by_router: bool,
+    generate_frame,
 ) -> Optional[str]:
     if handled_by_router:
         return action_cmd

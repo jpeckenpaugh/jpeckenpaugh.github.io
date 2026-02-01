@@ -409,11 +409,13 @@ def main():
 
         action_cmd = resolve_player_action(
             APP,
+            render_frame,
             state,
             cmd,
             command_meta,
             action_cmd,
             handled_by_router,
+            generate_frame,
         )
         if action_cmd in ("STRENGTH", "HEAL"):
             spell_entry = APP.spells.by_command_id(action_cmd)

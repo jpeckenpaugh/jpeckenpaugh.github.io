@@ -457,12 +457,23 @@ def main():
 
         action_cmd = resolve_player_action(
             APP,
+            render_frame,
             state,
             cmd,
             command_meta,
             action_cmd,
             handled_by_router,
+            generate_frame,
         )
+        in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
+        if (
+            state.spell_mode
+            and not in_battle
+            and action_cmd in ("STRENGTH", "HEAL")
+        ):
+            state.spell_target_mode = True
+            if not state.spell_target_command:
+                state.spell_target_command = action_cmd
         if action_cmd in ("STRENGTH", "HEAL") and state.last_team_target_player:
             spell_entry = APP.spells.by_command_id(action_cmd)
             if spell_entry:

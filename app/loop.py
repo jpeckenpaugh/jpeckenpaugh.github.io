@@ -130,6 +130,45 @@ def animate_life_boost_gain(ctx, render_frame, state: GameState, generate_frame,
         time.sleep(delay)
 
 
+def animate_follower_life_boost_gain(
+    ctx,
+    render_frame,
+    state: GameState,
+    generate_frame,
+    follower: dict,
+    gain: int,
+) -> None:
+    if gain <= 0:
+        return
+    delay = max(0.05, battle_action_delay(state.player) / 3) / 4
+    for _ in range(gain):
+        follower["temp_hp_bonus"] = int(follower.get("temp_hp_bonus", 0) or 0) + 1
+        max_hp = state.player.follower_total_max_hp(follower)
+        hp = int(follower.get("hp", max_hp) or max_hp)
+        if hp < max_hp:
+            follower["hp"] = hp + 1
+        render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
+        time.sleep(delay)
+
+
+def animate_follower_strength_gain(
+    ctx,
+    render_frame,
+    state: GameState,
+    generate_frame,
+    follower: dict,
+    gain: int,
+) -> None:
+    if gain <= 0:
+        return
+    delay = max(0.05, battle_action_delay(state.player) / 3) / 4
+    for _ in range(gain):
+        follower["temp_atk_bonus"] = int(follower.get("temp_atk_bonus", 0) or 0) + 1
+        follower["temp_def_bonus"] = int(follower.get("temp_def_bonus", 0) or 0) + 1
+        render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
+        time.sleep(delay)
+
+
 def read_input(ctx, render_frame, state: GameState, generate_frame, read_keypress, read_keypress_timeout) -> str:
     if state.spell_mode or state.portal_mode:
         ch = read_keypress_timeout(0.2)
@@ -1521,11 +1560,13 @@ def apply_router_command(
 
 def resolve_player_action(
     ctx,
+    render_frame,
     state: GameState,
     cmd: Optional[str],
     command_meta: Optional[dict],
     action_cmd: Optional[str],
     handled_by_router: bool,
+    generate_frame,
 ) -> Optional[str]:
     if handled_by_router:
         return action_cmd
@@ -1578,6 +1619,11 @@ def resolve_player_action(
             state.last_message = "There is nothing to target."
             return None
         if spell_id in ("healing", "strength"):
+            in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
+            if state.spell_mode and not in_battle:
+                state.spell_target_mode = True
+                if not state.spell_target_command:
+                    state.spell_target_command = cmd
             if state.player.mp < base_cost and not has_charge:
                 state.last_message = f"Not enough MP to cast {name}."
                 return None
@@ -1601,15 +1647,36 @@ def resolve_player_action(
                 state.player.mp -= base_cost
             state.last_team_target_player = (target_type == "player")
             if target_type != "player":
+                gain_per_cast = max(0, 10 * rank)
+                max_stack = gain_per_cast * 5
                 if spell_id == "healing":
-                    target_ref["temp_hp_bonus"] = int(target_ref.get("temp_hp_bonus", 0) or 0) + 1
-                    max_hp = state.player.follower_total_max_hp(target_ref)
-                    hp = int(target_ref.get("hp", max_hp) or max_hp)
-                    if hp < max_hp:
-                        target_ref["hp"] = hp + 1
+                    current = int(target_ref.get("temp_hp_bonus", 0) or 0)
+                    remaining = max(0, max_stack - current)
+                    gain = min(gain_per_cast, remaining)
+                    if gain > 0:
+                        animate_follower_life_boost_gain(
+                            ctx,
+                            render_frame,
+                            state,
+                            generate_frame,
+                            target_ref,
+                            gain,
+                        )
                 else:
-                    target_ref["temp_atk_bonus"] = int(target_ref.get("temp_atk_bonus", 0) or 0) + 1
-                    target_ref["temp_def_bonus"] = int(target_ref.get("temp_def_bonus", 0) or 0) + 1
+                    current_atk = int(target_ref.get("temp_atk_bonus", 0) or 0)
+                    current_def = int(target_ref.get("temp_def_bonus", 0) or 0)
+                    current = min(current_atk, current_def)
+                    remaining = max(0, max_stack - current)
+                    gain = min(gain_per_cast, remaining)
+                    if gain > 0:
+                        animate_follower_strength_gain(
+                            ctx,
+                            render_frame,
+                            state,
+                            generate_frame,
+                            target_ref,
+                            gain,
+                        )
             target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
             spell_label = "Life Boost" if spell_id == "healing" else "Strength"
             state.last_message = f"You cast {spell_label} on {target_name}."
