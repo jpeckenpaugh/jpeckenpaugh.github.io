@@ -659,6 +659,34 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
 
 
 def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key: Optional[str]) -> bool:
+    def _enter_quest_screen() -> None:
+        state.quest_mode = True
+        state.quest_detail_mode = False
+        state.quest_detail_id = None
+        state.quest_detail_page = 0
+        state.options_mode = False
+        state.shop_mode = False
+        state.hall_mode = False
+        state.inn_mode = False
+        state.inventory_mode = False
+        state.spell_mode = False
+        state.element_mode = False
+        state.alchemist_mode = False
+        state.temple_mode = False
+        state.smithy_mode = False
+        state.portal_mode = False
+        elements = list(getattr(state.player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            if order:
+                elements = [e for e in order if e in elements] or elements
+        current = getattr(state.player, "current_element", None)
+        if current in elements:
+            state.quest_continent_index = elements.index(current)
+        else:
+            state.quest_continent_index = 0
+        state.last_message = "Your quests await."
+
     if command_id == "QUIT":
         state.action_cmd = "QUIT"
         return True
@@ -791,6 +819,8 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.inn_mode = False
             state.spell_mode = False
             state.last_message = "You arrive in town."
+            if not getattr(state.player, "flags", {}).get("quest_mushy_01_complete", False):
+                _enter_quest_screen()
             return True
         if ctx.save_data.exists(slot):
             state.player.title_confirm = True
@@ -846,6 +876,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.smithy_mode = False
         state.portal_mode = False
         state.last_message = "You arrive in town."
+        _enter_quest_screen()
         ctx.save_data.save_player(state.player)
         return True
     if command_id in ("FORTUNE_POOR", "FORTUNE_WELL_OFF", "FORTUNE_ROYALTY"):
