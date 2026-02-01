@@ -93,9 +93,8 @@
         "anim": "battle_start"
       },
       {
-        "label": "Portal",
-        "command": "ENTER_VENUE",
-        "target": "town_portal"
+        "label": "Quest",
+        "command": "QUEST"
       },
       {
         "label": "Options",

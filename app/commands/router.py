@@ -5,6 +5,7 @@ import random
 from typing import List, Optional
 
 from app.combat import cast_spell, primary_opponent
+from app.questing import build_follower_from_entry, evaluate_quests, start_quest
 from app.data_access.commands_data import CommandsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.items_data import ItemsData
@@ -17,6 +18,8 @@ from app.data_access.venues_data import VenuesData
 from app.data_access.menus_data import MenusData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.save_data import SaveData
+from app.data_access.quests_data import QuestsData
+from app.data_access.stories_data import StoriesData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.commands.scene_commands import command_is_enabled
@@ -75,6 +78,8 @@ class RouterContext:
     spells_art: SpellsArtData
     glyphs: GlyphsData
     objects: ObjectsData
+    quests: QuestsData
+    stories: StoriesData
     registry: CommandRegistry
 
 
@@ -174,6 +179,43 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         else:
             return False
         state.last_message = venue.get("welcome_message", state.last_message)
+        return True
+
+    if command_id == "PORTAL":
+        menu = ctx.menus.get("portal", {})
+        state.portal_mode = True
+        state.current_venue_id = "town_portal"
+        state.shop_mode = False
+        state.hall_mode = False
+        state.inn_mode = False
+        state.inventory_mode = False
+        state.spell_mode = False
+        state.element_mode = False
+        state.alchemist_mode = False
+        state.temple_mode = False
+        state.smithy_mode = False
+        state.last_message = menu.get("open_message", "Select a continent.")
+        return True
+
+    if command_id == "QUEST":
+        if not hasattr(state.player, "flags") or not isinstance(state.player.flags, dict):
+            state.player.flags = {}
+        if not state.player.flags.get("quest_intro_started", False):
+            state.player.flags["quest_intro_started"] = True
+            start_quest(state.player, "intro_spellcraft")
+            follower = build_follower_from_entry({"type": "mushroom", "name": "Mushroom"})
+            if follower:
+                state.player.add_follower(follower)
+            state.player.flags["spell_healing_enabled"] = True
+            state.player.flags["spell_strength_enabled"] = True
+            state.last_message = "A mushroom joins your party and teaches basic magic. Recruit 3 fairies in the forest."
+            ctx.save_data.save_player(state.player)
+            return True
+        quest_messages = []
+        if hasattr(ctx, "quests") and ctx.quests is not None:
+            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+        state.last_message = quest_messages[0] if quest_messages else "Your quests await."
+        ctx.save_data.save_player(state.player)
         return True
 
     if command_id == "ENTER_SCENE":
@@ -379,7 +421,14 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             idx = int(command_id.replace("NUM", "")) - 1
             if 0 <= idx < len(state.inventory_items):
                 item_id, _ = state.inventory_items[idx]
-                state.last_message = state.player.use_item(item_id, ctx.items)
+                target = None
+                if state.player.followers:
+                    item = ctx.items.get(item_id, {})
+                    if isinstance(item, dict) and (int(item.get("hp", 0)) > 0 or int(item.get("mp", 0)) > 0):
+                        target_type, target_ref = state.player.select_team_target(mode="combined")
+                        if target_type == "follower":
+                            target = target_ref
+                state.last_message = state.player.use_item(item_id, ctx.items, target=target)
                 ctx.save_data.save_player(state.player)
                 state.inventory_items = state.player.list_inventory_items(ctx.items)
                 if not state.inventory_items:
@@ -496,6 +545,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.last_message = service.get("message", "You rest at the inn and feel fully restored.")
         if service_type in ("rest", "meal"):
             state.player.recharge_wands()
+            state.player.recharge_follower_wands()
+            state.player.restore_follower_mp()
         ctx.save_data.save_player(state.player)
         return True
 
@@ -505,6 +556,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         loot=state.loot_bank,
         spells_data=ctx.spells,
         items_data=ctx.items,
+        quests_data=ctx.quests,
         target_index=state.target_index,
     )
     if command_id in ("ATTACK", "SPARK", "HEAL", "DEFEND", "SOCIALIZE"):

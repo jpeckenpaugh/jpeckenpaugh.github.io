@@ -37,12 +37,55 @@ class SpellsData:
                 return spell_id, spell
         return None
 
-    def available(self, player_level: int) -> list[Tuple[str, dict]]:
+    def available(self, player, items_data: Optional[object] = None) -> list[Tuple[str, dict]]:
         entries = []
+        player_level = int(getattr(player, "level", 0) or 0) if not isinstance(player, int) else int(player)
+        flags = getattr(player, "flags", {}) if not isinstance(player, int) else {}
+        if not isinstance(flags, dict):
+            flags = {}
+        equipped_ids = set()
+        granted_spells = set()
+        if not isinstance(player, int) and items_data is not None:
+            equipment = getattr(player, "equipment", {}) if hasattr(player, "equipment") else {}
+            if isinstance(equipment, dict):
+                for gear_id in equipment.values():
+                    gear = getattr(player, "gear_instance", lambda _id: None)(gear_id)
+                    if not isinstance(gear, dict):
+                        continue
+                    item_id = gear.get("item_id")
+                    if item_id:
+                        equipped_ids.add(str(item_id))
+                        item = items_data.get(str(item_id), {}) if hasattr(items_data, "get") else {}
+                        grants = item.get("grants_spells", [])
+                        if isinstance(grants, list):
+                            granted_spells.update(str(spell_id) for spell_id in grants)
+                    grants = gear.get("grants_spells", [])
+                    if isinstance(grants, list):
+                        granted_spells.update(str(spell_id) for spell_id in grants)
         for spell_id, spell in self._spells.items():
             level_required = int(spell.get("level_required", 0) or 0)
-            if player_level >= level_required:
-                entries.append((spell_id, spell))
+            if player_level < level_required:
+                continue
+            unlock = spell.get("unlock")
+            if isinstance(unlock, dict) and not isinstance(player, int):
+                flags_any = unlock.get("flags_any", [])
+                if not isinstance(flags_any, list):
+                    flags_any = []
+                items_any = unlock.get("items_any", [])
+                if not isinstance(items_any, list):
+                    items_any = []
+                allowed = False
+                if flags_any and any(flags.get(str(flag), False) for flag in flags_any):
+                    allowed = True
+                if items_any and any(str(item_id) in equipped_ids for item_id in items_any):
+                    allowed = True
+                if str(spell_id) in granted_spells:
+                    allowed = True
+                if not (flags_any or items_any) and not granted_spells:
+                    allowed = True
+                if not allowed:
+                    continue
+            entries.append((spell_id, spell))
         entries.sort(key=lambda item: (int(item[1].get("level_required", 0) or 0), item[0]))
         return entries
 

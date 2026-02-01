@@ -7,8 +7,10 @@ from typing import Optional
 from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
-from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage
+from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
+from app.questing import evaluate_quests, handle_event
 from app.state import GameState
+from app.models import Player
 from app.ui.ansi import ANSI
 from app.ui.constants import ACTION_LINES
 from app.ui.rendering import (
@@ -270,7 +272,7 @@ def clamp_action_cursor(state: GameState, commands: list[dict]) -> None:
 
 
 def spell_menu_keys(ctx, player) -> list[str]:
-    entries = ctx.spells.available(player.level)
+    entries = ctx.spells.available(player, ctx.items)
     return [spell.get("command_id") for _, spell in entries if spell.get("command_id")]
 
 
@@ -503,8 +505,20 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.followers_mode = False
             return None, None
         actions = []
+        selected_type = None
+        selected_follower = {}
+        type_count = 0
+        gear_items = state.player.list_gear_items()
         if followers and 0 <= state.menu_cursor < len(followers) and isinstance(followers[state.menu_cursor], dict):
-            abilities = followers[state.menu_cursor].get("abilities", [])
+            selected_follower = followers[state.menu_cursor]
+            selected_type = selected_follower.get("type")
+            if selected_type:
+                type_count = sum(
+                    1
+                    for follower in followers
+                    if isinstance(follower, dict) and follower.get("type") == selected_type
+                )
+            abilities = selected_follower.get("abilities", [])
             if isinstance(abilities, list):
                 for ability_id in abilities:
                     label = str(ability_id)
@@ -520,6 +534,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             cmd_entry = dict(entry)
             if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
                 cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "FOLLOWER_FUSE" and type_count < 3:
+                cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "FOLLOWER_EQUIP" and not gear_items:
+                cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "FOLLOWER_UNEQUIP":
+                equip = selected_follower.get("equipment", {}) if isinstance(selected_follower, dict) else {}
+                if not isinstance(equip, dict) or not equip:
+                    cmd_entry["_disabled"] = True
             actions.append(cmd_entry)
         if not actions:
             actions = [{"label": "Back", "command": "B_KEY"}]
@@ -573,6 +595,48 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 if state.menu_cursor >= len(state.player.followers):
                     state.menu_cursor = max(0, len(state.player.followers) - 1)
                 return None, None
+            if cmd == "FOLLOWER_FUSE":
+                if not selected_type:
+                    state.last_message = "Select a follower to fuse."
+                    return None, None
+                fused = state.player.fuse_followers(selected_type, 3)
+                if not fused:
+                    state.last_message = "Need three followers of the same type to fuse."
+                    return None, None
+                state.last_message = f"{fused.get('name', 'Follower')} joins your party."
+                if hasattr(ctx, "quests") and ctx.quests is not None:
+                    quest_messages = handle_event(
+                        state.player,
+                        ctx.quests,
+                        "fuse_followers",
+                        {"follower_type": selected_type, "count": 3},
+                        ctx.items,
+                    )
+                    if quest_messages:
+                        state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                state.follower_dismiss_pending = None
+                return None, None
+            if cmd == "FOLLOWER_EQUIP":
+                if not followers or state.menu_cursor < 0 or state.menu_cursor >= len(followers):
+                    state.last_message = "Select a follower to equip."
+                    return None, None
+                target_follower = followers[state.menu_cursor]
+                state.follower_equip_mode = True
+                state.follower_equip_target = state.menu_cursor
+                state.inventory_mode = True
+                state.followers_mode = False
+                state.menu_cursor = 0
+                state.inventory_items = gear_items
+                target_name = target_follower.get("name", "Follower") if isinstance(target_follower, dict) else "Follower"
+                state.last_message = f"Equip gear to {target_name}."
+                return None, None
+            if cmd == "FOLLOWER_UNEQUIP":
+                if not selected_follower:
+                    state.last_message = "Select a follower to unequip."
+                    return None, None
+                selected_follower["equipment"] = {}
+                state.last_message = f"{selected_follower.get('name', 'Follower')} unequipped gear."
+                return None, None
             if cmd == "B_KEY":
                 state.follower_dismiss_pending = None
                 state.followers_mode = False
@@ -581,6 +645,42 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if action == "BACK":
             state.follower_dismiss_pending = None
             state.followers_mode = False
+            return None, None
+        return None, None
+
+    if state.follower_equip_mode:
+        items = state.inventory_items or []
+        count = min(len(items), 9)
+        if count == 0:
+            if action == "BACK":
+                state.follower_equip_mode = False
+                state.inventory_mode = False
+            return None, None
+        state.menu_cursor = max(0, min(state.menu_cursor, count - 1))
+        if action in ("UP", "DOWN"):
+            direction = -1 if action == "UP" else 1
+            state.menu_cursor = (state.menu_cursor + direction) % count
+            return None, None
+        if action == "CONFIRM":
+            idx = state.menu_cursor
+            if 0 <= idx < len(items):
+                gear_id = items[idx][0]
+                followers = getattr(state.player, "followers", [])
+                target = state.follower_equip_target
+                if isinstance(target, int) and 0 <= target < len(followers):
+                    follower = followers[target]
+                    if state.player.assign_gear_to_follower(follower, gear_id):
+                        state.last_message = f"{follower.get('name', 'Follower')} equipped gear."
+                    else:
+                        state.last_message = "Unable to equip that gear."
+                else:
+                    state.last_message = "No follower selected."
+            state.follower_equip_mode = False
+            state.inventory_mode = False
+            return None, None
+        if action == "BACK":
+            state.follower_equip_mode = False
+            state.inventory_mode = False
             return None, None
         return None, None
 
@@ -762,9 +862,186 @@ def _is_arrival_message(state: GameState, message: str) -> bool:
     return False
 
 
-def spell_level_up_notes(ctx, prev_level: int, new_level: int) -> list[str]:
+def _follower_element_spell_id(element: str) -> Optional[str]:
+    mapping = {
+        "earth": "boulder",
+        "wind": "tornado",
+        "fire": "fireblast",
+        "water": "tide",
+        "lightning": "spark",
+        "ice": "iceblast",
+        "light": "radiance",
+        "dark": "shade",
+    }
+    return mapping.get(element)
+
+
+def _follower_wand_element(gear: Optional[dict]) -> Optional[str]:
+    if not isinstance(gear, dict):
+        return None
+    points = gear.get("elem_points", {})
+    if isinstance(points, dict) and points:
+        element = max(points.items(), key=lambda entry: int(entry[1] or 0))[0]
+        return str(element)
+    element = gear.get("element")
+    return str(element) if element else None
+
+
+def _follower_can_cast(player, follower: dict, spell: dict) -> tuple[bool, bool]:
+    mp_cost = int(spell.get("mp_cost", 0) or 0)
+    element = spell.get("element")
+    if element:
+        charges = player.follower_wand_charges(follower)
+        if int(charges.get(str(element), 0) or 0) > 0:
+            return True, True
+    mp = int(follower.get("mp", 0) or 0)
+    return mp >= mp_cost, False
+
+
+def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) -> None:
+    if not state.player.followers or not any(opp.hp > 0 for opp in state.opponents):
+        return
+    for follower in state.player.followers:
+        if not isinstance(follower, dict):
+            continue
+        spells = follower.get("spells", [])
+        if not isinstance(spells, list):
+            spells = []
+        # Priority: healing if needed, then strength, then elemental
+        if "healing" in spells:
+            spell = ctx.spells.get("healing", {})
+            can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
+            if can_cast and state.player.hp < state.player.total_max_hp():
+                if not use_charge:
+                    follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+                animate_life_boost_gain(ctx, render_frame, state, generate_frame, 1)
+                name = follower.get("name", "Follower")
+                push_battle_message(state, f"{name} casts Life Boost.")
+                continue
+        if "strength" in spells:
+            spell = ctx.spells.get("strength", {})
+            can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
+            if can_cast and (state.player.temp_atk_bonus <= 0 or state.player.temp_def_bonus <= 0):
+                if not use_charge:
+                    follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+                animate_strength_gain(ctx, render_frame, state, generate_frame, 1)
+                name = follower.get("name", "Follower")
+                push_battle_message(state, f"{name} casts Strength.")
+                continue
+        wand = state.player.follower_gear_instance(follower, "wand")
+        element = _follower_wand_element(wand)
+        spell_id = _follower_element_spell_id(element) if element else None
+        if spell_id:
+            spell = ctx.spells.get(spell_id, {})
+            can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
+            if can_cast:
+                if use_charge:
+                    state.player.consume_follower_wand_charge(follower, str(element))
+                else:
+                    follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+                target = primary_opponent_index(state.opponents)
+                if target is None:
+                    continue
+                opponent = state.opponents[target]
+                atk_bonus = int(spell.get("atk_bonus", 2) or 2)
+                if element:
+                    atk_bonus += state.player.follower_element_points_total(follower, str(element))
+                damage_mult = float(spell.get("rank3_damage_mult", 1.25)) if spell.get("rank3_damage_mult") else 1.0
+                damage, crit, miss = roll_damage(state.player.follower_total_atk(follower) + atk_bonus, opponent.defense)
+                damage = int(damage * damage_mult)
+                name = follower.get("name", "Follower")
+                spell_name = spell.get("name", spell_id.title())
+                if miss:
+                    push_battle_message(state, f"{name}'s {spell_name} misses the {opponent.name}.")
+                    continue
+                opponent.hp = max(0, opponent.hp - damage)
+                if opponent.hp == 0:
+                    push_battle_message(state, f"{name}'s {spell_name} fells the {opponent.name}.")
+                    continue
+                stun_chance = float(spell.get("stun_chance", 0.0) or 0.0)
+                stunned_turns = try_stun(opponent, stun_chance) if stun_chance > 0 else 0
+                if crit:
+                    message = f"{name} lands a critical {spell_name} for {damage}."
+                else:
+                    message = f"{name} hits the {opponent.name} with {spell_name} for {damage}."
+                if stunned_turns > 0:
+                    message += f" It is stunned for {stunned_turns} turn(s)."
+                push_battle_message(state, message)
+                continue
+        # fallback attack
+        target = primary_opponent_index(state.opponents)
+        if target is None:
+            continue
+        opponent = state.opponents[target]
+        damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), opponent.defense)
+        name = follower.get("name", "Follower")
+        if miss:
+            push_battle_message(state, f"{name} misses the {opponent.name}.")
+            continue
+        opponent.hp = max(0, opponent.hp - damage)
+        if opponent.hp == 0:
+            push_battle_message(state, f"{name} strikes down the {opponent.name}.")
+            continue
+        if crit:
+            push_battle_message(state, f"Critical hit! {name} hits the {opponent.name} for {damage}.")
+        else:
+            push_battle_message(state, f"{name} hits the {opponent.name} for {damage}.")
+
+
+def _team_missing_total(player, follower: Optional[dict] = None, *, mode: str = "combined") -> int:
+    if follower is None:
+        max_hp = player.total_max_hp()
+        max_mp = int(player.max_mp)
+        missing_hp = max_hp - int(player.hp)
+        missing_mp = max_mp - int(player.mp)
+        if mode == "hp":
+            return missing_hp
+        return missing_hp + missing_mp
+    if not isinstance(follower, dict):
+        return 0
+    max_hp = int(follower.get("max_hp", 0) or 0)
+    max_mp = int(follower.get("max_mp", 0) or 0)
+    hp = int(follower.get("hp", max_hp) or max_hp)
+    mp = int(follower.get("mp", max_mp) or max_mp)
+    missing_hp = max(0, max_hp - hp)
+    missing_mp = max(0, max_mp - mp)
+    if mode == "hp":
+        return missing_hp
+    return missing_hp + missing_mp
+
+
+def _apply_item_heal(target, item: dict, player: Player) -> tuple[int, int]:
+    hp_gain = int(item.get("hp", 0) or 0)
+    mp_gain = int(item.get("mp", 0) or 0)
+    healed_hp = 0
+    healed_mp = 0
+    if target == "player":
+        if hp_gain > 0:
+            max_hp = player.total_max_hp()
+            healed_hp = min(hp_gain, max_hp - player.hp)
+            player.hp += healed_hp
+        if mp_gain > 0:
+            max_mp = player.max_mp
+            healed_mp = min(mp_gain, max_mp - player.mp)
+            player.mp += healed_mp
+        return healed_hp, healed_mp
+    if isinstance(target, dict):
+        if hp_gain > 0:
+            max_hp = int(target.get("max_hp", 0) or 0)
+            current_hp = int(target.get("hp", max_hp) or max_hp)
+            healed_hp = min(hp_gain, max(0, max_hp - current_hp))
+            target["hp"] = current_hp + healed_hp
+        if mp_gain > 0:
+            max_mp = int(target.get("max_mp", 0) or 0)
+            current_mp = int(target.get("mp", max_mp) or max_mp)
+            healed_mp = min(mp_gain, max(0, max_mp - current_mp))
+            target["mp"] = current_mp + healed_mp
+    return healed_hp, healed_mp
+
+
+def spell_level_up_notes(ctx, player, prev_level: int, new_level: int) -> list[str]:
     notes = []
-    for _, spell in ctx.spells.available(new_level):
+    for _, spell in ctx.spells.available(player, ctx.items):
         name = spell.get("name", "Spell")
         old_rank = ctx.spells.rank_for(spell, prev_level)
         new_rank = ctx.spells.rank_for(spell, new_level)
@@ -1025,8 +1302,35 @@ def resolve_player_action(
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
-        if spell_id == "healing":
-            pass
+        if spell_id in ("healing", "strength"):
+            if state.player.mp < base_cost and not has_charge:
+                state.last_message = f"Not enough MP to cast {name}."
+                return None
+            target_type, target_ref = state.player.select_team_target(mode="combined")
+            if target_type == "none":
+                state.last_message = "HP and MP are already full."
+                return None
+            if not has_charge:
+                state.player.mp -= base_cost
+            if target_type == "player":
+                if spell_id == "healing":
+                    animate_life_boost_gain(ctx, render_frame, state, generate_frame, 1)
+                else:
+                    animate_strength_gain(ctx, render_frame, state, generate_frame, 1)
+            else:
+                if spell_id == "healing":
+                    target_ref["temp_hp_bonus"] = int(target_ref.get("temp_hp_bonus", 0) or 0) + 1
+                    max_hp = state.player.follower_total_max_hp(target_ref)
+                    hp = int(target_ref.get("hp", max_hp) or max_hp)
+                    if hp < max_hp:
+                        target_ref["hp"] = hp + 1
+                else:
+                    target_ref["temp_atk_bonus"] = int(target_ref.get("temp_atk_bonus", 0) or 0) + 1
+                    target_ref["temp_def_bonus"] = int(target_ref.get("temp_def_bonus", 0) or 0) + 1
+            target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
+            spell_label = "Life Boost" if spell_id == "healing" else "Strength"
+            state.last_message = f"You cast {spell_label} on {target_name}."
+            return cmd
         mp_cost = base_cost * max(1, rank)
         if state.player.mp < mp_cost and not has_charge:
             state.last_message = f"Not enough MP to cast {name}."
@@ -1256,6 +1560,7 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 return True
         if state.player.location == "Forest" and idx < len(acting) - 1:
             render_battle_pause(ctx, render_frame, state, generate_frame, state.last_message)
+    _run_follower_action(ctx, render_frame, state, generate_frame)
     if state.player.temp_atk_bonus > 0:
         state.player.temp_atk_bonus = max(0, state.player.temp_atk_bonus - 1)
     if state.player.temp_def_bonus > 0:
@@ -1265,6 +1570,20 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         max_hp = state.player.total_max_hp()
         if state.player.hp > max_hp:
             state.player.hp = max_hp
+    if state.player.followers:
+        for follower in state.player.followers:
+            if not isinstance(follower, dict):
+                continue
+            if int(follower.get("temp_atk_bonus", 0) or 0) > 0:
+                follower["temp_atk_bonus"] = max(0, int(follower.get("temp_atk_bonus", 0) or 0) - 1)
+            if int(follower.get("temp_def_bonus", 0) or 0) > 0:
+                follower["temp_def_bonus"] = max(0, int(follower.get("temp_def_bonus", 0) or 0) - 1)
+            if int(follower.get("temp_hp_bonus", 0) or 0) > 0:
+                follower["temp_hp_bonus"] = max(0, int(follower.get("temp_hp_bonus", 0) or 0) - 1)
+                max_hp = state.player.follower_total_max_hp(follower)
+                hp = int(follower.get("hp", max_hp) or max_hp)
+                if hp > max_hp:
+                    follower["hp"] = max_hp
     if state.player.followers:
         for follower in state.player.followers:
             if not isinstance(follower, dict):
@@ -1325,6 +1644,40 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 healed = min(amount, max_mp - state.player.mp)
                 state.player.mp += healed
                 suffix = "MP"
+            elif ability_type == "item":
+                chance = float(ability.get("chance", 1.0) or 1.0)
+                if random.random() > chance:
+                    continue
+                item_id = str(ability.get("item_id", "") or "")
+                if not item_id:
+                    continue
+                item = ctx.items.get(item_id, {}) if hasattr(ctx, "items") else {}
+                if not isinstance(item, dict):
+                    continue
+                target_mode = str(ability.get("target", "combined") or "combined")
+                candidates = [("player", None, _team_missing_total(state.player, mode=target_mode))]
+                for teammate in state.player.followers:
+                    if not isinstance(teammate, dict):
+                        continue
+                    missing = _team_missing_total(state.player, teammate, mode=target_mode)
+                    candidates.append(("follower", teammate, missing))
+                target_type, target_ref, missing = max(candidates, key=lambda entry: entry[2])
+                if missing <= 0:
+                    continue
+                healed_hp, healed_mp = _apply_item_heal(target_ref if target_type == "follower" else "player", item, state.player)
+                if healed_hp <= 0 and healed_mp <= 0:
+                    continue
+                target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
+                name = follower.get("name", "Follower")
+                label = ability.get("label", "Item")
+                parts = []
+                if healed_hp:
+                    parts.append(f"{healed_hp} HP")
+                if healed_mp:
+                    parts.append(f"{healed_mp} MP")
+                restored = " and ".join(parts)
+                push_battle_message(state, f"{name} uses {label} on {target_name}, restoring {restored}.")
+                continue
             else:
                 continue
             name = follower.get("name", "Follower")
@@ -1385,9 +1738,13 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         ))
         if levels_gained > 0:
             state.leveling_mode = True
-            spell_notes = spell_level_up_notes(ctx, pre_level, state.player.level)
+            spell_notes = spell_level_up_notes(ctx, state.player, pre_level, state.player.level)
             element_notes = element_unlock_notes(ctx, state.player, pre_level, state.player.level)
             state.level_up_notes = spell_notes + element_notes
+        if hasattr(ctx, "quests") and ctx.quests is not None:
+            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+            for message in quest_messages:
+                push_battle_message(state, message)
         push_battle_message(state, "All is quiet. No enemies in sight.")
     else:
         state.last_message = ""

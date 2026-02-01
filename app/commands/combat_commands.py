@@ -2,6 +2,7 @@ import random
 
 from app.combat import add_loot, primary_opponent, roll_damage
 from app.commands.registry import CommandRegistry, CommandContext
+from app.questing import handle_event
 
 
 def register(registry: CommandRegistry):
@@ -88,11 +89,39 @@ def _handle_socialize(ctx: CommandContext) -> str:
         "level": 1,
         "xp": 0,
         "max_level": 5,
+        "atk": int(getattr(opponent, "atk", 4) or 4),
+        "defense": int(getattr(opponent, "defense", 2) or 2),
+        "mp": 6 + int(getattr(opponent, "level", 1) or 1) * 2,
+        "max_mp": 6 + int(getattr(opponent, "level", 1) or 1) * 2,
+        "hp": int(getattr(opponent, "max_hp", 12) or 12),
+        "max_hp": int(getattr(opponent, "max_hp", 12) or 12),
+        "equipment": {},
         "abilities": ["fairy_heal", "fairy_mana"] if follower_type == "fairy" else [],
         "active_ability": "fairy_heal" if follower_type == "fairy" else "",
     }
+    if follower_type == "wolf":
+        follower["abilities"] = ["wolf_meat_toss"]
+        follower["active_ability"] = "wolf_meat_toss"
+    if follower_type == "mushroom_mage":
+        follower["spells"] = ["healing", "strength"]
+        follower["abilities"] = ["mushroom_tea_brew"]
+        wand_pool = ["fire_wand", "water_wand", "wind_wand", "earth_wand"]
+        wand_item = random.choice(wand_pool)
+        gear = ctx.player.add_gear(wand_item, ctx.items_data, auto_equip=False)
+        ctx.player.assign_gear_to_follower(follower, gear.get("id"))
     if not ctx.player.add_follower(follower):
         return "You cannot lead more followers."
     opponent.hp = 0
     opponent.melted = True
-    return f"{name} joins your party."
+    message = f"{name} joins your party."
+    if ctx.quests_data is not None:
+        quest_messages = handle_event(
+            ctx.player,
+            ctx.quests_data,
+            "recruit_follower",
+            {"follower_type": follower_type, "count": 1},
+            ctx.items_data,
+        )
+        if quest_messages:
+            message = f"{message} " + " ".join(quest_messages)
+    return message

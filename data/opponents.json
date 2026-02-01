@@ -160,9 +160,9 @@
     "fairy": {
       "name": "Fairy",
       "element": "base",
-      "level": 4,
-      "hp": 18,
-      "atk": 22,
+      "level": 1,
+      "hp": 8,
+      "atk": 12,
       "defense": 12,
       "action_chance": 1.1,
       "recruitable": true,
@@ -224,6 +224,24 @@
       "atk": 28,
       "defense": 16,
       "action_chance": 1.1,
+      "recruitable": true,
+      "recruit_cost": 140,
+      "recruit_chance": 0.65,
+      "follower_type": "wolf",
+      "follower_names": [
+        "Ash",
+        "Bram",
+        "Cinder",
+        "Dusk",
+        "Ember",
+        "Frost",
+        "Glen",
+        "Hollow",
+        "Ivory",
+        "Jade",
+        "Koa",
+        "Luna"
+      ],
       "desc": "A wary predator with a chilling gaze.",
       "arrival": "pads in silently",
       "art": [
@@ -247,6 +265,44 @@
         " 2     2 1 1",
         " 1 2111  1 1",
         "1111111121112"
+      ]
+    },
+    "mushroom_miranda": {
+      "name": "Miranda",
+      "element": "light",
+      "level": 7,
+      "hp": 34,
+      "atk": 24,
+      "defense": 18,
+      "action_chance": 1.15,
+      "recruitable": true,
+      "recruit_cost": 180,
+      "recruit_chance": 0.7,
+      "follower_type": "mushroom_mage",
+      "follower_names": [
+        "Miranda"
+      ],
+      "desc": "A mushroom adept trained in elemental arts.",
+      "arrival": "steps out with a soft glow",
+      "art": [
+        "       ,",
+        " \\\\ ~o(_)",
+        " )))o~88),",
+        "//(_)888(_)",
+        "`-( *,* )-'",
+        "   \\\\ = /",
+        "    ) (",
+        "    \"\"\""
+      ],
+      "color_map": [
+        "       1",
+        " 1 11111",
+        " 111111111",
+        "11111111111",
+        "111 111 111",
+        "   1 1 1",
+        "    1 1",
+        "    111"
       ]
     },
     "ghost": {

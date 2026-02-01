@@ -19,8 +19,10 @@ from app.data_access.menus_data import MenusData
 from app.data_access.npcs_data import NpcsData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
+from app.data_access.quests_data import QuestsData
 from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
+from app.data_access.stories_data import StoriesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.text_data import TextData
 from app.data_access.venues_data import VenuesData
@@ -47,6 +49,8 @@ class AppContext:
     spells_art: SpellsArtData
     glyphs: GlyphsData
     save_data: SaveData
+    quests: QuestsData
+    stories: StoriesData
     registry: object
     router_ctx: RouterContext
     screen_ctx: ScreenContext
@@ -129,6 +133,14 @@ def _load_save() -> SaveData:
     return SaveData(SAVE_DIR)
 
 
+def _load_quests() -> QuestsData:
+    return QuestsData(f"{DATA_DIR}/quests.json")
+
+
+def _load_stories() -> StoriesData:
+    return StoriesData(f"{DATA_DIR}/stories.json")
+
+
 def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
     spell_commands = {
         spell.get("command_id")
@@ -167,6 +179,8 @@ def create_app() -> AppContext:
     spells_art = _load_spells_art()
     continents = _load_continents()
     save_data = _load_save()
+    quests = _load_quests()
+    stories = _load_stories()
 
     spell_commands, targeted_spell_commands, flash_spell_commands = _spell_command_sets(spells)
     combat_actions = command_ids_by_type(scenes, "combat") | spell_commands
@@ -190,6 +204,8 @@ def create_app() -> AppContext:
         glyphs=glyphs,
         objects=objects,
         registry=registry,
+        quests=quests,
+        stories=stories,
     )
     screen_ctx = ScreenContext(
         items=items,
@@ -210,6 +226,8 @@ def create_app() -> AppContext:
         spells_art=spells_art,
         glyphs=glyphs,
         save_data=save_data,
+        quests=quests,
+        stories=stories,
     )
 
     return AppContext(
@@ -231,6 +249,8 @@ def create_app() -> AppContext:
         spells_art=spells_art,
         glyphs=glyphs,
         save_data=save_data,
+        quests=quests,
+        stories=stories,
         registry=registry,
         router_ctx=router_ctx,
         screen_ctx=screen_ctx,

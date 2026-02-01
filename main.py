@@ -84,6 +84,8 @@ def main():
         stats_mode=False,
         spell_mode=False,
         followers_mode=False,
+        follower_equip_mode=False,
+        follower_equip_target=None,
         element_mode=False,
         alchemist_mode=False,
         alchemy_first=None,
@@ -175,6 +177,8 @@ def main():
             state.stats_mode = False
             state.spell_mode = False
             state.followers_mode = False
+            state.follower_equip_mode = False
+            state.follower_equip_target = None
             state.element_mode = False
             state.alchemist_mode = False
             state.alchemy_first = None

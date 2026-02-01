@@ -1,0 +1,233 @@
+{
+  "mushroom_01": {
+    "name": "Mushroom",
+    "species": "mushroom",
+    "default_stage": "year_7",
+    "stages": [
+      {
+        "id": "sprout",
+        "age_years": 0,
+        "label": "Just emerged from the ground.",
+        "art": [
+          "      qp",
+          "    \"\"\"\"\"\""
+        ]
+      },
+      {
+        "id": "month_3",
+        "age_months": 3,
+        "label": "3 months old",
+        "art": [
+          "      __",
+          "    ,'__'.",
+          "    '(..)'",
+          "      )(",
+          "   \"\"\"\"\"\"\""
+        ]
+      },
+      {
+        "id": "year_1",
+        "age_years": 1,
+        "label": "1 year old",
+        "art": [
+          "    _,---._",
+          "  ,' _____ `.",
+          "  '-( . . )-'",
+          "     \\(_)/",
+          "      ) (",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_3",
+        "age_years": 3,
+        "label": "3 years old",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          "  '=( . . )='",
+          "     \\(_)/",
+          "      ) (",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_7",
+        "age_years": 7,
+        "label": "7 years old",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          "  '=( .-. )='",
+          "     \\(_)/",
+          "      ) (",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_15",
+        "age_years": 15,
+        "label": "15 years old",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          "  '_( .-. )_'",
+          "     \\(_)/",
+          "      )\"(",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_30_monocle",
+        "age_years": 30,
+        "label": "30 years old and has a monocle",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          "  '_(`o . )_'",
+          "     \\(_)/",
+          "      )\"(",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_40_light_glasses",
+        "age_years": 40,
+        "label": "40 years old and has lightweight glasses",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          "  '_(-o~o-)_'",
+          "     \\(_)/",
+          "      )\"(",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_60_glasses",
+        "age_years": 60,
+        "label": "60 years old and has normal glasses",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          " (  (-o=o-)  )",
+          "  '-=\\(_)/=-'",
+          "      )\"(",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_70_rough",
+        "age_years": 70,
+        "label": "70 years old and rough around the edges",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          " (  {-o=o-}  )",
+          "  '==\\{_)/=='",
+          "      }\"{",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_60_rough",
+        "age_years": 60,
+        "label": "60 years old",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          " (  {-o=o-}  )",
+          "  '==\\{_}/=='",
+          "      }\"{",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_80_beard",
+        "age_years": 80,
+        "label": "80 years old and have a full beard",
+        "art": [
+          "    _,-=-._",
+          "  ,' _____ `.",
+          " (  {-o=o-}  )",
+          "  '==\\{_}/=='",
+          "     ((())",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_100_nearsighted",
+        "age_years": 100,
+        "label": "100 years old and somewhat nearsighted",
+        "art": [
+          "   _,-=\"=-._",
+          " ,'  _____  `.",
+          "{   {-O=O-}   }",
+          " '==-\\{_}/-=='",
+          "     ((())",
+          "      \"\"\""
+        ]
+      },
+      {
+        "id": "year_120_beard",
+        "age_years": 120,
+        "label": "120 years old and have a full beard",
+        "art": [
+          "   _,-=\"=-._",
+          " ,'  _____  `.",
+          "{   {-O=O-}   }",
+          " '===\\{_}/==='",
+          "     ((())",
+          "     (()))"
+        ]
+      },
+      {
+        "id": "year_200plus_ancestor",
+        "age_years": 200,
+        "label": "200+ years old and the father, grandfather, great grandfather, and great great grandfather etc. etc... of trillions of mushrooms",
+        "art": [
+          "   _,=\"\"\"=._",
+          " ,'  _____  `.",
+          "{   {-O=O-}   }",
+          " \"==-\\{_}/-==\"",
+          "     ((())",
+          "    ()(..)) ._  .---.",
+          "    ((())))    ( ?.. )",
+          "       \"\"       '---'"
+        ]
+      },
+      {
+        "id": "year_200plus_rest",
+        "age_years": 200,
+        "label": "Too old .. may he rest in peace..",
+        "art": [
+          "   _,=\"\"\"=._",
+          " ,'  _____  `.",
+          "{   { - - }   }",
+          " \"==-\\{_}/-==\"",
+          "     ((())",
+          "    ((())))",
+          "    ((())))"
+        ]
+      },
+      {
+        "id": "heaven",
+        "age_years": null,
+        "label": "But in mushroom heaven, the proud mushroom will continue to live on, watching over his little ones.",
+        "art": [
+          "       ___",
+          "     .'   `.",
+          "     `.___.'",
+          "",
+          "    _,=\"\"\"=._",
+          "  ,'  _____  `.",
+          "(\"`._{ . . }_,'\")",
+          " (~ ( \\{_}/ ) ~)",
+          "  (~  ((())  ~)",
+          "   (~'())))`~)",
+          "     ((())))"
+        ]
+      }
+    ]
+  }
+}

@@ -20,8 +20,10 @@ from app.data_access.menus_data import MenusData
 from app.data_access.npcs_data import NpcsData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
+from app.data_access.quests_data import QuestsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.stories_data import StoriesData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
 from app.models import Frame, Player, Opponent
@@ -60,6 +62,8 @@ class ScreenContext:
     spells_art: SpellsArtData
     glyphs: GlyphsData
     save_data: object
+    quests: QuestsData
+    stories: StoriesData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -580,10 +584,18 @@ def generate_frame(
                     active_label = ability.get("label", active_id)
             if active_label:
                 followers_actions.insert(0, {"label": f"Active: {active_label}", "_disabled": True})
+        gear_items = player.list_gear_items() if hasattr(player, "list_gear_items") else []
+        selected_follower = followers[menu_cursor] if followers and 0 <= menu_cursor < len(followers) else {}
         for entry in followers_menu.get("actions", []):
             cmd_entry = dict(entry)
             if cmd_entry.get("command") == "FOLLOWER_DISMISS" and not followers:
                 cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "FOLLOWER_EQUIP" and not gear_items:
+                cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "FOLLOWER_UNEQUIP":
+                equip = selected_follower.get("equipment", {}) if isinstance(selected_follower, dict) else {}
+                if not isinstance(equip, dict) or not equip:
+                    cmd_entry["_disabled"] = True
             followers_actions.append(cmd_entry)
         followers_menu = dict(followers_menu)
         followers_menu["actions"] = followers_actions
@@ -642,7 +654,7 @@ def generate_frame(
         art_color = ANSI.FG_WHITE
     elif spell_mode:
         spell_menu = ctx.menus.get("spellbook", {})
-        available_spells = ctx.spells.available(player.level)
+        available_spells = ctx.spells.available(player, ctx.items)
         display_location = spell_menu.get("title", "Spellbook")
         body = []
         if available_spells:

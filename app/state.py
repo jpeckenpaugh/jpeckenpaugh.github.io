@@ -53,3 +53,5 @@ class GameState:
     follower_dismiss_pending: Optional[int] = None
     followers_focus: str = "list"
     followers_action_cursor: int = 0
+    follower_equip_mode: bool = False
+    follower_equip_target: Optional[int] = None

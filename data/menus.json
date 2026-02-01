@@ -37,6 +37,14 @@
         "enabled_when": "has_items"
       },
       {
+        "label": "Portal",
+        "command": "PORTAL"
+      },
+      {
+        "label": "Quest",
+        "command": "QUEST"
+      },
+      {
         "label": "Stats",
         "command": "STATS"
       },
@@ -95,6 +103,18 @@
     "open_message": "View your followers.",
     "close_message": "Closed followers.",
     "actions": [
+      {
+        "label": "Equip Gear",
+        "command": "FOLLOWER_EQUIP"
+      },
+      {
+        "label": "Unequip Gear",
+        "command": "FOLLOWER_UNEQUIP"
+      },
+      {
+        "label": "Fuse",
+        "command": "FOLLOWER_FUSE"
+      },
       {
         "label": "Dismiss",
         "command": "FOLLOWER_DISMISS"

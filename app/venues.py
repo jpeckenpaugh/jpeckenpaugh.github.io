@@ -280,11 +280,21 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
             if state.alchemy_first == gear_id:
                 state.last_message = "Choose a different item."
                 return True
-            fused = state.player.fuse_gear(state.alchemy_first, gear_id)
+            owner_type, owner_id = state.player.gear_owner(state.alchemy_first)
+            fused = state.player.fuse_gear(state.alchemy_first, gear_id, auto_equip=False)
             state.alchemy_first = None
             state.alchemy_selecting = False
             state.action_cursor = 0
             if fused:
+                if owner_type == "player":
+                    slot = fused.get("slot")
+                    if slot:
+                        state.player.equipment[slot] = fused.get("id")
+                        state.player._recalc_gear()
+                elif owner_type == "follower" and owner_id:
+                    follower = state.player.follower_by_id(owner_id)
+                    if follower:
+                        state.player.assign_gear_to_follower(follower, fused.get("id"))
                 state.last_message = f"Fused into {fused.get('name', 'gear')}."
                 ctx.save_data.save_player(state.player)
             else:

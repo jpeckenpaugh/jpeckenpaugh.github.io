@@ -1,0 +1,94 @@
+{
+  "intro_spellcraft": {
+    "title": "Gather the Fairies",
+    "summary": "A mushroom companion joins your party and urges you to learn basic white magic before venturing deeper. Recruit three forest fairies and fuse their power to empower the team.",
+    "requirements": {
+      "flags_required": [],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "recruit_follower",
+        "follower_type": "fairy",
+        "count": 3
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "quest_intro_spellcraft_complete"
+      ],
+      "items": [],
+      "xp": 0
+    }
+  },
+  "fuse_fairies": {
+    "title": "Fuse the Fairies",
+    "summary": "Combine the strength of your three fairies into a single, stronger ally.",
+    "requirements": {
+      "flags_required": [
+        "quest_intro_spellcraft_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "fuse_followers",
+        "follower_type": "fairy",
+        "count": 3
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "quest_fuse_fairies_complete"
+      ],
+      "items": [],
+      "xp": 0
+    }
+  },
+  "gather_wolves": {
+    "title": "Gather the Wolves",
+    "summary": "As the rumors of a moving Ancient Tower grow, recruit a pack strong enough to endure the forest’s deepest threats.",
+    "requirements": {
+      "flags_required": [
+        "quest_fuse_fairies_complete"
+      ],
+      "level_min": 3
+    },
+    "objectives": [
+      {
+        "type": "recruit_follower",
+        "follower_type": "wolf",
+        "count": 3
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "quest_gather_wolves_complete"
+      ],
+      "items": [],
+      "xp": 0
+    }
+  },
+  "unlock_continent_01": {
+    "title": "[PLACEHOLDER_TITLE]",
+    "summary": "[PLACEHOLDER_SUMMARY]",
+    "requirements": {
+      "flags_required": [
+        "[PLACEHOLDER_FLAG_ID]"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "[PLACEHOLDER_OBJECTIVE_TYPE]",
+        "id": "[PLACEHOLDER_OBJECTIVE_ID]",
+        "count": 1
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "unlock_continent_[PLACEHOLDER_CONTINENT_ID]"
+      ],
+      "items": [],
+      "xp": 0
+    }
+  }
+}

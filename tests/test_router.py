@@ -8,9 +8,11 @@ from app.data_access.commands_data import CommandsData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
 from app.data_access.opponents_data import OpponentsData
+from app.data_access.quests_data import QuestsData
 from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.stories_data import StoriesData
 from app.data_access.venues_data import VenuesData
 from app.models import Player
 from app.commands import build_registry
@@ -39,6 +41,8 @@ class RouterTests(unittest.TestCase):
         self._write_json("items.json", {})
         self._write_json("menus.json", {})
         self._write_json("spells.json", {})
+        self._write_json("quests.json", {})
+        self._write_json("stories.json", {})
 
         self.items = ItemsData(os.path.join(self.data_dir, "items.json"))
         self.opponents = OpponentsData(os.path.join(self.data_dir, "opponents.json"))
@@ -47,6 +51,8 @@ class RouterTests(unittest.TestCase):
         self.venues = VenuesData(os.path.join(self.data_dir, "venues.json"))
         self.menus = MenusData(os.path.join(self.data_dir, "menus.json"))
         self.spells = SpellsData(os.path.join(self.data_dir, "spells.json"))
+        self.quests = QuestsData(os.path.join(self.data_dir, "quests.json"))
+        self.stories = StoriesData(os.path.join(self.data_dir, "stories.json"))
         self.save_data = SaveData(os.path.join(self.data_dir, "save.json"))
         self.registry = build_registry()
 
@@ -59,6 +65,8 @@ class RouterTests(unittest.TestCase):
             save_data=self.save_data,
             spells=self.spells,
             menus=self.menus,
+            quests=self.quests,
+            stories=self.stories,
             registry=self.registry,
         )
 

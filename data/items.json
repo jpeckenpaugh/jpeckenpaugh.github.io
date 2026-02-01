@@ -23,6 +23,21 @@
     "price": 12,
     "desc": "A soothing tea that restores body and mind."
   },
+  "mushroom_tea": {
+    "name": "Mushroom Tea",
+    "type": "healing",
+    "hp": 2,
+    "mp": 2,
+    "price": 5,
+    "desc": "A simple mushroom tea, that grants a small bit of vitality."
+  },
+  "meat": {
+    "name": "Meat",
+    "type": "healing",
+    "hp": 1,
+    "price": 2,
+    "desc": "A bite of meat for a bit of energy."
+  },
   "elixir": {
     "name": "Elixir",
     "type": "healing",
