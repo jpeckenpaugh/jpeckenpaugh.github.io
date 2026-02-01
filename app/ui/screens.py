@@ -865,7 +865,7 @@ def generate_frame(
         continent_label = ctx.continents.name_for(selected_element) if hasattr(ctx, "continents") else str(selected_element).title()
         continent_label = f"<{{([ {continent_label} ])}}>"
 
-        entries = quest_entries(player, ctx.quests) if hasattr(ctx, "quests") else []
+        entries = quest_entries(player, ctx.quests, ctx.items, continent=selected_element) if hasattr(ctx, "quests") else []
         commands = []
         detail_quest = None
         dialog_lines = []
@@ -891,19 +891,20 @@ def generate_frame(
                 for entry in entries:
                     quest = entry.get("quest", {})
                     quest_id = entry.get("id", "")
-                    short_name = str(quest.get("short_name") or "").strip()
+                    short_name = str(quest.get("title") or "").strip()
                     if not short_name:
-                        summary = str(quest.get("summary") or quest.get("title") or quest_id)
+                        summary = str(quest.get("summary") or quest_id)
                         words = summary.split()
                         short_name = " ".join(words[:5]) if words else str(quest_id)
                     commands.append({
                         "label": short_name,
                         "quest_id": quest_id,
                         "status": entry.get("status", "available"),
+                        "_disabled": entry.get("status") == "complete",
                         "quest": quest,
                     })
             else:
-                commands.append({"label": "No active quests.", "_disabled": True})
+                commands.append({"label": "No quests available.", "_disabled": True})
             commands.append({"label": "Back", "command": "B_KEY"})
 
         enabled = [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]

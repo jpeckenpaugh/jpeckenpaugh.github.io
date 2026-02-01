@@ -105,11 +105,18 @@ def _apply_rewards(player: Player, quest_id: str, quest: dict, items_data: Optio
     rewards = quest.get("rewards", {})
     if not isinstance(rewards, dict):
         rewards = {}
+    on_complete = quest.get("on_complete", {})
+    if not isinstance(on_complete, dict):
+        on_complete = {}
     flags_set = rewards.get("flags_set", [])
     if not isinstance(flags_set, list):
         flags_set = []
     for flag in flags_set:
         player.flags[str(flag)] = True
+    if on_complete.get("clear_recruit_only") and isinstance(getattr(player, "flags", None), dict):
+        player.flags.pop("recruit_only_types", None)
+    if on_complete.get("clear_follower_cap") and isinstance(getattr(player, "flags", None), dict):
+        player.flags.pop("follower_cap", None)
     items = rewards.get("items", [])
     if not isinstance(items, list):
         items = []
@@ -142,14 +149,19 @@ def start_quest(player: Player, quest_id: str) -> bool:
     return True
 
 
-def quest_entries(player: Player, quests_data) -> List[dict]:
+def quest_entries(player: Player, quests_data, items_data: Optional[object] = None, *, continent: Optional[str] = None) -> List[dict]:
     _ensure_player_quest_state(player)
     entries: List[dict] = []
     if not quests_data:
         return entries
+    evaluate_quests(player, quests_data, items_data)
     for quest_id, quest in quests_data.all().items():
         if not isinstance(quest, dict):
             continue
+        if continent:
+            quest_continent = str(quest.get("continent", "") or "")
+            if quest_continent and quest_continent != continent:
+                continue
         qstate = player.quests.get(quest_id)
         status = qstate.get("status") if isinstance(qstate, dict) else None
         if status == "complete":
@@ -172,7 +184,9 @@ def evaluate_quests(player: Player, quests_data, items_data: Optional[object] = 
         for quest_id, quest in quests_data.all().items():
             if not isinstance(quest, dict):
                 continue
-            qstate = _quest_state(player, quest_id)
+            qstate = player.quests.get(quest_id)
+            if not isinstance(qstate, dict):
+                continue
             if qstate.get("status") == "complete":
                 continue
             if not _requirements_met(player, quest):
@@ -180,6 +194,25 @@ def evaluate_quests(player: Player, quests_data, items_data: Optional[object] = 
             objectives = quest.get("objectives", [])
             if not isinstance(objectives, list):
                 objectives = []
+            progress = qstate.get("progress", {})
+            if isinstance(progress, dict):
+                for obj in objectives:
+                    if not isinstance(obj, dict):
+                        continue
+                    if str(obj.get("type", "")) != "recruit_follower":
+                        continue
+                    follower_type = str(obj.get("follower_type", ""))
+                    if not follower_type:
+                        continue
+                    needed = int(obj.get("count", 1) or 1)
+                    current = int(progress.get(_objective_key(obj), 0) or 0)
+                    if current >= needed:
+                        continue
+                    fuse_key = f"fuse_followers:{follower_type}"
+                    fuse_count = int(progress.get(fuse_key, 0) or 0)
+                    if fuse_count >= needed:
+                        progress[_objective_key(obj)] = needed
+                qstate["progress"] = progress
             if not _objectives_met(qstate.get("progress", {}), objectives):
                 continue
             qstate["status"] = "complete"

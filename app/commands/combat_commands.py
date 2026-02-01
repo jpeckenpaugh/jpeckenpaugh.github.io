@@ -69,12 +69,12 @@ def _handle_socialize(ctx: CommandContext) -> str:
         opponent = primary_opponent(ctx.opponents)
     if not opponent:
         return "There is no one to socialize with."
-    if isinstance(getattr(ctx.player, "quests", None), dict):
-        qstate = ctx.player.quests.get("intro_spellcraft")
-        if isinstance(qstate, dict) and qstate.get("status") == "active":
-            if not ctx.player.flags.get("quest_intro_spellcraft_complete", False):
-                if getattr(opponent, "follower_type", "") != "mushroom_baby":
-                    return "Why would I want to join your group?"
+    recruit_only_types = None
+    if isinstance(getattr(ctx.player, "flags", None), dict):
+        recruit_only_types = ctx.player.flags.get("recruit_only_types")
+    if isinstance(recruit_only_types, list) and recruit_only_types:
+        if getattr(opponent, "follower_type", "") not in recruit_only_types:
+            return "Why would I want to join your group?"
     if not getattr(opponent, "recruitable", False):
         return f"The {opponent.name} shows no interest."
     if getattr(ctx.player, "follower_slots_remaining", lambda: 0)() <= 0:

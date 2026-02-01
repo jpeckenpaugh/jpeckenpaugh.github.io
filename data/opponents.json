@@ -247,7 +247,7 @@
     "mushroom_baby": {
       "name": "Mushroom",
       "element": "base",
-      "level": 2,
+      "level": 1,
       "hp": 5,
       "atk": 4,
       "defense": 5,

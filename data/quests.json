@@ -1,7 +1,27 @@
 {
-  "intro_spellcraft": {
-    "title": "Gather the Fairies",
-    "short_name": "Once upon a time...",
+  "mushy_01": {
+    "title": "Once upon a time...",
+    "continent": "base",
+    "on_start": {
+      "grant_follower": {
+        "type": "mushroom_baby",
+        "name": "Mushy",
+        "count_as_recruit": true
+      },
+      "grant_flags": [
+        "spell_healing_enabled",
+        "spell_strength_enabled"
+      ],
+      "recruit_only_types": [
+        "mushroom_baby"
+      ],
+      "follower_cap": 3,
+      "start_message": "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
+    },
+    "on_complete": {
+      "clear_recruit_only": true,
+      "clear_follower_cap": true
+    },
     "summary_pre": "A tiny mushroom offers help but warns the forest is deadly.",
     "summary_active": "Recruit three mushroom babies and fuse them at the temple to grow stronger.",
     "summary_complete": "Quest complete.",
@@ -22,11 +42,6 @@
     },
     "objectives": [
       {
-        "type": "recruit_follower",
-        "follower_type": "mushroom_baby",
-        "count": 3
-      },
-      {
         "type": "fuse_followers",
         "follower_type": "mushroom_baby",
         "count": 3
@@ -34,15 +49,15 @@
     ],
     "rewards": {
       "flags_set": [
-        "quest_intro_spellcraft_complete"
+        "quest_mushy_01_complete"
       ],
       "items": [],
       "xp": 0
     }
   },
   "fuse_fairies": {
-    "title": "Fuse the Fairies",
-    "short_name": "Fairy fusion",
+    "title": "Fairy fusion",
+    "continent": "base",
     "summary_pre": "Three fairies can weave their power into one.",
     "summary_active": "Fuse three fairies into a stronger ally.",
     "summary_complete": "Quest complete.",
@@ -53,7 +68,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "quest_intro_spellcraft_complete"
+        "quest_mushy_01_complete"
       ]
     },
     "objectives": [
@@ -72,8 +87,8 @@
     }
   },
   "gather_wolves": {
-    "title": "Gather the Wolves",
-    "short_name": "Gather wolves",
+    "title": "Gather wolves",
+    "continent": "base",
     "summary_pre": "Rumors of the moving tower grow louder each night.",
     "summary_active": "Recruit three wolves to face the forest’s deepest threats.",
     "summary_complete": "Quest complete.",
@@ -105,7 +120,7 @@
   },
   "unlock_continent_01": {
     "title": "[PLACEHOLDER_TITLE]",
-    "short_name": "[PLACEHOLDER_SHORT]",
+    "continent": "base",
     "summary_pre": "[PLACEHOLDER_SUMMARY_PRE]",
     "summary_active": "[PLACEHOLDER_SUMMARY_ACTIVE]",
     "summary_complete": "[PLACEHOLDER_SUMMARY_COMPLETE]",

@@ -282,11 +282,10 @@ class Player:
 
     def follower_limit(self) -> int:
         base_limit = 5
-        if isinstance(getattr(self, "quests", None), dict):
-            qstate = self.quests.get("intro_spellcraft")
-            if isinstance(qstate, dict) and qstate.get("status") == "active":
-                if not self.flags.get("quest_intro_spellcraft_complete", False):
-                    return 3
+        if isinstance(getattr(self, "flags", None), dict):
+            cap = self.flags.get("follower_cap")
+            if isinstance(cap, int) and cap > 0:
+                return min(base_limit, cap)
         return base_limit
 
     def follower_slots_remaining(self) -> int:

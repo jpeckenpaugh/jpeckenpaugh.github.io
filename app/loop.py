@@ -665,22 +665,39 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 if quest_id:
                     qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
-                        intro_message = None
-                        if quest_id == "intro_spellcraft":
-                            if not hasattr(state.player, "flags") or not isinstance(state.player.flags, dict):
-                                state.player.flags = {}
-                            if not state.player.flags.get("quest_intro_started", False):
-                                state.player.flags["quest_intro_started"] = True
-                                follower = build_follower_from_entry({"type": "mushroom_baby", "name": "Mushy"})
-                                if follower:
-                                    state.player.add_follower(follower)
-                                state.player.flags["spell_healing_enabled"] = True
-                                state.player.flags["spell_strength_enabled"] = True
-                                intro_message = "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
+                        quest_def = detail_quest if isinstance(detail_quest, dict) else {}
+                        start_message = None
+                        on_start = quest_def.get("on_start", {}) if isinstance(quest_def.get("on_start", {}), dict) else {}
+                        if not hasattr(state.player, "flags") or not isinstance(state.player.flags, dict):
+                            state.player.flags = {}
+                        grant_flags = on_start.get("grant_flags", [])
+                        if isinstance(grant_flags, list):
+                            for flag in grant_flags:
+                                state.player.flags[str(flag)] = True
+                        recruit_only_types = on_start.get("recruit_only_types", [])
+                        if isinstance(recruit_only_types, list) and recruit_only_types:
+                            state.player.flags["recruit_only_types"] = [str(t) for t in recruit_only_types if t]
+                        follower_cap = on_start.get("follower_cap")
+                        if isinstance(follower_cap, int) and follower_cap > 0:
+                            state.player.flags["follower_cap"] = follower_cap
+                        grant_follower = on_start.get("grant_follower", {})
+                        if isinstance(grant_follower, dict):
+                            follower = build_follower_from_entry(grant_follower)
+                            if follower:
+                                state.player.add_follower(follower)
+                                if grant_follower.get("count_as_recruit") and hasattr(ctx, "quests") and ctx.quests is not None:
+                                    handle_event(
+                                        state.player,
+                                        ctx.quests,
+                                        "recruit_follower",
+                                        {"follower_type": follower.get("type", ""), "count": 1},
+                                        ctx.items,
+                                    )
+                        start_message = str(on_start.get("start_message", "") or "").strip() or None
                         if start_quest(state.player, quest_id):
-                            title = detail_quest.get("title", quest_id) if isinstance(detail_quest, dict) else quest_id
-                            if intro_message:
-                                state.last_message = intro_message
+                            title = quest_def.get("title", quest_id)
+                            if start_message:
+                                state.last_message = start_message
                             else:
                                 state.last_message = f"Quest started: {title}."
                         if hasattr(ctx, "save_data") and ctx.save_data:
@@ -699,14 +716,15 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             direction = -1 if action == "LEFT" else 1
             state.quest_continent_index = (state.quest_continent_index + direction) % len(elements)
             return None, None
-        entries = quest_entries(state.player, ctx.quests) if hasattr(ctx, "quests") else []
-        commands = [{"label": "Continent", "_disabled": True}]
+        entries = quest_entries(state.player, ctx.quests, ctx.items, continent=elements[state.quest_continent_index]) if hasattr(ctx, "quests") else []
+        commands = [{"label": "Continent", "_disabled": True}, {"label": "", "_disabled": True}]
         if entries:
             for entry in entries:
                 commands.append({
                     "quest_id": entry.get("id"),
                     "status": entry.get("status", "available"),
                     "quest": entry.get("quest", {}),
+                    "_disabled": entry.get("status") == "complete",
                 })
         else:
             commands.append({"label": "No active quests.", "_disabled": True})
@@ -718,10 +736,11 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             state.action_cursor = enabled[0]
         else:
             state.action_cursor = max(0, min(state.action_cursor, len(commands) - 1))
+        state.action_cursor = max(0, min(state.action_cursor, len(commands) - 1))
         if action in ("UP", "DOWN"):
             direction = -1 if action == "UP" else 1
             if enabled:
-                pos = enabled.index(state.action_cursor) if state.action_cursor in enabled else 0
+                pos = enabled.index(state.action_cursor) if state.action_cursor in enabled else len(enabled) - 1
                 pos = (pos + direction) % len(enabled)
                 state.action_cursor = enabled[pos]
             return None, None
@@ -1668,7 +1687,20 @@ def apply_router_command(
         enabled = _enabled_indices(commands)
         state.action_cursor = enabled[0] if enabled else 0
     if post_quest_mode and not pre_quest_mode:
-        entries = quest_entries(state.player, ctx.quests) if hasattr(ctx, "quests") else []
+        elements = list(getattr(state.player, "elements", []) or [])
+        if hasattr(ctx, "continents"):
+            order = list(ctx.continents.order() or [])
+            if order:
+                elements = [e for e in order if e in elements] or elements
+        if not elements:
+            elements = ["base"]
+        state.quest_continent_index = max(0, min(state.quest_continent_index, len(elements) - 1))
+        entries = quest_entries(
+            state.player,
+            ctx.quests,
+            ctx.items,
+            continent=elements[state.quest_continent_index],
+        ) if hasattr(ctx, "quests") else []
         commands = [{"_disabled": True}]
         if entries:
             for entry in entries:
