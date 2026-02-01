@@ -651,6 +651,39 @@ def _colorize_atlas_line(
     return "".join(out)
 
 
+def _colorize_element_atlas_line(
+    line: str,
+    digit_colors: Optional[dict] = None,
+    flicker_digit: Optional[str] = None,
+    flicker_on: bool = True,
+    locked_color: Optional[str] = None,
+) -> str:
+    if not line:
+        return line
+    out = []
+    for ch in line:
+        if digit_colors and ch in digit_colors:
+            if flicker_digit and ch == flicker_digit and not flicker_on:
+                out.append(f"{ANSI.FG_WHITE}{ANSI.DIM}*{ANSI.RESET}")
+            else:
+                out.append(f"{digit_colors[ch]}*{ANSI.RESET}")
+            continue
+        if ch.isdigit() and locked_color:
+            out.append(f"{locked_color}*{ANSI.RESET}")
+            continue
+        if ch in ("a", "b"):
+            out.append(f"{ANSI.FG_BLUE}~{ANSI.RESET}")
+            continue
+        if ch in ("|", "-", "/", "\\"):
+            out.append(f"{ANSI.FG_YELLOW}{ch}{ANSI.RESET}")
+            continue
+        if ch == "o":
+            out.append(f"{ANSI.FG_WHITE}{ANSI.DIM}{ch}{ANSI.RESET}")
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
 def generate_frame(
     ctx: ScreenContext,
     player: Player,
@@ -1243,7 +1276,7 @@ def generate_frame(
             canvas.append(pad_or_trim_ansi(art_line, SCREEN_WIDTH))
         atlas_lines = []
         if hasattr(ctx, "glyphs"):
-            atlas = ctx.glyphs.get("atlas", {}) if ctx.glyphs else {}
+            atlas = ctx.glyphs.get("element_atlas", {}) if ctx.glyphs else {}
             if isinstance(atlas, dict):
                 atlas_lines = atlas.get("art", []) if isinstance(atlas.get("art"), list) else []
         if atlas_lines:
@@ -1286,7 +1319,7 @@ def generate_frame(
             for idx, line in enumerate(atlas_lines):
                 row = start_y + idx
                 if 0 <= row < SCREEN_HEIGHT:
-                    colored = ANSI.RESET + _colorize_atlas_line(
+                    colored = ANSI.RESET + _colorize_element_atlas_line(
                         line,
                         digit_colors,
                         flicker_digit,
