@@ -32,7 +32,7 @@ from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
 from app.models import Frame, Player, Opponent
-from app.questing import quest_entries
+from app.questing import ordered_quest_ids, quest_entries, requirement_summary
 from app.ui.ansi import ANSI, color
 from app.ui.layout import (
     center_ansi,
@@ -867,7 +867,15 @@ def generate_frame(
         continent_label = ctx.continents.name_for(selected_element) if hasattr(ctx, "continents") else str(selected_element).title()
         continent_label = f"<{{([ {continent_label} ])}}>"
 
-        entries = quest_entries(player, ctx.quests, ctx.items, continent=selected_element) if hasattr(ctx, "quests") else []
+        ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests, selected_element) if hasattr(ctx, "stories") else []
+        entries = quest_entries(
+            player,
+            ctx.quests,
+            ctx.items,
+            continent=selected_element,
+            include_locked_next=True,
+            ordered_ids=ordered_ids,
+        ) if hasattr(ctx, "quests") else []
         commands = []
         detail_quest = None
         dialog_lines = []
@@ -959,6 +967,8 @@ def generate_frame(
             status = selected_entry.get("status", "")
             if status == "complete":
                 desc_text = str(quest.get("summary_complete", "Quest complete.") or "Quest complete.")
+            elif status == "locked":
+                desc_text = requirement_summary(player, quest)
             elif status == "active":
                 desc_text = str(quest.get("summary_active", "") or quest.get("summary_pre", "") or "")
             else:
@@ -973,7 +983,11 @@ def generate_frame(
         else:
             for entry in entries:
                 quest = entry.get("quest", {})
-                desc = str(quest.get("summary", "") or "")
+                status = entry.get("status", "")
+                if status == "locked":
+                    desc = requirement_summary(player, quest)
+                else:
+                    desc = str(quest.get("summary", "") or "")
                 descriptions.append(desc)
             if hasattr(ctx, "continents"):
                 for element in elements:

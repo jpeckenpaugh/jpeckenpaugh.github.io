@@ -353,6 +353,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             )
             if quest_messages:
                 state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                _enter_quest_screen(ctx, state, keep_message=True)
         ctx.save_data.save_player(state.player)
         return True
 
@@ -514,6 +515,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                     quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                        _enter_quest_screen(ctx, state, keep_message=True)
                 ctx.save_data.save_player(state.player)
                 state.inventory_items = state.player.list_inventory_items(ctx.items)
                 if not state.inventory_items:
@@ -658,34 +660,38 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
     return False
 
 
-def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key: Optional[str]) -> bool:
-    def _enter_quest_screen() -> None:
-        state.quest_mode = True
-        state.quest_detail_mode = False
-        state.quest_detail_id = None
-        state.quest_detail_page = 0
-        state.options_mode = False
-        state.shop_mode = False
-        state.hall_mode = False
-        state.inn_mode = False
-        state.inventory_mode = False
-        state.spell_mode = False
-        state.element_mode = False
-        state.alchemist_mode = False
-        state.temple_mode = False
-        state.smithy_mode = False
-        state.portal_mode = False
-        elements = list(getattr(state.player, "elements", []) or [])
-        if hasattr(ctx, "continents"):
-            order = list(ctx.continents.order() or [])
-            if order:
-                elements = [e for e in order if e in elements] or elements
-        current = getattr(state.player, "current_element", None)
-        if current in elements:
-            state.quest_continent_index = elements.index(current)
-        else:
-            state.quest_continent_index = 0
+def _enter_quest_screen(ctx: RouterContext, state: CommandState, *, keep_message: bool = False) -> None:
+    state.quest_mode = True
+    state.quest_detail_mode = False
+    state.quest_detail_id = None
+    state.quest_detail_page = 0
+    state.options_mode = False
+    state.shop_mode = False
+    state.hall_mode = False
+    state.inn_mode = False
+    state.inventory_mode = False
+    state.spell_mode = False
+    state.element_mode = False
+    state.alchemist_mode = False
+    state.temple_mode = False
+    state.smithy_mode = False
+    state.portal_mode = False
+    state.followers_mode = False
+    elements = list(getattr(state.player, "elements", []) or [])
+    if hasattr(ctx, "continents"):
+        order = list(ctx.continents.order() or [])
+        if order:
+            elements = [e for e in order if e in elements] or elements
+    current = getattr(state.player, "current_element", None)
+    if current in elements:
+        state.quest_continent_index = elements.index(current)
+    else:
+        state.quest_continent_index = 0
+    if not keep_message:
         state.last_message = "Your quests await."
+
+
+def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key: Optional[str]) -> bool:
 
     if command_id == "QUIT":
         state.action_cmd = "QUIT"
@@ -820,7 +826,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.spell_mode = False
             state.last_message = "You arrive in town."
             if not getattr(state.player, "flags", {}).get("quest_mushy_01_complete", False):
-                _enter_quest_screen()
+                _enter_quest_screen(ctx, state)
             return True
         if ctx.save_data.exists(slot):
             state.player.title_confirm = True
@@ -876,7 +882,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.smithy_mode = False
         state.portal_mode = False
         state.last_message = "You arrive in town."
-        _enter_quest_screen()
+        _enter_quest_screen(ctx, state)
         ctx.save_data.save_player(state.player)
         return True
     if command_id in ("FORTUNE_POOR", "FORTUNE_WELL_OFF", "FORTUNE_ROYALTY"):
@@ -1008,8 +1014,16 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
             ctx.save_data.save_player(state.player)
             return True
 
+        follower_levels = 0
+        followers = getattr(state.player, "followers", []) or []
+        if isinstance(followers, list):
+            for follower in followers:
+                if not isinstance(follower, dict):
+                    continue
+                follower_levels += int(follower.get("level", 1) or 1)
+        total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
         state.opponents = ctx.opponents_data.spawn(
-            state.player.level,
+            total_level,
             ANSI.FG_WHITE,
             element=getattr(state.player, "current_element", "base")
         )

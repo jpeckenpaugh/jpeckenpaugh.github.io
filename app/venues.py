@@ -242,6 +242,20 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                         quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
                         if quest_messages:
                             state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                            state.quest_mode = True
+                            state.quest_detail_mode = False
+                            state.quest_detail_id = None
+                            state.quest_detail_page = 0
+                            state.shop_mode = False
+                            state.hall_mode = False
+                            state.inn_mode = False
+                            state.inventory_mode = False
+                            state.spell_mode = False
+                            state.element_mode = False
+                            state.alchemist_mode = False
+                            state.temple_mode = False
+                            state.smithy_mode = False
+                            state.portal_mode = False
                     ctx.save_data.save_player(state.player)
                 return True
         if state.shop_view == "sell":
@@ -302,13 +316,29 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                         state.player.assign_gear_to_follower(follower, fused.get("id"))
                 state.last_message = f"Fused into {fused.get('name', 'gear')}."
                 if hasattr(ctx, "quests") and ctx.quests is not None:
-                    handle_event(
+                    quest_messages = handle_event(
                         state.player,
                         ctx.quests,
                         "fuse_gear",
                         {"item_id": fused.get("item_id", ""), "rank": int(fused.get("fuse_rank", 1) or 1)},
                         ctx.items,
                     )
+                    if quest_messages:
+                        state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                        state.quest_mode = True
+                        state.quest_detail_mode = False
+                        state.quest_detail_id = None
+                        state.quest_detail_page = 0
+                        state.shop_mode = False
+                        state.hall_mode = False
+                        state.inn_mode = False
+                        state.inventory_mode = False
+                        state.spell_mode = False
+                        state.element_mode = False
+                        state.alchemist_mode = False
+                        state.temple_mode = False
+                        state.smithy_mode = False
+                        state.portal_mode = False
                 ctx.save_data.save_player(state.player)
             else:
                 state.last_message = "Fusion failed."

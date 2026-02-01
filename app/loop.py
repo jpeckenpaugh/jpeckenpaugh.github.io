@@ -8,7 +8,7 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import build_follower_from_entry, evaluate_quests, handle_event, quest_entries, start_quest
+from app.questing import build_follower_from_entry, evaluate_quests, handle_event, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -736,15 +736,24 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             direction = -1 if action == "LEFT" else 1
             state.quest_continent_index = (state.quest_continent_index + direction) % len(elements)
             return None, None
-        entries = quest_entries(state.player, ctx.quests, ctx.items, continent=elements[state.quest_continent_index]) if hasattr(ctx, "quests") else []
+        ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests, elements[state.quest_continent_index]) if hasattr(ctx, "stories") else []
+        entries = quest_entries(
+            state.player,
+            ctx.quests,
+            ctx.items,
+            continent=elements[state.quest_continent_index],
+            include_locked_next=True,
+            ordered_ids=ordered_ids,
+        ) if hasattr(ctx, "quests") else []
         commands = [{"label": "Continent", "_disabled": True}, {"label": "", "_disabled": True}]
         if entries:
             for entry in entries:
+                status = entry.get("status", "available")
                 commands.append({
                     "quest_id": entry.get("id"),
-                    "status": entry.get("status", "available"),
+                    "status": status,
                     "quest": entry.get("quest", {}),
-                    "_disabled": entry.get("status") == "complete",
+                    "_disabled": status == "complete",
                 })
         else:
             commands.append({"label": "No active quests.", "_disabled": True})
@@ -775,6 +784,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 if quest_id:
                     qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
+                        if entry.get("status") == "locked":
+                            return None, None
                         state.quest_detail_mode = True
                         state.quest_detail_id = quest_id
                         state.quest_detail_page = 0
@@ -974,6 +985,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                        _open_quest_screen(ctx, state)
                 state.follower_dismiss_pending = None
                 return None, None
             if cmd == "FOLLOWER_EQUIP":
@@ -1352,6 +1364,35 @@ def _follower_wand_element(gear: Optional[dict]) -> Optional[str]:
         return str(element)
     element = gear.get("element")
     return str(element) if element else None
+
+
+def _open_quest_screen(ctx, state: GameState) -> None:
+    state.quest_mode = True
+    state.quest_detail_mode = False
+    state.quest_detail_id = None
+    state.quest_detail_page = 0
+    state.options_mode = False
+    state.shop_mode = False
+    state.hall_mode = False
+    state.inn_mode = False
+    state.inventory_mode = False
+    state.spell_mode = False
+    state.element_mode = False
+    state.alchemist_mode = False
+    state.temple_mode = False
+    state.smithy_mode = False
+    state.portal_mode = False
+    state.followers_mode = False
+    elements = list(getattr(state.player, "elements", []) or [])
+    if hasattr(ctx, "continents"):
+        order = list(ctx.continents.order() or [])
+        if order:
+            elements = [e for e in order if e in elements] or elements
+    current = getattr(state.player, "current_element", None)
+    if current in elements:
+        state.quest_continent_index = elements.index(current)
+    else:
+        state.quest_continent_index = 0
 
 
 def _follower_can_cast(player, follower: dict, spell: dict) -> tuple[bool, bool]:
@@ -2397,6 +2438,8 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
             for message in quest_messages:
                 push_battle_message(state, message)
+            if quest_messages:
+                _open_quest_screen(ctx, state)
         push_battle_message(state, "All is quiet. No enemies in sight.")
     else:
         state.last_message = ""

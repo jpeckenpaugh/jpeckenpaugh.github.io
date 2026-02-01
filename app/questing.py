@@ -58,6 +58,25 @@ def _requirements_met(player: Player, quest: dict) -> bool:
     return True
 
 
+def requirement_summary(player: Player, quest: dict) -> str:
+    requirements = quest.get("requirements", {})
+    if not isinstance(requirements, dict):
+        requirements = {}
+    parts = []
+    level_min = int(requirements.get("level_min", 0) or 0)
+    if level_min and int(player.level) < level_min:
+        parts.append(f"Player level {level_min} is required.")
+    flags_required = requirements.get("flags_required", [])
+    if not isinstance(flags_required, list):
+        flags_required = []
+    unmet = [str(flag) for flag in flags_required if not player.flags.get(str(flag), False)]
+    if unmet:
+        parts.append("Quest prerequisites are not met.")
+    if parts:
+        return "Requirement not met. " + " ".join(parts)
+    return "Requirement not met."
+
+
 def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict]) -> bool:
     for obj in objectives:
         if not isinstance(obj, dict):
@@ -169,13 +188,53 @@ def start_quest(player: Player, quest_id: str) -> bool:
     return True
 
 
-def quest_entries(player: Player, quests_data, items_data: Optional[object] = None, *, continent: Optional[str] = None) -> List[dict]:
+def ordered_quest_ids(stories_data, quests_data, continent: Optional[str] = None) -> List[str]:
+    ordered: List[str] = []
+    if hasattr(stories_data, "all"):
+        for story in stories_data.all().values():
+            if not isinstance(story, dict):
+                continue
+            quest_ids = story.get("quests", [])
+            if not isinstance(quest_ids, list):
+                continue
+            for quest_id in quest_ids:
+                quest_id = str(quest_id)
+                if quest_id in ordered:
+                    continue
+                quest = quests_data.get(quest_id, {}) if hasattr(quests_data, "get") else {}
+                if continent:
+                    quest_continent = str(quest.get("continent", "") or "")
+                    if quest_continent and quest_continent != continent:
+                        continue
+                ordered.append(quest_id)
+    return ordered
+
+
+def quest_entries(
+    player: Player,
+    quests_data,
+    items_data: Optional[object] = None,
+    *,
+    continent: Optional[str] = None,
+    include_locked_next: bool = False,
+    ordered_ids: Optional[List[str]] = None,
+) -> List[dict]:
     _ensure_player_quest_state(player)
     entries: List[dict] = []
     if not quests_data:
         return entries
     evaluate_quests(player, quests_data, items_data)
-    for quest_id, quest in quests_data.all().items():
+    quest_items = []
+    if ordered_ids:
+        for quest_id in ordered_ids:
+            quest = quests_data.get(quest_id, {}) if hasattr(quests_data, "get") else {}
+            if isinstance(quest, dict):
+                quest_items.append((quest_id, quest))
+    else:
+        quest_items = list(quests_data.all().items())
+
+    shown_next = False
+    for quest_id, quest in quest_items:
         if not isinstance(quest, dict):
             continue
         if continent:
@@ -189,9 +248,15 @@ def quest_entries(player: Player, quests_data, items_data: Optional[object] = No
             continue
         if status == "active":
             entries.append({"id": quest_id, "quest": quest, "status": "active"})
-            continue
+            shown_next = True
+            break
         if _requirements_met(player, quest):
             entries.append({"id": quest_id, "quest": quest, "status": "available"})
+            shown_next = True
+            break
+        if include_locked_next and not shown_next:
+            entries.append({"id": quest_id, "quest": quest, "status": "locked"})
+            break
     return entries
 
 

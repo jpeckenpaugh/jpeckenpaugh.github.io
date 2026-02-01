@@ -863,7 +863,6 @@ class Player:
         for _ in range(1, self.level):
             threshold *= 2
         while self.xp >= threshold:
-            self.xp -= threshold
             self.level += 1
             self.stat_points += 10
             levels_gained += 1
