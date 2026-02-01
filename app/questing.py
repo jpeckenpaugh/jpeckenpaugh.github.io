@@ -131,8 +131,12 @@ def _apply_rewards(player: Player, quest_id: str, quest: dict, items_data: Optio
         player.flags[str(flag)] = True
     if on_complete.get("clear_recruit_only") and isinstance(getattr(player, "flags", None), dict):
         player.flags.pop("recruit_only_types", None)
-    if on_complete.get("clear_follower_cap") and isinstance(getattr(player, "flags", None), dict):
-        player.flags.pop("follower_cap", None)
+    if isinstance(getattr(player, "flags", None), dict):
+        if on_complete.get("clear_follower_cap"):
+            player.flags.pop("follower_cap", None)
+        follower_cap = on_complete.get("follower_cap")
+        if isinstance(follower_cap, int) and follower_cap > 0:
+            player.flags["follower_cap"] = follower_cap
     items = rewards.get("items", [])
     if not isinstance(items, list):
         items = []

@@ -5,7 +5,7 @@ import time
 from typing import Any, Optional
 
 from app.shop import shop_commands, shop_inventory, shop_sell_inventory, purchase_item, sell_item
-from app.questing import handle_event
+from app.questing import evaluate_quests, handle_event
 from app.ui.ansi import ANSI
 from app.ui.constants import SCREEN_WIDTH
 from app.ui.rendering import render_venue_art, render_venue_objects
@@ -238,6 +238,10 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                 item_id = selection.get("item_id")
                 if item_id:
                     state.last_message = purchase_item(state.player, ctx.items, item_id)
+                    if hasattr(ctx, "quests") and ctx.quests is not None:
+                        quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+                        if quest_messages:
+                            state.last_message = f"{state.last_message} " + " ".join(quest_messages)
                     ctx.save_data.save_player(state.player)
                 return True
         if state.shop_view == "sell":

@@ -23,7 +23,7 @@ from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
-from app.questing import handle_event
+from app.questing import evaluate_quests, handle_event
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
@@ -233,6 +233,10 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         else:
             state.quest_continent_index = 0
         state.last_message = "Your quests await."
+        if hasattr(ctx, "quests") and ctx.quests is not None:
+            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+            if quest_messages:
+                state.last_message = " ".join(quest_messages)
         return True
 
     if command_id == "ENTER_SCENE":
@@ -503,6 +507,10 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                         if target_type == "follower":
                             target = target_ref
                 state.last_message = state.player.use_item(item_id, ctx.items, target=target)
+                if hasattr(ctx, "quests") and ctx.quests is not None:
+                    quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+                    if quest_messages:
+                        state.last_message = f"{state.last_message} " + " ".join(quest_messages)
                 ctx.save_data.save_player(state.player)
                 state.inventory_items = state.player.list_inventory_items(ctx.items)
                 if not state.inventory_items:

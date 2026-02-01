@@ -563,6 +563,8 @@ class Player:
             fused_type = "mushroom_teen"
         elif follower_type == "fairy_baby":
             fused_type = "fairy_teen"
+        elif follower_type == "wolf_pup":
+            fused_type = "wolf"
         base_name = fused_type.replace("_", " ").title() or "Follower"
         abilities = []
         active = ""
@@ -576,6 +578,14 @@ class Player:
             fused_name = "Mushroom Teen"
             if any(name == "Mushy" for name in kept_names):
                 fused_name = "Mushy"
+        if follower_type == "fairy_baby":
+            fused_name = "Fairy Teen"
+            if any(name == "Beba" for name in kept_names):
+                fused_name = "Beba"
+        if follower_type == "wolf_pup":
+            fused_name = "Wolf"
+            if any(name == "Chase" for name in kept_names):
+                fused_name = "Chase"
         fused = {
             "type": fused_type,
             "name": fused_name,

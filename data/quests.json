@@ -15,12 +15,12 @@
       "recruit_only_types": [
         "mushroom_baby"
       ],
-      "follower_cap": 3,
+      "follower_cap_extra": 2,
       "start_message": "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
     },
     "on_complete": {
       "clear_recruit_only": true,
-      "clear_follower_cap": true
+      "follower_cap": 2
     },
     "summary_pre": "A tiny mushroom offers help but warns the forest is deadly.",
     "summary_active": "Recruit three mushroom babies and fuse them at the temple to grow stronger.",
@@ -128,64 +128,102 @@
       "xp": 0
     }
   },
-  "fuse_fairies": {
-    "title": "Fairy fusion",
+  "mushy_04": {
+    "title": "Beba Hexa",
     "continent": "base",
-    "summary_pre": "Three fairies can weave their power into one.",
-    "summary_active": "Fuse three fairies into a stronger ally.",
+    "on_start": {
+      "grant_follower": {
+        "type": "fairy_baby",
+        "name": "Beba",
+        "count_as_recruit": true
+      },
+      "gp_cost": 100,
+      "recruit_only_types": [
+        "fairy_baby"
+      ],
+      "follower_cap_extra": 2
+    },
+    "on_complete": {
+      "clear_recruit_only": true,
+      "follower_cap": 3
+    },
+    "summary_pre": "Mushy has a fairy friend who might grow into a queen.",
+    "summary_active": "Recruit three fairy babies and fuse them into a fairy teen.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "fairy",
+    "art_opponent": "fairy_baby",
     "dialog": [
-      "Three fairies can weave their power into one.",
-      "Fuse them to temper your team for what comes next."
+      "Mushy has a friend to introduce. Her name is Beba, and she is tiny, sparkly, and very dramatic.",
+      "She is not strong yet, but Beba is a princess. One day she could grow into a full Fairy Queen.",
+      "Beba will cost 100 GP to recruit, but once she joins, other fairies will join for 60 GP each. It is worth it.",
+      "If we help her gather a small court, she will blossom faster. That means recruiting a few fairy babies.",
+      "Once we have three fairy babies, the temple can fuse them into a stronger fairy teen.",
+      "Ready to meet Beba and give her a proper royal escort? (Start Quest)"
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_01_complete"
+        "quest_mushy_03_complete"
       ]
     },
     "objectives": [
       {
         "type": "fuse_followers",
-        "follower_type": "fairy",
+        "follower_type": "fairy_baby",
         "count": 3
       }
     ],
     "rewards": {
       "flags_set": [
-        "quest_fuse_fairies_complete"
+        "quest_mushy_04_complete"
       ],
       "items": [],
       "xp": 0
     }
   },
-  "gather_wolves": {
-    "title": "Gather wolves",
+  "mushy_05": {
+    "title": "Chase the Moon",
     "continent": "base",
-    "summary_pre": "Rumors of the moving tower grow louder each night.",
-    "summary_active": "Recruit three wolves to face the forest’s deepest threats.",
+    "on_start": {
+      "grant_follower": {
+        "type": "wolf_pup",
+        "name": "Chase",
+        "count_as_recruit": true
+      },
+      "recruit_only_types": [
+        "wolf_pup"
+      ],
+      "follower_cap_extra": 2
+    },
+    "on_complete": {
+      "clear_recruit_only": true,
+      "follower_cap": 1
+    },
+    "summary_pre": "A young wolf longs to run beneath the wandering tower’s shadow.",
+    "summary_active": "Recruit three wolf pups and fuse them into a full wolf.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "wolf",
+    "art_opponent": "wolf_pup",
     "dialog": [
-      "Rumors of the moving tower grow louder each night.",
-      "A wolf pack will give you the bite and grit to endure."
+      "Mushy whispers about a wolf pup named Chase who runs the ridge each night, following the moon’s path.",
+      "Chase is quick but young, still learning to guard the pack. He wants a team that can keep up with him.",
+      "If we help him gather two more wolf pups, the temple can fuse their bond into a full-grown wolf.",
+      "A true wolf will give us the bite and grit to face what waits beyond the forest.",
+      "Ready to run with Chase and learn the rhythm of the moon? (Start Quest)"
     ],
     "requirements": {
       "flags_required": [
-        "quest_fuse_fairies_complete"
+        "quest_mushy_04_complete"
       ],
       "level_min": 3
     },
     "objectives": [
       {
-        "type": "recruit_follower",
-        "follower_type": "wolf",
+        "type": "fuse_followers",
+        "follower_type": "wolf_pup",
         "count": 3
       }
     ],
     "rewards": {
       "flags_set": [
-        "quest_gather_wolves_complete"
+        "quest_mushy_05_complete"
       ],
       "items": [],
       "xp": 0

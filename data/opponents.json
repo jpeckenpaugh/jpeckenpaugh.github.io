@@ -160,13 +160,13 @@
     "fairy": {
       "name": "Fairy",
       "element": "base",
-      "level": 1,
-      "hp": 8,
-      "atk": 12,
-      "defense": 12,
+      "level": 10,
+      "hp": 80,
+      "atk": 120,
+      "defense": 60,
       "action_chance": 1.1,
       "recruitable": true,
-      "recruit_cost": 100,
+      "recruit_cost": 1000,
       "recruit_chance": 0.9,
       "follower_type": "fairy",
       "follower_names": [
@@ -437,6 +437,53 @@
         " 2     2 1 1",
         " 1 2111  1 1",
         "1111111121112"
+      ]
+    },
+    "wolf_pup": {
+      "name": "Wolf Pup",
+      "element": "base",
+      "level": 3,
+      "hp": 16,
+      "atk": 14,
+      "defense": 9,
+      "action_chance": 1.05,
+      "recruitable": true,
+      "recruit_cost": 100,
+      "recruit_chance": 0.75,
+      "follower_type": "wolf_pup",
+      "follower_names": [
+        "Ash",
+        "Bram",
+        "Cinder",
+        "Dusk",
+        "Ember",
+        "Frost",
+        "Glen",
+        "Hollow",
+        "Ivory",
+        "Jade",
+        "Koa",
+        "Luna"
+      ],
+      "desc": "A young wolf learning the ways of the pack.",
+      "arrival": "pads in softly",
+      "art": [
+        "      __.",
+        "    /`../",
+        "   <<..|",
+        "  /.\\.\\/",
+        " (..).||",
+        " |.(__||",
+        "<____)\\_)"
+      ],
+      "color_map": [
+        "      111",
+        "    11111",
+        "   11111",
+        "  111111",
+        " 1111111",
+        " 1111111",
+        "111111111"
       ]
     },
     "mushroom_miranda": {

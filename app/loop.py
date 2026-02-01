@@ -677,14 +677,34 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                         recruit_only_types = on_start.get("recruit_only_types", [])
                         if isinstance(recruit_only_types, list) and recruit_only_types:
                             state.player.flags["recruit_only_types"] = [str(t) for t in recruit_only_types if t]
+                        grant_follower = on_start.get("grant_follower", {})
+                        grant_type = ""
+                        if isinstance(grant_follower, dict):
+                            grant_type = str(grant_follower.get("type", "") or "").strip()
                         follower_cap = on_start.get("follower_cap")
                         if isinstance(follower_cap, int) and follower_cap > 0:
                             state.player.flags["follower_cap"] = follower_cap
-                        grant_follower = on_start.get("grant_follower", {})
-                        if isinstance(grant_follower, dict):
+                        follower_cap_extra = on_start.get("follower_cap_extra")
+                        if isinstance(follower_cap_extra, int) and follower_cap_extra > 0:
+                            base_count = len(state.player.followers) if isinstance(state.player.followers, list) else 0
+                            if grant_type:
+                                base_count += 1
+                            state.player.flags["follower_cap"] = base_count + follower_cap_extra
+                        if grant_type and state.player.follower_slots_remaining() <= 0:
+                            state.last_message = "No room for another follower."
+                            return None, None
+                        gp_cost = int(on_start.get("gp_cost", 0) or 0)
+                        if gp_cost > 0:
+                            if int(getattr(state.player, "gold", 0) or 0) < gp_cost:
+                                state.last_message = "Not enough GP."
+                                return None, None
+                            state.player.gold = int(getattr(state.player, "gold", 0) or 0) - gp_cost
+                        if grant_type:
                             follower = build_follower_from_entry(grant_follower)
                             if follower:
-                                state.player.add_follower(follower)
+                                if not state.player.add_follower(follower):
+                                    state.last_message = "No room for another follower."
+                                    return None, None
                                 if grant_follower.get("count_as_recruit") and hasattr(ctx, "quests") and ctx.quests is not None:
                                     handle_event(
                                         state.player,
