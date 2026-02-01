@@ -2,7 +2,8 @@
   "version": 2,
   "layout": {
     "menu": {
-      "frame_style": "round"
+      "frame_style": "round",
+      "margin": 1
     }
   },
   "scroll": {
@@ -31,6 +32,27 @@
           "label": "Quit",
           "command": "QUIT"
         }
+      ]
+    },
+    "title_name": {
+      "narrative": [
+        "Choose your name."
+      ],
+      "items": [
+        { "label": "Custom...", "command": "TITLE_NAME_CUSTOM" },
+        { "label": "Random", "command": "TITLE_NAME_RANDOM" },
+        { "label": "Back", "command": "TITLE_NAME_BACK" }
+      ]
+    },
+    "title_start_confirm": {
+      "narrative": [
+        "Start a new game?",
+        "",
+        "Your save will be created now."
+      ],
+      "items": [
+        { "label": "Begin adventure", "command": "TITLE_START_CONFIRM_YES" },
+        { "label": "Back", "command": "TITLE_START_CONFIRM_NO" }
       ]
     },
     "title_confirm": {
@@ -86,6 +108,12 @@
         ""
       ],
       "items": "slot_select"
+    },
+    "title_name_input": {
+      "narrative": [
+        "Enter your name."
+      ],
+      "items": []
     }
   }
 }

@@ -131,6 +131,8 @@ class SaveData:
             "level": int(player.get("level", 1)),
             "gold": int(player.get("gold", 0)),
             "location": str(player.get("location", "Town")),
+            "current_element": str(player.get("current_element", "base")),
+            "name": str(player.get("name", "WARRIOR")),
             "created_at": str(meta.get("created_at") or "Unknown"),
             "last_played": str(meta.get("last_played") or "Unknown"),
         }
@@ -192,3 +194,18 @@ class SaveData:
             if not self.exists(slot):
                 return slot
         return None
+
+    def existing_player_names(self, max_slots: Optional[int] = None) -> set[str]:
+        limit = max(1, min(MAX_SAVE_SLOTS, int(max_slots or MAX_SAVE_SLOTS)))
+        names: set[str] = set()
+        for slot in self._slot_numbers(limit):
+            data = self.load(slot)
+            if not isinstance(data, dict):
+                continue
+            player = data.get("player", {})
+            if not isinstance(player, dict):
+                continue
+            name = str(player.get("name", "")).strip()
+            if name:
+                names.add(name)
+        return names

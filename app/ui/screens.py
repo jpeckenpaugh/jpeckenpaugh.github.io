@@ -139,12 +139,18 @@ def _title_state_config(
         return scene_data.get("narrative", []), scene_commands(ctx.scenes, ctx.commands, "title", player, []), []
     menus = title_data.get("menus", {}) if isinstance(title_data, dict) else {}
     menu_id = menu_stack[-1] if menu_stack else title_data.get("root_menu", "title_root")
+    if getattr(player, "title_name_input", False):
+        menu_id = "title_name_input"
+    if getattr(player, "title_name_select", False):
+        menu_id = "title_name"
     if getattr(player, "title_confirm", False):
         menu_id = "title_confirm"
     if getattr(player, "title_fortune", False):
         menu_id = "title_fortune"
     if getattr(player, "title_slot_select", False):
         menu_id = "title_slot_select"
+    if getattr(player, "title_start_confirm", False):
+        menu_id = "title_start_confirm"
     menu_data = menus.get(menu_id, {}) if isinstance(menus, dict) else {}
     narrative = menu_data.get("narrative", [])
     if not isinstance(narrative, list):
@@ -159,12 +165,16 @@ def _title_state_config(
         for summary in summaries:
             slot_num = summary.get("slot", 0)
             if summary.get("empty"):
-                label = f"Slot {slot_num} (Empty)"
+                label = f"{slot_num}.) Empty"
             else:
                 level = summary.get("level", 1)
                 location = summary.get("location", "Town")
                 gold = summary.get("gold", 0)
-                label = f"Slot {slot_num}: Lv{level} {location} GP{gold}"
+                name = summary.get("name", "WARRIOR")
+                element = summary.get("current_element")
+                if hasattr(ctx, "continents") and element:
+                    location = ctx.continents.name_for(str(element)) or location
+                label = f"{slot_num}.) {name} Lv{level} {location} GP{gold}"
             entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
             built.append(entry)
         if not built:
@@ -177,6 +187,19 @@ def _title_state_config(
         narrative = list(narrative)
         narrative.append("")
         narrative.append(detail_lines[min(max(selected_index, 0), len(detail_lines) - 1)])
+    if menu_id == "title_start_confirm":
+        pending_name = str(getattr(player, "title_pending_name", "") or "WARRIOR")
+        pending_fortune = str(getattr(player, "title_pending_fortune", "") or "")
+        fortune_map = {
+            "FORTUNE_POOR": "Poor (10 GP)",
+            "FORTUNE_WELL_OFF": "Well-Off (100 GP)",
+            "FORTUNE_ROYALTY": "Royalty (1,000 GP)",
+        }
+        fortune_label = fortune_map.get(pending_fortune, "Unknown")
+        narrative = list(narrative)
+        narrative.append("")
+        narrative.append(f"Name: {pending_name[:16]}")
+        narrative.append(f"Fortune: {fortune_label}")
     if not isinstance(items, list):
         items = []
     commands = []
@@ -289,6 +312,73 @@ def _title_menu_lines(
         content[cursor_row] = (
             (" " * margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * margin)
         )
+        cursor_row += 1
+    for i in range(inner_height):
+        box_lines[i + 1] = "|" + content[i] + "|"
+    menu_lines = []
+    start_x = max(0, min(SCREEN_WIDTH - width, center_x - (width // 2)))
+    start_y = max(0, min(SCREEN_HEIGHT - height, center_y - (height // 2)))
+    for line in box_lines:
+        prefix = " " * max(0, start_x)
+        menu_lines.append(pad_or_trim_ansi(prefix + line, SCREEN_WIDTH))
+    return menu_lines, start_y, start_x, width
+
+
+def _title_keyboard_lines(
+    menu_cfg: dict,
+    name_buffer: str,
+    cursor: tuple[int, int],
+    shift_lock: bool,
+) -> tuple[list[str], int, int, int]:
+    center_x = int(menu_cfg.get("x", SCREEN_WIDTH // 2) or (SCREEN_WIDTH // 2))
+    center_y = int(menu_cfg.get("y", SCREEN_HEIGHT // 2) or (SCREEN_HEIGHT // 2))
+    margin = int(menu_cfg.get("margin", 1) or 1)
+    margin = max(0, min(margin, 10))
+    width = int(menu_cfg.get("width", 0) or 0)
+    height = int(menu_cfg.get("height", 0) or 0)
+    style = str(menu_cfg.get("frame_style", "round") or "round")
+    keyboard = [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"],
+        ["K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"],
+        ["U", "V", "W", "X", "Y", "Z", "-", "'", " ", "<"],
+        ["SHIFT", "DONE", "CANCEL"],
+    ]
+    row = max(0, min(int(cursor[0]), len(keyboard) - 1))
+    col = max(0, min(int(cursor[1]), len(keyboard[row]) - 1))
+    case_label = "UPPER" if shift_lock else "lower"
+    name_line = f"Name: {name_buffer[:16]} ({case_label})"
+    content_lines = [name_line, ""]
+    for r_idx, row_keys in enumerate(keyboard):
+        cell_width = max(len(label) for label in row_keys)
+        parts = []
+        for c_idx, label in enumerate(row_keys):
+            if label.isalpha():
+                label = label.upper() if shift_lock else label.lower()
+            padded = label.ljust(cell_width)
+            if r_idx == row and c_idx == col:
+                parts.append(f"[{padded}]")
+            else:
+                parts.append(f" {padded} ")
+        content_lines.append(" ".join(parts))
+    max_content = max((len(strip_ansi(line)) for line in content_lines), default=0)
+    if width <= 0:
+        width = min(SCREEN_WIDTH - 2, max(10, max_content + 2 + (margin * 2)))
+    if height <= 0:
+        desired = len(content_lines) + 2 + (margin * 2)
+        height = min(SCREEN_HEIGHT - 2, max(3, desired))
+    width = min(width, SCREEN_WIDTH - 2)
+    height = max(3, min(height, SCREEN_HEIGHT - 2))
+    box_lines = _draw_box(width, height, style=style)
+    inner_width = width - 2
+    inner_height = height - 2
+    content = [" " * inner_width for _ in range(inner_height)]
+    inner_content_width = max(0, inner_width - (margin * 2))
+    cursor_row = margin
+    for line in content_lines:
+        if cursor_row >= inner_height - margin:
+            break
+        content[cursor_row] = (" " * margin) + pad_or_trim_ansi(line, inner_content_width) + (" " * margin)
         cursor_row += 1
     for i in range(inner_height):
         box_lines[i + 1] = "|" + content[i] + "|"
@@ -540,25 +630,24 @@ def _colorize_atlas_line(
     out = []
     for ch in line:
         if digit_colors and ch in digit_colors:
-            code = digit_colors.get(ch, "")
-            if code:
-                if flicker_digit and ch == flicker_digit:
-                    flicker_code = code if flicker_on else f"{ANSI.FG_WHITE}{ANSI.DIM}"
-                    out.append(f"{flicker_code}*{ANSI.RESET}")
-                else:
-                    out.append(f"{code}*{ANSI.RESET}")
-                continue
+            if flicker_digit and ch == flicker_digit and not flicker_on:
+                out.append(f"{ANSI.FG_WHITE}{ANSI.DIM}*{ANSI.RESET}")
+            else:
+                out.append(f"{digit_colors[ch]}*{ANSI.RESET}")
+            continue
         if ch.isdigit() and locked_color:
             out.append(f"{locked_color}*{ANSI.RESET}")
             continue
-        if ch == "o":
-            out.append(f"{ANSI.FG_WHITE}{ANSI.DIM}{ch}{ANSI.RESET}")
-        elif ch == "w":
+        if ch == "w":
             out.append(f"{ANSI.FG_BLUE}~{ANSI.RESET}")
-        elif ch in ("|", "-", "/", "\\"):
+            continue
+        if ch == "o":
+            out.append(f"{ANSI.FG_WHITE}o{ANSI.RESET}")
+            continue
+        if ch in ("|", "-", "/", "\\"):
             out.append(f"{ANSI.FG_YELLOW}{ch}{ANSI.RESET}")
-        else:
-            out.append(ch)
+            continue
+        out.append(ch)
     return "".join(out)
 
 
@@ -965,6 +1054,43 @@ def generate_frame(
         menu_height = int(menu_cfg.get("height", 9) or 9)
         art_color = ANSI.FG_WHITE
         art_lines = []
+        title_element = None
+        unlocked_elements = ["base"]
+        if hasattr(ctx, "save_data") and ctx.save_data:
+            if getattr(player, "title_slot_select", False):
+                _narrative, commands, _detail = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
+                if commands and 0 <= action_cursor < len(commands):
+                    cmd = commands[action_cursor].get("command", "")
+                    if isinstance(cmd, str) and cmd.startswith("TITLE_SLOT_"):
+                        slot_raw = cmd.replace("TITLE_SLOT_", "")
+                        if slot_raw.isdigit():
+                            slot_id = int(slot_raw)
+                            summary = ctx.save_data.slot_summary(slot_id)
+                            element = summary.get("current_element")
+                            if element:
+                                title_element = str(element)
+                            slot_data = ctx.save_data.load(slot_id)
+                            if isinstance(slot_data, dict):
+                                slot_player = slot_data.get("player", {})
+                                if isinstance(slot_player, dict):
+                                    elements = slot_player.get("elements")
+                                    if isinstance(elements, list) and elements:
+                                        unlocked_elements = elements
+            if not title_element:
+                last_slot = ctx.save_data.last_played_slot()
+                if last_slot:
+                    summary = ctx.save_data.slot_summary(int(last_slot))
+                    element = summary.get("current_element")
+                    if element:
+                        title_element = str(element)
+                    slot_data = ctx.save_data.load(int(last_slot))
+                    if isinstance(slot_data, dict):
+                        slot_player = slot_data.get("player", {})
+                        if isinstance(slot_player, dict):
+                            elements = slot_player.get("elements")
+                            if isinstance(elements, list) and elements:
+                                unlocked_elements = elements
+        title_color_map = element_color_map(ctx.colors.all(), title_element or "base")
         if scroll_cfg:
             height = int(scroll_cfg.get("height", 10) or 10)
             speed = float(scroll_cfg.get("speed", 1) or 1)
@@ -972,6 +1098,10 @@ def generate_frame(
             forest_scale = max(0.1, min(1.0, forest_scale))
             pano_lines = title_data.get("_panorama_lines")
             pano_width = title_data.get("_panorama_width")
+            cached_element = title_data.get("_panorama_element")
+            if cached_element != (title_element or "base"):
+                pano_lines = None
+                pano_width = None
             if not pano_lines or not pano_width:
                 forest_scene = ctx.scenes.get("forest", {})
                 gap_min = int(forest_scene.get("gap_min", 0) or 0)
@@ -1013,14 +1143,14 @@ def generate_frame(
                     forest_scene,
                     [],
                     objects_data=ctx.objects,
-                    color_map_override=ctx.colors.all(),
+                    color_map_override=title_color_map,
                 )
                 town_scene = ctx.scenes.get("town", {})
                 town_lines, _ = render_scene_art(
                     town_scene,
                     [],
                     objects_data=ctx.objects,
-                    color_map_override=ctx.colors.all(),
+                    color_map_override=title_color_map,
                 )
                 def pad_height(lines: list[str], height: int) -> list[str]:
                     if len(lines) >= height:
@@ -1035,6 +1165,7 @@ def generate_frame(
                 pano_width = len(strip_ansi(pano_lines[0])) if pano_lines else 0
                 title_data["_panorama_lines"] = pano_lines
                 title_data["_panorama_width"] = pano_width
+                title_data["_panorama_element"] = title_element or "base"
             view_width = SCREEN_WIDTH
             offset = int(time.time() * speed) % max(pano_width, 1)
             art_lines = [
@@ -1055,7 +1186,7 @@ def generate_frame(
                     venue_stub,
                     {},
                     ctx.objects,
-                    ctx.colors.all(),
+                    title_color_map,
                 )
                 obj_def = ctx.objects.get(str(logo_object_id), {})
                 blocking_char = obj_def.get("blocking_space")
@@ -1088,18 +1219,89 @@ def generate_frame(
                         if 0 <= pos < len(base_cells):
                             base_cells[pos] = (ch, code)
                     art_lines[target_row] = "".join(code + ch for ch, code in base_cells) + ANSI.RESET
-        narrative, commands, detail_lines = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
-        menu_lines, menu_y, menu_x, menu_w = _title_menu_lines(
-            menu_cfg,
-            narrative,
-            commands,
-            action_cursor,
-            detail_lines,
-        )
+        if getattr(player, "title_name_input", False):
+            buffer = str(getattr(player, "title_pending_name", "") or "")
+            cursor = getattr(player, "title_name_cursor", (0, 0))
+            shift_lock = bool(getattr(player, "title_name_shift", True))
+            try:
+                cursor = (int(cursor[0]), int(cursor[1]))
+            except (TypeError, ValueError, IndexError):
+                cursor = (0, 0)
+            menu_lines, menu_y, menu_x, menu_w = _title_keyboard_lines(menu_cfg, buffer, cursor, shift_lock)
+        else:
+            narrative, commands, detail_lines = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
+            menu_lines, menu_y, menu_x, menu_w = _title_menu_lines(
+                menu_cfg,
+                narrative,
+                commands,
+                action_cursor,
+                detail_lines,
+            )
         canvas = []
         for idx in range(SCREEN_HEIGHT):
             art_line = art_lines[idx] if idx < len(art_lines) else ""
             canvas.append(pad_or_trim_ansi(art_line, SCREEN_WIDTH))
+        atlas_lines = []
+        if hasattr(ctx, "glyphs"):
+            atlas = ctx.glyphs.get("atlas", {}) if ctx.glyphs else {}
+            if isinstance(atlas, dict):
+                atlas_lines = atlas.get("art", []) if isinstance(atlas.get("art"), list) else []
+        if atlas_lines:
+            start_y = SCREEN_HEIGHT - len(atlas_lines)
+            digit_colors = {}
+            flicker_digit = None
+            flicker_on = True
+            if title_element and hasattr(ctx, "elements"):
+                colors = ctx.colors.all()
+                elem_colors = {
+                    "1": ("base", ctx.elements.colors_for("base")),
+                    "2": ("earth", ctx.elements.colors_for("earth")),
+                    "3": ("wind", ctx.elements.colors_for("wind")),
+                    "4": ("fire", ctx.elements.colors_for("fire")),
+                    "5": ("water", ctx.elements.colors_for("water")),
+                    "6": ("light", ctx.elements.colors_for("light")),
+                    "7": ("lightning", ctx.elements.colors_for("lightning")),
+                    "8": ("dark", ctx.elements.colors_for("dark")),
+                    "9": ("ice", ctx.elements.colors_for("ice")),
+                }
+                unlocked = set(str(e) for e in (unlocked_elements or []))
+                for digit, (element_key, palette) in elem_colors.items():
+                    if palette and element_key in unlocked:
+                        digit_colors[digit] = _color_code_for_key(colors, palette[0])
+                selected_map = {
+                    "base": "1",
+                    "earth": "2",
+                    "wind": "3",
+                    "air": "3",
+                    "fire": "4",
+                    "water": "5",
+                    "light": "6",
+                    "lightning": "7",
+                    "dark": "8",
+                    "ice": "9",
+                }
+                if title_element in selected_map:
+                    flicker_digit = selected_map[title_element]
+                    flicker_on = int(time.time() / 0.35) % 2 == 0
+            for idx, line in enumerate(atlas_lines):
+                row = start_y + idx
+                if 0 <= row < SCREEN_HEIGHT:
+                    colored = ANSI.RESET + _colorize_atlas_line(
+                        line,
+                        digit_colors,
+                        flicker_digit,
+                        flicker_on,
+                        f"{ANSI.FG_WHITE}{ANSI.DIM}",
+                    )
+                    base_cells = _ansi_cells(canvas[row])
+                    overlay_cells = _ansi_cells(pad_or_trim_ansi(colored, SCREEN_WIDTH))
+                    merged = []
+                    for (base_ch, base_code), (over_ch, over_code) in zip(base_cells, overlay_cells):
+                        if over_ch == " ":
+                            merged.append(ANSI.RESET + base_code + base_ch)
+                        else:
+                            merged.append(ANSI.RESET + over_code + over_ch)
+                    canvas[row] = "".join(merged) + ANSI.RESET
         for idx, line in enumerate(menu_lines):
             row = menu_y + idx
             if 0 <= row < SCREEN_HEIGHT:
@@ -1112,9 +1314,9 @@ def generate_frame(
                         if col == menu_x:
                             merged.append(ANSI.RESET + over_code + over_ch)
                         else:
-                            merged.append(over_code + over_ch)
+                            merged.append(ANSI.RESET + over_code + over_ch)
                     else:
-                        merged.append(base_code + base_ch)
+                        merged.append(ANSI.RESET + base_code + base_ch)
                 canvas[row] = "".join(merged) + ANSI.RESET
         body = []
         actions = []

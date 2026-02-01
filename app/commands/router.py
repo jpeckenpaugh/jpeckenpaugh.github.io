@@ -583,18 +583,23 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         if pending_slot:
             ctx.save_data.delete(pending_slot)
         state.player.title_confirm = False
-        state.player.title_fortune = True
+        state.player.title_name_select = True
         state.player.title_slot_select = False
         return True
     if command_id == "TITLE_CONFIRM_NO":
         state.player.title_confirm = False
-        state.player.title_slot_select = True
+        state.player.title_slot_select = False
+        state.player.title_pending_slot = None
         return True
     if command_id == "TITLE_NEW":
         state.player.title_confirm = False
         state.player.title_fortune = False
         state.player.title_slot_select = False
         state.player.title_slot_mode = None
+        state.player.title_start_confirm = False
+        state.player.title_pending_name = None
+        state.player.title_pending_fortune = None
+        state.player.title_name_shift = True
         next_slot = ctx.save_data.next_empty_slot(max_slots=100)
         if next_slot is None:
             fallback_slot = ctx.save_data.last_played_slot() or 1
@@ -602,13 +607,71 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.player.title_pending_slot = fallback_slot
             return True
         state.player.title_pending_slot = next_slot
+        state.player.title_name_select = True
+        return True
+    if command_id == "TITLE_NAME_CUSTOM":
+        state.player.title_name_select = False
+        state.player.title_name_input = True
+        state.player.title_pending_name = ""
+        state.player.title_name_cursor = (0, 0)
+        state.player.title_name_shift = True
+        return True
+    if command_id == "TITLE_NAME_RANDOM":
+        name_choices = [
+            "Arin", "Bram", "Cora", "Dain", "Elow",
+            "Fenn", "Garen", "Hira", "Ivo", "Jora",
+            "Kael", "Lyra", "Mira", "Nox", "Orin",
+            "Pella", "Quin", "Rook", "Sera", "Taro",
+        ]
+        existing = ctx.save_data.existing_player_names(max_slots=100)
+        available = [name for name in name_choices if name not in existing]
+        max_len = 16
+        if available:
+            chosen = random.choice(available)
+        else:
+            def to_roman(num: int) -> str:
+                numerals = [
+                    (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
+                    (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+                    (10, "X"), (9, "IX"), (5, "V"), (4, "IV"),
+                    (1, "I"),
+                ]
+                out = []
+                value = num
+                for val, symbol in numerals:
+                    while value >= val:
+                        out.append(symbol)
+                        value -= val
+                return "".join(out)
+
+            base = random.choice(name_choices)
+            suffix = 2
+            while True:
+                roman = to_roman(suffix)
+                allowed = max_len - (len(roman) + 1)
+                base_trim = base[:allowed] if allowed > 0 else ""
+                candidate = f"{base_trim} {roman}".strip()
+                if candidate and candidate not in existing:
+                    chosen = candidate
+                    break
+                suffix += 1
+        state.player.title_pending_name = chosen[:16]
+        state.player.title_name_select = False
+        state.player.title_fortune = True
+        return True
+    if command_id == "TITLE_NAME_BACK":
+        state.player.title_name_select = False
+        return True
+    if command_id.startswith("TITLE_NAME:"):
+        name = command_id.split(":", 1)[1].strip()
+        if name:
+            state.player.title_pending_name = name[:16]
+        state.player.title_name_select = False
         state.player.title_fortune = True
         return True
     if command_id == "TITLE_FORTUNE_BACK":
         state.player.title_fortune = False
-        state.player.title_slot_select = False
-        state.player.title_slot_mode = None
-        state.player.title_pending_slot = None
+        state.player.title_name_select = True
         return True
     if command_id == "TITLE_SLOT_BACK":
         state.player.title_slot_select = False
@@ -650,26 +713,40 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.player.title_pending_slot = slot
             return True
         state.player.title_pending_slot = slot
-        state.player.title_fortune = True
+        state.player.title_name_select = True
         state.player.title_slot_select = False
         return True
-    if command_id in ("FORTUNE_POOR", "FORTUNE_WELL_OFF", "FORTUNE_ROYALTY"):
+    if command_id == "TITLE_START_CONFIRM_NO":
+        state.player.title_start_confirm = False
+        state.player.title_fortune = True
+        return True
+    if command_id == "TITLE_START_CONFIRM_YES":
         fortune_gold = {
             "FORTUNE_POOR": 10,
             "FORTUNE_WELL_OFF": 100,
             "FORTUNE_ROYALTY": 1000,
         }
         pending_slot = getattr(state.player, "title_pending_slot", None) or 1
+        pending_name = str(getattr(state.player, "title_pending_name", "") or "WARRIOR")
+        pending_fortune = str(getattr(state.player, "title_pending_fortune", "") or "FORTUNE_POOR")
         ctx.save_data.set_current_slot(pending_slot)
-        state.player = Player.from_dict({"gold": fortune_gold.get(command_id, 10)})
+        state.player = Player.from_dict({
+            "gold": fortune_gold.get(pending_fortune, 10),
+            "name": pending_name[:16],
+        })
         state.player.sync_items(ctx.items)
         sync_player_elements(ctx, state.player)
         state.player.location = "Town"
         state.player.title_confirm = False
         state.player.title_fortune = False
+        state.player.title_start_confirm = False
         state.player.title_slot_select = False
         state.player.title_slot_mode = None
         state.player.title_pending_slot = None
+        state.player.title_pending_name = None
+        state.player.title_pending_fortune = None
+        state.player.title_name_select = False
+        state.player.title_name_input = False
         state.player.has_save = False
         state.opponents = []
         state.loot_bank = {"xp": 0, "gold": 0}
@@ -686,6 +763,11 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.portal_mode = False
         state.last_message = "You arrive in town."
         ctx.save_data.save_player(state.player)
+        return True
+    if command_id in ("FORTUNE_POOR", "FORTUNE_WELL_OFF", "FORTUNE_ROYALTY"):
+        state.player.title_pending_fortune = command_id
+        state.player.title_fortune = False
+        state.player.title_start_confirm = True
         return True
     if command_id == "TITLE_CONTINUE":
         if not ctx.save_data.exists():

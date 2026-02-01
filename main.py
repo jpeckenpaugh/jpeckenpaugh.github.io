@@ -168,6 +168,13 @@ def main():
             state.title_mode = True
             state.player.location = "Title"
             state.player.title_confirm = False
+            state.player.title_name_select = False
+            state.player.title_name_input = False
+            state.player.title_start_confirm = False
+            state.player.title_pending_name = None
+            state.player.title_pending_fortune = None
+            state.player.title_name_cursor = (0, 0)
+            state.player.title_name_shift = True
             state.player.has_save = SAVE_DATA.exists()
             state.leveling_mode = False
             state.shop_mode = False

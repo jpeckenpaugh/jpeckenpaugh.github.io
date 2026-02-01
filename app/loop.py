@@ -206,6 +206,12 @@ def move_action_cursor(index: int, direction: str, commands: list[dict]) -> int:
 
 
 def _title_screen_state_key(player) -> str:
+    if getattr(player, "title_name_input", False):
+        return "title_name_input"
+    if getattr(player, "title_name_select", False):
+        return "title_name"
+    if getattr(player, "title_start_confirm", False):
+        return "title_start_confirm"
     if getattr(player, "title_confirm", False):
         return "title_confirm"
     if getattr(player, "title_fortune", False):
@@ -246,12 +252,16 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
         for summary in summaries:
             slot_num = summary.get("slot", 0)
             if summary.get("empty"):
-                label = f"Slot {slot_num} (Empty)"
+                label = f"{slot_num}.) Empty"
             else:
                 level = summary.get("level", 1)
                 location = summary.get("location", "Town")
                 gold = summary.get("gold", 0)
-                label = f"Slot {slot_num}: Lv{level} {location} GP{gold}"
+                name = summary.get("name", "WARRIOR")
+                element = summary.get("current_element")
+                if hasattr(ctx, "continents") and element:
+                    location = ctx.continents.name_for(str(element)) or location
+                label = f"{slot_num}.) {name} Lv{level} {location} GP{gold}"
             entry = {"label": label, "command": f"TITLE_SLOT_{slot_num}"}
             built.append(entry)
         if not built:
@@ -409,6 +419,77 @@ def run_target_select(ctx, render_frame, state: GameState, generate_frame, read_
 def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str], Optional[dict]]:
     action = normalize_input_action(ch)
     if action is None:
+        return None, None
+
+    if state.title_mode and getattr(state.player, "title_name_input", False):
+        keyboard = [
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+            ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"],
+            ["K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"],
+            ["U", "V", "W", "X", "Y", "Z", "-", "'", " ", "<"],
+            ["SHIFT", "DONE", "CANCEL"],
+        ]
+        cursor = getattr(state.player, "title_name_cursor", (0, 0))
+        try:
+            row, col = int(cursor[0]), int(cursor[1])
+        except (TypeError, ValueError, IndexError):
+            row, col = 0, 0
+        row = max(0, min(row, len(keyboard) - 1))
+        col = max(0, min(col, len(keyboard[row]) - 1))
+        if action in ("UP", "DOWN"):
+            step = -1 if action == "UP" else 1
+            row = (row + step) % len(keyboard)
+            col = min(col, len(keyboard[row]) - 1)
+            state.player.title_name_cursor = (row, col)
+            return None, None
+        if action in ("LEFT", "RIGHT"):
+            step = -1 if action == "LEFT" else 1
+            col = (col + step) % len(keyboard[row])
+            state.player.title_name_cursor = (row, col)
+            return None, None
+        if action == "BACK":
+            state.player.title_name_input = False
+            state.player.title_name_select = True
+            commands = action_commands_for_state(ctx, state)
+            state.action_cursor = 0
+            clamp_action_cursor(state, commands)
+            return None, None
+        if action == "CONFIRM":
+            key = keyboard[row][col]
+            buffer = str(getattr(state.player, "title_pending_name", "") or "")
+            shift_lock = bool(getattr(state.player, "title_name_shift", True))
+            if key == "DONE":
+                if buffer.strip():
+                    state.player.title_pending_name = buffer[:16]
+                    state.player.title_name_input = False
+                    state.player.title_name_select = False
+                    state.player.title_fortune = True
+                    commands = action_commands_for_state(ctx, state)
+                    state.action_cursor = 0
+                    clamp_action_cursor(state, commands)
+                return None, None
+            if key == "CANCEL":
+                state.player.title_name_input = False
+                state.player.title_name_select = True
+                commands = action_commands_for_state(ctx, state)
+                state.action_cursor = 0
+                clamp_action_cursor(state, commands)
+                return None, None
+            if key == "SHIFT":
+                state.player.title_name_shift = not shift_lock
+                return None, None
+            if key == "<":
+                state.player.title_pending_name = buffer[:-1]
+                return None, None
+            if len(buffer) >= 16:
+                return None, None
+            if key == " ":
+                if buffer.endswith(" ") or not buffer:
+                    return None, None
+            if key.isalpha():
+                key = key.upper() if shift_lock else key.lower()
+            state.player.title_pending_name = buffer + key
+            return None, None
         return None, None
 
     if (
@@ -1193,6 +1274,8 @@ def apply_router_command(
     pre_title_slot_select = getattr(state.player, "title_slot_select", False)
     pre_title_fortune = getattr(state.player, "title_fortune", False)
     pre_title_confirm = getattr(state.player, "title_confirm", False)
+    pre_title_name_select = getattr(state.player, "title_name_select", False)
+    pre_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     cmd_state = CommandState(
         player=state.player,
         opponents=state.opponents,
@@ -1264,6 +1347,8 @@ def apply_router_command(
     post_title_slot_select = getattr(state.player, "title_slot_select", False)
     post_title_fortune = getattr(state.player, "title_fortune", False)
     post_title_confirm = getattr(state.player, "title_confirm", False)
+    post_title_name_select = getattr(state.player, "title_name_select", False)
+    post_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     if post_title_slot_select and not pre_title_slot_select:
         commands = action_commands_for_state(ctx, state)
         state.action_cursor = 0
@@ -1272,10 +1357,16 @@ def apply_router_command(
         state.action_cursor = 0
     if post_title_confirm and not pre_title_confirm:
         state.action_cursor = 0
+    if post_title_name_select and not pre_title_name_select:
+        state.action_cursor = 0
+    if post_title_start_confirm and not pre_title_start_confirm:
+        state.action_cursor = 0
     if (
         (pre_title_fortune and not post_title_fortune)
         or (pre_title_confirm and not post_title_confirm)
         or (pre_title_slot_select and not post_title_slot_select)
+        or (pre_title_name_select and not post_title_name_select)
+        or (pre_title_start_confirm and not post_title_start_confirm)
     ):
         commands = action_commands_for_state(ctx, state)
         state.action_cursor = 0
