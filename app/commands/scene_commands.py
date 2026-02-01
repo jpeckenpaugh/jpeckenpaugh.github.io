@@ -14,6 +14,12 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         return True
     conditions = enabled_when if isinstance(enabled_when, list) else [enabled_when]
     has_opponents = any(opponent.hp > 0 for opponent in opponents)
+    spells_data = getattr(player, "_spells_data", None)
+    items_data = getattr(player, "_items_data", None)
+    has_spells = False
+    if spells_data is not None:
+        available = spells_data.available(player, items_data) if items_data is not None else spells_data.available(player)
+        has_spells = bool(available)
     has_items = any(int(count) > 0 for count in player.inventory.values()) if player.inventory else False
     if not has_items:
         has_items = bool(getattr(player, "gear_inventory", []))
@@ -46,6 +52,8 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         if cond == "no_opponents" and has_opponents:
             return False
         if cond == "has_items" and not has_items:
+            return False
+        if cond == "has_spells" and not has_spells:
             return False
         if cond == "has_mp" and not has_mp:
             return False

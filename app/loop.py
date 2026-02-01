@@ -477,6 +477,10 @@ def run_target_select(ctx, render_frame, state: GameState, generate_frame, read_
 
 
 def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str], Optional[dict]]:
+    if not hasattr(state.player, "_spells_data"):
+        state.player._spells_data = ctx.spells
+    if not hasattr(state.player, "_items_data"):
+        state.player._items_data = ctx.items
     action = normalize_input_action(ch)
     if action is None:
         return None, None
@@ -579,11 +583,16 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             state.options_mode = True
             menu = ctx.menus.get("options", {})
             actions = []
+            available_spells = []
+            if hasattr(ctx, "spells") and hasattr(ctx, "items"):
+                available_spells = ctx.spells.available(state.player, ctx.items)
             for entry in menu.get("actions", []):
                 if not entry.get("command"):
                     continue
                 cmd_entry = dict(entry)
                 if not command_is_enabled(cmd_entry, state.player, state.opponents):
+                    cmd_entry["_disabled"] = True
+                if cmd_entry.get("command") == "SPELLBOOK" and not available_spells:
                     cmd_entry["_disabled"] = True
                 actions.append(cmd_entry)
             enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
@@ -617,11 +626,16 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if state.options_mode:
         menu = ctx.menus.get("options", {})
         actions = []
+        available_spells = []
+        if hasattr(ctx, "spells") and hasattr(ctx, "items"):
+            available_spells = ctx.spells.available(state.player, ctx.items)
         for entry in menu.get("actions", []):
             if not entry.get("command"):
                 continue
             cmd_entry = dict(entry)
             if not command_is_enabled(cmd_entry, state.player, state.opponents):
+                cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "SPELLBOOK" and not available_spells:
                 cmd_entry["_disabled"] = True
             actions.append(cmd_entry)
         if not actions:

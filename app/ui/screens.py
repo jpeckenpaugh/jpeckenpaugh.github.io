@@ -1058,9 +1058,12 @@ def generate_frame(
     elif options_mode:
         options_menu = ctx.menus.get("options", {})
         options_actions = []
+        available_spells = ctx.spells.available(player, ctx.items) if hasattr(ctx, "spells") else []
         for entry in options_menu.get("actions", []):
             cmd_entry = dict(entry)
             if not command_is_enabled(cmd_entry, player, opponents):
+                cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "SPELLBOOK" and not available_spells:
                 cmd_entry["_disabled"] = True
             options_actions.append(cmd_entry)
         options_menu = dict(options_menu)

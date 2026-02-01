@@ -303,11 +303,14 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.last_message = menu.get("close_message", "Closed options.")
             return True
         actions = []
+        available_spells = ctx.spells.available(state.player, ctx.items) if hasattr(ctx, "spells") else []
         for entry in menu.get("actions", []):
             if not entry.get("command"):
                 continue
             cmd_entry = dict(entry)
             if not command_is_enabled(cmd_entry, state.player, state.opponents):
+                cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "SPELLBOOK" and not available_spells:
                 cmd_entry["_disabled"] = True
             actions.append(cmd_entry)
         enabled = [i for i, cmd in enumerate(actions) if not cmd.get("_disabled")]
