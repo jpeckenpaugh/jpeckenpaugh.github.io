@@ -9,7 +9,7 @@
         "count_as_recruit": true
       },
       "grant_flags": [
-        "spell_healing_enabled",
+        "spell_life_boost_enabled",
         "spell_strength_enabled"
       ],
       "recruit_only_types": [

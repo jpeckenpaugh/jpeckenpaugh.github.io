@@ -1834,9 +1834,9 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         spells = follower.get("spells", [])
         if not isinstance(spells, list):
             spells = []
-        # Priority: healing if needed, then strength, then elemental
-        if "healing" in spells:
-            spell = ctx.spells.get("healing", {})
+        # Priority: life_boost if needed, then strength, then elemental
+        if "life_boost" in spells:
+            spell = ctx.spells.get("life_boost", {})
             can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
             if can_cast and state.player.hp < state.player.total_max_hp():
                 if not use_charge:
@@ -2297,7 +2297,7 @@ def resolve_player_action(
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
-        if spell_id in ("healing", "strength"):
+        if spell_id in ("life_boost", "strength"):
             in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
             if state.spell_mode and not in_battle:
                 state.spell_target_mode = True
@@ -2328,7 +2328,7 @@ def resolve_player_action(
             if target_type != "player":
                 gain_per_cast = max(0, 10 * rank)
                 max_stack = gain_per_cast * 5
-                if spell_id == "healing":
+                if spell_id == "life_boost":
                     current = int(target_ref.get("temp_hp_bonus", 0) or 0)
                     remaining = max(0, max_stack - current)
                     gain = min(gain_per_cast, remaining)
@@ -2357,7 +2357,7 @@ def resolve_player_action(
                             gain,
                         )
             target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
-            spell_label = "Life Boost" if spell_id == "healing" else "Strength"
+            spell_label = "Life Boost" if spell_id == "life_boost" else "Strength"
             state.last_message = f"You cast {spell_label} on {target_name}."
             return cmd
         mp_cost = base_cost * max(1, rank)

@@ -680,7 +680,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         quests_data=ctx.quests,
         target_index=state.target_index,
     )
-    if command_id in ("ATTACK", "SPARK", "HEAL", "DEFEND", "SOCIALIZE"):
+    if command_id in ("ATTACK", "SPARK", "LIFE_BOOST", "DEFEND", "SOCIALIZE"):
         state.action_cmd = command_id
         return True
 

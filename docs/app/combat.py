@@ -84,7 +84,7 @@ def cast_spell(
             player.mp -= mp_cost
         return "You cast Strength. Your power surges."
 
-    if spell_id == "healing":
+    if spell_id == "life_boost":
         if not used_charge:
             player.mp -= mp_cost
         return "You cast Life Boost. Your vitality surges."

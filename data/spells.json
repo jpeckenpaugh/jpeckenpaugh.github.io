@@ -1,22 +1,4 @@
 {
-  "healing": {
-    "name": "Life Boost",
-    "command_id": "HEAL",
-    "menu_key": "NUM1",
-    "anim": "heal",
-    "mp_cost": 2,
-    "requires_target": false,
-    "art_id": "potion",
-    "element": "base",
-    "desc": "Raise max HP by 10 over a brief surge.",
-    "level_required": 0,
-    "unlock": {
-      "flags_any": [
-        "spell_healing_enabled"
-      ]
-    },
-    "class": "support"
-  },
   "spark": {
     "name": "Spark",
     "command_id": "SPARK",
@@ -328,5 +310,23 @@
         "spell_sprite_bite_enabled"
       ]
     }
+  },
+  "life_boost": {
+    "name": "Life Boost",
+    "command_id": "LIFE_BOOST",
+    "menu_key": "NUM1",
+    "anim": "heal",
+    "mp_cost": 2,
+    "requires_target": false,
+    "art_id": "potion",
+    "element": "base",
+    "desc": "Raise max HP by 10 over a brief surge.",
+    "level_required": 0,
+    "unlock": {
+      "flags_any": [
+        "spell_life_boost_enabled"
+      ]
+    },
+    "class": "support"
   }
 }

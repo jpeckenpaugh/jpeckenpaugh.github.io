@@ -892,9 +892,9 @@ def generate_frame(
     suppress_actions: bool = False
 ) -> Frame:
     """Build a screen frame from game state and UI data."""
-    healing = ctx.spells.get("healing", {})
+    life_boost = ctx.spells.get("life_boost", {})
     spark = ctx.spells.get("spark", {})
-    heal_name = healing.get("name", "Healing")
+    heal_name = life_boost.get("name", "Healing")
     spark_name = spark.get("name", "Spark")
     if not isinstance(menu_cursor, int):
         try:

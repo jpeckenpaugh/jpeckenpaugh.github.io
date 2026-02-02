@@ -109,7 +109,7 @@ def _handle_socialize(ctx: CommandContext) -> str:
         follower["abilities"] = ["wolf_meat_toss"]
         follower["active_ability"] = "wolf_meat_toss"
     if follower_type == "mushroom_mage":
-        follower["spells"] = ["healing", "strength"]
+        follower["spells"] = ["life_boost", "strength"]
         follower["abilities"] = ["mushroom_tea_brew"]
         wand_pool = ["fire_wand", "water_wand", "wind_wand", "earth_wand"]
         wand_item = random.choice(wand_pool)

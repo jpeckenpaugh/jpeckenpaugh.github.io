@@ -9,7 +9,7 @@ from app.data_access.spells_data import SpellsData
 class TestSpellsData(unittest.TestCase):
     def test_lookup_by_command_and_menu(self) -> None:
         payload = {
-            "healing": {"command_id": "HEAL", "menu_key": "NUM1"},
+            "life_boost": {"command_id": "LIFE_BOOST", "menu_key": "NUM1"},
             "spark": {"command_id": "SPARK", "menu_key": "NUM2"},
         }
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -18,8 +18,8 @@ class TestSpellsData(unittest.TestCase):
                 json.dump(payload, f)
             data = SpellsData(path)
 
-        spell_id, spell = data.by_command_id("HEAL")
-        self.assertEqual(spell_id, "healing")
+        spell_id, spell = data.by_command_id("LIFE_BOOST")
+        self.assertEqual(spell_id, "life_boost")
         self.assertEqual(spell.get("menu_key"), "NUM1")
 
         spell_id, spell = data.by_menu_key("NUM2")

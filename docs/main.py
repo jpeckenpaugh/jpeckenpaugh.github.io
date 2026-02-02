@@ -534,12 +534,12 @@ def main():
         if (
             state.spell_mode
             and not in_battle
-            and action_cmd in ("STRENGTH", "HEAL")
+            and action_cmd in ("STRENGTH", "LIFE_BOOST")
         ):
             state.spell_target_mode = True
             if not state.spell_target_command:
                 state.spell_target_command = action_cmd
-        if action_cmd in ("STRENGTH", "HEAL") and state.last_team_target_player:
+        if action_cmd in ("STRENGTH", "LIFE_BOOST") and state.last_team_target_player:
             spell_entry = APP.spells.by_command_id(action_cmd)
             if spell_entry:
                 _, spell = spell_entry
@@ -556,7 +556,7 @@ def main():
                     remaining = max(0, max_stack - current)
                     gain = min(gain_per_cast, remaining)
                     animate_life_boost_gain(APP, render_frame, state, generate_frame, gain)
-        if action_cmd in ("STRENGTH", "HEAL"):
+        if action_cmd in ("STRENGTH", "LIFE_BOOST"):
             state.last_team_target_player = None
         handle_offensive_action(APP, state, action_cmd)
         if action_cmd:
