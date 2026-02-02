@@ -321,22 +321,55 @@ def _asset_explorer_info_lines(ctx, state: GameState, asset_type: str, asset_id:
         assets = ctx.spells_art.all()
     elif asset_type == "glyphs":
         assets = ctx.glyphs.all()
+    elif asset_type in ("music", "sfx"):
+        assets = _asset_explorer_music_assets(ctx, asset_type)
     if not isinstance(assets, dict):
         assets = {}
     asset = assets.get(asset_id, {}) if asset_id else {}
     info_lines = []
-    if isinstance(asset, dict):
-        if state.asset_explorer_show_stats:
-            stats = []
-            for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
-                if key in asset:
-                    stats.append(f"{key}:{asset.get(key)}")
-            if stats:
-                info_lines.append("Stats: " + " ".join(stats))
-        if state.asset_explorer_show_json:
-            raw = json.dumps(asset, indent=2, ensure_ascii=True)
-            info_lines.extend(raw.splitlines())
+    if isinstance(asset, dict) and state.asset_explorer_show_stats:
+        stats = []
+        for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
+            if key in asset:
+                stats.append(f"{key}:{asset.get(key)}")
+        if stats:
+            info_lines.append("Stats: " + " ".join(stats))
+    if state.asset_explorer_show_json:
+        raw = json.dumps(asset, indent=2, ensure_ascii=True)
+        info_lines.extend(raw.splitlines())
     return info_lines
+
+
+def _asset_explorer_music_assets(ctx, asset_type: str) -> dict:
+    data = {}
+    if hasattr(ctx, "music"):
+        data = ctx.music.all()
+    if not isinstance(data, dict):
+        data = {}
+    if asset_type == "music":
+        songs = data.get("songs", {})
+        return songs if isinstance(songs, dict) else {}
+    if asset_type == "sfx":
+        sequences = data.get("sequences", {})
+        if not isinstance(sequences, dict):
+            return {}
+        return {key: value for key, value in sequences.items() if "sfx" in str(key).lower()}
+    return {}
+
+
+def _asset_explorer_preview_audio(ctx, state: GameState, asset_type: str, asset_id: Optional[str]) -> None:
+    if not asset_id or asset_type not in ("music", "sfx"):
+        return
+    if not hasattr(ctx, "audio"):
+        return
+    key = f"{asset_type}:{asset_id}"
+    if key == (state.asset_explorer_preview_key or ""):
+        return
+    if asset_type == "music":
+        ctx.audio.play_song_once(asset_id)
+    else:
+        ctx.audio.play_sfx_once(asset_id, "C4")
+    state.asset_explorer_preview_key = key
 
 def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
     title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
@@ -373,6 +406,8 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
                 {"label": "Spells", "command": "TITLE_ASSET_TYPE:spells"},
                 {"label": "Spells Art", "command": "TITLE_ASSET_TYPE:spells_art"},
                 {"label": "Glyphs", "command": "TITLE_ASSET_TYPE:glyphs"},
+                {"label": "Music", "command": "TITLE_ASSET_TYPE:music"},
+                {"label": "SFX", "command": "TITLE_ASSET_TYPE:sfx"},
                 {"label": "Back", "command": "TITLE_ASSET_BACK"},
             ]
         else:
@@ -383,6 +418,8 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
                 "spells": "Spells",
                 "spells_art": "Spells Art",
                 "glyphs": "Glyphs",
+                "music": "Music",
+                "sfx": "SFX",
             }.get(asset_type, "Assets")
             narrative = [f"Asset Explorer: {asset_label}"]
             assets = {}
@@ -400,6 +437,8 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
                 assets = ctx.spells_art.all()
             elif asset_type == "glyphs":
                 assets = ctx.glyphs.all()
+            elif asset_type in ("music", "sfx"):
+                assets = _asset_explorer_music_assets(ctx, asset_type)
             if not isinstance(assets, dict):
                 assets = {}
             asset_ids = sorted(str(key) for key in assets.keys())
@@ -1404,6 +1443,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     assets = ctx.spells_art.all()
                 elif asset_type == "glyphs":
                     assets = ctx.glyphs.all()
+                elif asset_type in ("music", "sfx"):
+                    assets = _asset_explorer_music_assets(ctx, asset_type)
                 if isinstance(assets, dict):
                     asset_ids = sorted(str(key) for key in assets.keys())
             selected_id = None
@@ -1428,6 +1469,19 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.asset_explorer_info_scroll = max(0, min(max_scroll, state.asset_explorer_info_scroll + delta))
                 setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
                 return None, None
+            if action in ("UP", "DOWN") and state.asset_explorer_focus == "list" and asset_type in ("music", "sfx"):
+                enabled = _enabled_indices(commands)
+                if enabled:
+                    pos = enabled.index(state.action_cursor) if state.action_cursor in enabled else 0
+                    direction = -1 if action == "UP" else 1
+                    pos = (pos + direction) % len(enabled)
+                    state.action_cursor = enabled[pos]
+                if commands and 0 <= state.action_cursor < len(commands):
+                    cmd = commands[state.action_cursor].get("command", "")
+                    if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_SELECT:"):
+                        selected_id = cmd.split(":", 1)[1]
+                        _asset_explorer_preview_audio(ctx, state, asset_type, selected_id)
+                return None, None
         if action in ("UP", "DOWN"):
             enabled = _enabled_indices(commands)
             if enabled:
@@ -1443,6 +1497,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.asset_explorer_type = ""
                 state.asset_explorer_focus = "list"
                 state.asset_explorer_info_scroll = 0
+                state.asset_explorer_preview_key = None
                 setattr(state.player, "asset_explorer_type", state.asset_explorer_type)
                 setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
                 setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
@@ -1465,17 +1520,25 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.asset_explorer_type = cmd.split(":", 1)[1]
                 state.asset_explorer_focus = "list"
                 state.asset_explorer_info_scroll = 0
+                state.asset_explorer_preview_key = None
                 setattr(state.player, "asset_explorer_type", state.asset_explorer_type)
                 if menu_id != "title_assets_list":
                     state.title_menu_stack.append("title_assets_list")
                 state.action_cursor = 0
                 commands = action_commands_for_state(ctx, state)
                 clamp_action_cursor(state, commands)
+                if state.asset_explorer_type in ("music", "sfx"):
+                    if commands and 0 <= state.action_cursor < len(commands):
+                        cmd = commands[state.action_cursor].get("command", "")
+                        if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_SELECT:"):
+                            selected_id = cmd.split(":", 1)[1]
+                            _asset_explorer_preview_audio(ctx, state, state.asset_explorer_type, selected_id)
                 return None, None
             if cmd == "TITLE_ASSET_OPEN":
                 state.asset_explorer_type = ""
                 state.asset_explorer_focus = "list"
                 state.asset_explorer_info_scroll = 0
+                state.asset_explorer_preview_key = None
                 setattr(state.player, "asset_explorer_type", state.asset_explorer_type)
                 setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
                 setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
@@ -1489,6 +1552,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     state.asset_explorer_type = ""
                     state.asset_explorer_focus = "list"
                     state.asset_explorer_info_scroll = 0
+                    state.asset_explorer_preview_key = None
                     setattr(state.player, "asset_explorer_type", state.asset_explorer_type)
                     setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
                     setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)

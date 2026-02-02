@@ -18,6 +18,7 @@ from app.data_access.elements_data import ElementsData
 from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
+from app.data_access.music_data import MusicData
 from app.data_access.npcs_data import NpcsData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
@@ -83,6 +84,7 @@ class ScreenContext:
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
+    music: MusicData
 
 
 def _ansi_cells(text: str) -> list[tuple[str, str]]:
@@ -109,6 +111,21 @@ def _menu_line(label: str, selected: bool) -> str:
     if selected:
         return f"[ {text} ]"
     return f"  {text}"
+
+
+def _asset_explorer_music_assets(ctx: ScreenContext, asset_type: str) -> dict:
+    data = ctx.music.all() if hasattr(ctx, "music") else {}
+    if not isinstance(data, dict):
+        data = {}
+    if asset_type == "music":
+        songs = data.get("songs", {})
+        return songs if isinstance(songs, dict) else {}
+    if asset_type == "sfx":
+        sequences = data.get("sequences", {})
+        if not isinstance(sequences, dict):
+            return {}
+        return {key: value for key, value in sequences.items() if "sfx" in str(key).lower()}
+    return {}
 
 
 def _slice_ansi_wrap(text: str, start: int, width: int) -> str:
@@ -179,6 +196,8 @@ def _title_state_config(
                 {"label": "Spells", "command": "TITLE_ASSET_TYPE:spells"},
                 {"label": "Spells Art", "command": "TITLE_ASSET_TYPE:spells_art"},
                 {"label": "Glyphs", "command": "TITLE_ASSET_TYPE:glyphs"},
+                {"label": "Music", "command": "TITLE_ASSET_TYPE:music"},
+                {"label": "SFX", "command": "TITLE_ASSET_TYPE:sfx"},
                 {"label": "Back", "command": "TITLE_ASSET_BACK"},
             ]
         else:
@@ -189,6 +208,8 @@ def _title_state_config(
                 "spells": "Spells",
                 "spells_art": "Spells Art",
                 "glyphs": "Glyphs",
+                "music": "Music",
+                "sfx": "SFX",
             }.get(asset_type, "Assets")
             narrative = [f"Asset Explorer: {asset_label}"]
             assets = {}
@@ -206,6 +227,8 @@ def _title_state_config(
                 assets = ctx.spells_art.all()
             elif asset_type == "glyphs":
                 assets = ctx.glyphs.all()
+            elif asset_type in ("music", "sfx"):
+                assets = _asset_explorer_music_assets(ctx, asset_type)
             if not isinstance(assets, dict):
                 assets = {}
             asset_ids = sorted(str(key) for key in assets.keys())
@@ -2196,6 +2219,8 @@ def generate_frame(
                     "spells": "Spells",
                     "spells_art": "Spells Art",
                     "glyphs": "Glyphs",
+                    "music": "Music",
+                    "sfx": "SFX",
                 }.get(asset_type, "Assets")
                 assets = {}
                 if asset_type == "objects":
@@ -2212,6 +2237,8 @@ def generate_frame(
                     assets = ctx.spells_art.all()
                 elif asset_type == "glyphs":
                     assets = ctx.glyphs.all()
+                elif asset_type in ("music", "sfx"):
+                    assets = _asset_explorer_music_assets(ctx, asset_type)
                 if not isinstance(assets, dict):
                     assets = {}
                 asset_ids = sorted(str(key) for key in assets.keys())
@@ -2257,26 +2284,54 @@ def generate_frame(
                     desc = asset.get("description") or asset.get("desc")
                     if desc:
                         right_lines.append(f"{ANSI.DIM}{desc}{ANSI.RESET}")
+                    if asset_type == "sfx":
+                        tempo = asset.get("tempo")
+                        scale = asset.get("scale")
+                        wave = asset.get("wave")
+                        pattern = asset.get("pattern")
+                        summary = []
+                        if tempo is not None:
+                            summary.append(f"tempo:{tempo}")
+                        if scale:
+                            summary.append(f"scale:{scale}")
+                        if wave:
+                            summary.append(f"wave:{wave}")
+                        if pattern:
+                            summary.append(f"pattern:{pattern}")
+                        if summary:
+                            right_lines.append(f"{ANSI.DIM}{' '.join(summary)}{ANSI.RESET}")
                     if getattr(player, "asset_explorer_show_art", True):
                         art = asset.get("art")
                         if isinstance(art, list):
                             right_lines.append("")
                             max_lines = max(0, (top_h - 2) - len(right_lines))
                             right_lines.extend(str(line) for line in art[:max_lines])
+                if asset_type == "music":
+                    if isinstance(asset, list):
+                        right_lines.append(f"{ANSI.DIM}steps:{len(asset)}{ANSI.RESET}")
+                    elif isinstance(asset, dict):
+                        steps = asset.get("steps", [])
+                        repeat = asset.get("repeat")
+                        summary = []
+                        if repeat:
+                            summary.append(f"repeat:{repeat}")
+                        if isinstance(steps, list):
+                            summary.append(f"steps:{len(steps)}")
+                        if summary:
+                            right_lines.append(f"{ANSI.DIM}{' '.join(summary)}{ANSI.RESET}")
                 right_box = _box(right_w, top_h, right_lines)
 
                 info_lines = []
-                if isinstance(asset, dict):
-                    if getattr(player, "asset_explorer_show_stats", True):
-                        stats = []
-                        for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
-                            if key in asset:
-                                stats.append(f"{key}:{asset.get(key)}")
-                        if stats:
-                            info_lines.append("Stats: " + " ".join(stats))
-                    if getattr(player, "asset_explorer_show_json", False):
-                        raw = json.dumps(asset, indent=2, ensure_ascii=True)
-                        info_lines.extend(raw.splitlines())
+                if isinstance(asset, dict) and getattr(player, "asset_explorer_show_stats", True):
+                    stats = []
+                    for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
+                        if key in asset:
+                            stats.append(f"{key}:{asset.get(key)}")
+                    if stats:
+                        info_lines.append("Stats: " + " ".join(stats))
+                if getattr(player, "asset_explorer_show_json", False):
+                    raw = json.dumps(asset, indent=2, ensure_ascii=True)
+                    info_lines.extend(raw.splitlines())
                 focus = getattr(player, "asset_explorer_focus", "list")
                 if focus == "info":
                     info_lines.append(f"{ANSI.DIM}Up/Down scroll, Left to list, S to go back.{ANSI.RESET}")
