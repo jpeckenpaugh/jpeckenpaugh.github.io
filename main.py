@@ -3,6 +3,7 @@ import shutil
 import os
 import sys
 import json
+import time
 from json import JSONDecodeError
 from typing import Optional
 
@@ -28,28 +29,14 @@ from app.loop import (
     resolve_player_action,
 )
 from app.input import read_keypress, read_keypress_timeout
-from app.models import Player
+from app.models import Player, Frame
 from app.player_sync import sync_player_elements
 from app.state import GameState
 from app.ui.constants import SCREEN_HEIGHT, SCREEN_WIDTH
+from app.ui.ansi import ANSI
 from app.ui.rendering import animate_art_transition, animate_portal_departure, clear_screen, render_frame
 from app.ui.screens import generate_frame
 
-def warn_on_invalid_json(data_dir: str) -> None:
-    if not os.path.isdir(data_dir):
-        return
-    for name in sorted(os.listdir(data_dir)):
-        if not name.endswith(".json"):
-            continue
-        path = os.path.join(data_dir, name)
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                json.load(f)
-        except (OSError, JSONDecodeError) as exc:
-            print(f"WARNING: Invalid JSON in {path}: {exc}")
-
-
-warn_on_invalid_json(DATA_DIR)
 APP = create_app()
 ITEMS = APP.items
 SAVE_DATA = APP.save_data
@@ -57,6 +44,114 @@ SAVE_DATA = APP.save_data
 # -----------------------------
 # Main loop
 # -----------------------------
+
+def _preflight_lines(title: str, progress: float, current: str, detail: str, footer: str) -> list[str]:
+    bar_width = 44
+    filled = max(0, min(bar_width, int(progress * bar_width)))
+    bar = "[" + "#" * filled + "-" * (bar_width - filled) + "]"
+    percent = int(progress * 100)
+    header = f"{title}".center(SCREEN_WIDTH)
+    status = f"{bar} {percent:3d}%"
+    lines = [" " * SCREEN_WIDTH for _ in range(SCREEN_HEIGHT)]
+    lines[2] = header
+    lines[6] = status.center(SCREEN_WIDTH)
+    lines[8] = current.center(SCREEN_WIDTH)
+    lines[10] = detail.center(SCREEN_WIDTH)
+    lines[-3] = footer.center(SCREEN_WIDTH)
+    return lines
+
+
+def _preflight_error_lines(title: str, errors: list[dict], footer: str) -> list[str]:
+    lines = [" " * SCREEN_WIDTH for _ in range(SCREEN_HEIGHT)]
+    lines[1] = title.center(SCREEN_WIDTH)
+    lines[3] = "Data errors detected:".center(SCREEN_WIDTH)
+    start_row = 5
+    max_rows = SCREEN_HEIGHT - start_row - 3
+    for idx, entry in enumerate(errors[:max_rows]):
+        name = entry.get("name", "unknown")
+        error = entry.get("error", "")
+        msg = f"{name}: {error}"
+        lines[start_row + idx] = msg[:SCREEN_WIDTH].ljust(SCREEN_WIDTH)
+    lines[-3] = footer.center(SCREEN_WIDTH)
+    return lines
+
+
+def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
+    if not os.path.isdir(DATA_DIR):
+        return True
+    files = [name for name in sorted(os.listdir(DATA_DIR)) if name.endswith(".json")]
+    total = max(1, len(files))
+    results = []
+    start = time.time()
+    for idx, name in enumerate(files):
+        path = os.path.join(DATA_DIR, name)
+        ok = True
+        count = 0
+        error = ""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                count = len(data)
+            elif isinstance(data, list):
+                count = len(data)
+            else:
+                count = 1
+        except (OSError, JSONDecodeError) as exc:
+            ok = False
+            error = str(exc)
+        results.append({"name": name, "ok": ok, "count": count, "error": error})
+        progress = (idx + 1) / total
+        current = f"Checking {name}"
+        detail = f"Entries: {count}" if ok else "Invalid JSON"
+        footer = "Loading assets..." if ok else "Errors found."
+        raw_lines = _preflight_lines("Lokarta Data Check", progress, current, detail, footer)
+        render_frame_fn(Frame(
+            title="",
+            body_lines=[],
+            action_lines=[],
+            stat_lines=[],
+            footer_hint="",
+            location="",
+            art_lines=[],
+            art_color=ANSI.FG_WHITE,
+            status_lines=[],
+            raw_lines=raw_lines,
+        ))
+        target_time = start + (progress * 2.0)
+        now = time.time()
+        if now < target_time:
+            time.sleep(target_time - now)
+
+    errors = [entry for entry in results if not entry.get("ok")]
+    if errors:
+        while True:
+            raw_lines = _preflight_error_lines(
+                "Lokarta Data Check - Errors",
+                errors,
+                "Press C to continue (may break). Press Q to quit.",
+            )
+            render_frame_fn(Frame(
+                title="",
+                body_lines=[],
+                action_lines=[],
+                stat_lines=[],
+                footer_hint="",
+                location="",
+                art_lines=[],
+                art_color=ANSI.FG_WHITE,
+                status_lines=[],
+                raw_lines=raw_lines,
+            ))
+            ch = read_keypress_fn()
+            if not ch:
+                continue
+            if ch.lower() == "q":
+                return False
+            if ch.lower() == "c":
+                return True
+    return True
+
 
 def main():
     if os.name != 'nt' and not WEB_MODE:
@@ -68,6 +163,10 @@ def main():
             print(f"WARNING: Terminal size is {cols}x{rows}. Recommended is 100x30.")
             print("Resize your terminal for best results.")
             input("Press Enter to continue anyway...")
+    if not run_data_preflight(render_frame, read_keypress):
+        clear_screen()
+        print("Startup aborted due to data errors.")
+        return
 
     state = GameState(
         player=Player.from_dict({}),

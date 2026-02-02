@@ -33,8 +33,7 @@
       "Let me break it down: these effects cost MP to cast, and they stack. With a few casts, you\u2019ll be strong enough to trample some monsters.",
       "Stat boosts won\u2019t carry into the next day, so if you rest at the Inn, the effects reset. Resting also fully restores your HP and MP, so the next day you can recast the spells and power up before heading out again.",
       "If you take me with you, I\u2019ll teach you these two spells and we can take down some enemies together. They\u2019ll reward us with XP and GP. While battling, we can also recruit two more baby mushrooms using the \u201cSocialize\u201d feature. Once you have three baby mushrooms on the team, the priestess at the temple can merge us into a stronger Mushroom.",
-      "So what do you say? Let me join you, and let\u2019s see how we fare against real monsters.",
-      "Let Mushy join your team and he\u2019ll teach you Life Boost and Strength. (Start Quest)"
+      "So what do you say? Let me join you, and let\u2019s see how we fare against real monsters."
     ],
     "requirements": {
       "flags_required": [],
@@ -63,9 +62,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Wands can store charges, letting you cast spells without spending MP. To use a wand in battle, you must equip it on yourself.",
-      "Wands can be bought in the Shop, and the Alchemist can fuse gear to combine and increase its power.",
-      "Buy 3 Oak Wands and fuse them into one at the Alchemist."
+      "Now that you know a few basic spells, let's talk about wands.  Spells normally consume your Mana Points (MP) to cast.  Mana will refresh each day (after sleeping at the Inn), but it is still limited.",
+      "In addition to increasing the potency of your spells, wands can store charges, letting you cast spells without spending MP. To use a wand in battle, you must equip it so it is ready to use.",
+      "Wands can be bought in the Shop, but the wands they sell here can only hold a single spell charge.  Luckily the Alchemist in town can fuse gear together to combine and increase its power.",
+      "Buy 3 Oak Wands and fuse them into one at the Alchemist.  If you don't have enough GP yet, go hunting in the Forest."
     ],
     "requirements": {
       "flags_required": [
@@ -95,10 +95,11 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_teen",
     "dialog": [
-      "Before we push further, we should gear up. Each slot boosts your stats in a different way.",
-      "Swords raise Attack, shields and armor bolster Defense, and rings and bracelets add smaller bonuses.",
-      "As you already know, wands hold elemental charges for spells, so be sure to keep one equiped if you plan to cast in battle.",
-      "Visit the Shop to buy gear, then equip one item in each slot from your inventory."
+      "Before we push further, we should gear up. You already have your wand, which gives you extra spell casts and increases your spell power, but there is more to adventuring than just magic.",
+      "There are different kinds of items that you can equip to yourself to help boost different stats.",
+      "Swords are good to raise your Attack power, shields and armor bolster Defense, and rings and bracelets can have different enchantments and bonuses.",
+      "Visit the Shop to buy at leaet one of each different type of gear.  Purchased items will auto-equip to you, or you can browse under Options -> Inventory to change which items are equipped.",
+      "If you don't have enough Gold to buy everything at this point, we can go hunting in the Forest to collect GP."
     ],
     "requirements": {
       "flags_required": [
@@ -156,7 +157,7 @@
       "Beba will cost 100 GP to recruit, but once she joins, other fairies will join for 60 GP each. It is worth it.",
       "If we help her gather a small court, she will blossom faster. That means recruiting a few fairy babies.",
       "Once we have three fairy babies, the temple can fuse them into a stronger fairy teen.",
-      "Ready to meet Beba and give her a proper royal escort? (Start Quest)"
+      "Ready to meet Beba and give her a proper royal escort?"
     ],
     "requirements": {
       "flags_required": [
@@ -205,7 +206,7 @@
       "Chase is quick but young, still learning to guard the pack. He wants a team that can keep up with him.",
       "If we help him gather two more wolf pups, the temple can fuse their bond into a full-grown wolf.",
       "A true wolf will give us the bite and grit to face what waits beyond the forest.",
-      "Ready to run with Chase and learn the rhythm of the moon? (Start Quest)"
+      "Ready to run with Chase and learn the rhythm of the moon?"
     ],
     "requirements": {
       "flags_required": [
