@@ -215,10 +215,11 @@ def play_sequence(
     play_audio(samples)
 
 
-def play_song(data: dict, name: str, scale_override: str | None, tempo_override: float | None):
+def render_song(data: dict, name: str, scale_override: str | None, tempo_override: float | None) -> array:
     songs = data.get("songs", {})
     if name not in songs:
         raise MusicError(f"Unknown song: {name}")
+    buffer = array("h")
     for step in songs[name]:
         if not isinstance(step, dict):
             raise MusicError(f"Invalid song step: {step}")
@@ -230,7 +231,22 @@ def play_song(data: dict, name: str, scale_override: str | None, tempo_override:
         step_tempo = step.get("tempo")
         if step_tempo is None:
             step_tempo = tempo_override
-        play_sequence(data, sequence_name, root_note, step_scale, step_tempo)
+        sequences = data.get("sequences", {})
+        if sequence_name not in sequences:
+            raise MusicError(f"Unknown sequence: {sequence_name}")
+        sequence = dict(sequences[sequence_name])
+        if step_scale:
+            sequence["scale"] = step_scale
+        if step_tempo is not None:
+            sequence["tempo"] = step_tempo
+        root_midi = parse_root(root_note)
+        buffer.extend(render_sequence(sequence, root_midi, data))
+    return buffer
+
+
+def play_song(data: dict, name: str, scale_override: str | None, tempo_override: float | None):
+    samples = render_song(data, name, scale_override, tempo_override)
+    play_audio(samples)
 
 
 def build_parser() -> argparse.ArgumentParser:

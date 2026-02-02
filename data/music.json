@@ -18,13 +18,13 @@
   },
   "sequences": {
     "triad_ascending": {
-      "tempo": 120,
+      "tempo": 240,
       "scale": "major",
       "wave": "square",
       "pattern": "triad_ascending"
     },
     "asc_2_measures": {
-      "tempo": 120,
+      "tempo": 240,
       "scale": "major",
       "wave": "square",
       "pattern": "asc_2_measures"
