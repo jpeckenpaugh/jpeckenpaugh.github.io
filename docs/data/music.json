@@ -1,0 +1,63 @@
+{
+  "sequences": {
+    "triad_ascending": {
+      "tempo": 120,
+      "scale": "major",
+      "wave": "square",
+      "notes": [
+        [1],
+        [3],
+        [5],
+        [1, 2, 1],
+        [0, 1]
+      ]
+    },
+    "maj_asc_2_measures": {
+      "tempo": 120,
+      "scale": "major",
+      "wave": "square",
+      "notes": [
+        [1],
+        [5, 1, -1],
+        [1],
+        [3],
+        [5, 2],
+        [0, 2]
+      ]
+    },
+    "min_asc_2_measures": {
+      "tempo": 120,
+      "scale": "minor",
+      "wave": "square",
+      "notes": [
+        [1],
+        [5, 1, -1],
+        [1],
+        [3],
+        [5, 2],
+        [0, 2]
+      ]
+    },
+    "dim_asc_2_measures": {
+      "tempo": 120,
+      "scale": "diminished",
+      "wave": "square",
+      "notes": [
+        [1],
+        [5, 1, -1],
+        [1],
+        [3],
+        [5, 2],
+        [0, 2]
+      ]
+    }
+  },
+  "songs": {
+    "intro_cycle": [
+      {"sequence": "maj_asc_2_measures", "root": "C4"},
+      {"sequence": "dim_asc_2_measures", "root": "B4"},
+      {"sequence": "min_asc_2_measures", "root": "A4"},
+      {"sequence": "maj_asc_2_measures", "root": "G3"}
+    ]
+  }
+}
