@@ -27,6 +27,8 @@ rsync -av \
   "$ROOT/color_map.py" \
   "$DOCS/"
 
+date "+%Y-%m-%d %H:%M:%S %Z" > "$DOCS/build-time.txt"
+
 ROOT_PATH="$ROOT"
 python3 - <<'PY'
 import json
