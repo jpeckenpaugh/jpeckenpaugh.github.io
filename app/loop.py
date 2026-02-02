@@ -2744,6 +2744,19 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         return
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
+    if hasattr(state.player, "flags") and isinstance(state.player.flags, dict):
+        if state.player.flags.get("mushy_06_trial_active"):
+            if hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = handle_event(
+                    state.player,
+                    ctx.quests,
+                    "visit_scene",
+                    {"scene_id": "mushy_06_trial"},
+                    ctx.items,
+                )
+                for message in quest_messages:
+                    push_battle_message(state, message)
+            state.player.flags.pop("mushy_06_trial_active", None)
     if ctx.battle_end_commands:
         color_override = element_color_map(ctx.colors.all(), state.player.current_element)
         animate_battle_end(

@@ -1075,11 +1075,36 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     continue
                 follower_levels += int(follower.get("level", 1) or 1)
         total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
-        state.opponents = ctx.opponents_data.spawn(
-            total_level,
-            ANSI.FG_WHITE,
-            element=getattr(state.player, "current_element", "base")
-        )
+        flags = getattr(state.player, "flags", {})
+        if isinstance(flags, dict) and flags.get("mushy_06_trial_active"):
+            base = ctx.opponents_data.get("fairy_baby", {})
+            if isinstance(base, dict) and base:
+                boosted = dict(base)
+                boosted.update({
+                    "name": "Fairy Mage",
+                    "level": 8,
+                    "hp": 35,
+                    "max_hp": 35,
+                    "atk": 18,
+                    "defense": 16,
+                    "action_chance": 1.2,
+                    "recruitable": False,
+                    "recruit_cost": 0,
+                    "recruit_chance": 0.0,
+                })
+                state.opponents = [ctx.opponents_data.create(dict(boosted), ANSI.FG_WHITE) for _ in range(4)]
+            else:
+                state.opponents = ctx.opponents_data.spawn(
+                    total_level,
+                    ANSI.FG_WHITE,
+                    element=getattr(state.player, "current_element", "base")
+                )
+        else:
+            state.opponents = ctx.opponents_data.spawn(
+                total_level,
+                ANSI.FG_WHITE,
+                element=getattr(state.player, "current_element", "base")
+            )
         state.loot_bank = {"xp": 0, "gold": 0}
         if state.opponents:
             state.last_message = f"A {state.opponents[0].name} appears."

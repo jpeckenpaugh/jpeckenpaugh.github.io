@@ -90,8 +90,7 @@
     "frame_delay": 0.08,
     "variation": 0.0,
     "jitter_stability": true
-  }
-  ,
+  },
   "sprite_swarm": {
     "type": "overlay",
     "frames": [
@@ -126,35 +125,35 @@
     ],
     "mask_frames": [
       [
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123"
+        "bssfaaf",
+        "bfsasab",
+        "ssfafas",
+        "asssfsf",
+        "assfbaf"
       ],
       [
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123"
+        "assabff",
+        "fbfasas",
+        "fasasbf",
+        "sabfafs",
+        "sffsbaa"
       ],
       [
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123"
+        "affssba",
+        "ssbfaaf",
+        "bsasaff",
+        "afsasbf",
+        "fsabasf"
       ],
       [
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123",
-        "1234123"
+        "bsasffa",
+        "ssabffa",
+        "fsbsafa",
+        "saasbff",
+        "aasbfsf"
       ]
     ],
-    "frame_delay": 0.05,
+    "frame_delay": 0.25,
     "variation": 0.08,
     "jitter_stability": false
   }

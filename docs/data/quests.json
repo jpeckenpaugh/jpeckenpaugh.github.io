@@ -228,6 +228,46 @@
       "xp": 0
     }
   },
+  "mushy_06": {
+    "title": "Fight Sprites for Bites",
+    "continent": "base",
+    "on_start": {
+      "grant_flags": [
+        "mushy_06_trial_active"
+      ],
+      "start_message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
+    },
+    "summary_pre": "Beba proposes a trial of strength against the forest fairies.",
+    "summary_active": "Defeat the four fairies in the forest.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "fairy_baby",
+    "dialog": [
+      "We are really working well as a team so far, but it's time to push your magic skills to the next level.",
+      "Besides the basic stat enhancing spells you currently have, there are powerful attack spells that can do damange directly to enemies.",
+      "There are four fairy warriors nearby in the forrest, and if you are able to prove your strength to them, they will grant you a spell that allows you to call them into battle to inflict damage on your enemies.",
+      "If you feel you are ready for this challenge, we can travel to the forest to do battle with them.  But be warned, these will be the hardest enemies you have faced up to this point."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_05_complete"
+      ],
+      "level_min": 3
+    },
+    "objectives": [
+      {
+        "type": "visit_scene",
+        "id": "mushy_06_trial"
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "quest_mushy_06_complete",
+        "spell_sprite_bite_enabled"
+      ],
+      "items": [],
+      "xp": 0
+    }
+  },
   "unlock_continent_01": {
     "title": "[PLACEHOLDER_TITLE]",
     "continent": "base",
