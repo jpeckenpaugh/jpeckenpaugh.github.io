@@ -2599,6 +2599,17 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
             if state.player.hp == 0:
                 lost_gp = state.player.gold // 2
                 state.player.gold -= lost_gp
+                if not isinstance(getattr(state.player, "flags", None), dict):
+                    state.player.flags = {}
+                if not isinstance(getattr(state.player, "quests", None), dict):
+                    state.player.quests = {}
+                for quest_id, trial_flag in (
+                    ("mushy_06", "mushy_06_trial_active"),
+                    ("mushy_07", "mushy_07_trial_active"),
+                ):
+                    qstate = state.player.quests.get(quest_id, {})
+                    if isinstance(qstate, dict) and qstate.get("status") == "active":
+                        state.player.flags[trial_flag] = True
                 state.player.location = "Town"
                 state.player.hp = state.player.max_hp
                 state.player.mp = state.player.max_mp

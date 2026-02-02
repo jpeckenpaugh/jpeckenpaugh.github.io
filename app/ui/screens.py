@@ -1844,9 +1844,11 @@ def generate_frame(
         available_spells = ctx.spells.available(player, ctx.items)
         display_location = spell_menu.get("title", "Spellbook")
         selected_spell = None
+        selected_spell_id = None
         if spell_target_mode and spell_target_command:
             spell_entry = ctx.spells.by_command_id(spell_target_command)
-            selected_spell = spell_entry[1] if spell_entry else None
+            if spell_entry:
+                selected_spell_id, selected_spell = spell_entry
             spell_name = selected_spell.get("name", spell_target_command) if isinstance(selected_spell, dict) else spell_target_command
             targets = [player.name]
             followers = getattr(player, "followers", []) or []
@@ -1866,7 +1868,6 @@ def generate_frame(
         else:
             menu_labels = []
             base_labels = []
-            selected_spell_id = None
             for idx, (spell_id, spell) in enumerate(available_spells):
                 name = spell.get("name", "Spell")
                 base_cost = int(spell.get("mp_cost", 0))

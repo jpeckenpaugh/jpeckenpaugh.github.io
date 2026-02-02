@@ -1077,6 +1077,17 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                 follower_levels += int(follower.get("level", 1) or 1)
         total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
         flags = getattr(state.player, "flags", {})
+        if not isinstance(flags, dict):
+            flags = {}
+            state.player.flags = flags
+        quests_state = getattr(state.player, "quests", {})
+        if isinstance(quests_state, dict):
+            mushy_07_state = quests_state.get("mushy_07", {})
+            if isinstance(mushy_07_state, dict) and mushy_07_state.get("status") == "active":
+                flags["mushy_07_trial_active"] = True
+            mushy_06_state = quests_state.get("mushy_06", {})
+            if isinstance(mushy_06_state, dict) and mushy_06_state.get("status") == "active":
+                flags["mushy_06_trial_active"] = True
         if isinstance(flags, dict) and flags.get("mushy_07_trial_active"):
             base = ctx.opponents_data.get("ogre", {})
             if isinstance(base, dict) and base:
