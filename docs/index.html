@@ -78,10 +78,50 @@
       </section>
       <footer class="page-footer">
         <div class="footer-links">
+          <div class="docs-menu-wrap">
+            <button id="docs-open" class="debug-link" type="button" aria-expanded="false" aria-controls="docs-menu">
+              Docs
+            </button>
+            <div id="docs-menu" class="docs-menu hidden" role="menu" aria-label="Documentation links">
+              <a class="docs-item" href="marked/?file=README.md" role="menuitem">
+                <span class="docs-title">README</span>
+                <span class="docs-desc">Project overview and quick start.</span>
+              </a>
+              <a class="docs-item" href="marked/?file=AGENTS.md" role="menuitem">
+                <span class="docs-title">AGENTS</span>
+                <span class="docs-desc">Contributor guidelines and workflows.</span>
+              </a>
+              <a class="docs-item" href="marked/?file=testing_feedback.md" role="menuitem">
+                <span class="docs-title">Testing Feedback</span>
+                <span class="docs-desc">QA notes and testing results.</span>
+              </a>
+              <a class="docs-item" href="marked/?file=todo_controls.md" role="menuitem">
+                <span class="docs-title">TODO: Controls</span>
+                <span class="docs-desc">Input and control scheme backlog.</span>
+              </a>
+              <a class="docs-item" href="marked/?file=TODO_elements.md" role="menuitem">
+                <span class="docs-title">TODO: Elements</span>
+                <span class="docs-desc">Element system tasks and notes.</span>
+              </a>
+              <a class="docs-item" href="marked/?file=todo_opponent_rework.md" role="menuitem">
+                <span class="docs-title">TODO: Opponents</span>
+                <span class="docs-desc">Opponent rework backlog.</span>
+              </a>
+              <a class="docs-item" href="marked/?file=todo_testing.md" role="menuitem">
+                <span class="docs-title">TODO: Testing</span>
+                <span class="docs-desc">Testing checklist and coverage.</span>
+              </a>
+              <a class="docs-item" href="marked/?file=todo_venues.md" role="menuitem">
+                <span class="docs-title">TODO: Venues</span>
+                <span class="docs-desc">Venue updates and fixes.</span>
+              </a>
+            </div>
+          </div>
           <a class="repo-link" href="https://github.com/jpeckenpaugh/lokarta" target="_blank" rel="noopener noreferrer">
             GitHub: jpeckenpaugh/lokarta
           </a>
           <button id="debug-open" class="debug-link" type="button">Debug</button>
+          <span id="build-time" class="build-time" aria-live="polite"></span>
         </div>
       </footer>
     </main>

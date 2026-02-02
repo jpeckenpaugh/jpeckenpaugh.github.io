@@ -23,6 +23,8 @@ initTerminal();
 setupVirtualKeyboard();
 initTipsModal();
 initDebugModal();
+initBuildTime();
+initDocsMenu();
 
 async function initTerminal() {
   await waitForFonts();
@@ -238,6 +240,63 @@ async function bootPyodide() {
     writeToTerminal(`\x1b[31mRuntime error: ${err}\x1b[0m\r\n`);
     setStatus("Runtime error. Check console.");
     console.error(err);
+  });
+}
+
+async function initBuildTime() {
+  const target = document.getElementById("build-time");
+  if (!target) return;
+  try {
+    const url = new URL("build-time.txt", window.location.href);
+    url.searchParams.set("v", Date.now().toString());
+    const response = await fetch(url);
+    if (!response.ok) {
+      return;
+    }
+    const text = (await response.text()).trim();
+    if (text) {
+      target.textContent = `Build: ${text}`;
+    }
+  } catch (_err) {
+    return;
+  }
+}
+
+function initDocsMenu() {
+  const button = document.getElementById("docs-open");
+  const menu = document.getElementById("docs-menu");
+  if (!button || !menu) return;
+
+  function closeMenu() {
+    menu.classList.add("hidden");
+    button.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleMenu() {
+    const isOpen = !menu.classList.contains("hidden");
+    if (isOpen) {
+      closeMenu();
+    } else {
+      menu.classList.remove("hidden");
+      button.setAttribute("aria-expanded", "true");
+    }
+  }
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleMenu();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!menu.contains(event.target) && event.target !== button) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMenu();
+    }
   });
 }
 

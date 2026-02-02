@@ -78,7 +78,7 @@ Runtime behavior:
 ### Web Build Sync
 
 - Make gameplay/code changes in the root tree first.
-- Sync runtime files into `docs/` with `scripts/sync_docs.sh` (preserves web-only assets like HTML/CSS/JS).
+- Sync runtime files into `docs/` with `scripts/build.sh` (preserves web-only assets like HTML/CSS/JS).
 - `docs/` is the GitHub Pages web root and includes web-only assets; avoid overwriting those files.
 - Web UI includes a tips modal with keyboard guidance and a Browser Note about Pyodide + WebKit constraints.
 - Debug modal explains save incompatibilities and offers a “Clear Saved Games” action (IDBFS reset + reload).

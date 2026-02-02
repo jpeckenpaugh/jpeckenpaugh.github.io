@@ -160,6 +160,7 @@ body {
   gap: 12px;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .debug-link {
@@ -179,6 +180,65 @@ body {
 .debug-link:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.build-time {
+  color: rgba(232, 228, 220, 0.7);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.docs-menu-wrap {
+  position: relative;
+}
+
+.docs-menu {
+  position: absolute;
+  bottom: 120%;
+  left: 0;
+  min-width: 260px;
+  background: rgba(10, 12, 15, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+.docs-menu.hidden {
+  display: none;
+}
+
+.docs-item {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.docs-item:hover,
+.docs-item:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent);
+}
+
+.docs-title {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.docs-desc {
+  font-size: 12px;
+  color: rgba(232, 228, 220, 0.7);
 }
 
 .terminal-shell {

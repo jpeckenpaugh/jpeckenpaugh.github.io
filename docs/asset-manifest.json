@@ -1,5 +1,5 @@
 {
-  "version": 1770072547,
+  "version": 1770073436,
   "files": [
     ".gitignore",
     ".nojekyll",
@@ -63,6 +63,7 @@
     "app/venues.py",
     "asset-manifest.json",
     "audio.js",
+    "build-time.txt",
     "color_map.py",
     "data/abilities.json",
     "data/characters.json",
@@ -94,6 +95,8 @@
     "index.html",
     "main.js",
     "main.py",
+    "marked/index.html",
+    "marked/style.css",
     "music.py",
     "render.py",
     "style.css",
