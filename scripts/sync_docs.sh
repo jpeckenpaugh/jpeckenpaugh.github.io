@@ -31,6 +31,7 @@ ROOT_PATH="$ROOT"
 python3 - <<'PY'
 import json
 import os
+import time
 from pathlib import Path
 
 root = Path(os.environ.get("ROOT_PATH", "")).resolve() / "docs"
@@ -43,12 +44,14 @@ for path in root.rglob("*"):
         continue
     if "/__pycache__/" in f"/{rel}/":
         continue
+    if rel.startswith("saves/"):
+        continue
     if rel.endswith(".pyc"):
         continue
     if rel.endswith(".DS_Store"):
         continue
     files.append(rel)
 files = sorted(set(files))
-manifest = {"files": files}
+manifest = {"version": int(time.time()), "files": files}
 (root / "asset-manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=True) + "\n")
 PY

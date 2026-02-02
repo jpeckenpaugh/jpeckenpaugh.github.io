@@ -1,4 +1,5 @@
 {
+  "version": 1770051015,
   "files": [
     ".gitignore",
     ".nojekyll",
@@ -95,8 +96,6 @@
     "main.py",
     "music.py",
     "render.py",
-    "saves/last_slot.json",
-    "saves/slot1.json",
     "style.css",
     "testing_feedback.md",
     "tests/test_bootstrap.py",

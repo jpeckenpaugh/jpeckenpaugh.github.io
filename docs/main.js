@@ -2,6 +2,7 @@ const statusEl = document.getElementById("status");
 const termEl = document.getElementById("terminal");
 const keyboardEl = document.getElementById("virtual-keyboard");
 const manifestUrl = new URL("asset-manifest.json", window.location.href);
+manifestUrl.searchParams.set("v", Date.now().toString());
 const rootUrl = new URL(".", window.location.href);
 
 const term = new Terminal({
@@ -140,8 +141,10 @@ async function fetchManifest() {
 
 async function loadAssets(pyodide, manifest) {
   const { FS } = pyodide;
+  const cacheBust = manifest?.version ? String(manifest.version) : Date.now().toString();
   for (const file of manifest.files || []) {
     const fileUrl = new URL(file, rootUrl);
+    fileUrl.searchParams.set("v", cacheBust);
     const response = await fetch(fileUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch ${file} (${response.status})`);
