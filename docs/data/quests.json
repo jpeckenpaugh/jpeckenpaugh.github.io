@@ -269,6 +269,48 @@
       "xp": 100
     }
   },
+  "mushy_07": {
+    "title": "Ogre's Orb",
+    "continent": "base",
+    "on_start": {
+      "grant_flags": [
+        "mushy_07_trial_active"
+      ],
+      "start_message": "Defeat the ogre in the forest to claim the magic orb."
+    },
+    "summary_pre": "Beba warns of an ogre terrorizing the fairies and hoarding a magic orb.",
+    "summary_active": "Defeat the ogre in the forest.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "ogre",
+    "dialog": [
+      "We've made new allies among the fairies, but a threat looms nearby.",
+      "An ogre has been terrorizing the forest and stealing treasures from the fairy clans.",
+      "The ogre carries a magic orb said to deepen your mana pool and empower your spells.",
+      "If you can defeat the ogre in the forest, the fairies will let you keep the orb.",
+      "Ranked-up spells strike harder and can also hit multiple targets at once."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_06_complete"
+      ],
+      "level_min": 4
+    },
+    "objectives": [
+      {
+        "type": "visit_scene",
+        "id": "mushy_07_trial"
+      }
+    ],
+    "rewards": {
+      "flags_set": [
+        "quest_mushy_07_complete"
+      ],
+      "mp_bonus": 20,
+      "spell_rank_up": 1,
+      "items": [],
+      "xp": 100
+    }
+  },
   "unlock_continent_01": {
     "title": "[PLACEHOLDER_TITLE]",
     "continent": "base",

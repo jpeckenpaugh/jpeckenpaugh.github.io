@@ -1866,10 +1866,11 @@ def generate_frame(
         else:
             menu_labels = []
             base_labels = []
-            for idx, (_, spell) in enumerate(available_spells):
+            selected_spell_id = None
+            for idx, (spell_id, spell) in enumerate(available_spells):
                 name = spell.get("name", "Spell")
                 base_cost = int(spell.get("mp_cost", 0))
-                max_rank = ctx.spells.rank_for(spell, player.level)
+                max_rank = ctx.spells.rank_for(spell, player, spell_id)
                 element = spell.get("element")
                 has_charge = False
                 if element:
@@ -1885,6 +1886,7 @@ def generate_frame(
                     if not has_charge and max_affordable >= 1:
                         selected_rank = min(selected_rank, max_affordable)
                     selected_spell = spell
+                    selected_spell_id = spell_id
                 mp_cost = base_cost * max(1, selected_rank)
                 star_color = ""
                 if element and hasattr(ctx, "elements"):
@@ -1926,10 +1928,10 @@ def generate_frame(
         desc_text = ""
         if selected_spell is None and available_spells:
             selection = max(0, min(menu_cursor, len(available_spells) - 1))
-            _, selected_spell = available_spells[selection]
+            selected_spell_id, selected_spell = available_spells[selection]
         if isinstance(selected_spell, dict):
             effect = _spell_effect_with_art(ctx, selected_spell) if isinstance(selected_spell, dict) else None
-            rank = ctx.spells.rank_for(selected_spell, player.level)
+            rank = ctx.spells.rank_for(selected_spell, player, selected_spell_id)
             color_key = ""
             if isinstance(effect, dict):
                 if rank >= 3:

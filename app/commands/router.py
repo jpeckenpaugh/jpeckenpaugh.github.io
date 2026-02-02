@@ -378,6 +378,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                 "fuse_followers",
                 {"follower_type": fuse_type, "count": 3},
                 ctx.items,
+                ctx.spells,
             )
             if quest_messages:
                 state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -1076,7 +1077,30 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                 follower_levels += int(follower.get("level", 1) or 1)
         total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
         flags = getattr(state.player, "flags", {})
-        if isinstance(flags, dict) and flags.get("mushy_06_trial_active"):
+        if isinstance(flags, dict) and flags.get("mushy_07_trial_active"):
+            base = ctx.opponents_data.get("ogre", {})
+            if isinstance(base, dict) and base:
+                boosted = dict(base)
+                boosted.update({
+                    "name": "Ogre",
+                    "level": 10,
+                    "hp": 120,
+                    "max_hp": 120,
+                    "atk": 110,
+                    "defense": 55,
+                    "action_chance": 1.0,
+                    "recruitable": False,
+                    "recruit_cost": 0,
+                    "recruit_chance": 0.0,
+                })
+                state.opponents = [ctx.opponents_data.create(dict(boosted), ANSI.FG_WHITE)]
+            else:
+                state.opponents = ctx.opponents_data.spawn(
+                    total_level,
+                    ANSI.FG_WHITE,
+                    element=getattr(state.player, "current_element", "base")
+                )
+        elif isinstance(flags, dict) and flags.get("mushy_06_trial_active"):
             base = ctx.opponents_data.get("fairy_baby", {})
             if isinstance(base, dict) and base:
                 boosted = dict(base)

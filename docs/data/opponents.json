@@ -556,6 +556,42 @@
         "    111     111",
         "       11111111"
       ]
+    },
+    "ogre": {
+      "name": "Ogre",
+      "element": "base",
+      "level": 10,
+      "hp": 110,
+      "atk": 90,
+      "defense": 45,
+      "action_chance": 0.95,
+      "recruitable": false,
+      "desc": "A hulking brute with a crushing grip.",
+      "arrival": "lumbers into view",
+      "art": [
+        "    ,_.--.,",
+        "     ) o.o(",
+        "    :  '---;",
+        "  ___.\\.  -(",
+        "(|'`          )",
+        " )\\         ,(",
+        "(w':;,.____.;w)",
+        "  /' _(  '._''\\",
+        "'---'       '--'"
+      ],
+      "color_map": [
+        "    1111111",
+        "     1 1111",
+        "    1  11111",
+        "  111111  11",
+        "1111          1",
+        " 11         11",
+        "111111111111111",
+        "  11 11  111111",
+        "11111       1111"
+      ],
+      "variation": 0.06,
+      "jitter_stability": false
     }
   },
   "element_variants": {

@@ -932,6 +932,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                                         "recruit_follower",
                                         {"follower_type": follower.get("type", ""), "count": 1},
                                         ctx.items,
+                                        ctx.spells,
                                     )
                         start_message = str(on_start.get("start_message", "") or "").strip() or None
                         if start_quest(state.player, quest_id):
@@ -1203,6 +1204,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                         "fuse_followers",
                         {"follower_type": selected_type, "count": 3},
                         ctx.items,
+                        ctx.spells,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -1336,8 +1338,9 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         state.spell_cursor = max(0, min(state.spell_cursor, len(keys) - 1))
         state.menu_cursor = state.spell_cursor
         spell_entry = ctx.spells.by_command_id(keys[state.spell_cursor])
+        spell_id = spell_entry[0] if spell_entry else None
         spell = spell_entry[1] if spell_entry else None
-        max_rank = ctx.spells.rank_for(spell, state.player.level) if spell else 1
+        max_rank = ctx.spells.rank_for(spell, state.player, spell_id) if spell else 1
         base_cost = int(spell.get("mp_cost", 0)) if isinstance(spell, dict) else 0
         element = spell.get("element") if isinstance(spell, dict) else None
         has_charge = False
@@ -1355,8 +1358,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             state.menu_cursor = state.spell_cursor
             spell_entry = ctx.spells.by_command_id(keys[state.spell_cursor])
             if spell_entry:
-                _, spell = spell_entry
-                max_rank = ctx.spells.rank_for(spell, state.player.level)
+                spell_id, spell = spell_entry
+                max_rank = ctx.spells.rank_for(spell, state.player, spell_id)
                 base_cost = int(spell.get("mp_cost", 0))
                 element = spell.get("element")
                 has_charge = False
@@ -1665,8 +1668,8 @@ def maybe_begin_target_select(ctx, state: GameState, cmd: Optional[str]) -> bool
     if cmd in ctx.targeted_spell_commands:
         spell_entry = ctx.spells.by_command_id(cmd)
         if spell_entry:
-            _, spell = spell_entry
-            rank = ctx.spells.rank_for(spell, state.player.level)
+            spell_id, spell = spell_entry
+            rank = ctx.spells.rank_for(spell, state.player, spell_id)
             if rank >= 2:
                 return False
     targeted = cmd in ("ATTACK", "SOCIALIZE") or cmd in ctx.targeted_spell_commands
@@ -1968,14 +1971,11 @@ def _apply_item_heal(target, item: dict, player: Player) -> tuple[int, int]:
 
 def spell_level_up_notes(ctx, player, prev_level: int, new_level: int) -> list[str]:
     notes = []
-    for _, spell in ctx.spells.available(player, ctx.items):
+    for spell_id, spell in ctx.spells.available(player, ctx.items):
         name = spell.get("name", "Spell")
-        old_rank = ctx.spells.rank_for(spell, prev_level)
-        new_rank = ctx.spells.rank_for(spell, new_level)
-        if old_rank == 0 and new_rank > 0:
-            notes.append(f"New spell: {name} (Rank {new_rank})")
-        elif new_rank > old_rank:
-            notes.append(f"{name} rank up: {old_rank} → {new_rank}")
+        rank = ctx.spells.rank_for(spell, player, spell_id)
+        if rank > 1:
+            notes.append(f"{name} rank: {rank}")
     return notes
 
 
@@ -2181,8 +2181,8 @@ def apply_router_command(
         if keys and 0 <= state.menu_cursor < len(keys):
             spell_entry = ctx.spells.by_command_id(keys[state.menu_cursor])
             if spell_entry:
-                _, spell = spell_entry
-                max_rank = ctx.spells.rank_for(spell, state.player.level)
+                spell_id, spell = spell_entry
+                max_rank = ctx.spells.rank_for(spell, state.player, spell_id)
                 base_cost = int(spell.get("mp_cost", 0))
                 element = spell.get("element")
                 has_charge = False
@@ -2272,7 +2272,7 @@ def resolve_player_action(
     if spell_entry:
         spell_id, spell = spell_entry
         name = spell.get("name", spell_id.title())
-        max_rank = ctx.spells.rank_for(spell, state.player.level)
+        max_rank = ctx.spells.rank_for(spell, state.player, spell_id)
         base_cost = int(spell.get("mp_cost", 2))
         element = spell.get("element")
         has_charge = False
@@ -2427,8 +2427,8 @@ def handle_offensive_action(ctx, state: GameState, action_cmd: Optional[str]) ->
     spell = None
     rank = 1
     if spell_entry:
-        _, spell = spell_entry
-        max_rank = ctx.spells.rank_for(spell, state.player.level)
+        spell_id, spell = spell_entry
+        max_rank = ctx.spells.rank_for(spell, state.player, spell_id)
         rank = max(1, min(state.spell_cast_rank, max_rank))
         effect = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None
     if state.action_effect_override:
@@ -2745,6 +2745,19 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
     if hasattr(state.player, "flags") and isinstance(state.player.flags, dict):
+        if state.player.flags.get("mushy_07_trial_active"):
+            if hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = handle_event(
+                    state.player,
+                    ctx.quests,
+                    "visit_scene",
+                    {"scene_id": "mushy_07_trial"},
+                    ctx.items,
+                    ctx.spells,
+                )
+                for message in quest_messages:
+                    push_battle_message(state, message)
+            state.player.flags.pop("mushy_07_trial_active", None)
         if state.player.flags.get("mushy_06_trial_active"):
             if hasattr(ctx, "quests") and ctx.quests is not None:
                 quest_messages = handle_event(
@@ -2753,6 +2766,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
                     "visit_scene",
                     {"scene_id": "mushy_06_trial"},
                     ctx.items,
+                    ctx.spells,
                 )
                 for message in quest_messages:
                     push_battle_message(state, message)
@@ -2838,7 +2852,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
                 ctx.audio.play_song_once("battle_victory")
         if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells)
             for message in quest_messages:
                 push_battle_message(state, message)
             if quest_messages:

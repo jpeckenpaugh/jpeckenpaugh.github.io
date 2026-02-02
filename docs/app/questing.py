@@ -136,7 +136,13 @@ def _build_follower(entry: dict) -> dict:
     }
 
 
-def _apply_rewards(player: Player, quest_id: str, quest: dict, items_data: Optional[object] = None) -> tuple[int, int]:
+def _apply_rewards(
+    player: Player,
+    quest_id: str,
+    quest: dict,
+    items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
+) -> tuple[int, int]:
     rewards = quest.get("rewards", {})
     if not isinstance(rewards, dict):
         rewards = {}
@@ -148,6 +154,28 @@ def _apply_rewards(player: Player, quest_id: str, quest: dict, items_data: Optio
         flags_set = []
     for flag in flags_set:
         player.flags[str(flag)] = True
+    flags_set_values = rewards.get("flags_set_values", {})
+    if isinstance(flags_set_values, dict):
+        for key, value in flags_set_values.items():
+            if not key:
+                continue
+            player.flags[str(key)] = value
+    mp_bonus = int(rewards.get("mp_bonus", 0) or 0)
+    if mp_bonus:
+        player.max_mp += mp_bonus
+        player.mp += mp_bonus
+    spell_rank_up = int(rewards.get("spell_rank_up", 0) or 0)
+    if spell_rank_up > 0 and spells_data is not None:
+        ranks = player.flags.get("spell_ranks")
+        if not isinstance(ranks, dict):
+            ranks = {}
+        available = spells_data.available(player, items_data) if hasattr(spells_data, "available") else []
+        for spell_id, _spell in available:
+            current = ranks.get(str(spell_id))
+            if not isinstance(current, int) or current < 1:
+                current = 1
+            ranks[str(spell_id)] = min(3, current + spell_rank_up)
+        player.flags["spell_ranks"] = ranks
     if on_complete.get("clear_recruit_only") and isinstance(getattr(player, "flags", None), dict):
         player.flags.pop("recruit_only_types", None)
     if isinstance(getattr(player, "flags", None), dict):
@@ -265,7 +293,12 @@ def quest_entries(
     return entries
 
 
-def evaluate_quests(player: Player, quests_data, items_data: Optional[object] = None) -> List[str]:
+def evaluate_quests(
+    player: Player,
+    quests_data,
+    items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
+) -> List[str]:
     _ensure_player_quest_state(player)
     messages: List[str] = []
     changed = True
@@ -306,7 +339,7 @@ def evaluate_quests(player: Player, quests_data, items_data: Optional[object] = 
             if not _objectives_met(player, qstate.get("progress", {}), objectives):
                 continue
             qstate["status"] = "complete"
-            xp_gain, _levels_gained = _apply_rewards(player, quest_id, quest, items_data)
+            xp_gain, _levels_gained = _apply_rewards(player, quest_id, quest, items_data, spells_data)
             title = quest.get("title", quest_id)
             messages.append(f"Quest complete: {title}.")
             if xp_gain > 0:
@@ -367,6 +400,7 @@ def handle_event(
     event_type: str,
     payload: Optional[Dict[str, Any]] = None,
     items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
 ) -> List[str]:
     record_event(player, quests_data, event_type, payload)
-    return evaluate_quests(player, quests_data, items_data)
+    return evaluate_quests(player, quests_data, items_data, spells_data)

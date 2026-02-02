@@ -355,6 +355,7 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                         "fuse_gear",
                         {"item_id": fused.get("item_id", ""), "rank": int(fused.get("fuse_rank", 1) or 1)},
                         ctx.items,
+                        ctx.spells,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)

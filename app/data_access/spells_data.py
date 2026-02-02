@@ -39,7 +39,6 @@ class SpellsData:
 
     def available(self, player, items_data: Optional[object] = None) -> list[Tuple[str, dict]]:
         entries = []
-        player_level = int(getattr(player, "level", 0) or 0) if not isinstance(player, int) else int(player)
         flags = getattr(player, "flags", {}) if not isinstance(player, int) else {}
         if not isinstance(flags, dict):
             flags = {}
@@ -63,9 +62,6 @@ class SpellsData:
                     if isinstance(grants, list):
                         granted_spells.update(str(spell_id) for spell_id in grants)
         for spell_id, spell in self._spells.items():
-            level_required = int(spell.get("level_required", 0) or 0)
-            if player_level < level_required:
-                continue
             unlock = spell.get("unlock")
             if not isinstance(player, int):
                 flags_any = []
@@ -90,11 +86,30 @@ class SpellsData:
         entries.sort(key=lambda item: (int(item[1].get("level_required", 0) or 0), item[0]))
         return entries
 
-    def rank_for(self, spell: dict, player_level: int) -> int:
-        level_required = int(spell.get("level_required", 0) or 0)
-        if player_level < level_required:
+    def rank_for(self, spell: dict, player, spell_id: Optional[str] = None) -> int:
+        if not isinstance(spell, dict):
             return 0
-        rank = 1 + max(0, (player_level - level_required) // 2)
+        level_required = int(spell.get("level_required", 0) or 0)
+        if isinstance(player, int):
+            return 1 if player >= level_required else 0
+        flags = getattr(player, "flags", {}) if hasattr(player, "flags") else {}
+        if not isinstance(flags, dict):
+            flags = {}
+        rank = 1
+        if spell_id:
+            by_id = flags.get(f"spell_{spell_id}_rank")
+            if isinstance(by_id, int) and by_id > 0:
+                rank = by_id
+            ranks = flags.get("spell_ranks")
+            if isinstance(ranks, dict):
+                value = ranks.get(str(spell_id))
+                if isinstance(value, int) and value > 0:
+                    rank = value
+        bonus = flags.get("spell_rank_bonus")
+        if isinstance(bonus, int) and bonus > 0:
+            rank += bonus
+        if rank < 1:
+            rank = 1
         return min(3, rank)
 
     def element_unlocks(self) -> dict:
