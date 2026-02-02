@@ -36,6 +36,26 @@
       [3],
       [4],
       [1]
+    ],
+    "level_up_phrase": [
+      [5],
+      [4],
+      [3],
+      [5],
+      [7],
+      [6],
+      [5],
+      [7],
+      [1, 2.0, 1],
+      [5, 2.0],
+      [1]
+    ],
+    "quest_open_phrase": [
+      [1],
+      [2],
+      [3],
+      [2],
+      [5]
     ]
   },
   "sequences": {
@@ -68,6 +88,18 @@
       "scale": "major",
       "wave": "square",
       "pattern": "battle_victory_phrase"
+    },
+    "level_up": {
+      "tempo": 360,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "level_up_phrase"
+    },
+    "quest_open": {
+      "tempo": 360,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "quest_open_phrase"
     }
   },
   "songs": {
@@ -82,6 +114,12 @@
     ],
     "battle_victory": [
       {"sequence": "battle_victory", "root": "A3"}
+    ],
+    "level_up": [
+      {"sequence": "level_up", "root": "C4"}
+    ],
+    "quest_open": [
+      {"sequence": "quest_open", "root": "C4"}
     ]
   }
 }

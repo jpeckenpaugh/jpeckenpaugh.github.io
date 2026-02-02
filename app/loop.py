@@ -853,7 +853,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if actions[state.menu_cursor].get("_disabled"):
                 return None, None
             cmd = actions[state.menu_cursor].get("command")
-            state.options_mode = False
+            if cmd != "TOGGLE_AUDIO":
+                state.options_mode = False
             return cmd, None
         return None, None
 
@@ -1779,6 +1780,8 @@ def apply_router_command(
         enabled = _enabled_indices(commands)
         state.action_cursor = enabled[0] if enabled else 0
     if post_quest_mode and not pre_quest_mode:
+        if hasattr(ctx, "audio"):
+            ctx.audio.play_song_once("quest_open")
         elements = list(getattr(state.player, "elements", []) or [])
         if hasattr(ctx, "continents"):
             order = list(ctx.continents.order() or [])
@@ -2381,8 +2384,6 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         return
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
-    if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
-        ctx.audio.play_song_once("battle_victory")
     if ctx.battle_end_commands:
         color_override = element_color_map(ctx.colors.all(), state.player.current_element)
         animate_battle_end(
@@ -2458,6 +2459,11 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             spell_notes = spell_level_up_notes(ctx, state.player, pre_level, state.player.level)
             element_notes = element_unlock_notes(ctx, state.player, pre_level, state.player.level)
             state.level_up_notes = spell_notes + element_notes
+            if hasattr(ctx, "audio"):
+                ctx.audio.play_song_once("level_up")
+        else:
+            if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
+                ctx.audio.play_song_once("battle_victory")
         if hasattr(ctx, "quests") and ctx.quests is not None:
             quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
             for message in quest_messages:

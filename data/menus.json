@@ -32,10 +32,6 @@
     "close_message": "Closed options.",
     "actions": [
       {
-        "label": "Audio",
-        "command": "TOGGLE_AUDIO"
-      },
-      {
         "label": "Inventory",
         "command": "INVENTORY",
         "enabled_when": "has_items"
