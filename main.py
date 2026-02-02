@@ -118,7 +118,7 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
             status_lines=[],
             raw_lines=raw_lines,
         ))
-        target_time = start + (progress * 2.0)
+        target_time = start + (progress * 1.0)
         now = time.time()
         if now < target_time:
             time.sleep(target_time - now)
