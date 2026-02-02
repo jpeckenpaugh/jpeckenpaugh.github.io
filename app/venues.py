@@ -156,6 +156,12 @@ def venue_id_from_state(state: Any) -> Optional[str]:
 
 def venue_actions(ctx: Any, state: Any, venue_id: str) -> list[dict]:
     venue = ctx.venues.get(venue_id, {}) if venue_id else {}
+    def _with_cost(label: str, cost: int | None) -> str:
+        if cost is None:
+            return label
+        if "GP:" in label:
+            return label
+        return f"{label} GP:{cost}"
     if venue_id == "town_shop":
         element = getattr(state.player, "current_element", "base")
         commands = shop_commands(venue, ctx.items, element, state.shop_view, state.player)
@@ -165,6 +171,9 @@ def venue_actions(ctx: Any, state: Any, venue_id: str) -> list[dict]:
         if not getattr(state, "alchemy_selecting", False):
             can_fuse = len(_fusable_gear(state)) >= 2
             entry = {"label": "Fuse", "command": "ALCHEMY_FUSE"}
+            fuse_cost = venue.get("fuse_cost")
+            if isinstance(fuse_cost, int) and fuse_cost > 0:
+                entry["label"] = _with_cost(entry["label"], fuse_cost)
             if not can_fuse:
                 entry["_disabled"] = True
             commands.append(entry)
@@ -195,7 +204,27 @@ def venue_actions(ctx: Any, state: Any, venue_id: str) -> list[dict]:
             commands.append({"label": "No continents unlocked.", "_disabled": True})
         return _append_leave(commands)
 
-    commands = list(venue.get("commands", [])) if isinstance(venue.get("commands"), list) else []
+    if isinstance(venue.get("commands"), list):
+        commands = [dict(entry) for entry in venue.get("commands", []) if isinstance(entry, dict)]
+    else:
+        commands = []
+    services = venue.get("services", {}) if isinstance(venue.get("services"), dict) else {}
+    for entry in commands:
+        label = str(entry.get("label", "")).strip()
+        if not label:
+            continue
+        cost = entry.get("cost")
+        if isinstance(cost, int) and cost > 0:
+            entry["label"] = _with_cost(label, cost)
+            continue
+        if entry.get("command") == "USE_SERVICE":
+            service_id = entry.get("service_id")
+            if service_id:
+                service = services.get(service_id, {})
+                if isinstance(service, dict):
+                    service_cost = service.get("cost")
+                    if isinstance(service_cost, int) and service_cost > 0:
+                        entry["label"] = _with_cost(label, service_cost)
     return _append_leave(commands)
 
 
@@ -238,6 +267,8 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                 item_id = selection.get("item_id")
                 if item_id:
                     state.last_message = purchase_item(state.player, ctx.items, item_id)
+                    if state.last_message.startswith("Purchased") and hasattr(ctx, "audio"):
+                        ctx.audio.play_sfx_once("asc_triads_sfx", "C4")
                     if hasattr(ctx, "quests") and ctx.quests is not None:
                         quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
                         if quest_messages:
@@ -315,6 +346,8 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                     if follower:
                         state.player.assign_gear_to_follower(follower, fused.get("id"))
                 state.last_message = f"Fused into {fused.get('name', 'gear')}."
+                if hasattr(ctx, "audio"):
+                    ctx.audio.play_sfx_once("asc_triads", "C4")
                 if hasattr(ctx, "quests") and ctx.quests is not None:
                     quest_messages = handle_event(
                         state.player,
@@ -379,17 +412,9 @@ def render_venue_body(
         if state.shop_view == "menu":
             body.append("What would you like to do?")
         elif state.shop_view == "buy":
-            for entry in shop_inventory(venue, ctx.items, element):
-                item_id = entry.get("item_id")
-                item = ctx.items.get(item_id, {})
-                label = entry.get("label", item.get("name", item_id))
-                price = item.get("price", 0)
-                body.append(f"{label}  {price} GP")
+            body.append("Select an item to purchase.")
         elif state.shop_view == "sell":
-            for entry in shop_sell_inventory(state.player, ctx.items):
-                label = entry.get("label", "Item")
-                price = entry.get("price", 0)
-                body.append(f"{label}  {price} GP")
+            body.append("Select an item to sell.")
 
     if getattr(state, "alchemist_mode", False) and state.alchemy_first:
         gear_items = [g for g in state.player.gear_inventory if isinstance(g, dict)]

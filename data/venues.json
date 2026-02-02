@@ -721,6 +721,7 @@
       {
         "label": "Fuse Followers",
         "command": "FOLLOWER_FUSE_AUTO",
+        "cost": 100,
         "enabled_when": [
           "in_temple",
           "has_fusion"

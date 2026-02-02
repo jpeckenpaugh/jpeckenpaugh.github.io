@@ -309,7 +309,11 @@ def main():
             continue
 
         if state.leveling_mode:
+            before_points = getattr(state.player, "stat_points", 0)
             state.last_message, leveling_done = state.player.handle_level_up_input(cmd)
+            after_points = getattr(state.player, "stat_points", 0)
+            if after_points < before_points and hasattr(APP, "audio"):
+                APP.audio.play_sfx_once("point_added_sfx", "C4")
             if leveling_done:
                 state.leveling_mode = False
                 state.level_up_notes = []

@@ -171,23 +171,21 @@ class OpponentsData:
         if not candidates:
             candidates = [self.build_variant(base_id, "base") for base_id in base_ids]
             candidates = [c for c in candidates if c]
+        budget = max(0, int(player_level))
+        eligible = [c for c in candidates if int(c.get("level", 1)) <= budget]
+        if not eligible:
+            lowest = min(candidates, key=lambda c: int(c.get("level", 1)))
+            return [self.create(lowest, art_color)]
+        spawned: List[Opponent] = []
         total_level = 0
-        spawned = []
-        attempts = 0
-        while len(spawned) < 3 and attempts < 10:
-            attempts += 1
-            remaining = max(1, player_level - total_level)
-            choices = [
-                m for m in candidates
-                if int(m.get("level", 1)) <= remaining
-            ]
+        while len(spawned) < 4:
+            remaining = budget - total_level
+            if remaining <= 0:
+                break
+            choices = [c for c in eligible if int(c.get("level", 1)) <= remaining]
             if not choices:
                 break
             data = random.choice(choices)
             spawned.append(self.create(data, art_color))
             total_level += int(data.get("level", 1))
-            if total_level >= player_level:
-                break
-        if not spawned:
-            spawned.append(self.create(candidates[0], art_color))
         return spawned
