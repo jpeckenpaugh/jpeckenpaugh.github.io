@@ -27,14 +27,14 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Hi there! I’m Mushy. Nice to meet you! You and I may be low-level now. If we head into the forest like this, we won’t stand much chance against the monsters we’d find.",
-      "But I have a little secret. I can teach you a couple basic spells to boost our stats. They’ll use MP, and the effects wear off over time.",
+      "Hi there! I\u2019m Mushy. Nice to meet you! You and I may be low-level now. If we head into the forest like this, we won\u2019t stand much chance against the monsters we\u2019d find.",
+      "But I have a little secret. I can teach you a couple basic spells to boost our stats. They\u2019ll use MP, and the effects wear off over time.",
       "Life Boost adds 10 HP to your max life, and Strength adds 10 points to both Attack and Defense.",
-      "Let me break it down: these effects cost MP to cast, and they stack. With a few casts, you’ll be strong enough to trample some monsters.",
-      "Stat boosts won’t carry into the next day, so if you rest at the Inn, the effects reset. Resting also fully restores your HP and MP, so the next day you can recast the spells and power up before heading out again.",
-      "If you take me with you, I’ll teach you these two spells and we can take down some enemies together. They’ll reward us with XP and GP. While battling, we can also recruit two more baby mushrooms using the “Socialize” feature. Once you have three baby mushrooms on the team, the priestess at the temple can merge us into a stronger Mushroom.",
-      "So what do you say? Let me join you, and let’s see how we fare against real monsters.",
-      "Let Mushy join your team and he’ll teach you Life Boost and Strength. (Start Quest)"
+      "Let me break it down: these effects cost MP to cast, and they stack. With a few casts, you\u2019ll be strong enough to trample some monsters.",
+      "Stat boosts won\u2019t carry into the next day, so if you rest at the Inn, the effects reset. Resting also fully restores your HP and MP, so the next day you can recast the spells and power up before heading out again.",
+      "If you take me with you, I\u2019ll teach you these two spells and we can take down some enemies together. They\u2019ll reward us with XP and GP. While battling, we can also recruit two more baby mushrooms using the \u201cSocialize\u201d feature. Once you have three baby mushrooms on the team, the priestess at the temple can merge us into a stronger Mushroom.",
+      "So what do you say? Let me join you, and let\u2019s see how we fare against real monsters.",
+      "Let Mushy join your team and he\u2019ll teach you Life Boost and Strength. (Start Quest)"
     ],
     "requirements": {
       "flags_required": [],
@@ -52,7 +52,7 @@
         "quest_mushy_01_complete"
       ],
       "items": [],
-      "xp": 0
+      "xp": 100
     }
   },
   "mushy_02": {
@@ -84,7 +84,7 @@
         "quest_mushy_02_complete"
       ],
       "items": [],
-      "xp": 0
+      "xp": 100
     }
   },
   "mushy_03": {
@@ -124,7 +124,7 @@
         "quest_mushy_03_complete"
       ],
       "items": [],
-      "xp": 0
+      "xp": 100
     }
   },
   "mushy_04": {
@@ -175,7 +175,7 @@
         "quest_mushy_04_complete"
       ],
       "items": [],
-      "xp": 0
+      "xp": 100
     }
   },
   "mushy_05": {
@@ -196,12 +196,12 @@
       "clear_recruit_only": true,
       "follower_cap": 3
     },
-    "summary_pre": "A young wolf longs to run beneath the wandering tower’s shadow.",
+    "summary_pre": "A young wolf longs to run beneath the wandering tower\u2019s shadow.",
     "summary_active": "Recruit three wolf pups and fuse them into a full wolf.",
     "summary_complete": "Quest complete.",
     "art_opponent": "wolf_pup",
     "dialog": [
-      "Mushy whispers about a wolf pup named Chase who runs the ridge each night, following the moon’s path.",
+      "Mushy whispers about a wolf pup named Chase who runs the ridge each night, following the moon\u2019s path.",
       "Chase is quick but young, still learning to guard the pack. He wants a team that can keep up with him.",
       "If we help him gather two more wolf pups, the temple can fuse their bond into a full-grown wolf.",
       "A true wolf will give us the bite and grit to face what waits beyond the forest.",
@@ -225,7 +225,7 @@
         "quest_mushy_05_complete"
       ],
       "items": [],
-      "xp": 0
+      "xp": 100
     }
   },
   "mushy_06": {
@@ -265,7 +265,7 @@
         "spell_sprite_bite_enabled"
       ],
       "items": [],
-      "xp": 0
+      "xp": 100
     }
   },
   "unlock_continent_01": {
@@ -296,7 +296,7 @@
         "unlock_continent_[PLACEHOLDER_CONTINENT_ID]"
       ],
       "items": [],
-      "xp": 0
+      "xp": 100
     }
   }
 }
