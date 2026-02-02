@@ -56,6 +56,30 @@
       [3],
       [2],
       [5]
+    ],
+    "continent_1_quest_head": [
+      [5],
+      [4],
+      [3],
+      [4],
+      [2, 0.5],
+      [1, 0.5],
+      [7, 0.5, -1],
+      [2, 0.5],
+      [1],
+      [1, 1, -1]
+    ],
+    "continent_1_quest_motif": [
+      [1],
+      [2],
+      [3],
+      [1]
+    ],
+    "continent_1_quest_tail": [
+      [7, 1, -2],
+      [0,1],
+      [5, 1, -2],
+      [0,1]
     ]
   },
   "sequences": {
@@ -100,6 +124,24 @@
       "scale": "major",
       "wave": "square",
       "pattern": "quest_open_phrase"
+    },
+    "continent_1_quest_head": {
+      "tempo": 240,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "continent_1_quest_head"
+    },
+    "continent_1_quest_motif": {
+      "tempo": 240,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "continent_1_quest_motif"
+    },
+    "continent_1_quest_tail": {
+      "tempo": 240,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "continent_1_quest_tail"
     }
   },
   "songs": {
@@ -120,6 +162,13 @@
     ],
     "quest_open": [
       {"sequence": "quest_open", "root": "C4"}
+    ],
+    "continent_1_quest": [
+      {"sequence": "continent_1_quest_head", "root": "C4", "staccato": true},
+      {"sequence": "continent_1_quest_motif", "root": "F3", "staccato": true},
+      {"sequence": "continent_1_quest_motif", "root": "G3", "staccato": true},
+      {"sequence": "continent_1_quest_motif", "root": "D3", "scale": "minor", "staccato": true},
+      {"sequence": "continent_1_quest_tail", "root": "C4", "staccato": true}
     ]
   }
 }

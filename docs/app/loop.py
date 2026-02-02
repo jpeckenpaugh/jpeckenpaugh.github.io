@@ -60,6 +60,25 @@ def _status_message(state: GameState, message: Optional[str]) -> str:
 
 
 def render_frame_state(ctx, render_frame, state: GameState, generate_frame, message: Optional[str] = None, suppress_actions: bool = False) -> None:
+    if hasattr(ctx, "audio"):
+        audio_key = None
+        if state.quest_detail_mode:
+            audio_key = f"quest_detail:{state.quest_detail_id}"
+        elif state.quest_mode:
+            audio_key = "quest_list"
+        if audio_key and audio_key != state.screen_audio_key:
+            if audio_key == "quest_list":
+                ctx.audio.play_song_once("quest_open")
+            elif audio_key.startswith("quest_detail:"):
+                order = []
+                if hasattr(ctx, "continents"):
+                    order = list(ctx.continents.order() or [])
+                first = order[0] if order else "base"
+                if getattr(state.player, "current_element", "base") == first:
+                    ctx.audio.play_song_once("continent_1_quest")
+            state.screen_audio_key = audio_key
+        if not audio_key:
+            state.screen_audio_key = None
     frame = generate_frame(
         ctx.screen_ctx,
         state.player,
@@ -1673,6 +1692,9 @@ def apply_router_command(
     pre_title_confirm = getattr(state.player, "title_confirm", False)
     pre_portal_mode = state.portal_mode
     pre_quest_mode = state.quest_mode
+    pre_quest_detail_mode = state.quest_detail_mode
+    pre_quest_detail_id = state.quest_detail_id
+    pre_quest_detail_page = state.quest_detail_page
     pre_title_name_select = getattr(state.player, "title_name_select", False)
     pre_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     cmd_state = CommandState(
@@ -1761,6 +1783,9 @@ def apply_router_command(
     post_title_confirm = getattr(state.player, "title_confirm", False)
     post_portal_mode = state.portal_mode
     post_quest_mode = state.quest_mode
+    post_quest_detail_mode = state.quest_detail_mode
+    post_quest_detail_id = state.quest_detail_id
+    post_quest_detail_page = state.quest_detail_page
     post_title_name_select = getattr(state.player, "title_name_select", False)
     post_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     if post_title_slot_select and not pre_title_slot_select:
@@ -1780,8 +1805,8 @@ def apply_router_command(
         enabled = _enabled_indices(commands)
         state.action_cursor = enabled[0] if enabled else 0
     if post_quest_mode and not pre_quest_mode:
-        if hasattr(ctx, "audio"):
-            ctx.audio.play_song_once("quest_open")
+        state.quest_audio_played = True
+    if post_quest_mode and not pre_quest_mode:
         elements = list(getattr(state.player, "elements", []) or [])
         if hasattr(ctx, "continents"):
             order = list(ctx.continents.order() or [])
@@ -1805,6 +1830,10 @@ def apply_router_command(
         commands.append({"_disabled": False})
         enabled = [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]
         state.action_cursor = enabled[0] if enabled else -1
+    if post_quest_detail_mode:
+        detail_key = f"{post_quest_detail_id}:{post_quest_detail_page}"
+        if detail_key != (state.quest_detail_audio_key or ""):
+            state.quest_detail_audio_key = detail_key
     if (
         (pre_title_fortune and not post_title_fortune)
         or (pre_title_confirm and not post_title_confirm)

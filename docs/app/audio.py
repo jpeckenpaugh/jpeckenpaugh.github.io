@@ -26,6 +26,7 @@ class AudioManager:
         self._lock = RLock()
         self._mode = "on"
         self._web = None
+        self._web_warned = False
         if os.environ.get("LOKARTA_WEB") == "1":
             try:
                 import js  # type: ignore
@@ -110,6 +111,9 @@ class AudioManager:
             except Exception:
                 pass
             return
+        if os.environ.get("LOKARTA_WEB") == "1" and not self._web_warned:
+            print("Audio: web bridge unavailable.")
+            self._web_warned = True
         with self._lock:
             self._stop_kind("music")
             self._stop_kind("sfx")
@@ -127,6 +131,9 @@ class AudioManager:
             except Exception:
                 pass
             return
+        if os.environ.get("LOKARTA_WEB") == "1" and not self._web_warned:
+            print("Audio: web bridge unavailable.")
+            self._web_warned = True
         if mode in ("off", "sfx"):
             self._stop_kind("music")
         if mode in ("off", "music"):
@@ -138,6 +145,10 @@ class AudioManager:
                 self._web.playSequence(name, root_note, scale or "")
             except Exception:
                 pass
+            return
+        if os.environ.get("LOKARTA_WEB") == "1" and not self._web_warned:
+            print("Audio: web bridge unavailable.")
+            self._web_warned = True
             return
         if sys.platform != "darwin":
             return
@@ -165,6 +176,10 @@ class AudioManager:
             except Exception:
                 pass
             return
+        if os.environ.get("LOKARTA_WEB") == "1" and not self._web_warned:
+            print("Audio: web bridge unavailable.")
+            self._web_warned = True
+            return
         if sys.platform != "darwin":
             return
         if self._mode in ("off", "sfx"):
@@ -185,6 +200,10 @@ class AudioManager:
                 self._web.playSfx(name, root_note, scale or "")
             except Exception:
                 pass
+            return
+        if os.environ.get("LOKARTA_WEB") == "1" and not self._web_warned:
+            print("Audio: web bridge unavailable.")
+            self._web_warned = True
             return
         if sys.platform != "darwin":
             return

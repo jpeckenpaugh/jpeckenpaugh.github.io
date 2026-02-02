@@ -140,12 +140,13 @@ class LokartaAudio {
     return [];
   }
 
-  _scheduleSequence({ sequence, rootMidi, startTime, data, kind, scaleOverride }) {
+  _scheduleSequence({ sequence, rootMidi, startTime, data, kind, scaleOverride, staccato }) {
     const tempo = Number(sequence.tempo || 120);
     const scale = scaleOverride || sequence.scale || "major";
     const wave = sequence.wave || DEFAULT_WAVE;
     const notes = this._resolveNotes(sequence, data);
     const secondsPerBeat = 60 / tempo;
+    const useStaccato = Boolean(staccato || sequence.staccato);
     let t = startTime;
     const ctx = this._ctx;
 
@@ -156,6 +157,7 @@ class LokartaAudio {
         t += duration;
         continue;
       }
+      const toneDuration = useStaccato ? duration * 0.5 : duration;
       const midi = this._degreeToMidi(rootMidi, degree, scale, octaveShift, accidental);
       if (midi === null) {
         t += duration;
@@ -168,11 +170,11 @@ class LokartaAudio {
       osc.frequency.setValueAtTime(freq, t);
       gain.gain.setValueAtTime(0, t);
       gain.gain.linearRampToValueAtTime(0.2, t + 0.01);
-      const releaseStart = Math.max(t, t + duration - 0.03);
+      const releaseStart = Math.max(t, t + toneDuration - 0.03);
       gain.gain.linearRampToValueAtTime(0, releaseStart + 0.03);
       osc.connect(gain).connect(ctx.destination);
       osc.start(t);
-      osc.stop(t + duration + 0.05);
+      osc.stop(t + toneDuration + 0.05);
       if (kind === "music") {
         this._musicNodes.push(osc);
       } else {
@@ -184,11 +186,17 @@ class LokartaAudio {
   }
 
   async playSong(name, scaleOverride = "") {
-    if (this._mode === "off" || this._mode === "sfx") return;
+    if (this._mode === "off" || this._mode === "sfx") {
+      console.log("Audio: song blocked by mode", this._mode, name);
+      return;
+    }
     const ctx = await this._ensureContext();
     const data = await this._loadData();
     const song = (data.songs || {})[name];
-    if (!Array.isArray(song) || !song.length) return;
+    if (!Array.isArray(song) || !song.length) {
+      console.log("Audio: missing song", name);
+      return;
+    }
     this.stopMusic();
     let startTime = ctx.currentTime + 0.02;
     for (const step of song) {
@@ -206,19 +214,29 @@ class LokartaAudio {
         data,
         kind: "music",
         scaleOverride: step.scale || scaleOverride || "",
+        staccato: step.staccato,
       });
       startTime += duration;
     }
   }
 
   async playSequence(name, rootNote, scaleOverride = "") {
-    if (this._mode === "off" || this._mode === "sfx") return;
+    if (this._mode === "off" || this._mode === "sfx") {
+      console.log("Audio: sequence blocked by mode", this._mode, name);
+      return;
+    }
     const ctx = await this._ensureContext();
     const data = await this._loadData();
     const sequence = (data.sequences || {})[name];
-    if (!sequence) return;
+    if (!sequence) {
+      console.log("Audio: missing sequence", name);
+      return;
+    }
     const rootMidi = this._parseRoot(rootNote);
-    if (rootMidi == null) return;
+    if (rootMidi == null) {
+      console.log("Audio: invalid root", rootNote);
+      return;
+    }
     this.stopMusic();
     this._scheduleSequence({
       sequence,
@@ -227,17 +245,27 @@ class LokartaAudio {
       data,
       kind: "music",
       scaleOverride: scaleOverride || "",
+      staccato: sequence.staccato,
     });
   }
 
   async playSfx(name, rootNote, scaleOverride = "") {
-    if (this._mode === "off" || this._mode === "music") return;
+    if (this._mode === "off" || this._mode === "music") {
+      console.log("Audio: sfx blocked by mode", this._mode, name);
+      return;
+    }
     const ctx = await this._ensureContext();
     const data = await this._loadData();
     const sequence = (data.sequences || {})[name];
-    if (!sequence) return;
+    if (!sequence) {
+      console.log("Audio: missing sfx sequence", name);
+      return;
+    }
     const rootMidi = this._parseRoot(rootNote);
-    if (rootMidi == null) return;
+    if (rootMidi == null) {
+      console.log("Audio: invalid root", rootNote);
+      return;
+    }
     this.stopSfx();
     this._scheduleSequence({
       sequence,
@@ -246,6 +274,7 @@ class LokartaAudio {
       data,
       kind: "sfx",
       scaleOverride: scaleOverride || "",
+      staccato: sequence.staccato,
     });
   }
 }

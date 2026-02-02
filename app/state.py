@@ -66,3 +66,6 @@ class GameState:
     quest_continent_index: int = 0
     quest_detail_id: Optional[str] = None
     quest_detail_page: int = 0
+    quest_audio_played: bool = False
+    quest_detail_audio_key: Optional[str] = None
+    screen_audio_key: Optional[str] = None

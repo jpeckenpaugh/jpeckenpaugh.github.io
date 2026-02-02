@@ -126,7 +126,7 @@ def resolve_notes(sequence: dict, data: dict) -> list:
     return []
 
 
-def render_sequence(sequence: dict, root_midi: int, data: dict) -> array:
+def render_sequence(sequence: dict, root_midi: int, data: dict, *, staccato: bool = False) -> array:
     tempo = float(sequence.get("tempo", 120))
     scale = sequence.get("scale", "major")
     wave_shape = sequence.get("wave", DEFAULT_WAVE)
@@ -135,6 +135,7 @@ def render_sequence(sequence: dict, root_midi: int, data: dict) -> array:
         raise MusicError("Sequence has no notes")
     buffer = array("h")
     seconds_per_beat = 60.0 / tempo
+    staccato = bool(staccato or sequence.get("staccato"))
     for entry in notes:
         degree, beats, octave_shift, accidental = normalize_note(entry)
         duration = max(0.0, beats * seconds_per_beat)
@@ -142,9 +143,13 @@ def render_sequence(sequence: dict, root_midi: int, data: dict) -> array:
             silence = array("h", [0] * int(SAMPLE_RATE * duration))
             buffer.extend(silence)
             continue
+        tone_duration = duration * 0.5 if staccato else duration
         midi = degree_to_midi(root_midi, degree, scale, octave_shift, accidental)
         freq = midi_to_freq(midi)
-        buffer.extend(render_wave(freq, duration, wave_shape))
+        buffer.extend(render_wave(freq, tone_duration, wave_shape))
+        if staccato:
+            silence = array("h", [0] * int(SAMPLE_RATE * tone_duration))
+            buffer.extend(silence)
     return buffer
 
 
@@ -239,8 +244,9 @@ def render_song(data: dict, name: str, scale_override: str | None, tempo_overrid
             sequence["scale"] = step_scale
         if step_tempo is not None:
             sequence["tempo"] = step_tempo
+        staccato = bool(step.get("staccato") or sequence.get("staccato"))
         root_midi = parse_root(root_note)
-        buffer.extend(render_sequence(sequence, root_midi, data))
+        buffer.extend(render_sequence(sequence, root_midi, data, staccato=staccato))
     return buffer
 
 
