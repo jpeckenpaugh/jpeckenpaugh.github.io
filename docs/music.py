@@ -224,29 +224,38 @@ def render_song(data: dict, name: str, scale_override: str | None, tempo_overrid
     songs = data.get("songs", {})
     if name not in songs:
         raise MusicError(f"Unknown song: {name}")
+    song = songs[name]
+    repeat = 1
+    steps = song
+    if isinstance(song, dict):
+        repeat = int(song.get("repeat", 1) or 1)
+        steps = song.get("steps", [])
+    if not isinstance(steps, list):
+        raise MusicError(f"Invalid song steps for: {name}")
     buffer = array("h")
-    for step in songs[name]:
-        if not isinstance(step, dict):
-            raise MusicError(f"Invalid song step: {step}")
-        sequence_name = step.get("sequence")
-        root_note = step.get("root")
-        if not sequence_name or not root_note:
-            raise MusicError(f"Song step missing sequence/root: {step}")
-        step_scale = step.get("scale") or scale_override
-        step_tempo = step.get("tempo")
-        if step_tempo is None:
-            step_tempo = tempo_override
-        sequences = data.get("sequences", {})
-        if sequence_name not in sequences:
-            raise MusicError(f"Unknown sequence: {sequence_name}")
-        sequence = dict(sequences[sequence_name])
-        if step_scale:
-            sequence["scale"] = step_scale
-        if step_tempo is not None:
-            sequence["tempo"] = step_tempo
-        staccato = bool(step.get("staccato") or sequence.get("staccato"))
-        root_midi = parse_root(root_note)
-        buffer.extend(render_sequence(sequence, root_midi, data, staccato=staccato))
+    for _ in range(max(1, repeat)):
+        for step in steps:
+            if not isinstance(step, dict):
+                raise MusicError(f"Invalid song step: {step}")
+            sequence_name = step.get("sequence")
+            root_note = step.get("root")
+            if not sequence_name or not root_note:
+                raise MusicError(f"Song step missing sequence/root: {step}")
+            step_scale = step.get("scale") or scale_override
+            step_tempo = step.get("tempo")
+            if step_tempo is None:
+                step_tempo = tempo_override
+            sequences = data.get("sequences", {})
+            if sequence_name not in sequences:
+                raise MusicError(f"Unknown sequence: {sequence_name}")
+            sequence = dict(sequences[sequence_name])
+            if step_scale:
+                sequence["scale"] = step_scale
+            if step_tempo is not None:
+                sequence["tempo"] = step_tempo
+            staccato = bool(step.get("staccato") or sequence.get("staccato"))
+            root_midi = parse_root(root_note)
+            buffer.extend(render_sequence(sequence, root_midi, data, staccato=staccato))
     return buffer
 
 

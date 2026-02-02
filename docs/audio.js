@@ -193,30 +193,39 @@ class LokartaAudio {
     const ctx = await this._ensureContext();
     const data = await this._loadData();
     const song = (data.songs || {})[name];
-    if (!Array.isArray(song) || !song.length) {
+    let steps = song;
+    let repeat = 1;
+    if (song && !Array.isArray(song) && typeof song === "object") {
+      repeat = Number(song.repeat || 1);
+      steps = song.steps;
+    }
+    if (!Array.isArray(steps) || !steps.length) {
       console.log("Audio: missing song", name);
       return;
     }
     this.stopMusic();
     let startTime = ctx.currentTime + 0.02;
-    for (const step of song) {
-      const sequenceName = step.sequence;
-      const root = step.root;
-      if (!sequenceName || !root) continue;
-      const sequence = (data.sequences || {})[sequenceName];
-      if (!sequence) continue;
-      const rootMidi = this._parseRoot(root);
-      if (rootMidi == null) continue;
-      const duration = this._scheduleSequence({
-        sequence,
-        rootMidi,
-        startTime,
-        data,
-        kind: "music",
-        scaleOverride: step.scale || scaleOverride || "",
-        staccato: step.staccato,
-      });
-      startTime += duration;
+    const loops = Math.max(1, Math.floor(repeat || 1));
+    for (let i = 0; i < loops; i += 1) {
+      for (const step of steps) {
+        const sequenceName = step.sequence;
+        const root = step.root;
+        if (!sequenceName || !root) continue;
+        const sequence = (data.sequences || {})[sequenceName];
+        if (!sequence) continue;
+        const rootMidi = this._parseRoot(root);
+        if (rootMidi == null) continue;
+        const duration = this._scheduleSequence({
+          sequence,
+          rootMidi,
+          startTime,
+          data,
+          kind: "music",
+          scaleOverride: step.scale || scaleOverride || "",
+          staccato: step.staccato,
+        });
+        startTime += duration;
+      }
     }
   }
 

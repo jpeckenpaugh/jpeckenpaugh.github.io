@@ -163,12 +163,15 @@
     "quest_open": [
       {"sequence": "quest_open", "root": "C4"}
     ],
-    "continent_1_quest": [
-      {"sequence": "continent_1_quest_head", "root": "C4", "staccato": true},
-      {"sequence": "continent_1_quest_motif", "root": "F3", "staccato": true},
-      {"sequence": "continent_1_quest_motif", "root": "G3", "staccato": true},
-      {"sequence": "continent_1_quest_motif", "root": "D3", "scale": "minor", "staccato": true},
-      {"sequence": "continent_1_quest_tail", "root": "C4", "staccato": true}
-    ]
+    "continent_1_quest": {
+      "repeat": 4,
+      "steps": [
+        {"sequence": "continent_1_quest_head", "root": "C4", "staccato": true},
+        {"sequence": "continent_1_quest_motif", "root": "F3", "staccato": true},
+        {"sequence": "continent_1_quest_motif", "root": "G3", "staccato": true},
+        {"sequence": "continent_1_quest_motif", "root": "D3", "scale": "minor", "staccato": true},
+        {"sequence": "continent_1_quest_tail", "root": "C4", "staccato": true}
+      ]
+    }
   }
 }
