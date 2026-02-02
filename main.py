@@ -104,6 +104,7 @@ def main():
         asset_explorer_focus="list",
         asset_explorer_info_scroll=0,
         asset_explorer_preview_key=None,
+        prev_follower_count=0,
         quit_confirm=False,
         title_mode=True,
         spell_cursor=0,
@@ -128,6 +129,8 @@ def main():
     setattr(state.player, "asset_explorer_show_json", state.asset_explorer_show_json)
     setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
     setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
+    followers = getattr(state.player, "followers", [])
+    state.prev_follower_count = len(followers) if isinstance(followers, list) else 0
     if hasattr(APP, "audio"):
         APP.audio.set_mode(state.player.flags.get("audio_mode"))
         APP.audio.on_location_change(None, "Title")
@@ -563,6 +566,11 @@ def main():
             continue
 
         handle_battle_end(APP, state, action_cmd)
+        followers = getattr(state.player, "followers", [])
+        follower_count = len(followers) if isinstance(followers, list) else 0
+        if follower_count > state.prev_follower_count and hasattr(APP, "audio"):
+            APP.audio.play_sfx_once("follower_joins_sfx", "C3")
+        state.prev_follower_count = follower_count
 
         if action_cmd in APP.combat_actions:
             SAVE_DATA.save_player(state.player)

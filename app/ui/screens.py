@@ -122,9 +122,17 @@ def _asset_explorer_music_assets(ctx: ScreenContext, asset_type: str) -> dict:
         return songs if isinstance(songs, dict) else {}
     if asset_type == "sfx":
         sequences = data.get("sequences", {})
-        if not isinstance(sequences, dict):
-            return {}
-        return {key: value for key, value in sequences.items() if "sfx" in str(key).lower()}
+        songs = data.get("songs", {})
+        listed = {}
+        if isinstance(sequences, dict):
+            for key, value in sequences.items():
+                if "sfx" in str(key).lower():
+                    listed[key] = value
+        if isinstance(songs, dict):
+            for key, value in songs.items():
+                if isinstance(value, dict) and value.get("sfx"):
+                    listed[key] = value
+        return listed
     return {}
 
 

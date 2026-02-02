@@ -256,6 +256,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        audio=audio,
     )
     screen_ctx = ScreenContext(
         items=items,

@@ -140,13 +140,26 @@ class LokartaAudio {
     return [];
   }
 
-  _scheduleSequence({ sequence, rootMidi, startTime, data, kind, scaleOverride, staccato }) {
+  _resolveOctaveSplit(sequence, override) {
+    const raw = override || sequence.octave_split;
+    const value = typeof raw === "string" ? raw.toLowerCase() : "";
+    if (value === "octave_split_up" || value === "up") return "up";
+    if (value === "octave_split_down" || value === "down") return "down";
+    if (value === "octave_split_random" || value === "random") return "random";
+    if (sequence.octave_split_up) return "up";
+    if (sequence.octave_split_down) return "down";
+    if (sequence.octave_split_random) return "random";
+    return null;
+  }
+
+  _scheduleSequence({ sequence, rootMidi, startTime, data, kind, scaleOverride, staccato, octaveSplit }) {
     const tempo = Number(sequence.tempo || 120);
     const scale = scaleOverride || sequence.scale || "major";
     const wave = sequence.wave || DEFAULT_WAVE;
     const notes = this._resolveNotes(sequence, data);
     const secondsPerBeat = 60 / tempo;
-    const useStaccato = Boolean(staccato || sequence.staccato);
+    const splitMode = this._resolveOctaveSplit(sequence, octaveSplit);
+    const useStaccato = Boolean((staccato || sequence.staccato) && !splitMode);
     let t = startTime;
     const ctx = this._ctx;
 
@@ -157,28 +170,76 @@ class LokartaAudio {
         t += duration;
         continue;
       }
-      const toneDuration = useStaccato ? duration * 0.5 : duration;
-      const midi = this._degreeToMidi(rootMidi, degree, scale, octaveShift, accidental);
-      if (midi === null) {
-        t += duration;
-        continue;
-      }
-      const freq = this._midiToFreq(midi);
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = wave;
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.2, t + 0.01);
-      const releaseStart = Math.max(t, t + toneDuration - 0.03);
-      gain.gain.linearRampToValueAtTime(0, releaseStart + 0.03);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + toneDuration + 0.05);
-      if (kind === "music") {
-        this._musicNodes.push(osc);
+      if (splitMode) {
+        const toneDuration = duration * 0.5;
+        const midi = this._degreeToMidi(rootMidi, degree, scale, octaveShift, accidental);
+        if (midi !== null) {
+          const freq = this._midiToFreq(midi);
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = wave;
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.2, t + 0.01);
+          const releaseStart = Math.max(t, t + toneDuration - 0.03);
+          gain.gain.linearRampToValueAtTime(0, releaseStart + 0.03);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + toneDuration + 0.05);
+          if (kind === "music") {
+            this._musicNodes.push(osc);
+          } else {
+            this._sfxNodes.push(osc);
+          }
+        }
+        let shift = 1;
+        if (splitMode === "down") shift = -1;
+        if (splitMode === "random") shift = Math.random() < 0.5 ? -1 : 1;
+        const midi2 = this._degreeToMidi(rootMidi, degree, scale, octaveShift + shift, accidental);
+        if (midi2 !== null) {
+          const freq2 = this._midiToFreq(midi2);
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          const t2 = t + toneDuration;
+          osc2.type = wave;
+          osc2.frequency.setValueAtTime(freq2, t2);
+          gain2.gain.setValueAtTime(0, t2);
+          gain2.gain.linearRampToValueAtTime(0.2, t2 + 0.01);
+          const releaseStart2 = Math.max(t2, t2 + toneDuration - 0.03);
+          gain2.gain.linearRampToValueAtTime(0, releaseStart2 + 0.03);
+          osc2.connect(gain2).connect(ctx.destination);
+          osc2.start(t2);
+          osc2.stop(t2 + toneDuration + 0.05);
+          if (kind === "music") {
+            this._musicNodes.push(osc2);
+          } else {
+            this._sfxNodes.push(osc2);
+          }
+        }
       } else {
-        this._sfxNodes.push(osc);
+        const toneDuration = useStaccato ? duration * 0.5 : duration;
+        const midi = this._degreeToMidi(rootMidi, degree, scale, octaveShift, accidental);
+        if (midi === null) {
+          t += duration;
+          continue;
+        }
+        const freq = this._midiToFreq(midi);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.2, t + 0.01);
+        const releaseStart = Math.max(t, t + toneDuration - 0.03);
+        gain.gain.linearRampToValueAtTime(0, releaseStart + 0.03);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + toneDuration + 0.05);
+        if (kind === "music") {
+          this._musicNodes.push(osc);
+        } else {
+          this._sfxNodes.push(osc);
+        }
       }
       t += duration;
     }
@@ -223,6 +284,7 @@ class LokartaAudio {
           kind: "music",
           scaleOverride: step.scale || scaleOverride || "",
           staccato: step.staccato,
+          octaveSplit: step.octave_split,
         });
         startTime += duration;
       }
@@ -255,6 +317,7 @@ class LokartaAudio {
       kind: "music",
       scaleOverride: scaleOverride || "",
       staccato: sequence.staccato,
+      octaveSplit: sequence.octave_split,
     });
   }
 
@@ -266,8 +329,13 @@ class LokartaAudio {
     const ctx = await this._ensureContext();
     const data = await this._loadData();
     const sequence = (data.sequences || {})[name];
-    if (!sequence) {
+    const song = (data.songs || {})[name];
+    if (!sequence && !song) {
       console.log("Audio: missing sfx sequence", name);
+      return;
+    }
+    if (!sequence && song && (!song.sfx || typeof song !== "object")) {
+      console.log("Audio: sfx song not enabled", name);
       return;
     }
     const rootMidi = this._parseRoot(rootNote);
@@ -276,15 +344,49 @@ class LokartaAudio {
       return;
     }
     this.stopSfx();
-    this._scheduleSequence({
-      sequence,
-      rootMidi,
-      startTime: ctx.currentTime + 0.01,
-      data,
-      kind: "sfx",
-      scaleOverride: scaleOverride || "",
-      staccato: sequence.staccato,
-    });
+    if (sequence) {
+      this._scheduleSequence({
+        sequence,
+        rootMidi,
+        startTime: ctx.currentTime + 0.01,
+        data,
+        kind: "sfx",
+        scaleOverride: scaleOverride || "",
+        staccato: sequence.staccato,
+        octaveSplit: sequence.octave_split,
+      });
+      return;
+    }
+    let steps = song.steps;
+    let repeat = Number(song.repeat || 1);
+    if (!Array.isArray(steps) || !steps.length) {
+      console.log("Audio: missing sfx song steps", name);
+      return;
+    }
+    let startTime = ctx.currentTime + 0.01;
+    const loops = Math.max(1, Math.floor(repeat || 1));
+    for (let i = 0; i < loops; i += 1) {
+      for (const step of steps) {
+        const sequenceName = step.sequence;
+        const root = step.root;
+        if (!sequenceName || !root) continue;
+        const seq = (data.sequences || {})[sequenceName];
+        if (!seq) continue;
+        const midi = this._parseRoot(root);
+        if (midi == null) continue;
+        const duration = this._scheduleSequence({
+          sequence: seq,
+          rootMidi: midi,
+          startTime,
+          data,
+          kind: "sfx",
+          scaleOverride: step.scale || scaleOverride || "",
+          staccato: step.staccato,
+          octaveSplit: step.octave_split,
+        });
+        startTime += duration;
+      }
+    }
   }
 }
 

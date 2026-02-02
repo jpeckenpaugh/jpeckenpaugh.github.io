@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import random
 import sys
 import tempfile
 import wave
@@ -126,7 +127,35 @@ def resolve_notes(sequence: dict, data: dict) -> list:
     return []
 
 
-def render_sequence(sequence: dict, root_midi: int, data: dict, *, staccato: bool = False) -> array:
+def _resolve_octave_split(sequence: dict, override: str | None) -> str | None:
+    if override:
+        value = str(override).strip().lower()
+    else:
+        raw = sequence.get("octave_split")
+        value = str(raw).strip().lower() if raw else ""
+    if value in ("octave_split_up", "up"):
+        return "up"
+    if value in ("octave_split_down", "down"):
+        return "down"
+    if value in ("octave_split_random", "random"):
+        return "random"
+    if sequence.get("octave_split_up"):
+        return "up"
+    if sequence.get("octave_split_down"):
+        return "down"
+    if sequence.get("octave_split_random"):
+        return "random"
+    return None
+
+
+def render_sequence(
+    sequence: dict,
+    root_midi: int,
+    data: dict,
+    *,
+    staccato: bool = False,
+    octave_split: str | None = None,
+) -> array:
     tempo = float(sequence.get("tempo", 120))
     scale = sequence.get("scale", "major")
     wave_shape = sequence.get("wave", DEFAULT_WAVE)
@@ -135,7 +164,8 @@ def render_sequence(sequence: dict, root_midi: int, data: dict, *, staccato: boo
         raise MusicError("Sequence has no notes")
     buffer = array("h")
     seconds_per_beat = 60.0 / tempo
-    staccato = bool(staccato or sequence.get("staccato"))
+    split_mode = _resolve_octave_split(sequence, octave_split)
+    staccato = bool((staccato or sequence.get("staccato")) and not split_mode)
     for entry in notes:
         degree, beats, octave_shift, accidental = normalize_note(entry)
         duration = max(0.0, beats * seconds_per_beat)
@@ -143,13 +173,27 @@ def render_sequence(sequence: dict, root_midi: int, data: dict, *, staccato: boo
             silence = array("h", [0] * int(SAMPLE_RATE * duration))
             buffer.extend(silence)
             continue
-        tone_duration = duration * 0.5 if staccato else duration
-        midi = degree_to_midi(root_midi, degree, scale, octave_shift, accidental)
-        freq = midi_to_freq(midi)
-        buffer.extend(render_wave(freq, tone_duration, wave_shape))
-        if staccato:
-            silence = array("h", [0] * int(SAMPLE_RATE * tone_duration))
-            buffer.extend(silence)
+        if split_mode:
+            tone_duration = duration * 0.5
+            midi = degree_to_midi(root_midi, degree, scale, octave_shift, accidental)
+            freq = midi_to_freq(midi)
+            buffer.extend(render_wave(freq, tone_duration, wave_shape))
+            shift = 1
+            if split_mode == "down":
+                shift = -1
+            elif split_mode == "random":
+                shift = random.choice((-1, 1))
+            midi = degree_to_midi(root_midi, degree, scale, octave_shift + shift, accidental)
+            freq = midi_to_freq(midi)
+            buffer.extend(render_wave(freq, tone_duration, wave_shape))
+        else:
+            tone_duration = duration * 0.5 if staccato else duration
+            midi = degree_to_midi(root_midi, degree, scale, octave_shift, accidental)
+            freq = midi_to_freq(midi)
+            buffer.extend(render_wave(freq, tone_duration, wave_shape))
+            if staccato:
+                silence = array("h", [0] * int(SAMPLE_RATE * tone_duration))
+                buffer.extend(silence)
     return buffer
 
 
@@ -254,8 +298,17 @@ def render_song(data: dict, name: str, scale_override: str | None, tempo_overrid
             if step_tempo is not None:
                 sequence["tempo"] = step_tempo
             staccato = bool(step.get("staccato") or sequence.get("staccato"))
+            octave_split = step.get("octave_split")
             root_midi = parse_root(root_note)
-            buffer.extend(render_sequence(sequence, root_midi, data, staccato=staccato))
+            buffer.extend(
+                render_sequence(
+                    sequence,
+                    root_midi,
+                    data,
+                    staccato=staccato,
+                    octave_split=octave_split,
+                )
+            )
     return buffer
 
 

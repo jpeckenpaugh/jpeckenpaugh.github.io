@@ -213,19 +213,26 @@ class AudioManager:
         if not self._data:
             return
         sequences = self._data.get("sequences", {})
-        if name not in sequences:
-            return
-        sequence = dict(sequences[name])
-        if scale:
-            sequence["scale"] = scale
-        root_midi = music.parse_root(root_note)
-        samples = music.render_sequence(sequence, root_midi, self._data)
+        if name in sequences:
+            sequence = dict(sequences[name])
+            if scale:
+                sequence["scale"] = scale
+            root_midi = music.parse_root(root_note)
+            samples = music.render_sequence(sequence, root_midi, self._data)
+        else:
+            songs = self._data.get("songs", {})
+            if name not in songs:
+                return
+            song = songs[name]
+            if not (isinstance(song, dict) and song.get("sfx")):
+                return
+            samples = music.render_song(self._data, name, scale, None)
         with self._lock:
             self._play_samples(samples, kind="sfx")
 
     def on_location_change(self, pre_location: str | None, post_location: str | None) -> None:
         if post_location == "Title" and pre_location != "Title":
-            self.play_song_once("intro_cycle")
+            self.play_song_once("intro_music")
         if pre_location == "Title" and post_location != "Title":
             self.stop()
 
