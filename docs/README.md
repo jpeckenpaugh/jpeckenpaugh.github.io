@@ -38,11 +38,50 @@ Once validated locally, the same engine and assets can be migrated to:
 - `app/ui/` — layout, rendering, and screen composition helpers
 - `app/data_access/` — JSON data loaders
 - `data/` — JSON content packs
+- `data/music.json` — data-driven music/sfx patterns, sequences, and songs
 - `saves/` — local save slots
 - `docs/` — web build (Pyodide assets + terminal UI)
 - `tests/` — unit tests
 
 ---
+
+## Audio & Music (Data-Driven)
+
+Audio cues are defined in `data/music.json` and synthesized at runtime (no binary assets).
+
+- **Patterns / Sequences / Songs**: define note patterns, wrap them as sequences (tempo/scale/wave), and group sequences into songs.
+- **Note tuples**: `[degree, beats=1, octave_shift=0, accidental=0]` with rest as `[0, beats]`.
+- **Staccato**: set `staccato: true` on a sequence or song step to split each note 50/50 (tone + rest).
+- **Repeat**: songs can be lists of steps or `{ repeat, steps }` to loop a song.
+
+CLI utility:
+
+```bash
+python3 music.py sequence <sequence_name> <root_note>
+python3 music.py song <song_name>
+```
+
+Runtime behavior:
+- Audio mode cycles via Options/Title: On / Off / Music Only / SFX Only (stored in `player.flags.audio_mode`).
+- Web build uses `docs/audio.js` (Web Audio) with the same `data/music.json` schema.
+
+### Audio Triggers (Current)
+
+- Battle start plays `battle_minor`.
+- Battle victory plays `battle_victory` unless a level-up occurs.
+- Level-up plays `level_up`.
+- ATTACK plays `attack_sfx`.
+- Quest list open plays `quest_open`.
+- Quest detail (continent 1/base) plays `continent_1_quest`.
+- Town (continent 1/base) plays `town_continent_1`.
+
+### Web Build Sync
+
+- Make gameplay/code changes in the root tree first.
+- Sync runtime files into `docs/` with `scripts/sync_docs.sh` (preserves web-only assets like HTML/CSS/JS).
+- `docs/` is the GitHub Pages web root and includes web-only assets; avoid overwriting those files.
+- Web UI includes a tips modal with keyboard guidance and a Browser Note about Pyodide + WebKit constraints.
+- Debug modal explains save incompatibilities and offers a “Clear Saved Games” action (IDBFS reset + reload).
 
 ## Current Features (Snapshot)
 
