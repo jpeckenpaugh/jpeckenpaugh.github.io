@@ -247,6 +247,17 @@ def _title_state_config(
             cmd_entry["_disabled"] = True
         filtered.append(cmd_entry)
     commands = filtered
+    if commands:
+        audio_mode = str(getattr(player, "flags", {}).get("audio_mode", "on"))
+        label_map = {
+            "on": "Audio: On",
+            "off": "Audio: Off",
+            "music": "Audio: Music Only",
+            "sfx": "Audio: SFX Only",
+        }
+        for entry in commands:
+            if entry.get("command") == "TOGGLE_AUDIO":
+                entry["label"] = label_map.get(audio_mode, "Audio: On")
     return narrative, commands, detail_lines if isinstance(detail_lines, list) else []
 
 
@@ -1376,6 +1387,15 @@ def generate_frame(
         available_spells = ctx.spells.available(player, ctx.items) if hasattr(ctx, "spells") else []
         for entry in options_menu.get("actions", []):
             cmd_entry = dict(entry)
+            if cmd_entry.get("command") == "TOGGLE_AUDIO":
+                audio_mode = str(getattr(player, "flags", {}).get("audio_mode", "on"))
+                label_map = {
+                    "on": "Audio: On",
+                    "off": "Audio: Off",
+                    "music": "Audio: Music Only",
+                    "sfx": "Audio: SFX Only",
+                }
+                cmd_entry["label"] = label_map.get(audio_mode, "Audio: On")
             if not command_is_enabled(cmd_entry, player, opponents):
                 cmd_entry["_disabled"] = True
             if cmd_entry.get("command") == "SPELLBOOK" and not available_spells:

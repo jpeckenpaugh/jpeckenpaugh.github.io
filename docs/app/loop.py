@@ -853,7 +853,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if actions[state.menu_cursor].get("_disabled"):
                 return None, None
             cmd = actions[state.menu_cursor].get("command")
-            state.options_mode = False
+            if cmd != "TOGGLE_AUDIO":
+                state.options_mode = False
             return cmd, None
         return None, None
 
@@ -1715,6 +1716,9 @@ def apply_router_command(
     state.current_venue_id = cmd_state.current_venue_id
     post_in_forest = state.player.location == "Forest"
     post_alive = any(m.hp > 0 for m in state.opponents)
+    if hasattr(ctx, "audio"):
+        player_alive = bool(getattr(state.player, "hp", 1) > 0)
+        ctx.audio.on_battle_change(pre_alive, post_alive, post_in_forest, player_alive, pre_in_forest)
     if not pre_in_forest and post_in_forest:
         state.battle_log = []
     if pre_in_forest and not post_in_forest:
@@ -1776,6 +1780,8 @@ def apply_router_command(
         enabled = _enabled_indices(commands)
         state.action_cursor = enabled[0] if enabled else 0
     if post_quest_mode and not pre_quest_mode:
+        if hasattr(ctx, "audio"):
+            ctx.audio.play_song_once("quest_open")
         elements = list(getattr(state.player, "elements", []) or [])
         if hasattr(ctx, "continents"):
             order = list(ctx.continents.order() or [])
@@ -1835,6 +1841,9 @@ def apply_router_command(
         state.title_mode = False
     state.player = cmd_state.player
     post_location = state.player.location
+    if hasattr(ctx, "audio"):
+        ctx.audio.set_mode(state.player.flags.get("audio_mode"))
+        ctx.audio.on_location_change(pre_location, post_location)
     if post_location == "Town" and pre_location != "Town":
         commands = scene_commands(ctx.scenes, ctx.commands_data, "town", state.player, state.opponents)
         state.action_cursor = 0
@@ -2450,6 +2459,11 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             spell_notes = spell_level_up_notes(ctx, state.player, pre_level, state.player.level)
             element_notes = element_unlock_notes(ctx, state.player, pre_level, state.player.level)
             state.level_up_notes = spell_notes + element_notes
+            if hasattr(ctx, "audio"):
+                ctx.audio.play_song_once("level_up")
+        else:
+            if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
+                ctx.audio.play_song_once("battle_victory")
         if hasattr(ctx, "quests") and ctx.quests is not None:
             quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
             for message in quest_messages:
