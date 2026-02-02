@@ -17,6 +17,36 @@
     },
     "class": "support"
   },
+  "sprite_bight": {
+    "name": "Sprite's Bight",
+    "command_id": "SPRITE_BIGHT",
+    "menu_key": "NUM3",
+    "anim": "flash_melt",
+    "mp_cost": 6,
+    "requires_target": true,
+    "class": "elemental",
+    "element": "base",
+    "level_required": 4,
+    "atk_bonus": 4,
+    "stun_chance": 0.15,
+    "rank3_damage_mult": 1.2,
+    "rank3_stun_bonus": 0.05,
+    "desc": "Summon a swarm of fairies to strike your foe.",
+    "effect": {
+      "type": "overlay",
+      "color_key": "y",
+      "variation": 0.1,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.05,
+      "art_id": "sprite_swarm"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_sprite_bight_enabled"
+      ]
+    }
+  },
   "spark": {
     "name": "Spark",
     "command_id": "SPARK",
@@ -42,7 +72,12 @@
     "overlay_color_key_rank2": "Y",
     "overlay_color_key_rank3": "w",
     "effect_loops_rank2": 3,
-    "effect_loops_rank3": 4
+    "effect_loops_rank3": 4,
+    "unlock": {
+      "flags_any": [
+        "spell_spark_enabled"
+      ]
+    }
   },
   "iceblast": {
     "name": "Iceblast",
@@ -70,6 +105,11 @@
       "loops": 2,
       "frame_delay": 0.06,
       "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_iceblast_enabled"
+      ]
     }
   },
   "fireblast": {
@@ -98,6 +138,11 @@
       "loops": 2,
       "frame_delay": 0.06,
       "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_fireblast_enabled"
+      ]
     }
   },
   "boulder": {
@@ -126,6 +171,11 @@
       "loops": 2,
       "frame_delay": 0.06,
       "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_boulder_enabled"
+      ]
     }
   },
   "tornado": {
@@ -154,6 +204,11 @@
       "loops": 2,
       "frame_delay": 0.06,
       "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_tornado_enabled"
+      ]
     }
   },
   "strength": {
@@ -201,6 +256,11 @@
       "loops": 2,
       "frame_delay": 0.06,
       "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_tide_enabled"
+      ]
     }
   },
   "radiance": {
@@ -229,6 +289,11 @@
       "loops": 2,
       "frame_delay": 0.06,
       "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_radiance_enabled"
+      ]
     }
   },
   "shade": {
@@ -257,6 +322,11 @@
       "loops": 2,
       "frame_delay": 0.06,
       "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_shade_enabled"
+      ]
     }
   }
 }

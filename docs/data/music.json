@@ -30,6 +30,106 @@
       [4, 0.25],
       [5, 0.25]
     ],
+    "follower_joins_sfx": [
+      [1, 0.25, -1],
+      [3, 0.25, -1],
+      [5, 0.25, -1],
+      [7, 0.25, -1],
+      [1, 0.25],
+      [3, 0.25],
+      [5, 0.25],
+      [7, 0.25],
+      [1, 0.25, 1],
+      [3, 0.25, 1],
+      [5, 0.25, 1],
+      [7, 0.25, 1]
+    ],
+    "point_added_sfx": [
+      [1, 0.25],
+      [5, 0.25],
+      [3, 0.25],
+      [7, 0.25]
+    ],
+    "player_defeated_phrase": [
+      [1],
+      [2],
+      [3],
+      [1],
+      [4, 0.5],
+      [3, 0.5],
+      [2, 0.5],
+      [3, 0.5],
+      [1]
+    ],
+    "glissando_asc_white": [
+      [1],
+      [2],
+      [3],
+      [4],
+      [5],
+      [6],
+      [7]
+    ],
+    "glissando_desc_white": [
+      [7],
+      [6],
+      [5],
+      [4],
+      [3],
+      [2],
+      [1]
+    ],
+    "glissando_asc_black": [
+      [1],
+      [2],
+      [4],
+      [5],
+      [6]
+    ],
+    "glissando_asc_white_double": [
+      [1],
+      [4],
+      [2],
+      [5],
+      [3],
+      [6],
+      [4],
+      [7],
+      [5],
+      [1, 1, 1],
+      [6],
+      [2, 1, 1],
+      [7],
+      [3, 1, 1]
+    ],
+    "glissando_desc_white_double": [
+      [7],
+      [3],
+      [6],
+      [2],
+      [5],
+      [1],
+      [4],
+      [7, 1, -1],
+      [3],
+      [6, 1, -1],
+      [2],
+      [5, 1, -1],
+      [1],
+      [4, 1, -1]
+    ],
+    "asc_triads": [
+      [1, 0.25],
+      [3, 0.25],
+      [5, 0.25]
+    ],
+    "glissando_desc_black": [
+      [6],
+      [5],
+      [4],
+      [2],
+      [1]
+    ],
     "battle_victory_phrase": [
       [5],
       [4],
@@ -119,6 +219,74 @@
       "wave": "square",
       "pattern": "attack_sfx"
     },
+    "follower_joins_sfx": {
+      "tempo": 420,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "follower_joins_sfx"
+    },
+    "point_added_sfx": {
+      "tempo": 420,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "point_added_sfx"
+    },
+    "player_defeated": {
+      "tempo": 240,
+      "scale": "minor",
+      "wave": "square",
+      "pattern": "player_defeated_phrase"
+    },
+    "glissando_asc_white": {
+      "tempo": 2400,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "glissando_asc_white"
+    },
+    "glissando_desc_white": {
+      "tempo": 2400,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "glissando_desc_white"
+    },
+    "glissando_asc_black": {
+      "tempo": 2400,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "glissando_asc_black"
+    },
+    "glissando_asc_black_staccato": {
+      "tempo": 2400,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "glissando_asc_black",
+      "staccato": true
+    },
+    "glissando_asc_white_double": {
+      "tempo": 3600,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "glissando_asc_white_double"
+    },
+    "glissando_desc_white_double": {
+      "tempo": 3600,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "glissando_desc_white_double",
+      "staccato": true
+    },
+    "asc_triads_sfx": {
+      "tempo": 480,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "asc_triads"
+    },
+    "glissando_desc_black": {
+      "tempo": 2400,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "glissando_desc_black"
+    },
     "battle_victory": {
       "tempo": 360,
       "scale": "major",
@@ -169,23 +337,94 @@
     }
   },
   "songs": {
-    "intro_cycle": [
-      {"sequence": "asc_2_measures", "root": "C4", "scale": "major"},
-      {"sequence": "asc_2_measures", "root": "B4", "scale": "diminished"},
-      {"sequence": "asc_2_measures", "root": "A4", "scale": "minor"},
-      {"sequence": "asc_2_measures", "root": "G3", "scale": "major"}
+    "intro_music": [
+      {"sequence": "asc_2_measures", "root": "C4", "scale": "major", "octave_split": "up"},
+      {"sequence": "asc_2_measures", "root": "B4", "scale": "diminished", "octave_split": "down"},
+      {"sequence": "asc_2_measures", "root": "A4", "scale": "minor", "octave_split": "random"},
+      {"sequence": "asc_2_measures", "root": "G3", "scale": "major", "octave_split": "down"}
     ],
     "battle_minor": [
-      {"sequence": "battle_minor", "root": "A2"}
+      {"sequence": "battle_minor", "root": "A2", "octave_split": "up"}
     ],
     "battle_victory": [
-      {"sequence": "battle_victory", "root": "A3"}
+      {"sequence": "battle_victory", "root": "A3", "octave_split": "up"}
     ],
     "level_up": [
-      {"sequence": "level_up", "root": "C4"}
+      {"sequence": "level_up", "root": "C4", "octave_split": "up"}
     ],
     "quest_open": [
-      {"sequence": "quest_open", "root": "C4"}
+      {"sequence": "quest_open", "root": "C4", "octave_split": "up"}
+    ],
+    "player_defeated": [
+      {"sequence": "player_defeated", "root": "A2", "scale": "minor"}
+    ],
+    "glissando_asc_white": [
+      {"sequence": "glissando_asc_white", "root": "C2"},
+      {"sequence": "glissando_asc_white", "root": "C3"},
+      {"sequence": "glissando_asc_white", "root": "C4"},
+      {"sequence": "glissando_asc_white", "root": "C5"},
+      {"sequence": "glissando_asc_white", "root": "C6"},
+      {"sequence": "glissando_asc_white", "root": "C7"}
+    ],
+    "glissando_desc_white": [
+      {"sequence": "glissando_desc_white", "root": "C7"},
+      {"sequence": "glissando_desc_white", "root": "C6"},
+      {"sequence": "glissando_desc_white", "root": "C5"},
+      {"sequence": "glissando_desc_white", "root": "C4"},
+      {"sequence": "glissando_desc_white", "root": "C3"},
+      {"sequence": "glissando_desc_white", "root": "C2"}
+    ],
+    "glissando_asc_black": [
+      {"sequence": "glissando_asc_black", "root": "C#2"},
+      {"sequence": "glissando_asc_black", "root": "C#3"},
+      {"sequence": "glissando_asc_black", "root": "C#4"},
+      {"sequence": "glissando_asc_black", "root": "C#5"},
+      {"sequence": "glissando_asc_black", "root": "C#6"},
+      {"sequence": "glissando_asc_black", "root": "C#7"}
+    ],
+    "glissando_asc_black_staccato": [
+      {"sequence": "glissando_asc_black_staccato", "root": "C#2"},
+      {"sequence": "glissando_asc_black_staccato", "root": "C#3"},
+      {"sequence": "glissando_asc_black_staccato", "root": "C#4"},
+      {"sequence": "glissando_asc_black_staccato", "root": "C#5"},
+      {"sequence": "glissando_asc_black_staccato", "root": "C#6"},
+      {"sequence": "glissando_asc_black_staccato", "root": "C#7"}
+    ],
+    "glissando_asc_white_double": [
+      {"sequence": "glissando_asc_white_double", "root": "C2"},
+      {"sequence": "glissando_asc_white_double", "root": "C3"},
+      {"sequence": "glissando_asc_white_double", "root": "C4"},
+      {"sequence": "glissando_asc_white_double", "root": "C5"},
+      {"sequence": "glissando_asc_white_double", "root": "C6"},
+      {"sequence": "glissando_asc_white_double", "root": "C7"}
+    ],
+    "glissando_desc_white_double": [
+      {"sequence": "glissando_desc_white_double", "root": "C7"},
+      {"sequence": "glissando_desc_white_double", "root": "C6"},
+      {"sequence": "glissando_desc_white_double", "root": "C5"},
+      {"sequence": "glissando_desc_white_double", "root": "C4"},
+      {"sequence": "glissando_desc_white_double", "root": "C3"},
+      {"sequence": "glissando_desc_white_double", "root": "C2"}
+    ],
+    "asc_triads": {
+      "sfx": true,
+      "steps": [
+        {"sequence": "asc_triads_sfx", "root": "C3"},
+        {"sequence": "asc_triads_sfx", "root": "D3"},
+        {"sequence": "asc_triads_sfx", "root": "E3"},
+        {"sequence": "asc_triads_sfx", "root": "F3"},
+        {"sequence": "asc_triads_sfx", "root": "G3"},
+        {"sequence": "asc_triads_sfx", "root": "A4"},
+        {"sequence": "asc_triads_sfx", "root": "B4"}
+      ]
+    },
+    "glissando_desc_black": [
+      {"sequence": "glissando_desc_black", "root": "C#7"},
+      {"sequence": "glissando_desc_black", "root": "C#6"},
+      {"sequence": "glissando_desc_black", "root": "C#5"},
+      {"sequence": "glissando_desc_black", "root": "C#4"},
+      {"sequence": "glissando_desc_black", "root": "C#3"},
+      {"sequence": "glissando_desc_black", "root": "C#2"}
     ],
     "town_continent_1": {
       "steps": [

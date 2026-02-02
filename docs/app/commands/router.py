@@ -91,6 +91,7 @@ class RouterContext:
     quests_screen: object
     followers_screen: object
     registry: CommandRegistry
+    audio: object | None = None
 
 
 def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key: Optional[str] = None) -> bool:
@@ -572,6 +573,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                 state.player.spend_stat_point(stat)
                 ctx.save_data.save_player(state.player)
                 state.last_message = f"{stat} increased by 1."
+                if ctx.audio:
+                    ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
         if command_id == "STAT_BALANCED":
             if state.player.stat_points <= 0:
@@ -580,6 +583,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.player.allocate_balanced()
             ctx.save_data.save_player(state.player)
             state.last_message = "Balanced allocation complete."
+            if ctx.audio:
+                ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
         if command_id == "STAT_RANDOM":
             if state.player.stat_points <= 0:
@@ -588,6 +593,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.player.allocate_random()
             ctx.save_data.save_player(state.player)
             state.last_message = "Random allocation complete."
+            if ctx.audio:
+                ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
     if state.element_mode and command_id.startswith("ELEMENT:"):
         element_id = command_id.split(":", 1)[1]

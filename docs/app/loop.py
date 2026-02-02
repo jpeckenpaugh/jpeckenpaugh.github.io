@@ -351,9 +351,17 @@ def _asset_explorer_music_assets(ctx, asset_type: str) -> dict:
         return songs if isinstance(songs, dict) else {}
     if asset_type == "sfx":
         sequences = data.get("sequences", {})
-        if not isinstance(sequences, dict):
-            return {}
-        return {key: value for key, value in sequences.items() if "sfx" in str(key).lower()}
+        songs = data.get("songs", {})
+        listed = {}
+        if isinstance(sequences, dict):
+            for key, value in sequences.items():
+                if "sfx" in str(key).lower():
+                    listed[key] = value
+        if isinstance(songs, dict):
+            for key, value in songs.items():
+                if isinstance(value, dict) and value.get("sfx"):
+                    listed[key] = value
+        return listed
     return {}
 
 
@@ -1544,6 +1552,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
                 state.title_menu_stack.append("title_assets_list")
                 state.action_cursor = 0
+                if hasattr(ctx, "audio"):
+                    ctx.audio.stop()
                 commands = action_commands_for_state(ctx, state)
                 clamp_action_cursor(state, commands)
                 return None, None

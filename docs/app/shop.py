@@ -39,9 +39,15 @@ def shop_inventory(venue: dict, items_data: ItemsData, element: str) -> list[dic
         if not item_id:
             continue
         item = items_data.get(item_id, {})
+        price = int(item.get("price", 0))
         label = entry.get("label") or _format_shop_label(item)
         command = entry.get("command") or f"SHOP_{idx + 1}"
-        output.append({"item_id": item_id, "label": label, "command": command})
+        output.append({
+            "item_id": item_id,
+            "label": label,
+            "price": price,
+            "command": command,
+        })
     return output
 
 
@@ -92,15 +98,17 @@ def shop_commands(venue: dict, items_data: ItemsData, element: str, view: str, p
     elif view == "buy":
         inventory = shop_inventory(venue, items_data, element)
         for entry in inventory:
+            price = int(entry.get("price", 0))
             commands.append({
-                "label": f"Buy {entry.get('label', '')}".strip(),
+                "label": f"{entry.get('label', '').strip()} GP:{price}",
                 "command": entry.get("command"),
             })
     elif view == "sell" and player is not None:
         inventory = shop_sell_inventory(player, items_data)
         for entry in inventory:
+            price = int(entry.get("price", 0))
             commands.append({
-                "label": f"Sell {entry.get('label', '')}".strip(),
+                "label": f"{entry.get('label', '').strip()} GP:{price}",
                 "command": entry.get("command"),
             })
     commands.append({"label": "Leave", "command": "B_KEY"})

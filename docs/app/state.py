@@ -76,3 +76,4 @@ class GameState:
     asset_explorer_focus: str = "list"
     asset_explorer_info_scroll: int = 0
     asset_explorer_preview_key: Optional[str] = None
+    prev_follower_count: int = 0
