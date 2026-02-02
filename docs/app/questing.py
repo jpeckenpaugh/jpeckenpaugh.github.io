@@ -136,7 +136,7 @@ def _build_follower(entry: dict) -> dict:
     }
 
 
-def _apply_rewards(player: Player, quest_id: str, quest: dict, items_data: Optional[object] = None) -> None:
+def _apply_rewards(player: Player, quest_id: str, quest: dict, items_data: Optional[object] = None) -> tuple[int, int]:
     rewards = quest.get("rewards", {})
     if not isinstance(rewards, dict):
         rewards = {}
@@ -170,6 +170,11 @@ def _apply_rewards(player: Player, quest_id: str, quest: dict, items_data: Optio
                 continue
             follower = _build_follower(follower_entry)
             player.add_follower(follower)
+    xp_gain = int(rewards.get("xp", 0) or 0)
+    levels_gained = 0
+    if xp_gain > 0:
+        levels_gained = player.gain_xp(xp_gain)
+    return xp_gain, levels_gained
 
 
 def build_follower_from_entry(entry: dict) -> Optional[dict]:
@@ -301,9 +306,11 @@ def evaluate_quests(player: Player, quests_data, items_data: Optional[object] = 
             if not _objectives_met(player, qstate.get("progress", {}), objectives):
                 continue
             qstate["status"] = "complete"
-            _apply_rewards(player, quest_id, quest, items_data)
+            xp_gain, _levels_gained = _apply_rewards(player, quest_id, quest, items_data)
             title = quest.get("title", quest_id)
             messages.append(f"Quest complete: {title}.")
+            if xp_gain > 0:
+                messages.append(f"You gain {xp_gain} XP.")
             changed = True
     return messages
 
