@@ -67,21 +67,22 @@ class SpellsData:
             if player_level < level_required:
                 continue
             unlock = spell.get("unlock")
-            if isinstance(unlock, dict) and not isinstance(player, int):
-                flags_any = unlock.get("flags_any", [])
-                if not isinstance(flags_any, list):
-                    flags_any = []
-                items_any = unlock.get("items_any", [])
-                if not isinstance(items_any, list):
-                    items_any = []
+            if not isinstance(player, int):
+                flags_any = []
+                items_any = []
+                if isinstance(unlock, dict):
+                    flags_any = unlock.get("flags_any", [])
+                    if not isinstance(flags_any, list):
+                        flags_any = []
+                    items_any = unlock.get("items_any", [])
+                    if not isinstance(items_any, list):
+                        items_any = []
                 allowed = False
                 if flags_any and any(flags.get(str(flag), False) for flag in flags_any):
                     allowed = True
                 if items_any and any(str(item_id) in equipped_ids for item_id in items_any):
                     allowed = True
                 if str(spell_id) in granted_spells:
-                    allowed = True
-                if not (flags_any or items_any) and not granted_spells:
                     allowed = True
                 if not allowed:
                     continue
