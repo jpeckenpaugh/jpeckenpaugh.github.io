@@ -13,6 +13,40 @@
     <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
   </head>
   <body>
+    <div id="tips-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tips-title">
+      <div class="modal-card">
+        <div class="modal-title" id="tips-title">Quick Start</div>
+        <div class="modal-body">
+          <p>
+            If you are playing on PC/Mac, don't forget to click inside the terminal window to capture the cursor,
+            then you can use A, S, Enter, and the Arrow keys on your keyboard to play.
+          </p>
+          <p>
+            If you are playing on Mobile, it may be easier to use the Virtual Keyboard below.
+          </p>
+          <div class="modal-note-title">Browser Note</div>
+          <p>
+            This demo runs the Python game code in your browser using Pyodide, which executes
+            Python inside JavaScript. To keep the port simple and faithful to the original,
+            the game loop currently runs on the main thread. That works well in Google Chrome
+            on PC, Mac, and Android.
+          </p>
+          <p>
+            On iOS, all browsers use Apple's WebKit engine, which is more restrictive with
+            long-running main-thread work. As a result, iOS browsers (including Safari and
+            Chrome on iOS) may freeze or become unresponsive during gameplay. If you're viewing
+            this page in Safari and it feels stuck, that is likely the cause.
+          </p>
+        </div>
+        <label class="modal-check">
+          <input id="tips-dismiss" type="checkbox" />
+          Do not show this again
+        </label>
+        <div class="modal-actions">
+          <button id="tips-close" class="modal-btn" type="button">Continue</button>
+        </div>
+      </div>
+    </div>
     <main class="page">
       <section class="terminal-shell">
         <div id="terminal" class="terminal"></div>
@@ -43,11 +77,39 @@
         </div>
       </section>
       <footer class="page-footer">
-        <a class="repo-link" href="https://github.com/jpeckenpaugh/lokarta" target="_blank" rel="noopener noreferrer">
-          GitHub: jpeckenpaugh/lokarta
-        </a>
+        <div class="footer-links">
+          <a class="repo-link" href="https://github.com/jpeckenpaugh/lokarta" target="_blank" rel="noopener noreferrer">
+            GitHub: jpeckenpaugh/lokarta
+          </a>
+          <button id="debug-open" class="debug-link" type="button">Debug</button>
+        </div>
       </footer>
     </main>
+    <div id="debug-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="debug-title">
+      <div class="modal-card">
+        <div class="modal-title" id="debug-title">Debug</div>
+        <div class="modal-body">
+          <p>
+            This project is under rapid development, and backwards-incompatible changes may land on the
+            main branch regularly. These updates can include changes to the shape of JSON save data files,
+            which may lead to odd or unpredictable behavior when loading older saves.
+          </p>
+          <p>
+            You can clear your browser saves to get a clean state that is more compatible with the latest
+            code. This will permanently remove your saved games on this site.
+          </p>
+          <p>
+            If you want to explore the engine without worrying about losing game state in this way, you can
+            clone the repo locally, run it with Python, and choose when (or if) to pull updates. This GitHub
+            Pages site auto-deploys every change pushed to the main branch.
+          </p>
+        </div>
+        <div class="modal-actions modal-actions-split">
+          <button id="debug-clear" class="modal-btn" type="button">Clear Saved Games</button>
+          <button id="debug-close" class="modal-btn" type="button">Close</button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="audio.js"></script>
     <script type="module" src="main.js"></script>
   </body>

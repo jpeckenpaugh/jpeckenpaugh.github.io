@@ -40,6 +40,11 @@ Once validated locally, the same engine and assets can be migrated to:
 - `data/` — JSON content packs
 - `saves/` — local save slots
 - `docs/` — web build (Pyodide assets + terminal UI)
+
+### Web Build Sync
+
+- Make gameplay/code changes in the root tree first.
+- Sync runtime files into `docs/` with `scripts/sync_docs.sh` (preserves web-only assets like HTML/CSS/JS).
 - `tests/` — unit tests
 
 ---

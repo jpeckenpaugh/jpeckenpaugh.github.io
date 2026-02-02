@@ -29,6 +29,98 @@ body {
   gap: 16px;
 }
 
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 8, 10, 0.7);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-card {
+  width: min(560px, 100%);
+  background: linear-gradient(145deg, #141820, #0f1216);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+  display: grid;
+  gap: 16px;
+}
+
+.modal-title {
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.modal-body {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  display: grid;
+  gap: 10px;
+}
+
+.modal-body p {
+  margin: 0;
+}
+
+.modal-note-title {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.modal-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.modal-check input {
+  width: 16px;
+  height: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-actions-split {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.modal-btn {
+  background: #1d232b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.modal-btn:hover,
+.modal-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .masthead {
   display: grid;
   gap: 4px;
@@ -61,6 +153,32 @@ body {
 .page-footer {
   text-align: center;
   margin-top: 4px;
+}
+
+.footer-links {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.debug-link {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.debug-link:hover,
+.debug-link:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .terminal-shell {

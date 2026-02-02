@@ -20,6 +20,8 @@ const term = new Terminal({
 
 initTerminal();
 setupVirtualKeyboard();
+initTipsModal();
+initDebugModal();
 
 async function initTerminal() {
   await waitForFonts();
@@ -244,6 +246,67 @@ function setupVirtualKeyboard() {
     const key = button.getAttribute("data-key") || "";
     if (window.enqueueKey) {
       window.enqueueKey(key);
+    }
+  });
+}
+
+function initTipsModal() {
+  const modal = document.getElementById("tips-modal");
+  const closeBtn = document.getElementById("tips-close");
+  const dismissCheckbox = document.getElementById("tips-dismiss");
+  if (!modal || !closeBtn || !dismissCheckbox) return;
+  const dismissed = window.localStorage.getItem("lokarta_tips_dismissed");
+  if (dismissed === "1") {
+    modal.classList.add("hidden");
+  } else {
+    modal.classList.remove("hidden");
+  }
+  closeBtn.addEventListener("click", () => {
+    if (dismissCheckbox.checked) {
+      window.localStorage.setItem("lokarta_tips_dismissed", "1");
+    }
+    modal.classList.add("hidden");
+  });
+}
+
+function initDebugModal() {
+  const modal = document.getElementById("debug-modal");
+  const openBtn = document.getElementById("debug-open");
+  const closeBtn = document.getElementById("debug-close");
+  const clearBtn = document.getElementById("debug-clear");
+  if (!modal || !openBtn || !closeBtn || !clearBtn) return;
+  const show = () => modal.classList.remove("hidden");
+  const hide = () => modal.classList.add("hidden");
+  openBtn.addEventListener("click", show);
+  closeBtn.addEventListener("click", hide);
+  clearBtn.addEventListener("click", async () => {
+    const ok = window.confirm("Clear all saved games for this site?");
+    if (!ok) return;
+    const ok2 = window.confirm(
+      "This is permanent. Any currently open games will be lost. " +
+      "The page will reload after the reset. Continue?"
+    );
+    if (!ok2) return;
+    if (!window.pyodide) return;
+    const { FS } = window.pyodide;
+    try {
+      const entries = FS.readdir("/saves").filter((name) => !name.startsWith("."));
+      for (const name of entries) {
+        const path = `/saves/${name}`;
+        try {
+          FS.unlink(path);
+        } catch (err) {
+          // Ignore file errors.
+        }
+      }
+      await new Promise((resolve, reject) => {
+        FS.syncfs(false, (err) => (err ? reject(err) : resolve()));
+      });
+      window.alert("Saved games cleared. Reloading...");
+      window.location.reload();
+    } catch (err) {
+      window.alert("Unable to clear saves. Check console for details.");
+      console.error(err);
     }
   });
 }

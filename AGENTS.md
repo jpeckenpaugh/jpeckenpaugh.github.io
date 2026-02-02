@@ -6,6 +6,10 @@
 - Core code lives under `app/`.
 - Data assets: `data/opponents.json`, `data/items.json`, `data/scenes.json`, `data/npcs.json`, `data/venues.json`, `data/spells.json`, `data/commands.json`, `data/menus.json`, `data/text.json`.
 - Save file: `saves/slot1.json` (generated at runtime).
+- `docs/` mirrors the runtime for the web build and is the web root for https://jpeckenpaugh.github.io/.
+- `docs/` contains web-only assets (HTML/CSS/JS, manifests) that are customized for the GitHub Pages site; do not delete or overwrite these files accidentally when syncing from the root.
+- Make gameplay/code changes in the root tree first, then sync into `docs/` (except for web-only assets).
+- Use `scripts/sync_docs.sh` to copy runtime files (app/data/main/music/etc.) into `docs/` without clobbering web-only assets.
 
 ## Conventions
 - Keep UI within 100x30 layout constraints.

@@ -189,13 +189,13 @@
     ],
     "town_continent_1": {
       "steps": [
-        {"sequence": "town_continent_1_motif", "root": "G4"},
-        {"sequence": "town_continent_1_motif", "root": "E4"},
-        {"sequence": "town_continent_1_motif", "root": "C4"},
+        {"sequence": "town_continent_1_motif", "root": "G4", "staccato": true},
+        {"sequence": "town_continent_1_motif", "root": "E4", "staccato": true},
+        {"sequence": "town_continent_1_motif", "root": "C4", "staccato": true},
         {"sequence": "town_continent_1_motif", "root": "G2"},
-        {"sequence": "town_continent_1_motif", "root": "F4"},
-        {"sequence": "town_continent_1_motif", "root": "D4"},
-        {"sequence": "town_continent_1_motif", "root": "B3"},
+        {"sequence": "town_continent_1_motif", "root": "F4", "staccato": true},
+        {"sequence": "town_continent_1_motif", "root": "D4", "staccato": true},
+        {"sequence": "town_continent_1_motif", "root": "B3", "staccato": true},
         {"sequence": "town_continent_1_tail", "root": "C3"}
       ]
     },
