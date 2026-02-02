@@ -57,6 +57,18 @@
       [2],
       [5]
     ],
+    "town_continent_1_motif": [
+      [1],
+      [7, 1, -1],
+      [1],
+      [0]
+    ],
+    "town_continent_1_tail": [
+      [7, 1,-1],
+      [2, 1],
+      [1],
+      [0]
+    ],
     "continent_1_quest_head": [
       [5],
       [4],
@@ -125,6 +137,18 @@
       "wave": "square",
       "pattern": "quest_open_phrase"
     },
+    "town_continent_1_motif": {
+      "tempo": 360,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "town_continent_1_motif"
+    },
+    "town_continent_1_tail": {
+      "tempo": 360,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "town_continent_1_tail"
+    },
     "continent_1_quest_head": {
       "tempo": 240,
       "scale": "major",
@@ -163,6 +187,18 @@
     "quest_open": [
       {"sequence": "quest_open", "root": "C4"}
     ],
+    "town_continent_1": {
+      "steps": [
+        {"sequence": "town_continent_1_motif", "root": "G4"},
+        {"sequence": "town_continent_1_motif", "root": "E4"},
+        {"sequence": "town_continent_1_motif", "root": "C4"},
+        {"sequence": "town_continent_1_motif", "root": "G2"},
+        {"sequence": "town_continent_1_motif", "root": "F4"},
+        {"sequence": "town_continent_1_motif", "root": "D4"},
+        {"sequence": "town_continent_1_motif", "root": "B3"},
+        {"sequence": "town_continent_1_tail", "root": "C3"}
+      ]
+    },
     "continent_1_quest": {
       "repeat": 4,
       "steps": [

@@ -66,6 +66,8 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
             audio_key = f"quest_detail:{state.quest_detail_id}"
         elif state.quest_mode:
             audio_key = "quest_list"
+        elif state.player.location == "Town" and not state.title_mode:
+            audio_key = "town"
         if audio_key and audio_key != state.screen_audio_key:
             if audio_key == "quest_list":
                 ctx.audio.play_song_once("quest_open")
@@ -76,6 +78,13 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
                 first = order[0] if order else "base"
                 if getattr(state.player, "current_element", "base") == first:
                     ctx.audio.play_song_once("continent_1_quest")
+            elif audio_key == "town":
+                order = []
+                if hasattr(ctx, "continents"):
+                    order = list(ctx.continents.order() or [])
+                first = order[0] if order else "base"
+                if getattr(state.player, "current_element", "base") == first:
+                    ctx.audio.play_song_once("town_continent_1")
             state.screen_audio_key = audio_key
         if not audio_key:
             state.screen_audio_key = None
