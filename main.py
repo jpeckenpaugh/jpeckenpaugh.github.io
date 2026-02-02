@@ -112,6 +112,9 @@ def main():
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
     sync_player_elements(APP, state.player)
+    if hasattr(APP, "audio"):
+        APP.audio.set_mode(state.player.flags.get("audio_mode"))
+        APP.audio.on_location_change(None, "Title")
 
     if os.name != 'nt' and not WEB_MODE:
         termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
@@ -136,12 +139,15 @@ def main():
         if cmd == "QUIT":
             if state.title_mode or state.player.location == "Title":
                 SAVE_DATA.save_player(state.player)
+                if hasattr(APP, "audio"):
+                    APP.audio.stop()
                 clear_screen()
                 print("Goodbye.")
                 if os.name != 'nt' and not WEB_MODE:
                     sys.stdout.write("\033[?1049l")
                     sys.stdout.flush()
                 return
+            pre_location = state.player.location
             pre_frame = generate_frame(
                 APP.screen_ctx,
                 state.player,
@@ -191,6 +197,8 @@ def main():
             state.player.title_name_cursor = (0, 0)
             state.player.title_name_shift = True
             state.player.has_save = SAVE_DATA.exists()
+            if hasattr(APP, "audio"):
+                APP.audio.on_location_change(pre_location, "Title")
             state.leveling_mode = False
             state.shop_mode = False
             state.shop_view = "menu"
@@ -497,6 +505,8 @@ def main():
             handled_by_router,
             generate_frame,
         )
+        if action_cmd == "ATTACK" and hasattr(APP, "audio"):
+            APP.audio.play_sfx_once("attack_sfx", "A4")
         in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
         if (
             state.spell_mode

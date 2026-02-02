@@ -29,6 +29,10 @@
           "command": "TITLE_NEW"
         },
         {
+          "label": "Audio",
+          "command": "TOGGLE_AUDIO"
+        },
+        {
           "label": "Quit",
           "command": "QUIT"
         }

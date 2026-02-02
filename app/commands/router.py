@@ -100,6 +100,26 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
     if state.player.location == "Title":
         return _handle_title(command_id, state, ctx, key)
 
+    if command_id == "TOGGLE_AUDIO":
+        flags = getattr(state.player, "flags", {})
+        if not isinstance(flags, dict):
+            flags = {}
+            state.player.flags = flags
+        order = ["on", "off", "music", "sfx"]
+        current = str(flags.get("audio_mode", "on"))
+        if current not in order:
+            current = "on"
+        next_mode = order[(order.index(current) + 1) % len(order)]
+        flags["audio_mode"] = next_mode
+        label = {
+            "on": "Audio On.",
+            "off": "Audio Off.",
+            "music": "Music only.",
+            "sfx": "SFX only.",
+        }.get(next_mode, "Audio updated.")
+        state.last_message = label
+        return True
+
     if command_id == "ENTER_VENUE":
         venue_id = _command_target(ctx.scenes, ctx.commands, state, command_id, key)
         if not venue_id:
@@ -702,6 +722,25 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
 
     if command_id == "QUIT":
         state.action_cmd = "QUIT"
+        return True
+    if command_id == "TOGGLE_AUDIO":
+        flags = getattr(state.player, "flags", {})
+        if not isinstance(flags, dict):
+            flags = {}
+            state.player.flags = flags
+        order = ["on", "off", "music", "sfx"]
+        current = str(flags.get("audio_mode", "on"))
+        if current not in order:
+            current = "on"
+        next_mode = order[(order.index(current) + 1) % len(order)]
+        flags["audio_mode"] = next_mode
+        label = {
+            "on": "Audio On.",
+            "off": "Audio Off.",
+            "music": "Music only.",
+            "sfx": "SFX only.",
+        }.get(next_mode, "Audio updated.")
+        state.last_message = label
         return True
     if command_id == "TITLE_CONFIRM_YES":
         pending_slot = getattr(state.player, "title_pending_slot", None)

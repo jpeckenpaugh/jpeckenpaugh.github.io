@@ -31,6 +31,7 @@ from app.data_access.followers_screen_data import FollowersScreenData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.text_data import TextData
 from app.data_access.venues_data import VenuesData
+from app.audio import AudioManager
 from app.ui.screens import ScreenContext
 
 
@@ -61,6 +62,7 @@ class AppContext:
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
+    audio: AudioManager
     registry: object
     router_ctx: RouterContext
     screen_ctx: ScreenContext
@@ -216,6 +218,7 @@ def create_app() -> AppContext:
     spellbook_screen = _load_spellbook_screen()
     quests_screen = _load_quests_screen()
     followers_screen = _load_followers_screen()
+    audio = AudioManager(f"{DATA_DIR}/music.json")
 
     spell_commands, targeted_spell_commands, flash_spell_commands = _spell_command_sets(spells)
     combat_actions = command_ids_by_type(scenes, "combat") | spell_commands
@@ -301,6 +304,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        audio=audio,
         registry=registry,
         router_ctx=router_ctx,
         screen_ctx=screen_ctx,

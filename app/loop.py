@@ -1715,6 +1715,9 @@ def apply_router_command(
     state.current_venue_id = cmd_state.current_venue_id
     post_in_forest = state.player.location == "Forest"
     post_alive = any(m.hp > 0 for m in state.opponents)
+    if hasattr(ctx, "audio"):
+        player_alive = bool(getattr(state.player, "hp", 1) > 0)
+        ctx.audio.on_battle_change(pre_alive, post_alive, post_in_forest, player_alive, pre_in_forest)
     if not pre_in_forest and post_in_forest:
         state.battle_log = []
     if pre_in_forest and not post_in_forest:
@@ -1835,6 +1838,9 @@ def apply_router_command(
         state.title_mode = False
     state.player = cmd_state.player
     post_location = state.player.location
+    if hasattr(ctx, "audio"):
+        ctx.audio.set_mode(state.player.flags.get("audio_mode"))
+        ctx.audio.on_location_change(pre_location, post_location)
     if post_location == "Town" and pre_location != "Town":
         commands = scene_commands(ctx.scenes, ctx.commands_data, "town", state.player, state.opponents)
         state.action_cursor = 0
@@ -2375,6 +2381,8 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         return
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
+    if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
+        ctx.audio.play_song_once("battle_victory")
     if ctx.battle_end_commands:
         color_override = element_color_map(ctx.colors.all(), state.player.current_element)
         animate_battle_end(

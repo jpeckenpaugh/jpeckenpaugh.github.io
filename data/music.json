@@ -14,6 +14,28 @@
       [3],
       [5, 2],
       [0, 2]
+    ],
+    "battle_minor_phrase": [
+      [1],
+      [2],
+      [3],
+      [1],
+      [2],
+      [3, 3.0]
+    ],
+    "attack_sfx": [
+      [1, 0.25],
+      [2, 0.25],
+      [3, 0.25],
+      [4, 0.25],
+      [5, 0.25]
+    ],
+    "battle_victory_phrase": [
+      [5],
+      [4],
+      [3],
+      [4],
+      [1]
     ]
   },
   "sequences": {
@@ -28,6 +50,24 @@
       "scale": "major",
       "wave": "square",
       "pattern": "asc_2_measures"
+    },
+    "battle_minor": {
+      "tempo": 360,
+      "scale": "minor",
+      "wave": "square",
+      "pattern": "battle_minor_phrase"
+    },
+    "attack_sfx": {
+      "tempo": 240,
+      "scale": "minor",
+      "wave": "square",
+      "pattern": "attack_sfx"
+    },
+    "battle_victory": {
+      "tempo": 360,
+      "scale": "major",
+      "wave": "square",
+      "pattern": "battle_victory_phrase"
     }
   },
   "songs": {
@@ -36,6 +76,12 @@
       {"sequence": "asc_2_measures", "root": "B4", "scale": "diminished"},
       {"sequence": "asc_2_measures", "root": "A4", "scale": "minor"},
       {"sequence": "asc_2_measures", "root": "G3", "scale": "major"}
+    ],
+    "battle_minor": [
+      {"sequence": "battle_minor", "root": "A2"}
+    ],
+    "battle_victory": [
+      {"sequence": "battle_victory", "root": "A3"}
     ]
   }
 }
