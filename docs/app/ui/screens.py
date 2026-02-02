@@ -4,6 +4,7 @@ import random
 import textwrap
 import time
 from dataclasses import dataclass
+import json
 from types import SimpleNamespace
 from typing import List, Optional
 
@@ -161,24 +162,87 @@ def _title_state_config(
         scene_data = ctx.scenes.get("title", {})
         return scene_data.get("narrative", []), scene_commands(ctx.scenes, ctx.commands, "title", player, []), []
     menus = title_data.get("menus", {}) if isinstance(title_data, dict) else {}
-    menu_id = menu_stack[-1] if menu_stack else title_data.get("root_menu", "title_root")
-    if getattr(player, "title_name_input", False):
-        menu_id = "title_name_input"
-    if getattr(player, "title_name_select", False):
-        menu_id = "title_name"
-    if getattr(player, "title_confirm", False):
-        menu_id = "title_confirm"
-    if getattr(player, "title_fortune", False):
-        menu_id = "title_fortune"
-    if getattr(player, "title_slot_select", False):
-        menu_id = "title_slot_select"
-    if getattr(player, "title_start_confirm", False):
-        menu_id = "title_start_confirm"
+    menu_id = _title_menu_id(title_data, player, menu_stack)
     menu_data = menus.get(menu_id, {}) if isinstance(menus, dict) else {}
     narrative = menu_data.get("narrative", [])
     if not isinstance(narrative, list):
         narrative = []
     items = menu_data.get("items", [])
+    if menu_id == "title_assets_list":
+        asset_type = getattr(player, "asset_explorer_type", "") or ""
+        asset_label = {
+            "objects": "Objects",
+            "opponents": "Opponents",
+            "items": "Items",
+            "spells": "Spells",
+            "spells_art": "Spells Art",
+            "glyphs": "Glyphs",
+        }.get(asset_type, "Assets")
+        narrative = [f"Asset Explorer: {asset_label}"]
+        assets = {}
+        if asset_type == "objects":
+            assets = ctx.objects.all()
+        elif asset_type == "opponents":
+            opp_data = ctx.opponents.all()
+            if isinstance(opp_data, dict):
+                assets = opp_data
+        elif asset_type == "items":
+            assets = ctx.items.all()
+        elif asset_type == "spells":
+            assets = ctx.spells.all()
+        elif asset_type == "spells_art":
+            assets = ctx.spells_art.all()
+        elif asset_type == "glyphs":
+            assets = ctx.glyphs.all()
+        if not isinstance(assets, dict):
+            assets = {}
+        asset_ids = sorted(str(key) for key in assets.keys())
+        items = [{"label": asset_id, "command": f"TITLE_ASSET_SELECT:{asset_id}"} for asset_id in asset_ids]
+        items.append({
+            "label": f"Show Art: {'On' if getattr(player, 'asset_explorer_show_art', True) else 'Off'}",
+            "command": "TITLE_ASSET_TOGGLE:art",
+        })
+        items.append({
+            "label": f"Show Stats: {'On' if getattr(player, 'asset_explorer_show_stats', True) else 'Off'}",
+            "command": "TITLE_ASSET_TOGGLE:stats",
+        })
+        items.append({
+            "label": f"Show JSON: {'On' if getattr(player, 'asset_explorer_show_json', False) else 'Off'}",
+            "command": "TITLE_ASSET_TOGGLE:json",
+        })
+        items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
+        selected_id = None
+        if asset_ids:
+            if 0 <= selected_index < len(asset_ids):
+                selected_id = asset_ids[selected_index]
+            else:
+                selected_id = asset_ids[0]
+        asset = assets.get(selected_id, {}) if selected_id is not None else {}
+        if isinstance(asset, dict):
+            name = asset.get("name")
+            if name:
+                narrative.append(str(name)[:64])
+            desc = asset.get("description") or asset.get("desc")
+            if desc:
+                narrative.append(str(desc)[:80])
+            if getattr(player, "asset_explorer_show_stats", True):
+                stats = []
+                for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
+                    if key in asset:
+                        stats.append(f"{key}:{asset.get(key)}")
+                if stats:
+                    narrative.append("Stats: " + " ".join(stats))
+            if getattr(player, "asset_explorer_show_art", True):
+                art = asset.get("art")
+                if isinstance(art, list):
+                    narrative.append("")
+                    narrative.extend(str(line)[:80] for line in art[:10])
+            if getattr(player, "asset_explorer_show_json", False):
+                raw = json.dumps(asset, indent=2, ensure_ascii=True)
+                lines = raw.splitlines()[:8]
+                if lines:
+                    narrative.append("")
+                    narrative.extend(line[:80] for line in lines)
     if items == "slot_select":
         summaries = []
         if hasattr(ctx, "save_data") and ctx.save_data:
@@ -259,6 +323,23 @@ def _title_state_config(
             if entry.get("command") == "TOGGLE_AUDIO":
                 entry["label"] = label_map.get(audio_mode, "Audio: On")
     return narrative, commands, detail_lines if isinstance(detail_lines, list) else []
+
+
+def _title_menu_id(title_data: dict, player, menu_stack: list[str]) -> str:
+    menu_id = menu_stack[-1] if menu_stack else title_data.get("root_menu", "title_root")
+    if getattr(player, "title_name_input", False):
+        menu_id = "title_name_input"
+    if getattr(player, "title_name_select", False):
+        menu_id = "title_name"
+    if getattr(player, "title_confirm", False):
+        menu_id = "title_confirm"
+    if getattr(player, "title_fortune", False):
+        menu_id = "title_fortune"
+    if getattr(player, "title_slot_select", False):
+        menu_id = "title_slot_select"
+    if getattr(player, "title_start_confirm", False):
+        menu_id = "title_start_confirm"
+    return menu_id
 
 
 def _draw_box(width: int, height: int, *, style: str = "round") -> list[str]:
@@ -1996,6 +2077,7 @@ def generate_frame(
         title_element = None
         unlocked_elements = ["base"]
         title_followers = []
+        menu_id = _title_menu_id(title_data, player, title_menu_stack or [])
         if hasattr(ctx, "save_data") and ctx.save_data:
             if getattr(player, "title_slot_select", False):
                 _narrative, commands, _detail = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
@@ -2037,6 +2119,163 @@ def generate_frame(
                             if isinstance(followers, list):
                                 title_followers = followers
         title_color_map = element_color_map(ctx.colors.all(), title_element or "base")
+        if menu_id == "title_assets_list":
+            asset_type = getattr(player, "asset_explorer_type", "") or ""
+            asset_label = {
+                "objects": "Objects",
+                "opponents": "Opponents",
+                "items": "Items",
+                "spells": "Spells",
+                "spells_art": "Spells Art",
+                "glyphs": "Glyphs",
+            }.get(asset_type, "Assets")
+            assets = {}
+            if asset_type == "objects":
+                assets = ctx.objects.all()
+            elif asset_type == "opponents":
+                opp_data = ctx.opponents.all()
+                if isinstance(opp_data, dict):
+                    assets = opp_data.get("base_opponents", {}) or {}
+            elif asset_type == "items":
+                assets = ctx.items.all()
+            elif asset_type == "spells":
+                assets = ctx.spells.all()
+            elif asset_type == "spells_art":
+                assets = ctx.spells_art.all()
+            elif asset_type == "glyphs":
+                assets = ctx.glyphs.all()
+            if not isinstance(assets, dict):
+                assets = {}
+            asset_ids = sorted(str(key) for key in assets.keys())
+            _narrative, commands, _detail = _title_state_config(ctx, player, action_cursor, title_menu_stack or [])
+            selected_asset = None
+            if commands and 0 <= action_cursor < len(commands):
+                cmd = commands[action_cursor].get("command", "")
+                if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_SELECT:"):
+                    selected_asset = cmd.split(":", 1)[1]
+            if selected_asset is None and asset_ids:
+                selected_asset = asset_ids[0]
+            asset = assets.get(selected_asset, {}) if selected_asset is not None else {}
+            if not isinstance(asset, dict) or not asset:
+                if asset_type == "objects":
+                    asset = ctx.objects.get(selected_asset, {}) if selected_asset else {}
+                elif asset_type == "opponents":
+                    asset = ctx.opponents.get(selected_asset, {}) if selected_asset else {}
+                elif asset_type == "items":
+                    asset = ctx.items.get(selected_asset, {}) if selected_asset else {}
+                elif asset_type == "spells":
+                    asset = ctx.spells.get(selected_asset, {}) if selected_asset else {}
+                elif asset_type == "spells_art":
+                    asset = ctx.spells_art.get(selected_asset, {}) if selected_asset else {}
+                elif asset_type == "glyphs":
+                    asset = ctx.glyphs.get(selected_asset, {}) if selected_asset else {}
+
+            def _box(width: int, height: int, content: list[str]) -> list[str]:
+                width = max(2, width)
+                height = max(2, height)
+                box = _draw_box(width, height, style="round")
+                inner_w = width - 2
+                inner_h = height - 2
+                lines = [" " * inner_w for _ in range(inner_h)]
+                for i, line in enumerate(content[:inner_h]):
+                    lines[i] = pad_or_trim_ansi(line, inner_w)
+                for i in range(inner_h):
+                    box[i + 1] = box[i + 1][0] + lines[i] + box[i + 1][-1]
+                return box
+
+            left_w = 33
+            right_w = SCREEN_WIDTH - left_w - 1
+            left_h = SCREEN_HEIGHT
+            top_h = 16
+            bottom_h = max(4, left_h - top_h)
+
+            list_title = f"{ANSI.FG_CYAN}[ {asset_label} ]{ANSI.RESET}"
+            list_window = max(0, left_h - 4)
+            total = len(commands)
+            if action_cursor < 0:
+                cursor = 0
+            else:
+                cursor = min(action_cursor, max(0, total - 1))
+            start = 0
+            if total > list_window:
+                if cursor >= start + list_window:
+                    start = cursor - list_window + 1
+                if cursor < start:
+                    start = cursor
+                start = max(0, min(start, total - list_window))
+            visible = commands[start:start + list_window] if total else []
+            list_lines = [list_title] + [""]
+            for idx, entry in enumerate(visible, start=start):
+                label = str(entry.get("label", "")).strip()
+                if idx == cursor:
+                    label = f"{ANSI.FG_YELLOW}> {label}{ANSI.RESET}"
+                else:
+                    label = f"{ANSI.DIM}{label}{ANSI.RESET}"
+                list_lines.append(label)
+            left_box = _box(left_w, left_h, list_lines)
+
+            right_lines = [f"{ANSI.FG_CYAN}Preview:{ANSI.RESET} {selected_asset or ''}"]
+            if isinstance(asset, dict):
+                name = asset.get("name")
+                if name:
+                    right_lines.append(f"{ANSI.FG_YELLOW}{name}{ANSI.RESET}")
+                desc = asset.get("description") or asset.get("desc")
+                if desc:
+                    right_lines.append(f"{ANSI.DIM}{desc}{ANSI.RESET}")
+                if getattr(player, "asset_explorer_show_art", True):
+                    art = asset.get("art")
+                    if isinstance(art, list):
+                        right_lines.append("")
+                        max_lines = max(0, (top_h - 2) - len(right_lines))
+                        right_lines.extend(str(line) for line in art[:max_lines])
+            right_box = _box(right_w, top_h, right_lines)
+
+            info_lines = []
+            if isinstance(asset, dict):
+                if getattr(player, "asset_explorer_show_stats", True):
+                    stats = []
+                    for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
+                        if key in asset:
+                            stats.append(f"{key}:{asset.get(key)}")
+                    if stats:
+                        info_lines.append("Stats: " + " ".join(stats))
+                if getattr(player, "asset_explorer_show_json", False):
+                    raw = json.dumps(asset, indent=2, ensure_ascii=True)
+                    info_lines.extend(raw.splitlines())
+            focus = getattr(player, "asset_explorer_focus", "list")
+            if focus == "info":
+                info_lines.append(f"{ANSI.DIM}Up/Down scroll, Left to list, S to go back.{ANSI.RESET}")
+            else:
+                info_lines.append(f"{ANSI.DIM}Right to info, Up/Down select, S to go back.{ANSI.RESET}")
+            scroll = max(0, int(getattr(player, "asset_explorer_info_scroll", 0) or 0))
+            inner_h = max(0, bottom_h - 2)
+            if inner_h and len(info_lines) > inner_h:
+                scroll = max(0, min(scroll, len(info_lines) - inner_h))
+                info_lines = info_lines[scroll:scroll + inner_h]
+            bottom_box = _box(right_w, bottom_h, info_lines)
+
+            content_lines = []
+            for i in range(left_h):
+                if i < top_h:
+                    right_line = right_box[i]
+                else:
+                    right_line = bottom_box[i - top_h] if (i - top_h) < len(bottom_box) else " " * right_w
+                content_lines.append(left_box[i] + " " + right_line)
+
+            raw_lines = []
+            raw_lines.extend(content_lines[:SCREEN_HEIGHT])
+            return Frame(
+                title="Asset Explorer",
+                body_lines=[],
+                action_lines=[],
+                stat_lines=[],
+                footer_hint="",
+                location="Asset Explorer",
+                art_lines=[],
+                art_color=ANSI.FG_WHITE,
+                status_lines=[],
+                raw_lines=raw_lines,
+            )
         if scroll_cfg:
             height = int(scroll_cfg.get("height", 10) or 10)
             speed = float(scroll_cfg.get("speed", 1) or 1)

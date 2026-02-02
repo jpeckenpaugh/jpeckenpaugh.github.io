@@ -97,6 +97,12 @@ def main():
         quest_audio_played=False,
         quest_detail_audio_key=None,
         screen_audio_key=None,
+        asset_explorer_type=None,
+        asset_explorer_show_art=True,
+        asset_explorer_show_stats=True,
+        asset_explorer_show_json=True,
+        asset_explorer_focus="list",
+        asset_explorer_info_scroll=0,
         quit_confirm=False,
         title_mode=True,
         spell_cursor=0,
@@ -115,6 +121,12 @@ def main():
     state.player.location = "Title"
     state.player.sync_items(ITEMS)
     sync_player_elements(APP, state.player)
+    setattr(state.player, "asset_explorer_type", state.asset_explorer_type)
+    setattr(state.player, "asset_explorer_show_art", state.asset_explorer_show_art)
+    setattr(state.player, "asset_explorer_show_stats", state.asset_explorer_show_stats)
+    setattr(state.player, "asset_explorer_show_json", state.asset_explorer_show_json)
+    setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
+    setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
     if hasattr(APP, "audio"):
         APP.audio.set_mode(state.player.flags.get("audio_mode"))
         APP.audio.on_location_change(None, "Title")

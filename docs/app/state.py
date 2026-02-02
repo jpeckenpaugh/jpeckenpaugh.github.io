@@ -69,3 +69,9 @@ class GameState:
     quest_audio_played: bool = False
     quest_detail_audio_key: Optional[str] = None
     screen_audio_key: Optional[str] = None
+    asset_explorer_type: Optional[str] = None
+    asset_explorer_show_art: bool = True
+    asset_explorer_show_stats: bool = True
+    asset_explorer_show_json: bool = True
+    asset_explorer_focus: str = "list"
+    asset_explorer_info_scroll: int = 0

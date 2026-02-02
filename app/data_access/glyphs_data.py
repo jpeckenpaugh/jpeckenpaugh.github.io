@@ -21,3 +21,6 @@ class GlyphsData:
         if default is None:
             default = {}
         return self._glyphs.get(key, default)
+
+    def all(self) -> Dict[str, dict]:
+        return self._glyphs

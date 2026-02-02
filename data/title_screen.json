@@ -29,6 +29,10 @@
           "command": "TITLE_NEW"
         },
         {
+          "label": "Asset Explorer",
+          "submenu": "title_assets_types"
+        },
+        {
           "label": "Audio",
           "command": "TOGGLE_AUDIO"
         },
@@ -116,6 +120,27 @@
     "title_name_input": {
       "narrative": [
         "Enter your name."
+      ],
+      "items": []
+    },
+    "title_assets_types": {
+      "narrative": [
+        "Asset Explorer",
+        "Select an asset type."
+      ],
+      "items": [
+        { "label": "Objects", "command": "TITLE_ASSET_TYPE:objects" },
+        { "label": "Opponents", "command": "TITLE_ASSET_TYPE:opponents" },
+        { "label": "Items", "command": "TITLE_ASSET_TYPE:items" },
+        { "label": "Spells", "command": "TITLE_ASSET_TYPE:spells" },
+        { "label": "Spells Art", "command": "TITLE_ASSET_TYPE:spells_art" },
+        { "label": "Glyphs", "command": "TITLE_ASSET_TYPE:glyphs" },
+        { "label": "Back", "back": true }
+      ]
+    },
+    "title_assets_list": {
+      "narrative": [
+        "Asset Explorer"
       ],
       "items": []
     }

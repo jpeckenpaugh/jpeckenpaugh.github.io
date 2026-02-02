@@ -3,6 +3,7 @@
 import random
 import time
 from typing import Optional
+import json
 
 from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
@@ -12,7 +13,7 @@ from app.questing import build_follower_from_entry, evaluate_quests, handle_even
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
-from app.ui.constants import ACTION_LINES
+from app.ui.constants import ACTION_LINES, SCREEN_HEIGHT
 from app.ui.rendering import (
     animate_battle_end,
     animate_battle_start,
@@ -296,6 +297,47 @@ def _title_screen_state_key(player) -> str:
     return ""
 
 
+def _title_menu_id_from_state(title_data: dict, player, menu_stack: list[str]) -> str:
+    menu_id = menu_stack[-1] if menu_stack else title_data.get("root_menu", "title_root")
+    override = _title_screen_state_key(player)
+    if override:
+        menu_id = override
+    return menu_id
+
+
+def _asset_explorer_info_lines(ctx, state: GameState, asset_type: str, asset_id: Optional[str]) -> list[str]:
+    assets = {}
+    if asset_type == "objects":
+        assets = ctx.objects.all()
+    elif asset_type == "opponents":
+        opp_data = ctx.opponents.all()
+        if isinstance(opp_data, dict):
+            assets = opp_data
+    elif asset_type == "items":
+        assets = ctx.items.all()
+    elif asset_type == "spells":
+        assets = ctx.spells.all()
+    elif asset_type == "spells_art":
+        assets = ctx.spells_art.all()
+    elif asset_type == "glyphs":
+        assets = ctx.glyphs.all()
+    if not isinstance(assets, dict):
+        assets = {}
+    asset = assets.get(asset_id, {}) if asset_id else {}
+    info_lines = []
+    if isinstance(asset, dict):
+        if state.asset_explorer_show_stats:
+            stats = []
+            for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
+                if key in asset:
+                    stats.append(f"{key}:{asset.get(key)}")
+            if stats:
+                info_lines.append("Stats: " + " ".join(stats))
+        if state.asset_explorer_show_json:
+            raw = json.dumps(asset, indent=2, ensure_ascii=True)
+            info_lines.extend(raw.splitlines())
+    return info_lines
+
 def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
     title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
     if title_data.get("version") != 2:
@@ -320,6 +362,81 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
     if not isinstance(narrative, list):
         narrative = []
     items = menu_data.get("items", [])
+    if menu_id == "title_assets_list":
+        asset_type = state.asset_explorer_type or ""
+        asset_label = {
+            "objects": "Objects",
+            "opponents": "Opponents",
+            "items": "Items",
+            "spells": "Spells",
+            "spells_art": "Spells Art",
+            "glyphs": "Glyphs",
+        }.get(asset_type, "Assets")
+        narrative = [f"Asset Explorer: {asset_label}"]
+        assets = {}
+        if asset_type == "objects":
+            assets = ctx.objects.all()
+        elif asset_type == "opponents":
+            opp_data = ctx.opponents.all()
+            if isinstance(opp_data, dict):
+                assets = opp_data
+        elif asset_type == "items":
+            assets = ctx.items.all()
+        elif asset_type == "spells":
+            assets = ctx.spells.all()
+        elif asset_type == "spells_art":
+            assets = ctx.spells_art.all()
+        elif asset_type == "glyphs":
+            assets = ctx.glyphs.all()
+        if not isinstance(assets, dict):
+            assets = {}
+        asset_ids = sorted(str(key) for key in assets.keys())
+        items = [{"label": asset_id, "command": f"TITLE_ASSET_SELECT:{asset_id}"} for asset_id in asset_ids]
+        items.append({
+            "label": f"Show Art: {'On' if state.asset_explorer_show_art else 'Off'}",
+            "command": "TITLE_ASSET_TOGGLE:art",
+        })
+        items.append({
+            "label": f"Show Stats: {'On' if state.asset_explorer_show_stats else 'Off'}",
+            "command": "TITLE_ASSET_TOGGLE:stats",
+        })
+        items.append({
+            "label": f"Show JSON: {'On' if state.asset_explorer_show_json else 'Off'}",
+            "command": "TITLE_ASSET_TOGGLE:json",
+        })
+        items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
+        selected_id = None
+        if asset_ids:
+            if 0 <= state.action_cursor < len(asset_ids):
+                selected_id = asset_ids[state.action_cursor]
+            else:
+                selected_id = asset_ids[0]
+        asset = assets.get(selected_id, {}) if selected_id is not None else {}
+        if isinstance(asset, dict):
+            name = asset.get("name")
+            if name:
+                narrative.append(str(name)[:64])
+            desc = asset.get("description") or asset.get("desc")
+            if desc:
+                narrative.append(str(desc)[:80])
+            if state.asset_explorer_show_stats:
+                stats = []
+                for key in ("level", "hp", "atk", "defense", "speed", "mp_cost", "price"):
+                    if key in asset:
+                        stats.append(f"{key}:{asset.get(key)}")
+                if stats:
+                    narrative.append("Stats: " + " ".join(stats))
+            if state.asset_explorer_show_art:
+                art = asset.get("art")
+                if isinstance(art, list):
+                    narrative.append("")
+                    narrative.extend(str(line)[:80] for line in art[:10])
+            if state.asset_explorer_show_json:
+                raw = json.dumps(asset, indent=2, ensure_ascii=True)
+                lines = raw.splitlines()[:8]
+                if lines:
+                    narrative.append("")
+                    narrative.extend(line[:80] for line in lines)
     if items == "slot_select":
         mode = getattr(state.player, "title_slot_mode", "continue")
         summaries = ctx.save_data.slot_summaries_sorted(max_slots=100)
@@ -1247,6 +1364,51 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
     if state.title_mode:
         commands = action_commands_for_state(ctx, state)
         clamp_action_cursor(state, commands)
+        title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
+        menu_id = _title_menu_id_from_state(title_data, state.player, state.title_menu_stack)
+        if menu_id == "title_assets_list":
+            asset_type = state.asset_explorer_type or ""
+            asset_ids = []
+            if asset_type:
+                assets = {}
+                if asset_type == "objects":
+                    assets = ctx.objects.all()
+                elif asset_type == "opponents":
+                    opp_data = ctx.opponents.all()
+                    if isinstance(opp_data, dict):
+                        assets = opp_data.get("base_opponents", {}) or {}
+                elif asset_type == "items":
+                    assets = ctx.items.all()
+                elif asset_type == "spells":
+                    assets = ctx.spells.all()
+                elif asset_type == "spells_art":
+                    assets = ctx.spells_art.all()
+                elif asset_type == "glyphs":
+                    assets = ctx.glyphs.all()
+                if isinstance(assets, dict):
+                    asset_ids = sorted(str(key) for key in assets.keys())
+            selected_id = None
+            if asset_ids and 0 <= state.action_cursor < len(asset_ids):
+                selected_id = asset_ids[state.action_cursor]
+            if action == "RIGHT":
+                state.asset_explorer_focus = "info"
+                setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
+                return None, None
+            if action == "LEFT":
+                state.asset_explorer_focus = "list"
+                setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
+                return None, None
+            if action in ("UP", "DOWN") and state.asset_explorer_focus == "info":
+                info_lines = _asset_explorer_info_lines(ctx, state, asset_type, selected_id)
+                left_h = SCREEN_HEIGHT
+                top_h = 16
+                bottom_h = max(4, left_h - top_h)
+                inner_h = max(0, bottom_h - 2)
+                max_scroll = max(0, len(info_lines) - inner_h)
+                delta = -1 if action == "UP" else 1
+                state.asset_explorer_info_scroll = max(0, min(max_scroll, state.asset_explorer_info_scroll + delta))
+                setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
+                return None, None
         if action in ("UP", "DOWN"):
             enabled = _enabled_indices(commands)
             if enabled:
@@ -1270,6 +1432,40 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if command_meta.get("_disabled"):
                 return None, None
             cmd = command_meta.get("command")
+            if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_TYPE:"):
+                state.asset_explorer_type = cmd.split(":", 1)[1]
+                state.asset_explorer_focus = "list"
+                state.asset_explorer_info_scroll = 0
+                setattr(state.player, "asset_explorer_type", state.asset_explorer_type)
+                state.title_menu_stack.append("title_assets_list")
+                commands = action_commands_for_state(ctx, state)
+                clamp_action_cursor(state, commands)
+                return None, None
+            if cmd == "TITLE_ASSET_BACK":
+                if len(state.title_menu_stack) > 1:
+                    state.title_menu_stack.pop()
+                commands = action_commands_for_state(ctx, state)
+                clamp_action_cursor(state, commands)
+                return None, None
+            if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_TOGGLE:"):
+                toggle = cmd.split(":", 1)[1]
+                if toggle == "art":
+                    state.asset_explorer_show_art = not state.asset_explorer_show_art
+                    setattr(state.player, "asset_explorer_show_art", state.asset_explorer_show_art)
+                elif toggle == "stats":
+                    state.asset_explorer_show_stats = not state.asset_explorer_show_stats
+                    setattr(state.player, "asset_explorer_show_stats", state.asset_explorer_show_stats)
+                elif toggle == "json":
+                    state.asset_explorer_show_json = not state.asset_explorer_show_json
+                    setattr(state.player, "asset_explorer_show_json", state.asset_explorer_show_json)
+                setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
+                setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
+                state.asset_explorer_info_scroll = 0
+                commands = action_commands_for_state(ctx, state)
+                clamp_action_cursor(state, commands)
+                return None, None
+            if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_SELECT:"):
+                return None, None
             if isinstance(cmd, str) and cmd.startswith("TITLE_MENU_SUB:"):
                 menu_id = cmd.split(":", 1)[1]
                 if menu_id:
