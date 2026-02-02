@@ -75,3 +75,4 @@ class GameState:
     asset_explorer_show_json: bool = True
     asset_explorer_focus: str = "list"
     asset_explorer_info_scroll: int = 0
+    asset_explorer_preview_key: Optional[str] = None

@@ -103,6 +103,7 @@ def main():
         asset_explorer_show_json=True,
         asset_explorer_focus="list",
         asset_explorer_info_scroll=0,
+        asset_explorer_preview_key=None,
         quit_confirm=False,
         title_mode=True,
         spell_cursor=0,

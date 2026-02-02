@@ -16,6 +16,7 @@ from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.elements_data import ElementsData
 from app.data_access.items_data import ItemsData
 from app.data_access.menus_data import MenusData
+from app.data_access.music_data import MusicData
 from app.data_access.npcs_data import NpcsData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
@@ -62,6 +63,7 @@ class AppContext:
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
+    music: MusicData
     audio: AudioManager
     registry: object
     router_ctx: RouterContext
@@ -108,6 +110,10 @@ def _load_commands() -> CommandsData:
 
 def _load_menus() -> MenusData:
     return MenusData(f"{DATA_DIR}/menus.json")
+
+
+def _load_music() -> MusicData:
+    return MusicData(f"{DATA_DIR}/music.json")
 
 
 def _load_texts() -> TextData:
@@ -218,6 +224,7 @@ def create_app() -> AppContext:
     spellbook_screen = _load_spellbook_screen()
     quests_screen = _load_quests_screen()
     followers_screen = _load_followers_screen()
+    music_data = _load_music()
     audio = AudioManager(f"{DATA_DIR}/music.json")
 
     spell_commands, targeted_spell_commands, flash_spell_commands = _spell_command_sets(spells)
@@ -276,6 +283,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        music=music_data,
     )
 
     return AppContext(
@@ -304,6 +312,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        music=music_data,
         audio=audio,
         registry=registry,
         router_ctx=router_ctx,
