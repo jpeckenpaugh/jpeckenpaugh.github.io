@@ -112,12 +112,26 @@ def render_wave(freq: float, duration: float, wave_shape: str) -> array:
     return data
 
 
-def render_sequence(sequence: dict, root_midi: int) -> array:
+def resolve_notes(sequence: dict, data: dict) -> list:
+    notes = sequence.get("notes")
+    if isinstance(notes, list) and notes:
+        return notes
+    pattern_name = sequence.get("pattern")
+    if pattern_name:
+        patterns = data.get("patterns", {})
+        pattern = patterns.get(pattern_name)
+        if isinstance(pattern, list) and pattern:
+            return pattern
+        raise MusicError(f"Unknown pattern: {pattern_name}")
+    return []
+
+
+def render_sequence(sequence: dict, root_midi: int, data: dict) -> array:
     tempo = float(sequence.get("tempo", 120))
     scale = sequence.get("scale", "major")
     wave_shape = sequence.get("wave", DEFAULT_WAVE)
-    notes = sequence.get("notes", [])
-    if not isinstance(notes, list) or not notes:
+    notes = resolve_notes(sequence, data)
+    if not notes:
         raise MusicError("Sequence has no notes")
     buffer = array("h")
     seconds_per_beat = 60.0 / tempo
@@ -181,7 +195,13 @@ def play_audio(samples: array):
     )
 
 
-def play_sequence(data: dict, name: str, root_note: str, scale_override: str | None, tempo_override: float | None):
+def play_sequence(
+    data: dict,
+    name: str,
+    root_note: str,
+    scale_override: str | None,
+    tempo_override: float | None,
+):
     sequences = data.get("sequences", {})
     if name not in sequences:
         raise MusicError(f"Unknown sequence: {name}")
@@ -191,7 +211,7 @@ def play_sequence(data: dict, name: str, root_note: str, scale_override: str | N
     if tempo_override is not None:
         sequence["tempo"] = tempo_override
     root_midi = parse_root(root_note)
-    samples = render_sequence(sequence, root_midi)
+    samples = render_sequence(sequence, root_midi, data)
     play_audio(samples)
 
 
@@ -206,7 +226,11 @@ def play_song(data: dict, name: str, scale_override: str | None, tempo_override:
         root_note = step.get("root")
         if not sequence_name or not root_note:
             raise MusicError(f"Song step missing sequence/root: {step}")
-        play_sequence(data, sequence_name, root_note, scale_override, tempo_override)
+        step_scale = step.get("scale") or scale_override
+        step_tempo = step.get("tempo")
+        if step_tempo is None:
+            step_tempo = tempo_override
+        play_sequence(data, sequence_name, root_note, step_scale, step_tempo)
 
 
 def build_parser() -> argparse.ArgumentParser:
