@@ -58,6 +58,7 @@ class CommandState:
     quest_mode: bool
     options_mode: bool
     action_cmd: Optional[str]
+    battle_trial_id: Optional[str] = None
     quest_continent_index: int = 0
     quest_detail_mode: bool = False
     quest_detail_id: Optional[str] = None
@@ -1076,19 +1077,16 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     continue
                 follower_levels += int(follower.get("level", 1) or 1)
         total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
-        flags = getattr(state.player, "flags", {})
-        if not isinstance(flags, dict):
-            flags = {}
-            state.player.flags = flags
+        trial_id = None
         quests_state = getattr(state.player, "quests", {})
         if isinstance(quests_state, dict):
             mushy_07_state = quests_state.get("mushy_07", {})
             if isinstance(mushy_07_state, dict) and mushy_07_state.get("status") == "active":
-                flags["mushy_07_trial_active"] = True
+                trial_id = "mushy_07_trial"
             mushy_06_state = quests_state.get("mushy_06", {})
-            if isinstance(mushy_06_state, dict) and mushy_06_state.get("status") == "active":
-                flags["mushy_06_trial_active"] = True
-        if isinstance(flags, dict) and flags.get("mushy_07_trial_active"):
+            if isinstance(mushy_06_state, dict) and mushy_06_state.get("status") == "active" and not trial_id:
+                trial_id = "mushy_06_trial"
+        if trial_id == "mushy_07_trial":
             base = ctx.opponents_data.get("ogre", {})
             if isinstance(base, dict) and base:
                 boosted = dict(base)
@@ -1111,7 +1109,8 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     ANSI.FG_WHITE,
                     element=getattr(state.player, "current_element", "base")
                 )
-        elif isinstance(flags, dict) and flags.get("mushy_06_trial_active"):
+            state.battle_trial_id = "mushy_07_trial"
+        elif trial_id == "mushy_06_trial":
             base = ctx.opponents_data.get("fairy_baby", {})
             if isinstance(base, dict) and base:
                 boosted = dict(base)
@@ -1134,12 +1133,14 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     ANSI.FG_WHITE,
                     element=getattr(state.player, "current_element", "base")
                 )
+            state.battle_trial_id = "mushy_06_trial"
         else:
             state.opponents = ctx.opponents_data.spawn(
                 total_level,
                 ANSI.FG_WHITE,
                 element=getattr(state.player, "current_element", "base")
             )
+            state.battle_trial_id = None
         state.loot_bank = {"xp": 0, "gold": 0}
         if state.opponents:
             state.last_message = f"A {state.opponents[0].name} appears."

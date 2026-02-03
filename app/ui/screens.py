@@ -1186,6 +1186,7 @@ def generate_frame(
         atlas_margin = int(atlas_cfg.get("margin", 1) or 1)
         atlas_style = str(atlas_cfg.get("frame_style", "round") or "round")
         atlas_lines = []
+        opponent_masks = []
         art_opponent_id = None
         if quest_detail_mode and detail_quest:
             art_opponent_id = str(detail_quest.get("art_opponent") or "").strip()
@@ -1193,6 +1194,8 @@ def generate_frame(
             opponent_entry = ctx.opponents.get(art_opponent_id, {})
             if isinstance(opponent_entry, dict):
                 atlas_lines = opponent_entry.get("art", []) if isinstance(opponent_entry.get("art"), list) else []
+                if isinstance(opponent_entry.get("color_map"), list):
+                    opponent_masks = opponent_entry.get("color_map")
         if not atlas_lines:
             atlas_id = atlas_cfg.get("glyph_id", "atlas")
             atlas = ctx.glyphs.get(atlas_id, {}) if hasattr(ctx, "glyphs") else {}
@@ -1243,7 +1246,30 @@ def generate_frame(
                 flicker_digit = selected_map[selected_element]
                 flicker_on = int(time.time() / 0.35) % 2 == 0
         if art_opponent_id and atlas_lines:
-            colored_atlas = list(atlas_lines)
+            if opponent_masks and hasattr(ctx, "colors"):
+                colors = ctx.colors.all()
+                if isinstance(colors, dict):
+                    colored = []
+                    for line, mask in zip(atlas_lines, opponent_masks):
+                        line_str = str(line)
+                        mask_str = str(mask)
+                        padded_mask = mask_str.ljust(len(line_str))
+                        out = []
+                        for idx, ch in enumerate(line_str):
+                            mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                            code = _color_code_for_key(colors, mask_ch) if mask_ch else ""
+                            if code and ch != " ":
+                                out.append(f"{code}{ch}{ANSI.RESET}")
+                            else:
+                                out.append(ch)
+                        colored.append("".join(out))
+                    if len(opponent_masks) < len(atlas_lines):
+                        colored.extend(str(line) for line in atlas_lines[len(opponent_masks):])
+                    colored_atlas = colored
+                else:
+                    colored_atlas = list(atlas_lines)
+            else:
+                colored_atlas = list(atlas_lines)
         else:
             colored_atlas = [
                 _colorize_atlas_line(

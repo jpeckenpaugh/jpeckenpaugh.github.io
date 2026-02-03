@@ -2160,6 +2160,7 @@ def apply_router_command(
         quest_detail_mode=state.quest_detail_mode,
         options_mode=state.options_mode,
         action_cmd=action_cmd,
+        battle_trial_id=state.battle_trial_id,
         quest_continent_index=state.quest_continent_index,
         quest_detail_id=state.quest_detail_id,
         quest_detail_page=state.quest_detail_page,
@@ -2181,6 +2182,7 @@ def apply_router_command(
         state.battle_log = []
     if pre_in_forest and not post_in_forest:
         state.battle_log = []
+        state.battle_trial_id = None
     if post_in_forest and post_alive and not pre_alive:
         state.battle_log = []
         state.battle_escaped = False
@@ -2192,6 +2194,7 @@ def apply_router_command(
         state.battle_log = []
         state.battle_escaped = True
         state.battle_active = False
+        state.battle_trial_id = None
     push_battle_message(state, cmd_state.last_message)
     state.shop_mode = cmd_state.shop_mode
     state.shop_view = cmd_state.shop_view
@@ -2213,6 +2216,7 @@ def apply_router_command(
     state.quest_mode = cmd_state.quest_mode
     state.quest_detail_mode = cmd_state.quest_detail_mode
     state.options_mode = cmd_state.options_mode
+    state.battle_trial_id = cmd_state.battle_trial_id
     action_cmd = cmd_state.action_cmd
     state.quest_continent_index = cmd_state.quest_continent_index
     state.quest_detail_id = cmd_state.quest_detail_id
@@ -2722,17 +2726,9 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
             if state.player.hp == 0:
                 lost_gp = state.player.gold // 2
                 state.player.gold -= lost_gp
-                if not isinstance(getattr(state.player, "flags", None), dict):
-                    state.player.flags = {}
                 if not isinstance(getattr(state.player, "quests", None), dict):
                     state.player.quests = {}
-                for quest_id, trial_flag in (
-                    ("mushy_06", "mushy_06_trial_active"),
-                    ("mushy_07", "mushy_07_trial_active"),
-                ):
-                    qstate = state.player.quests.get(quest_id, {})
-                    if isinstance(qstate, dict) and qstate.get("status") == "active":
-                        state.player.flags[trial_flag] = True
+                state.battle_trial_id = None
                 state.player.location = "Town"
                 state.player.hp = state.player.max_hp
                 state.player.mp = state.player.max_mp
@@ -2875,41 +2871,28 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
 
 
 def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
-    if action_cmd not in ctx.offensive_actions:
-        return
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
     if not state.battle_active:
         return
     if state.battle_escaped:
         return
-    if hasattr(state.player, "flags") and isinstance(state.player.flags, dict):
-        if state.player.flags.get("mushy_07_trial_active"):
-            if hasattr(ctx, "quests") and ctx.quests is not None:
-                quest_messages = handle_event(
-                    state.player,
-                    ctx.quests,
-                    "visit_scene",
-                    {"scene_id": "mushy_07_trial"},
-                    ctx.items,
-                    ctx.spells,
-                )
-                for message in quest_messages:
-                    push_battle_message(state, message)
-            state.player.flags.pop("mushy_07_trial_active", None)
-        if state.player.flags.get("mushy_06_trial_active"):
-            if hasattr(ctx, "quests") and ctx.quests is not None:
-                quest_messages = handle_event(
-                    state.player,
-                    ctx.quests,
-                    "visit_scene",
-                    {"scene_id": "mushy_06_trial"},
-                    ctx.items,
-                    ctx.spells,
-                )
-                for message in quest_messages:
-                    push_battle_message(state, message)
-            state.player.flags.pop("mushy_06_trial_active", None)
+    trial_id = state.battle_trial_id
+    open_quest_screen = False
+    if trial_id and hasattr(ctx, "quests") and ctx.quests is not None:
+        quest_messages = handle_event(
+            state.player,
+            ctx.quests,
+            "visit_scene",
+            {"scene_id": trial_id},
+            ctx.items,
+            ctx.spells,
+        )
+        for message in quest_messages:
+            push_battle_message(state, message)
+        if quest_messages:
+            open_quest_screen = True
+    state.battle_trial_id = None
     if ctx.battle_end_commands:
         color_override = element_color_map(ctx.colors.all(), state.player.current_element)
         animate_battle_end(
@@ -2926,6 +2909,8 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     state.battle_log = []
     state.battle_cursor = state.action_cursor
     state.battle_active = False
+    if open_quest_screen:
+        _open_quest_screen(ctx, state)
     if state.loot_bank["xp"] or state.loot_bank["gold"]:
         pre_level = state.player.level
         levels_gained = state.player.gain_xp(state.loot_bank["xp"])
