@@ -163,6 +163,10 @@ body {
   flex-wrap: wrap;
 }
 
+.footer-meta {
+  margin-top: 6px;
+}
+
 .debug-link {
   background: none;
   border: 1px solid rgba(255, 255, 255, 0.2);
