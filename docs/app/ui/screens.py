@@ -259,6 +259,7 @@ def _title_state_config(
                     "label": f"Waveform: {wave.title()}",
                     "command": "TITLE_ASSET_TOGGLE:wave",
                 })
+            items.append({"label": "Refresh", "command": "TITLE_ASSET_REFRESH"})
             items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
             selected_id = None
             if asset_ids:
@@ -2341,10 +2342,28 @@ def generate_frame(
                             right_lines.append(f"{ANSI.DIM}{' '.join(summary)}{ANSI.RESET}")
                     if getattr(player, "asset_explorer_show_art", True):
                         art = asset.get("art")
+                        masks = asset.get("color_map") if asset_type == "opponents" else None
                         if isinstance(art, list):
                             right_lines.append("")
                             max_lines = max(0, (top_h - 2) - len(right_lines))
-                            right_lines.extend(str(line) for line in art[:max_lines])
+                            lines = [str(line) for line in art[:max_lines]]
+                            if asset_type == "opponents" and isinstance(masks, list) and hasattr(ctx, "colors"):
+                                colors = ctx.colors.all()
+                                if isinstance(colors, dict):
+                                    colored = []
+                                    for line, mask in zip(lines, masks):
+                                        mask_line = str(mask).ljust(len(line))
+                                        out = []
+                                        for idx, ch in enumerate(line):
+                                            m = mask_line[idx] if idx < len(mask_line) else ""
+                                            code = _color_code_for_key(colors, m) if m else ""
+                                            if code and ch != " ":
+                                                out.append(f"{code}{ch}{ANSI.RESET}")
+                                            else:
+                                                out.append(ch)
+                                        colored.append("".join(out))
+                                    lines = colored
+                            right_lines.extend(lines)
                 if asset_type == "music":
                     if isinstance(asset, list):
                         right_lines.append(f"{ANSI.DIM}steps:{len(asset)}{ANSI.RESET}")
@@ -2620,6 +2639,20 @@ def generate_frame(
                 "fairy": "fairy",
                 "wolf": "wolf",
             }
+            colors = ctx.colors.all() if hasattr(ctx, "colors") else {}
+            def _apply_mask_line(line: str, mask: str) -> str:
+                if not line or not isinstance(colors, dict):
+                    return line
+                out = []
+                padded_mask = mask.ljust(len(line))
+                for idx, ch in enumerate(line):
+                    mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                    code = _color_code_for_key(colors, mask_ch) if mask_ch else ""
+                    if code and ch != " ":
+                        out.append(f"{code}{ch}{ANSI.RESET}")
+                    else:
+                        out.append(ch)
+                return "".join(out)
             for follower in title_followers:
                 if not isinstance(follower, dict):
                     continue
@@ -2629,8 +2662,15 @@ def generate_frame(
                     continue
                 opp = ctx.opponents.get(opp_id, {}) if hasattr(ctx.opponents, "get") else {}
                 art = opp.get("art", []) if isinstance(opp, dict) else []
+                masks = opp.get("color_map", []) if isinstance(opp, dict) else []
                 if isinstance(art, list) and art:
-                    follower_art_blocks.append(art)
+                    if isinstance(masks, list) and masks and isinstance(colors, dict):
+                        colored = []
+                        for line, mask in zip(art, masks):
+                            colored.append(_apply_mask_line(str(line), str(mask)))
+                        follower_art_blocks.append(colored)
+                    else:
+                        follower_art_blocks.append(art)
 
         follower_lines = []
         follower_span_width = 0

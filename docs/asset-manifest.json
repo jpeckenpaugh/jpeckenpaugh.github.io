@@ -1,5 +1,5 @@
 {
-  "version": 1770077410,
+  "version": 1770091991,
   "files": [
     ".gitignore",
     ".nojekyll",
@@ -65,6 +65,7 @@
     "audio.js",
     "build-time.txt",
     "color_map.py",
+    "data/.opponents.json.swp",
     "data/abilities.json",
     "data/characters.json",
     "data/colors.json",

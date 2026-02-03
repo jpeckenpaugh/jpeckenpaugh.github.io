@@ -502,6 +502,7 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
                     "label": f"Waveform: {wave.title()}",
                     "command": "TITLE_ASSET_TOGGLE:wave",
                 })
+            items.append({"label": "Refresh", "command": "TITLE_ASSET_REFRESH"})
             items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
             selected_id = None
             if asset_ids:
@@ -1676,6 +1677,29 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 return None, None
             if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_SELECT:"):
                 return None, None
+            if cmd == "TITLE_ASSET_REFRESH":
+                asset_type = state.asset_explorer_type or ""
+                if asset_type == "objects":
+                    ctx.objects.load()
+                elif asset_type == "opponents":
+                    ctx.opponents.load()
+                elif asset_type == "items":
+                    ctx.items.load()
+                elif asset_type == "spells":
+                    ctx.spells.load()
+                elif asset_type == "spells_art":
+                    ctx.spells_art.load()
+                elif asset_type == "glyphs":
+                    ctx.glyphs.load()
+                elif asset_type in ("music", "sfx"):
+                    ctx.music.load()
+                    if hasattr(ctx, "audio"):
+                        ctx.audio.reload()
+                state.asset_explorer_preview_key = None
+                state.asset_explorer_info_scroll = 0
+                commands = action_commands_for_state(ctx, state)
+                clamp_action_cursor(state, commands)
+                return None, None
             if isinstance(cmd, str) and cmd.startswith("TITLE_MENU_SUB:"):
                 menu_id = cmd.split(":", 1)[1]
                 if menu_id:
@@ -2159,11 +2183,15 @@ def apply_router_command(
         state.battle_log = []
     if post_in_forest and post_alive and not pre_alive:
         state.battle_log = []
+        state.battle_escaped = False
+        state.battle_active = True
         commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
         state.action_cursor = state.battle_cursor
         clamp_action_cursor(state, commands)
     if cmd == "FLEE" and cmd_state.last_message == "You flee to safety.":
         state.battle_log = []
+        state.battle_escaped = True
+        state.battle_active = False
     push_battle_message(state, cmd_state.last_message)
     state.shop_mode = cmd_state.shop_mode
     state.shop_view = cmd_state.shop_view
@@ -2710,6 +2738,7 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 state.player.mp = state.player.max_mp
                 state.opponents = []
                 state.loot_bank = {"xp": 0, "gold": 0}
+                state.battle_active = False
                 push_battle_message(state, (
                     "You were defeated and wake up at the inn. "
                     f"You lost {lost_gp} GP."
@@ -2850,6 +2879,10 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         return
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
+    if not state.battle_active:
+        return
+    if state.battle_escaped:
+        return
     if hasattr(state.player, "flags") and isinstance(state.player.flags, dict):
         if state.player.flags.get("mushy_07_trial_active"):
             if hasattr(ctx, "quests") and ctx.quests is not None:
@@ -2892,6 +2925,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     state.opponents = []
     state.battle_log = []
     state.battle_cursor = state.action_cursor
+    state.battle_active = False
     if state.loot_bank["xp"] or state.loot_bank["gold"]:
         pre_level = state.player.level
         levels_gained = state.player.gain_xp(state.loot_bank["xp"])

@@ -51,6 +51,10 @@ class AudioManager:
             return
         self._data = music.load_music_data(self._data_path)
 
+    def reload(self) -> None:
+        self._data = None
+        self.load()
+
     def _write_wav(self, samples: array) -> Path:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             tmp_path = Path(tmp.name)
