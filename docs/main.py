@@ -231,7 +231,24 @@ def main():
     followers = getattr(state.player, "followers", [])
     state.prev_follower_count = len(followers) if isinstance(followers, list) else 0
     if hasattr(APP, "audio"):
+        if hasattr(SAVE_DATA, "load_settings"):
+            settings = SAVE_DATA.load_settings()
+            flags = getattr(state.player, "flags", {}) if hasattr(state.player, "flags") else {}
+            if not isinstance(flags, dict):
+                flags = {}
+                state.player.flags = flags
+            if isinstance(settings, dict):
+                if flags.get("audio_music_volume") is None and "audio_music_volume" in settings:
+                    flags["audio_music_volume"] = settings.get("audio_music_volume")
+                if flags.get("audio_sfx_volume") is None and "audio_sfx_volume" in settings:
+                    flags["audio_sfx_volume"] = settings.get("audio_sfx_volume")
+                if flags.get("audio_wave") is None and "audio_wave" in settings:
+                    flags["audio_wave"] = settings.get("audio_wave")
         APP.audio.set_mode(state.player.flags.get("audio_mode"))
+        music_vol = int(state.player.flags.get("audio_music_volume", 5) or 0) / 5.0
+        sfx_vol = int(state.player.flags.get("audio_sfx_volume", 5) or 0) / 5.0
+        wave = str(state.player.flags.get("audio_wave", "square") or "square")
+        APP.audio.set_defaults(music_vol, sfx_vol, wave)
         APP.audio.on_location_change(None, "Title")
 
     if os.name != 'nt' and not WEB_MODE:

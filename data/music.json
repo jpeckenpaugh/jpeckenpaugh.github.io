@@ -1,197 +1,574 @@
 {
   "patterns": {
     "triad_ascending": [
-      [1],
-      [3],
-      [5],
-      [1, 2, 1],
-      [0, 1]
+      [
+        1
+      ],
+      [
+        3
+      ],
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        1
+      ],
+      [
+        0,
+        1
+      ]
     ],
     "asc_2_measures": [
-      [1],
-      [5, 1, -1],
-      [1],
-      [3],
-      [5, 2],
-      [0, 2]
+      [
+        1
+      ],
+      [
+        5,
+        1,
+        -1
+      ],
+      [
+        1
+      ],
+      [
+        3
+      ],
+      [
+        5,
+        2
+      ],
+      [
+        0,
+        2
+      ]
     ],
     "battle_minor_phrase": [
-      [1],
-      [2],
-      [3],
-      [1],
-      [2],
-      [3, 3.0]
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ],
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3,
+        3.0
+      ]
     ],
     "attack_sfx": [
-      [1, 0.25],
-      [2, 0.25],
-      [3, 0.25],
-      [4, 0.25],
-      [5, 0.25]
+      [
+        1,
+        0.25
+      ],
+      [
+        2,
+        0.25
+      ],
+      [
+        3,
+        0.25
+      ],
+      [
+        4,
+        0.25
+      ],
+      [
+        5,
+        0.25
+      ]
     ],
     "follower_joins_sfx": [
-      [1, 0.25, -1],
-      [3, 0.25, -1],
-      [5, 0.25, -1],
-      [7, 0.25, -1],
-      [1, 0.25],
-      [3, 0.25],
-      [5, 0.25],
-      [7, 0.25],
-      [1, 0.25, 1],
-      [3, 0.25, 1],
-      [5, 0.25, 1],
-      [7, 0.25, 1]
+      [
+        1,
+        0.25,
+        -1
+      ],
+      [
+        3,
+        0.25,
+        -1
+      ],
+      [
+        5,
+        0.25,
+        -1
+      ],
+      [
+        7,
+        0.25,
+        -1
+      ],
+      [
+        1,
+        0.25
+      ],
+      [
+        3,
+        0.25
+      ],
+      [
+        5,
+        0.25
+      ],
+      [
+        7,
+        0.25
+      ],
+      [
+        1,
+        0.25,
+        1
+      ],
+      [
+        3,
+        0.25,
+        1
+      ],
+      [
+        5,
+        0.25,
+        1
+      ],
+      [
+        7,
+        0.25,
+        1
+      ]
     ],
     "point_added_sfx": [
-      [1, 0.25],
-      [5, 0.25],
-      [3, 0.25],
-      [7, 0.25]
+      [
+        1,
+        0.25
+      ],
+      [
+        5,
+        0.25
+      ],
+      [
+        3,
+        0.25
+      ],
+      [
+        7,
+        0.25
+      ]
     ],
     "player_defeated_phrase": [
-      [1],
-      [2],
-      [3],
-      [1],
-      [4, 0.5],
-      [3, 0.5],
-      [2, 0.5],
-      [3, 0.5],
-      [1]
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ],
+      [
+        1
+      ],
+      [
+        4,
+        0.5
+      ],
+      [
+        3,
+        0.5
+      ],
+      [
+        2,
+        0.5
+      ],
+      [
+        3,
+        0.5
+      ],
+      [
+        1
+      ]
     ],
     "glissando_asc_white": [
-      [1],
-      [2],
-      [3],
-      [4],
-      [5],
-      [6],
-      [7]
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ],
+      [
+        4
+      ],
+      [
+        5
+      ],
+      [
+        6
+      ],
+      [
+        7
+      ]
     ],
     "glissando_desc_white": [
-      [7],
-      [6],
-      [5],
-      [4],
-      [3],
-      [2],
-      [1]
+      [
+        7
+      ],
+      [
+        6
+      ],
+      [
+        5
+      ],
+      [
+        4
+      ],
+      [
+        3
+      ],
+      [
+        2
+      ],
+      [
+        1
+      ]
     ],
     "glissando_asc_black": [
-      [1],
-      [2],
-      [4],
-      [5],
-      [6]
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ],
+      [
+        5
+      ],
+      [
+        6
+      ]
     ],
     "glissando_asc_white_double": [
-      [1],
-      [4],
-      [2],
-      [5],
-      [3],
-      [6],
-      [4],
-      [7],
-      [5],
-      [1, 1, 1],
-      [6],
-      [2, 1, 1],
-      [7],
-      [3, 1, 1]
+      [
+        1
+      ],
+      [
+        4
+      ],
+      [
+        2
+      ],
+      [
+        5
+      ],
+      [
+        3
+      ],
+      [
+        6
+      ],
+      [
+        4
+      ],
+      [
+        7
+      ],
+      [
+        5
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        6
+      ],
+      [
+        2,
+        1,
+        1
+      ],
+      [
+        7
+      ],
+      [
+        3,
+        1,
+        1
+      ]
     ],
     "glissando_desc_white_double": [
-      [7],
-      [3],
-      [6],
-      [2],
-      [5],
-      [1],
-      [4],
-      [7, 1, -1],
-      [3],
-      [6, 1, -1],
-      [2],
-      [5, 1, -1],
-      [1],
-      [4, 1, -1]
+      [
+        7
+      ],
+      [
+        3
+      ],
+      [
+        6
+      ],
+      [
+        2
+      ],
+      [
+        5
+      ],
+      [
+        1
+      ],
+      [
+        4
+      ],
+      [
+        7,
+        1,
+        -1
+      ],
+      [
+        3
+      ],
+      [
+        6,
+        1,
+        -1
+      ],
+      [
+        2
+      ],
+      [
+        5,
+        1,
+        -1
+      ],
+      [
+        1
+      ],
+      [
+        4,
+        1,
+        -1
+      ]
     ],
     "asc_triads": [
-      [1, 0.25],
-      [3, 0.25],
-      [5, 0.25]
+      [
+        1,
+        0.25
+      ],
+      [
+        3,
+        0.25
+      ],
+      [
+        5,
+        0.25
+      ]
     ],
     "glissando_desc_black": [
-      [6],
-      [5],
-      [4],
-      [2],
-      [1]
+      [
+        6
+      ],
+      [
+        5
+      ],
+      [
+        4
+      ],
+      [
+        2
+      ],
+      [
+        1
+      ]
     ],
     "battle_victory_phrase": [
-      [5],
-      [4],
-      [3],
-      [4],
-      [1]
+      [
+        5
+      ],
+      [
+        4
+      ],
+      [
+        3
+      ],
+      [
+        4
+      ],
+      [
+        1
+      ]
     ],
     "level_up_phrase": [
-      [5],
-      [4],
-      [3],
-      [5],
-      [7],
-      [6],
-      [5],
-      [7],
-      [1, 2.0, 1],
-      [5, 2.0],
-      [1]
+      [
+        5
+      ],
+      [
+        4
+      ],
+      [
+        3
+      ],
+      [
+        5
+      ],
+      [
+        7
+      ],
+      [
+        6
+      ],
+      [
+        5
+      ],
+      [
+        7
+      ],
+      [
+        1,
+        2.0,
+        1
+      ],
+      [
+        5,
+        2.0
+      ],
+      [
+        1
+      ]
     ],
     "quest_open_phrase": [
-      [1],
-      [2],
-      [3],
-      [2],
-      [5]
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ],
+      [
+        2
+      ],
+      [
+        5
+      ]
     ],
     "town_continent_1_motif": [
-      [1],
-      [7, 1, -1],
-      [1],
-      [0]
+      [
+        1
+      ],
+      [
+        7,
+        1,
+        -1
+      ],
+      [
+        1
+      ],
+      [
+        0
+      ]
     ],
     "town_continent_1_tail": [
-      [7, 1,-1],
-      [2, 1],
-      [1],
-      [0]
+      [
+        7,
+        1,
+        -1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        1
+      ],
+      [
+        0
+      ]
     ],
     "continent_1_quest_head": [
-      [5],
-      [4],
-      [3],
-      [4],
-      [2, 0.5],
-      [1, 0.5],
-      [7, 0.5, -1],
-      [2, 0.5],
-      [1],
-      [1, 1, -1]
+      [
+        5
+      ],
+      [
+        4
+      ],
+      [
+        3
+      ],
+      [
+        4
+      ],
+      [
+        2,
+        0.5
+      ],
+      [
+        1,
+        0.5
+      ],
+      [
+        7,
+        0.5,
+        -1
+      ],
+      [
+        2,
+        0.5
+      ],
+      [
+        1
+      ],
+      [
+        1,
+        1,
+        -1
+      ]
     ],
     "continent_1_quest_motif": [
-      [1],
-      [2],
-      [3],
-      [1]
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ],
+      [
+        1
+      ]
     ],
     "continent_1_quest_tail": [
-      [7, 1, -2],
-      [0,1],
-      [5, 1, -2],
-      [0,1]
+      [
+        7,
+        1,
+        -2
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        5,
+        1,
+        -2
+      ],
+      [
+        0,
+        1
+      ]
     ]
   },
   "sequences": {
@@ -338,114 +715,378 @@
   },
   "songs": {
     "intro_music": [
-      {"sequence": "asc_2_measures", "root": "C4", "scale": "major", "octave_split": "up"},
-      {"sequence": "asc_2_measures", "root": "B4", "scale": "diminished", "octave_split": "down"},
-      {"sequence": "asc_2_measures", "root": "A4", "scale": "minor", "octave_split": "random"},
-      {"sequence": "asc_2_measures", "root": "G3", "scale": "major", "octave_split": "down"}
+      {
+        "sequence": "asc_2_measures",
+        "root": "C4",
+        "scale": "major",
+        "octave_split": "up"
+      },
+      {
+        "sequence": "asc_2_measures",
+        "root": "B4",
+        "scale": "diminished",
+        "octave_split": "down"
+      },
+      {
+        "sequence": "asc_2_measures",
+        "root": "A4",
+        "scale": "minor",
+        "octave_split": "random"
+      },
+      {
+        "sequence": "asc_2_measures",
+        "root": "G3",
+        "scale": "major",
+        "octave_split": "down"
+      }
     ],
     "battle_minor": [
-      {"sequence": "battle_minor", "root": "A2", "octave_split": "up"}
+      {
+        "sequence": "battle_minor",
+        "root": "A2",
+        "octave_split": "up"
+      }
     ],
     "battle_victory": [
-      {"sequence": "battle_victory", "root": "A3", "octave_split": "up"}
+      {
+        "sequence": "battle_victory",
+        "root": "A3",
+        "octave_split": "up"
+      }
     ],
     "level_up": [
-      {"sequence": "level_up", "root": "C4", "octave_split": "up"}
+      {
+        "sequence": "level_up",
+        "root": "C4",
+        "octave_split": "up"
+      }
     ],
     "quest_open": [
-      {"sequence": "quest_open", "root": "C4", "octave_split": "up"}
+      {
+        "sequence": "quest_open",
+        "root": "C4",
+        "octave_split": "up"
+      }
     ],
     "player_defeated": [
-      {"sequence": "player_defeated", "root": "A2", "scale": "minor"}
+      {
+        "sequence": "player_defeated",
+        "root": "A2",
+        "scale": "minor"
+      }
     ],
     "glissando_asc_white": [
-      {"sequence": "glissando_asc_white", "root": "C2"},
-      {"sequence": "glissando_asc_white", "root": "C3"},
-      {"sequence": "glissando_asc_white", "root": "C4"},
-      {"sequence": "glissando_asc_white", "root": "C5"},
-      {"sequence": "glissando_asc_white", "root": "C6"},
-      {"sequence": "glissando_asc_white", "root": "C7"}
+      {
+        "sequence": "glissando_asc_white",
+        "root": "C2"
+      },
+      {
+        "sequence": "glissando_asc_white",
+        "root": "C3"
+      },
+      {
+        "sequence": "glissando_asc_white",
+        "root": "C4"
+      },
+      {
+        "sequence": "glissando_asc_white",
+        "root": "C5"
+      },
+      {
+        "sequence": "glissando_asc_white",
+        "root": "C6"
+      },
+      {
+        "sequence": "glissando_asc_white",
+        "root": "C7"
+      }
     ],
     "glissando_desc_white": [
-      {"sequence": "glissando_desc_white", "root": "C7"},
-      {"sequence": "glissando_desc_white", "root": "C6"},
-      {"sequence": "glissando_desc_white", "root": "C5"},
-      {"sequence": "glissando_desc_white", "root": "C4"},
-      {"sequence": "glissando_desc_white", "root": "C3"},
-      {"sequence": "glissando_desc_white", "root": "C2"}
+      {
+        "sequence": "glissando_desc_white",
+        "root": "C7"
+      },
+      {
+        "sequence": "glissando_desc_white",
+        "root": "C6"
+      },
+      {
+        "sequence": "glissando_desc_white",
+        "root": "C5"
+      },
+      {
+        "sequence": "glissando_desc_white",
+        "root": "C4"
+      },
+      {
+        "sequence": "glissando_desc_white",
+        "root": "C3"
+      },
+      {
+        "sequence": "glissando_desc_white",
+        "root": "C2"
+      }
     ],
     "glissando_asc_black": [
-      {"sequence": "glissando_asc_black", "root": "C#2"},
-      {"sequence": "glissando_asc_black", "root": "C#3"},
-      {"sequence": "glissando_asc_black", "root": "C#4"},
-      {"sequence": "glissando_asc_black", "root": "C#5"},
-      {"sequence": "glissando_asc_black", "root": "C#6"},
-      {"sequence": "glissando_asc_black", "root": "C#7"}
+      {
+        "sequence": "glissando_asc_black",
+        "root": "C#2"
+      },
+      {
+        "sequence": "glissando_asc_black",
+        "root": "C#3"
+      },
+      {
+        "sequence": "glissando_asc_black",
+        "root": "C#4"
+      },
+      {
+        "sequence": "glissando_asc_black",
+        "root": "C#5"
+      },
+      {
+        "sequence": "glissando_asc_black",
+        "root": "C#6"
+      },
+      {
+        "sequence": "glissando_asc_black",
+        "root": "C#7"
+      }
     ],
     "glissando_asc_black_staccato": [
-      {"sequence": "glissando_asc_black_staccato", "root": "C#2"},
-      {"sequence": "glissando_asc_black_staccato", "root": "C#3"},
-      {"sequence": "glissando_asc_black_staccato", "root": "C#4"},
-      {"sequence": "glissando_asc_black_staccato", "root": "C#5"},
-      {"sequence": "glissando_asc_black_staccato", "root": "C#6"},
-      {"sequence": "glissando_asc_black_staccato", "root": "C#7"}
+      {
+        "sequence": "glissando_asc_black_staccato",
+        "root": "C#2"
+      },
+      {
+        "sequence": "glissando_asc_black_staccato",
+        "root": "C#3"
+      },
+      {
+        "sequence": "glissando_asc_black_staccato",
+        "root": "C#4"
+      },
+      {
+        "sequence": "glissando_asc_black_staccato",
+        "root": "C#5"
+      },
+      {
+        "sequence": "glissando_asc_black_staccato",
+        "root": "C#6"
+      },
+      {
+        "sequence": "glissando_asc_black_staccato",
+        "root": "C#7"
+      }
     ],
     "glissando_asc_white_double": [
-      {"sequence": "glissando_asc_white_double", "root": "C2"},
-      {"sequence": "glissando_asc_white_double", "root": "C3"},
-      {"sequence": "glissando_asc_white_double", "root": "C4"},
-      {"sequence": "glissando_asc_white_double", "root": "C5"},
-      {"sequence": "glissando_asc_white_double", "root": "C6"},
-      {"sequence": "glissando_asc_white_double", "root": "C7"}
+      {
+        "sequence": "glissando_asc_white_double",
+        "root": "C2"
+      },
+      {
+        "sequence": "glissando_asc_white_double",
+        "root": "C3"
+      },
+      {
+        "sequence": "glissando_asc_white_double",
+        "root": "C4"
+      },
+      {
+        "sequence": "glissando_asc_white_double",
+        "root": "C5"
+      },
+      {
+        "sequence": "glissando_asc_white_double",
+        "root": "C6"
+      },
+      {
+        "sequence": "glissando_asc_white_double",
+        "root": "C7"
+      }
     ],
     "glissando_desc_white_double": [
-      {"sequence": "glissando_desc_white_double", "root": "C7"},
-      {"sequence": "glissando_desc_white_double", "root": "C6"},
-      {"sequence": "glissando_desc_white_double", "root": "C5"},
-      {"sequence": "glissando_desc_white_double", "root": "C4"},
-      {"sequence": "glissando_desc_white_double", "root": "C3"},
-      {"sequence": "glissando_desc_white_double", "root": "C2"}
+      {
+        "sequence": "glissando_desc_white_double",
+        "root": "C7"
+      },
+      {
+        "sequence": "glissando_desc_white_double",
+        "root": "C6"
+      },
+      {
+        "sequence": "glissando_desc_white_double",
+        "root": "C5"
+      },
+      {
+        "sequence": "glissando_desc_white_double",
+        "root": "C4"
+      },
+      {
+        "sequence": "glissando_desc_white_double",
+        "root": "C3"
+      },
+      {
+        "sequence": "glissando_desc_white_double",
+        "root": "C2"
+      }
     ],
     "asc_triads": {
       "sfx": true,
       "steps": [
-        {"sequence": "asc_triads_sfx", "root": "C3"},
-        {"sequence": "asc_triads_sfx", "root": "D3"},
-        {"sequence": "asc_triads_sfx", "root": "E3"},
-        {"sequence": "asc_triads_sfx", "root": "F3"},
-        {"sequence": "asc_triads_sfx", "root": "G3"},
-        {"sequence": "asc_triads_sfx", "root": "A4"},
-        {"sequence": "asc_triads_sfx", "root": "B4"}
+        {
+          "sequence": "asc_triads_sfx",
+          "root": "C3"
+        },
+        {
+          "sequence": "asc_triads_sfx",
+          "root": "D3"
+        },
+        {
+          "sequence": "asc_triads_sfx",
+          "root": "E3"
+        },
+        {
+          "sequence": "asc_triads_sfx",
+          "root": "F3"
+        },
+        {
+          "sequence": "asc_triads_sfx",
+          "root": "G3"
+        },
+        {
+          "sequence": "asc_triads_sfx",
+          "root": "A4"
+        },
+        {
+          "sequence": "asc_triads_sfx",
+          "root": "B4"
+        }
       ]
     },
     "glissando_desc_black": [
-      {"sequence": "glissando_desc_black", "root": "C#7"},
-      {"sequence": "glissando_desc_black", "root": "C#6"},
-      {"sequence": "glissando_desc_black", "root": "C#5"},
-      {"sequence": "glissando_desc_black", "root": "C#4"},
-      {"sequence": "glissando_desc_black", "root": "C#3"},
-      {"sequence": "glissando_desc_black", "root": "C#2"}
+      {
+        "sequence": "glissando_desc_black",
+        "root": "C#7"
+      },
+      {
+        "sequence": "glissando_desc_black",
+        "root": "C#6"
+      },
+      {
+        "sequence": "glissando_desc_black",
+        "root": "C#5"
+      },
+      {
+        "sequence": "glissando_desc_black",
+        "root": "C#4"
+      },
+      {
+        "sequence": "glissando_desc_black",
+        "root": "C#3"
+      },
+      {
+        "sequence": "glissando_desc_black",
+        "root": "C#2"
+      }
     ],
     "town_continent_1": {
       "steps": [
-        {"sequence": "town_continent_1_motif", "root": "G4", "staccato": true},
-        {"sequence": "town_continent_1_motif", "root": "E4", "staccato": true},
-        {"sequence": "town_continent_1_motif", "root": "C4", "staccato": true},
-        {"sequence": "town_continent_1_motif", "root": "G2"},
-        {"sequence": "town_continent_1_motif", "root": "F4", "staccato": true},
-        {"sequence": "town_continent_1_motif", "root": "D4", "staccato": true},
-        {"sequence": "town_continent_1_motif", "root": "B3", "staccato": true},
-        {"sequence": "town_continent_1_tail", "root": "C3"}
+        {
+          "sequence": "town_continent_1_motif",
+          "root": "G4",
+          "staccato": true
+        },
+        {
+          "sequence": "town_continent_1_motif",
+          "root": "E4",
+          "staccato": true
+        },
+        {
+          "sequence": "town_continent_1_motif",
+          "root": "C4",
+          "staccato": true
+        },
+        {
+          "sequence": "town_continent_1_motif",
+          "root": "G2"
+        },
+        {
+          "sequence": "town_continent_1_motif",
+          "root": "F4",
+          "staccato": true
+        },
+        {
+          "sequence": "town_continent_1_motif",
+          "root": "D4",
+          "staccato": true
+        },
+        {
+          "sequence": "town_continent_1_motif",
+          "root": "B3",
+          "staccato": true
+        },
+        {
+          "sequence": "town_continent_1_tail",
+          "root": "C3"
+        }
       ]
     },
     "continent_1_quest": {
       "repeat": 4,
       "steps": [
-        {"sequence": "continent_1_quest_head", "root": "C4", "staccato": true},
-        {"sequence": "continent_1_quest_motif", "root": "F3", "staccato": true},
-        {"sequence": "continent_1_quest_motif", "root": "G3", "staccato": true},
-        {"sequence": "continent_1_quest_motif", "root": "D3", "scale": "minor", "staccato": true},
-        {"sequence": "continent_1_quest_tail", "root": "C4", "staccato": true}
+        {
+          "sequence": "continent_1_quest_head",
+          "root": "C4",
+          "staccato": true
+        },
+        {
+          "sequence": "continent_1_quest_motif",
+          "root": "F3",
+          "staccato": true
+        },
+        {
+          "sequence": "continent_1_quest_motif",
+          "root": "G3",
+          "staccato": true
+        },
+        {
+          "sequence": "continent_1_quest_motif",
+          "root": "D3",
+          "scale": "minor",
+          "staccato": true
+        },
+        {
+          "sequence": "continent_1_quest_tail",
+          "root": "C4",
+          "staccato": true
+        }
+      ]
+    },
+    "spell_up": {
+      "sfx": true,
+      "steps": [
+        {
+          "sequence": "glissando_asc_white",
+          "root": "C3"
+        },
+        {
+          "sequence": "glissando_asc_white",
+          "root": "C4"
+        }
+      ]
+    },
+    "spell_down": {
+      "sfx": true,
+      "steps": [
+        {
+          "sequence": "glissando_desc_white",
+          "root": "C4"
+        },
+        {
+          "sequence": "glissando_desc_white",
+          "root": "C3"
+        }
       ]
     }
   }

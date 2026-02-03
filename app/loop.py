@@ -297,6 +297,38 @@ def _title_screen_state_key(player) -> str:
     return ""
 
 
+def _audio_defaults_from_player(player) -> tuple[float, float, str]:
+    flags = getattr(player, "flags", {}) if hasattr(player, "flags") else {}
+    if not isinstance(flags, dict):
+        flags = {}
+    music_volume = int(flags.get("audio_music_volume", 5) or 0)
+    sfx_volume = int(flags.get("audio_sfx_volume", 5) or 0)
+    music_volume = max(0, min(5, music_volume))
+    sfx_volume = max(0, min(5, sfx_volume))
+    wave = str(flags.get("audio_wave", "square") or "square")
+    return music_volume / 5.0, sfx_volume / 5.0, wave
+
+
+def _ensure_audio_settings(ctx, player) -> None:
+    if not hasattr(ctx, "save_data") or ctx.save_data is None:
+        return
+    flags = getattr(player, "flags", {}) if hasattr(player, "flags") else {}
+    if not isinstance(flags, dict):
+        flags = {}
+        player.flags = flags
+    if flags.get("audio_music_volume") is not None and flags.get("audio_sfx_volume") is not None:
+        return
+    settings = ctx.save_data.load_settings()
+    if not isinstance(settings, dict) or not settings:
+        return
+    if flags.get("audio_music_volume") is None and "audio_music_volume" in settings:
+        flags["audio_music_volume"] = settings.get("audio_music_volume")
+    if flags.get("audio_sfx_volume") is None and "audio_sfx_volume" in settings:
+        flags["audio_sfx_volume"] = settings.get("audio_sfx_volume")
+    if flags.get("audio_wave") is None and "audio_wave" in settings:
+        flags["audio_wave"] = settings.get("audio_wave")
+
+
 def _title_menu_id_from_state(title_data: dict, player, menu_stack: list[str]) -> str:
     menu_id = menu_stack[-1] if menu_stack else title_data.get("root_menu", "title_root")
     override = _title_screen_state_key(player)
@@ -373,10 +405,11 @@ def _asset_explorer_preview_audio(ctx, state: GameState, asset_type: str, asset_
     key = f"{asset_type}:{asset_id}"
     if key == (state.asset_explorer_preview_key or ""):
         return
+    wave = getattr(state, "asset_explorer_waveform", None)
     if asset_type == "music":
-        ctx.audio.play_song_once(asset_id)
+        ctx.audio.play_song_once(asset_id, wave=wave)
     else:
-        ctx.audio.play_sfx_once(asset_id, "C4")
+        ctx.audio.play_sfx_once(asset_id, "C4", wave=wave)
     state.asset_explorer_preview_key = key
 
 def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
@@ -463,6 +496,12 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
                 "label": f"Show JSON: {'On' if state.asset_explorer_show_json else 'Off'}",
                 "command": "TITLE_ASSET_TOGGLE:json",
             })
+            if asset_type in ("music", "sfx"):
+                wave = getattr(state, "asset_explorer_waveform", "square") or "square"
+                items.append({
+                    "label": f"Waveform: {wave.title()}",
+                    "command": "TITLE_ASSET_TOGGLE:wave",
+                })
             items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
             selected_id = None
             if asset_ids:
@@ -1424,6 +1463,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             return "B_KEY", None
 
     if state.title_mode:
+        _ensure_audio_settings(ctx, state.player)
         commands = action_commands_for_state(ctx, state)
         clamp_action_cursor(state, commands)
         title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
@@ -1502,6 +1542,39 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 state.action_cursor = enabled[pos]
             return None, None
         if action in ("LEFT", "RIGHT"):
+            if menu_id == "title_audio" and commands and 0 <= state.action_cursor < len(commands):
+                cmd = commands[state.action_cursor].get("command")
+                flags = getattr(state.player, "flags", {})
+                if not isinstance(flags, dict):
+                    flags = {}
+                    state.player.flags = flags
+                delta = -1 if action == "LEFT" else 1
+                if cmd == "TITLE_AUDIO_MUSIC":
+                    value = int(flags.get("audio_music_volume", 5) or 0)
+                    value = max(0, min(5, value + delta))
+                    flags["audio_music_volume"] = value
+                elif cmd == "TITLE_AUDIO_SFX":
+                    value = int(flags.get("audio_sfx_volume", 5) or 0)
+                    value = max(0, min(5, value + delta))
+                    flags["audio_sfx_volume"] = value
+                elif cmd == "TITLE_AUDIO_WAVE":
+                    choices = ["square", "sine", "triangle", "sawtooth", "piano", "harp"]
+                    current = str(flags.get("audio_wave", "square") or "square")
+                    if current not in choices:
+                        current = "square"
+                    idx = (choices.index(current) + delta) % len(choices)
+                    flags["audio_wave"] = choices[idx]
+                if hasattr(ctx, "audio"):
+                    music_vol, sfx_vol, wave = _audio_defaults_from_player(state.player)
+                    ctx.audio.set_defaults(music_vol, sfx_vol, wave)
+                    if cmd == "TITLE_AUDIO_WAVE" and state.player.location == "Title":
+                        ctx.audio.play_song_once("intro_music", wave=wave)
+                if hasattr(ctx, "save_data") and ctx.save_data is not None:
+                    ctx.save_data.save_settings({
+                        "audio_music_volume": flags.get("audio_music_volume", 5),
+                        "audio_sfx_volume": flags.get("audio_sfx_volume", 5),
+                        "audio_wave": flags.get("audio_wave", "square"),
+                    })
             return None, None
         if action == "BACK":
             if menu_id == "title_assets_list" and (state.asset_explorer_type or ""):
@@ -1587,6 +1660,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 elif toggle == "json":
                     state.asset_explorer_show_json = not state.asset_explorer_show_json
                     setattr(state.player, "asset_explorer_show_json", state.asset_explorer_show_json)
+                elif toggle == "wave":
+                    choices = ["square", "sine", "triangle", "sawtooth", "piano", "harp"]
+                    current = getattr(state, "asset_explorer_waveform", "square") or "square"
+                    if current not in choices:
+                        current = "square"
+                    next_idx = (choices.index(current) + 1) % len(choices)
+                    state.asset_explorer_waveform = choices[next_idx]
+                    setattr(state.player, "asset_explorer_waveform", state.asset_explorer_waveform)
                 setattr(state.player, "asset_explorer_focus", state.asset_explorer_focus)
                 setattr(state.player, "asset_explorer_info_scroll", state.asset_explorer_info_scroll)
                 state.asset_explorer_info_scroll = 0
@@ -2203,7 +2284,17 @@ def apply_router_command(
     post_location = state.player.location
     if hasattr(ctx, "audio"):
         ctx.audio.set_mode(state.player.flags.get("audio_mode"))
-        ctx.audio.on_location_change(pre_location, post_location)
+        _ensure_audio_settings(ctx, state.player)
+        music_vol, sfx_vol, wave = _audio_defaults_from_player(state.player)
+        ctx.audio.set_defaults(music_vol, sfx_vol, wave)
+        if pre_location != post_location:
+            ctx.audio.on_location_change(pre_location, post_location)
+            if post_location == "Title":
+                state.title_intro_wave = wave
+        elif post_location == "Title" and wave:
+            if wave != (state.title_intro_wave or ""):
+                ctx.audio.play_song_once("intro_music", wave=wave)
+                state.title_intro_wave = wave
     if post_location == "Town" and pre_location != "Town":
         commands = scene_commands(ctx.scenes, ctx.commands_data, "town", state.player, state.opponents)
         state.action_cursor = 0
@@ -2359,6 +2450,8 @@ def resolve_player_action(
             target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
             spell_label = "Life Boost" if spell_id == "life_boost" else "Strength"
             state.last_message = f"You cast {spell_label} on {target_name}."
+            if hasattr(ctx, "audio"):
+                ctx.audio.play_sfx_once("spell_up", "C4")
             return cmd
         mp_cost = base_cost * max(1, rank)
         if state.player.mp < mp_cost and not has_charge:
@@ -2373,6 +2466,8 @@ def resolve_player_action(
             target_index=state.target_index,
             rank=rank,
         )
+        if hasattr(ctx, "audio"):
+            ctx.audio.play_sfx_once("spell_down", "C4")
         effect_override = _spell_effect_with_art(ctx, spell) if isinstance(spell, dict) else None
         if isinstance(effect_override, dict):
             if rank >= 3:

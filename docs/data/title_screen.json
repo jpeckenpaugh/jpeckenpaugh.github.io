@@ -34,7 +34,7 @@
         },
         {
           "label": "Audio",
-          "command": "TOGGLE_AUDIO"
+          "command": "TITLE_MENU_SUB:title_audio"
         },
         {
           "label": "Quit",
@@ -50,6 +50,17 @@
         { "label": "Custom...", "command": "TITLE_NAME_CUSTOM" },
         { "label": "Random", "command": "TITLE_NAME_RANDOM" },
         { "label": "Back", "command": "TITLE_NAME_BACK" }
+      ]
+    },
+    "title_audio": {
+      "narrative": [
+        "Audio settings."
+      ],
+      "items": [
+        { "label": "Music", "command": "TITLE_AUDIO_MUSIC" },
+        { "label": "Instrument", "command": "TITLE_AUDIO_WAVE" },
+        { "label": "SFX", "command": "TITLE_AUDIO_SFX" },
+        { "label": "Back", "command": "TITLE_MENU_BACK" }
       ]
     },
     "title_start_confirm": {

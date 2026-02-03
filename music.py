@@ -92,23 +92,147 @@ def degree_to_midi(root_midi: int, degree: int, scale: str, octave_shift: int, a
     return root_midi + semitone
 
 
+def _render_piano_wave(freq: float, duration: float) -> array:
+    total_samples = int(SAMPLE_RATE * duration)
+    if total_samples <= 0:
+        return array("h")
+    harmonics = (
+        (1, 1.00),
+        (2, 0.60),
+        (3, 0.40),
+        (4, 0.25),
+        (5, 0.15),
+        (6, 0.08),
+    )
+    samples = [0.0] * total_samples
+    peak = 0.0
+    for i in range(total_samples):
+        t = i / SAMPLE_RATE
+        attack = 1.0 - math.exp(-t * 60.0)
+        decay = math.exp(-t * 3.0)
+        env = attack * decay
+        s = 0.0
+        for n, amp in harmonics:
+            s += amp * math.sin(2.0 * math.pi * (freq * n) * t)
+        s *= env
+        samples[i] = s
+        if abs(s) > peak:
+            peak = abs(s)
+    if peak <= 0:
+        peak = 1.0
+    data = array("h")
+    gain = 1.4
+    for s in samples:
+        value = max(-1.0, min(1.0, (s / peak) * gain))
+        data.append(int(value * 12000))
+    return data
+
+
+def _karplus_strong_harp(freq: float, duration: float, sr: int) -> list[float]:
+    total = int(duration * sr)
+    if total <= 0:
+        return []
+    delay = max(2, int(sr / freq))
+    buf = [(random.random() - random.random()) for _ in range(delay)]
+    samples: list[float] = []
+    prev = 0.0
+    decay = 0.9988
+    damping = 0.35
+    for _ in range(total):
+        x0 = buf[0]
+        x1 = buf[1]
+        avg = 0.5 * (x0 + x1)
+        y = decay * ((1.0 - damping) * avg + damping * prev)
+        prev = y
+        samples.append(x0)
+        buf.append(y)
+        buf.pop(0)
+    peak = max(abs(s) for s in samples) or 1.0
+    return [s / peak for s in samples]
+
+
+def _resonator(samples: list[float], sr: int, f0: float, q: float, gain: float) -> list[float]:
+    w0 = 2.0 * math.pi * f0 / sr
+    alpha = math.sin(w0) / (2.0 * q)
+    b0 = alpha
+    b1 = 0.0
+    b2 = -alpha
+    a0 = 1.0 + alpha
+    a1 = -2.0 * math.cos(w0)
+    a2 = 1.0 - alpha
+    b0 /= a0
+    b1 /= a0
+    b2 /= a0
+    a1 /= a0
+    a2 /= a0
+    out = [0.0] * len(samples)
+    x1 = x2 = 0.0
+    y1 = y2 = 0.0
+    for i, x0 in enumerate(samples):
+        y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+        out[i] = gain * y0
+        x2, x1 = x1, x0
+        y2, y1 = y1, y0
+    return out
+
+
+def _mix(a: list[float], b: list[float], scale_a: float = 1.0, scale_b: float = 1.0) -> list[float]:
+    n = min(len(a), len(b))
+    out = [(scale_a * a[i] + scale_b * b[i]) for i in range(n)]
+    peak = max(abs(s) for s in out) or 1.0
+    if peak > 1.0:
+        out = [s / peak for s in out]
+    return out
+
+
+def _render_harp_wave(freq: float, duration: float) -> array:
+    core = _karplus_strong_harp(freq, duration, SAMPLE_RATE)
+    if not core:
+        return array("h")
+    r1 = _resonator(core, SAMPLE_RATE, f0=220.0, q=2.2, gain=0.25)
+    r2 = _resonator(core, SAMPLE_RATE, f0=520.0, q=2.0, gain=0.18)
+    mixed = _mix(core, _mix(r1, r2, 1.0, 1.0), scale_a=0.88, scale_b=0.55)
+    data = array("h")
+    gain = 1.35
+    for s in mixed:
+        value = max(-1.0, min(1.0, s * gain))
+        data.append(int(value * 12000))
+    return data
+
+
 def render_wave(freq: float, duration: float, wave_shape: str) -> array:
     total_samples = int(SAMPLE_RATE * duration)
     if total_samples <= 0:
         return array("h")
+    if wave_shape == "piano":
+        return _render_piano_wave(freq, duration)
+    if wave_shape == "harp":
+        return _render_harp_wave(freq, duration)
     data = array("h")
+    gain = 1.0
+    if wave_shape == "sine":
+        gain = 1.4
+    elif wave_shape == "triangle":
+        gain = 1.6
     fade_samples = min(int(SAMPLE_RATE * 0.005), total_samples)
     for i in range(total_samples):
         t = i / SAMPLE_RATE
+        phase = 2 * math.pi * freq * t
         if wave_shape == "square":
-            value = 1.0 if math.sin(2 * math.pi * freq * t) >= 0 else -1.0
+            value = 1.0 if math.sin(phase) >= 0 else -1.0
+        elif wave_shape == "triangle":
+            value = 2.0 / math.pi * math.asin(math.sin(phase))
+        elif wave_shape == "sawtooth":
+            value = 2.0 * ((t * freq) % 1.0) - 1.0
         else:
-            value = math.sin(2 * math.pi * freq * t)
+            value = math.sin(phase)
+        value *= gain
         if fade_samples:
             if i < fade_samples:
                 value *= i / fade_samples
             elif i > total_samples - fade_samples:
                 value *= (total_samples - i) / fade_samples
+        value = max(-1.0, min(1.0, value))
         data.append(int(value * 12000))
     return data
 
@@ -155,10 +279,11 @@ def render_sequence(
     *,
     staccato: bool = False,
     octave_split: str | None = None,
+    wave_override: str | None = None,
 ) -> array:
     tempo = float(sequence.get("tempo", 120))
     scale = sequence.get("scale", "major")
-    wave_shape = sequence.get("wave", DEFAULT_WAVE)
+    wave_shape = wave_override or sequence.get("wave", DEFAULT_WAVE)
     notes = resolve_notes(sequence, data)
     if not notes:
         raise MusicError("Sequence has no notes")
@@ -264,7 +389,13 @@ def play_sequence(
     play_audio(samples)
 
 
-def render_song(data: dict, name: str, scale_override: str | None, tempo_override: float | None) -> array:
+def render_song(
+    data: dict,
+    name: str,
+    scale_override: str | None,
+    tempo_override: float | None,
+    wave_override: str | None = None,
+) -> array:
     songs = data.get("songs", {})
     if name not in songs:
         raise MusicError(f"Unknown song: {name}")
@@ -307,13 +438,20 @@ def render_song(data: dict, name: str, scale_override: str | None, tempo_overrid
                     data,
                     staccato=staccato,
                     octave_split=octave_split,
+                    wave_override=wave_override,
                 )
             )
     return buffer
 
 
-def play_song(data: dict, name: str, scale_override: str | None, tempo_override: float | None):
-    samples = render_song(data, name, scale_override, tempo_override)
+def play_song(
+    data: dict,
+    name: str,
+    scale_override: str | None,
+    tempo_override: float | None,
+    wave_override: str | None = None,
+):
+    samples = render_song(data, name, scale_override, tempo_override, wave_override)
     play_audio(samples)
 
 

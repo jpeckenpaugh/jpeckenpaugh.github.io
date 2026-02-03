@@ -23,6 +23,9 @@ class LokartaAudio {
     this._musicNodes = [];
     this._sfxNodes = [];
     this._mode = "on";
+    this._musicVolume = 1.0;
+    this._sfxVolume = 1.0;
+    this._defaultWave = "";
     this._attachResumeHandlers();
   }
 
@@ -64,6 +67,14 @@ class LokartaAudio {
     if (next === "off" || next === "music") {
       this.stopSfx();
     }
+  }
+
+  setDefaults(musicVolume, sfxVolume, wave) {
+    const m = Number.isFinite(musicVolume) ? Number(musicVolume) : 1.0;
+    const s = Number.isFinite(sfxVolume) ? Number(sfxVolume) : 1.0;
+    this._musicVolume = Math.max(0, Math.min(1, m));
+    this._sfxVolume = Math.max(0, Math.min(1, s));
+    this._defaultWave = wave ? String(wave) : "";
   }
 
   stopAll() {
@@ -152,16 +163,89 @@ class LokartaAudio {
     return null;
   }
 
-  _scheduleSequence({ sequence, rootMidi, startTime, data, kind, scaleOverride, staccato, octaveSplit }) {
+  _scheduleSequence({ sequence, rootMidi, startTime, data, kind, scaleOverride, staccato, octaveSplit, waveOverride, volume }) {
     const tempo = Number(sequence.tempo || 120);
     const scale = scaleOverride || sequence.scale || "major";
-    const wave = sequence.wave || DEFAULT_WAVE;
+    const wave = waveOverride || sequence.wave || DEFAULT_WAVE;
+    const waveType = wave === "piano" || wave === "harp" || wave === "sawtooth" || wave === "triangle" || wave === "sine" ? wave : "square";
+    const waveGain = waveType === "sine" ? 0.28 : (waveType === "triangle" ? 0.32 : 0.2);
     const notes = this._resolveNotes(sequence, data);
     const secondsPerBeat = 60 / tempo;
     const splitMode = this._resolveOctaveSplit(sequence, octaveSplit);
     const useStaccato = Boolean((staccato || sequence.staccato) && !splitMode);
     let t = startTime;
     const ctx = this._ctx;
+
+    const schedulePiano = (freq, start, duration) => {
+      const harmonics = [
+        [1, 1.0],
+        [2, 0.6],
+        [3, 0.4],
+        [4, 0.25],
+        [5, 0.15],
+        [6, 0.08],
+      ];
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, start);
+      const vol = Math.max(0, Math.min(1, volume ?? 1.0));
+      gain.gain.linearRampToValueAtTime(0.45 * vol, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + Math.max(0.05, duration));
+      gain.connect(ctx.destination);
+      harmonics.forEach(([n, amp]) => {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq * n, start);
+        const oscGain = ctx.createGain();
+        oscGain.gain.setValueAtTime(amp, start);
+        osc.connect(oscGain).connect(gain);
+        osc.start(start);
+        osc.stop(start + duration + 0.05);
+        if (kind === "music") {
+          this._musicNodes.push(osc);
+        } else {
+          this._sfxNodes.push(osc);
+        }
+      });
+    };
+
+    const scheduleHarp = (freq, start, duration) => {
+      const ctxStart = start;
+      const src = ctx.createBufferSource();
+      const length = Math.max(1, Math.floor(ctx.sampleRate * 0.06));
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < length; i += 1) {
+        data[i] = Math.random() - Math.random();
+      }
+      src.buffer = buffer;
+      const delay = ctx.createDelay(0.2);
+      const minDelay = 0.008;
+      delay.delayTime.setValueAtTime(Math.max(minDelay, 1 / freq), ctxStart);
+      const feedback = ctx.createGain();
+      feedback.gain.setValueAtTime(0.75, ctxStart);
+      const damp = ctx.createBiquadFilter();
+      damp.type = "lowpass";
+      damp.frequency.setValueAtTime(Math.min(5000, Math.max(900, freq * 4)), ctxStart);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, ctxStart);
+      env.gain.linearRampToValueAtTime(0.45, ctxStart + 0.02);
+      env.gain.exponentialRampToValueAtTime(0.001, ctxStart + Math.max(0.12, duration));
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.setValueAtTime(-20, ctxStart);
+      limiter.knee.setValueAtTime(18, ctxStart);
+      limiter.ratio.setValueAtTime(8, ctxStart);
+      limiter.attack.setValueAtTime(0.003, ctxStart);
+      limiter.release.setValueAtTime(0.15, ctxStart);
+      delay.connect(damp).connect(feedback).connect(delay);
+      src.connect(env).connect(delay).connect(limiter).connect(ctx.destination);
+      src.start(ctxStart);
+      src.stop(ctxStart + duration + 0.2);
+      if (kind === "music") {
+        this._musicNodes.push(src);
+      } else {
+        this._sfxNodes.push(src);
+      }
+    };
 
     for (const entry of notes) {
       const { degree, beats, octaveShift, accidental } = this._normalizeNote(entry);
@@ -175,12 +259,81 @@ class LokartaAudio {
         const midi = this._degreeToMidi(rootMidi, degree, scale, octaveShift, accidental);
         if (midi !== null) {
           const freq = this._midiToFreq(midi);
+          const vol = Math.max(0, Math.min(1, volume ?? 1.0));
+          if (waveType === "piano") {
+            schedulePiano(freq, t, toneDuration);
+          } else if (waveType === "harp") {
+            scheduleHarp(freq, t, toneDuration);
+          } else {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = waveType;
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(waveGain * vol, t + 0.01);
+            const releaseStart = Math.max(t, t + toneDuration - 0.03);
+            gain.gain.linearRampToValueAtTime(0, releaseStart + 0.03);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + toneDuration + 0.05);
+            if (kind === "music") {
+              this._musicNodes.push(osc);
+            } else {
+              this._sfxNodes.push(osc);
+            }
+          }
+        }
+        let shift = 1;
+        if (splitMode === "down") shift = -1;
+        if (splitMode === "random") shift = Math.random() < 0.5 ? -1 : 1;
+        const midi2 = this._degreeToMidi(rootMidi, degree, scale, octaveShift + shift, accidental);
+        if (midi2 !== null) {
+          const freq2 = this._midiToFreq(midi2);
+          const t2 = t + toneDuration;
+          const vol = Math.max(0, Math.min(1, volume ?? 1.0));
+          if (waveType === "piano") {
+            schedulePiano(freq2, t2, toneDuration);
+          } else if (waveType === "harp") {
+            scheduleHarp(freq2, t2, toneDuration);
+          } else {
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = waveType;
+            osc2.frequency.setValueAtTime(freq2, t2);
+            gain2.gain.setValueAtTime(0, t2);
+            gain2.gain.linearRampToValueAtTime(waveGain * vol, t2 + 0.01);
+            const releaseStart2 = Math.max(t2, t2 + toneDuration - 0.03);
+            gain2.gain.linearRampToValueAtTime(0, releaseStart2 + 0.03);
+            osc2.connect(gain2).connect(ctx.destination);
+            osc2.start(t2);
+            osc2.stop(t2 + toneDuration + 0.05);
+            if (kind === "music") {
+              this._musicNodes.push(osc2);
+            } else {
+              this._sfxNodes.push(osc2);
+            }
+          }
+        }
+      } else {
+        const toneDuration = useStaccato ? duration * 0.5 : duration;
+        const midi = this._degreeToMidi(rootMidi, degree, scale, octaveShift, accidental);
+        if (midi === null) {
+          t += duration;
+          continue;
+        }
+        const freq = this._midiToFreq(midi);
+        const vol = Math.max(0, Math.min(1, volume ?? 1.0));
+        if (waveType === "piano") {
+          schedulePiano(freq, t, toneDuration);
+        } else if (waveType === "harp") {
+          scheduleHarp(freq, t, toneDuration);
+        } else {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
-          osc.type = wave;
+          osc.type = waveType;
           osc.frequency.setValueAtTime(freq, t);
           gain.gain.setValueAtTime(0, t);
-          gain.gain.linearRampToValueAtTime(0.2, t + 0.01);
+          gain.gain.linearRampToValueAtTime(waveGain * vol, t + 0.01);
           const releaseStart = Math.max(t, t + toneDuration - 0.03);
           gain.gain.linearRampToValueAtTime(0, releaseStart + 0.03);
           osc.connect(gain).connect(ctx.destination);
@@ -192,61 +345,13 @@ class LokartaAudio {
             this._sfxNodes.push(osc);
           }
         }
-        let shift = 1;
-        if (splitMode === "down") shift = -1;
-        if (splitMode === "random") shift = Math.random() < 0.5 ? -1 : 1;
-        const midi2 = this._degreeToMidi(rootMidi, degree, scale, octaveShift + shift, accidental);
-        if (midi2 !== null) {
-          const freq2 = this._midiToFreq(midi2);
-          const osc2 = ctx.createOscillator();
-          const gain2 = ctx.createGain();
-          const t2 = t + toneDuration;
-          osc2.type = wave;
-          osc2.frequency.setValueAtTime(freq2, t2);
-          gain2.gain.setValueAtTime(0, t2);
-          gain2.gain.linearRampToValueAtTime(0.2, t2 + 0.01);
-          const releaseStart2 = Math.max(t2, t2 + toneDuration - 0.03);
-          gain2.gain.linearRampToValueAtTime(0, releaseStart2 + 0.03);
-          osc2.connect(gain2).connect(ctx.destination);
-          osc2.start(t2);
-          osc2.stop(t2 + toneDuration + 0.05);
-          if (kind === "music") {
-            this._musicNodes.push(osc2);
-          } else {
-            this._sfxNodes.push(osc2);
-          }
-        }
-      } else {
-        const toneDuration = useStaccato ? duration * 0.5 : duration;
-        const midi = this._degreeToMidi(rootMidi, degree, scale, octaveShift, accidental);
-        if (midi === null) {
-          t += duration;
-          continue;
-        }
-        const freq = this._midiToFreq(midi);
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = wave;
-        osc.frequency.setValueAtTime(freq, t);
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.2, t + 0.01);
-        const releaseStart = Math.max(t, t + toneDuration - 0.03);
-        gain.gain.linearRampToValueAtTime(0, releaseStart + 0.03);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(t);
-        osc.stop(t + toneDuration + 0.05);
-        if (kind === "music") {
-          this._musicNodes.push(osc);
-        } else {
-          this._sfxNodes.push(osc);
-        }
       }
       t += duration;
     }
     return t - startTime;
   }
 
-  async playSong(name, scaleOverride = "") {
+  async playSong(name, scaleOverride = "", waveOverride = "") {
     if (this._mode === "off" || this._mode === "sfx") {
       console.log("Audio: song blocked by mode", this._mode, name);
       return;
@@ -285,13 +390,15 @@ class LokartaAudio {
           scaleOverride: step.scale || scaleOverride || "",
           staccato: step.staccato,
           octaveSplit: step.octave_split,
+          waveOverride: waveOverride || this._defaultWave,
+          volume: this._musicVolume,
         });
         startTime += duration;
       }
     }
   }
 
-  async playSequence(name, rootNote, scaleOverride = "") {
+  async playSequence(name, rootNote, scaleOverride = "", waveOverride = "") {
     if (this._mode === "off" || this._mode === "sfx") {
       console.log("Audio: sequence blocked by mode", this._mode, name);
       return;
@@ -318,10 +425,12 @@ class LokartaAudio {
       scaleOverride: scaleOverride || "",
       staccato: sequence.staccato,
       octaveSplit: sequence.octave_split,
+      waveOverride: waveOverride || this._defaultWave,
+      volume: this._musicVolume,
     });
   }
 
-  async playSfx(name, rootNote, scaleOverride = "") {
+  async playSfx(name, rootNote, scaleOverride = "", waveOverride = "") {
     if (this._mode === "off" || this._mode === "music") {
       console.log("Audio: sfx blocked by mode", this._mode, name);
       return;
@@ -354,6 +463,8 @@ class LokartaAudio {
         scaleOverride: scaleOverride || "",
         staccato: sequence.staccato,
         octaveSplit: sequence.octave_split,
+        waveOverride: waveOverride || this._defaultWave,
+        volume: this._sfxVolume,
       });
       return;
     }
@@ -383,6 +494,8 @@ class LokartaAudio {
           scaleOverride: step.scale || scaleOverride || "",
           staccato: step.staccato,
           octaveSplit: step.octave_split,
+          waveOverride: waveOverride || this._defaultWave,
+          volume: this._sfxVolume,
         });
         startTime += duration;
       }

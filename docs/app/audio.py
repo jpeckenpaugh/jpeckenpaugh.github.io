@@ -25,6 +25,9 @@ class AudioManager:
         self._sfx_temp_path: Path | None = None
         self._lock = RLock()
         self._mode = "on"
+        self._music_volume = 1.0
+        self._sfx_volume = 1.0
+        self._default_wave = None
         self._web = None
         self._web_warned = False
         if os.environ.get("LOKARTA_WEB") == "1":
@@ -34,6 +37,11 @@ class AudioManager:
                 self._web = getattr(js, "lokartaAudio", None)
             except Exception:
                 self._web = None
+        if self._web is not None:
+            try:
+                self._web.setDefaults(self._music_volume, self._sfx_volume, self._default_wave or "")
+            except Exception:
+                pass
 
     def load(self) -> None:
         if self._data is not None:
@@ -139,10 +147,33 @@ class AudioManager:
         if mode in ("off", "music"):
             self._stop_kind("sfx")
 
-    def play_sequence_once(self, name: str, root_note: str, scale: str | None = None) -> None:
+    def set_defaults(self, music_volume: float, sfx_volume: float, wave: str | None = None) -> None:
+        self._music_volume = max(0.0, min(1.0, float(music_volume)))
+        self._sfx_volume = max(0.0, min(1.0, float(sfx_volume)))
+        self._default_wave = str(wave) if wave else None
         if self._web is not None:
             try:
-                self._web.playSequence(name, root_note, scale or "")
+                self._web.setDefaults(self._music_volume, self._sfx_volume, self._default_wave or "")
+            except Exception:
+                pass
+
+    def _apply_volume(self, samples: array, volume: float) -> array:
+        if volume >= 0.99:
+            return samples
+        scaled = array("h")
+        for sample in samples:
+            value = int(sample * volume)
+            if value > 32767:
+                value = 32767
+            elif value < -32768:
+                value = -32768
+            scaled.append(value)
+        return scaled
+
+    def play_sequence_once(self, name: str, root_note: str, scale: str | None = None, wave: str | None = None) -> None:
+        if self._web is not None:
+            try:
+                self._web.playSequence(name, root_note, scale or "", wave or "")
             except Exception:
                 pass
             return
@@ -163,16 +194,19 @@ class AudioManager:
         sequence = dict(sequences[name])
         if scale:
             sequence["scale"] = scale
+        if wave or self._default_wave:
+            sequence["wave"] = wave or self._default_wave
         root_midi = music.parse_root(root_note)
         samples = music.render_sequence(sequence, root_midi, self._data)
+        samples = self._apply_volume(samples, self._music_volume)
         self._stop_kind("music")
         with self._lock:
             self._play_samples(samples, kind="music")
 
-    def play_song_once(self, name: str, scale: str | None = None) -> None:
+    def play_song_once(self, name: str, scale: str | None = None, wave: str | None = None) -> None:
         if self._web is not None:
             try:
-                self._web.playSong(name, scale or "")
+                self._web.playSong(name, scale or "", wave or "")
             except Exception:
                 pass
             return
@@ -189,15 +223,17 @@ class AudioManager:
             return
         if name not in self._data.get("songs", {}):
             return
-        samples = music.render_song(self._data, name, scale, None)
+        wave_override = wave or self._default_wave
+        samples = music.render_song(self._data, name, scale, None, wave_override)
+        samples = self._apply_volume(samples, self._music_volume)
         self._stop_kind("music")
         with self._lock:
             self._play_samples(samples, kind="music")
 
-    def play_sfx_once(self, name: str, root_note: str, scale: str | None = None) -> None:
+    def play_sfx_once(self, name: str, root_note: str, scale: str | None = None, wave: str | None = None) -> None:
         if self._web is not None:
             try:
-                self._web.playSfx(name, root_note, scale or "")
+                self._web.playSfx(name, root_note, scale or "", wave or "")
             except Exception:
                 pass
             return
@@ -217,6 +253,8 @@ class AudioManager:
             sequence = dict(sequences[name])
             if scale:
                 sequence["scale"] = scale
+            if wave or self._default_wave:
+                sequence["wave"] = wave or self._default_wave
             root_midi = music.parse_root(root_note)
             samples = music.render_sequence(sequence, root_midi, self._data)
         else:
@@ -226,7 +264,9 @@ class AudioManager:
             song = songs[name]
             if not (isinstance(song, dict) and song.get("sfx")):
                 return
-            samples = music.render_song(self._data, name, scale, None)
+            wave_override = wave or self._default_wave
+            samples = music.render_song(self._data, name, scale, None, wave_override)
+        samples = self._apply_volume(samples, self._sfx_volume)
         with self._lock:
             self._play_samples(samples, kind="sfx")
 

@@ -253,6 +253,12 @@ def _title_state_config(
                 "label": f"Show JSON: {'On' if getattr(player, 'asset_explorer_show_json', False) else 'Off'}",
                 "command": "TITLE_ASSET_TOGGLE:json",
             })
+            if asset_type in ("music", "sfx"):
+                wave = getattr(player, "asset_explorer_waveform", "square") or "square"
+                items.append({
+                    "label": f"Waveform: {wave.title()}",
+                    "command": "TITLE_ASSET_TOGGLE:wave",
+                })
             items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
             selected_id = None
             if asset_ids:
@@ -365,6 +371,25 @@ def _title_state_config(
         for entry in commands:
             if entry.get("command") == "TOGGLE_AUDIO":
                 entry["label"] = label_map.get(audio_mode, "Audio: On")
+    if menu_id == "title_audio" and commands:
+        flags = getattr(player, "flags", {}) if hasattr(player, "flags") else {}
+        if not isinstance(flags, dict):
+            flags = {}
+        music_volume = int(flags.get("audio_music_volume", 5) or 0)
+        sfx_volume = int(flags.get("audio_sfx_volume", 5) or 0)
+        music_volume = max(0, min(5, music_volume))
+        sfx_volume = max(0, min(5, sfx_volume))
+        wave = str(flags.get("audio_wave", "square") or "square")
+        def _bar(value: int) -> str:
+            return "[" + ("#" * value) + ("." * (5 - value)) + "]"
+        for entry in commands:
+            cmd = entry.get("command")
+            if cmd == "TITLE_AUDIO_MUSIC":
+                entry["label"] = f"Music: {_bar(music_volume)}"
+            elif cmd == "TITLE_AUDIO_SFX":
+                entry["label"] = f"SFX: {_bar(sfx_volume)}"
+            elif cmd == "TITLE_AUDIO_WAVE":
+                entry["label"] = f"Instrument: {wave.title()}"
     return narrative, commands, detail_lines if isinstance(detail_lines, list) else []
 
 
@@ -2295,7 +2320,7 @@ def generate_frame(
                     desc = asset.get("description") or asset.get("desc")
                     if desc:
                         right_lines.append(f"{ANSI.DIM}{desc}{ANSI.RESET}")
-                    if asset_type == "sfx":
+                    if asset_type in ("music", "sfx"):
                         tempo = asset.get("tempo")
                         scale = asset.get("scale")
                         wave = asset.get("wave")
@@ -2307,6 +2332,9 @@ def generate_frame(
                             summary.append(f"scale:{scale}")
                         if wave:
                             summary.append(f"wave:{wave}")
+                        selected_wave = getattr(player, "asset_explorer_waveform", None)
+                        if selected_wave:
+                            summary.append(f"preview:{selected_wave}")
                         if pattern:
                             summary.append(f"pattern:{pattern}")
                         if summary:

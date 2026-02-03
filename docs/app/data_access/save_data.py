@@ -16,6 +16,7 @@ class SaveData:
         self._base_dir = base_dir
         self._current_slot = 1
         self._last_slot_path = os.path.join(base_dir, "last_slot.json")
+        self._settings_path = os.path.join(base_dir, "settings.json")
         os.makedirs(base_dir, exist_ok=True)
 
     def _slot_path(self, slot: int) -> str:
@@ -48,6 +49,31 @@ class SaveData:
                 json.dump({"last_slot": self._current_slot}, f, indent=2)
         except OSError:
             return
+
+    def load_settings(self) -> dict:
+        try:
+            with open(self._settings_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        return data
+
+    def save_settings(self, settings: dict) -> None:
+        payload = settings if isinstance(settings, dict) else {}
+        try:
+            with open(self._settings_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+        except OSError:
+            return
+        if os.environ.get("LOKARTA_WEB") == "1":
+            try:
+                import js
+                if hasattr(js, "syncSaves"):
+                    js.syncSaves()
+            except Exception:
+                return
 
     def load(self, slot: Optional[int] = None) -> Dict[str, Any]:
         path = self._slot_path(slot or self._current_slot)
