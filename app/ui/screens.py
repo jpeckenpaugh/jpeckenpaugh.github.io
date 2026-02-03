@@ -259,6 +259,7 @@ def _title_state_config(
                     "label": f"Waveform: {wave.title()}",
                     "command": "TITLE_ASSET_TOGGLE:wave",
                 })
+            items.append({"label": "Refresh", "command": "TITLE_ASSET_REFRESH"})
             items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
             selected_id = None
             if asset_ids:

@@ -502,6 +502,7 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
                     "label": f"Waveform: {wave.title()}",
                     "command": "TITLE_ASSET_TOGGLE:wave",
                 })
+            items.append({"label": "Refresh", "command": "TITLE_ASSET_REFRESH"})
             items.append({"label": "Back", "command": "TITLE_ASSET_BACK"})
             selected_id = None
             if asset_ids:
@@ -1675,6 +1676,29 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 clamp_action_cursor(state, commands)
                 return None, None
             if isinstance(cmd, str) and cmd.startswith("TITLE_ASSET_SELECT:"):
+                return None, None
+            if cmd == "TITLE_ASSET_REFRESH":
+                asset_type = state.asset_explorer_type or ""
+                if asset_type == "objects":
+                    ctx.objects.load()
+                elif asset_type == "opponents":
+                    ctx.opponents.load()
+                elif asset_type == "items":
+                    ctx.items.load()
+                elif asset_type == "spells":
+                    ctx.spells.load()
+                elif asset_type == "spells_art":
+                    ctx.spells_art.load()
+                elif asset_type == "glyphs":
+                    ctx.glyphs.load()
+                elif asset_type in ("music", "sfx"):
+                    ctx.music.load()
+                    if hasattr(ctx, "audio"):
+                        ctx.audio.reload()
+                state.asset_explorer_preview_key = None
+                state.asset_explorer_info_scroll = 0
+                commands = action_commands_for_state(ctx, state)
+                clamp_action_cursor(state, commands)
                 return None, None
             if isinstance(cmd, str) and cmd.startswith("TITLE_MENU_SUB:"):
                 menu_id = cmd.split(":", 1)[1]

@@ -289,34 +289,6 @@
         "  111111"
       ]
     },
-    "mushroom": {
-      "name": "Mushroom",
-      "element": "base",
-      "level": 3,
-      "hp": 10,
-      "atk": 8,
-      "defense": 6,
-      "action_chance": 1.05,
-      "recruitable": false,
-      "desc": "A small mushroom wanderer with a gentle glow.",
-      "arrival": "peeks from the undergrowth",
-      "art": [
-        "  _,-=-._",
-        ",' _____ `.",
-        "'_( .-. )_'",
-        "   \\(_)/",
-        "    )\"(",
-        "    \"\"\""
-      ],
-      "color_map": [
-        "  1111111",
-        "1111111111",
-        "11111111111",
-        "   11111",
-        "    111",
-        "    111"
-      ]
-    },
     "mushroom_baby": {
       "name": "Mushroom",
       "element": "base",
@@ -370,20 +342,20 @@
       "desc": "A young mushroom with steady resolve.",
       "arrival": "steps from the moss",
       "art": [
-        "  _,-=-._",
-        ",' _____ `.",
-        "'_( .-. )_'",
+        "  _.-=-._",
+        ".'._____.'.",
+        "'_(_o-o_)_'",
         "   \\(_)/",
-        "    )\"(",
-        "    \"\"\""
+        "    )'(",
+        "   (''')"
       ],
       "color_map": [
-        "  1111111",
-        "1111111111",
-        "11111111111",
-        "   11111",
-        "    111",
-        "    111"
+        "  qqqqqqq",
+        "qqzssssszqq",
+        "qqszgggzsqq",
+        "   sSsSs",
+        "    szs",
+        "   szZzs"
       ]
     },
     "wolf": {
@@ -482,44 +454,6 @@
         " 1111111",
         " 1111111",
         "111111111"
-      ]
-    },
-    "mushroom_miranda": {
-      "name": "Miranda",
-      "element": "light",
-      "level": 7,
-      "hp": 34,
-      "atk": 24,
-      "defense": 18,
-      "action_chance": 1.15,
-      "recruitable": true,
-      "recruit_cost": 180,
-      "recruit_chance": 0.7,
-      "follower_type": "mushroom_mage",
-      "follower_names": [
-        "Miranda"
-      ],
-      "desc": "A mushroom adept trained in elemental arts.",
-      "arrival": "steps out with a soft glow",
-      "art": [
-        "       ,",
-        " \\\\ ~o(_)",
-        " )))o~88),",
-        "//(_)888(_)",
-        "`-( *,* )-'",
-        "   \\\\ = /",
-        "    ) (",
-        "    \"\"\""
-      ],
-      "color_map": [
-        "       1",
-        " 1 11111",
-        " 111111111",
-        "11111111111",
-        "111 111 111",
-        "   1 1 1",
-        "    1 1",
-        "    111"
       ]
     },
     "ghost": {
