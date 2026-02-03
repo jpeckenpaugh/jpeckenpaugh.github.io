@@ -2571,7 +2571,7 @@ def render_frame(frame: Frame):
             output.append(_compose_line(row_idx, _apply_bg(line, row_idx)))
         while len(output) < SCREEN_HEIGHT:
             output.append(_compose_line(len(output), _apply_bg(" " * SCREEN_WIDTH, len(output))))
-        sys.stdout.write("\n".join(output))
+        sys.stdout.write("\n".join(output) + "\n")
         sys.stdout.flush()
         return
 
