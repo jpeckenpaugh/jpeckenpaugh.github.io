@@ -81,3 +81,4 @@ class GameState:
     asset_explorer_info_scroll: int = 0
     asset_explorer_preview_key: Optional[str] = None
     prev_follower_count: int = 0
+    battle_trial_id: Optional[str] = None

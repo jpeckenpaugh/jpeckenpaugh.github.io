@@ -20,6 +20,7 @@ from app.data_access.music_data import MusicData
 from app.data_access.npcs_data import NpcsData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
+from app.data_access.players_data import PlayersData
 from app.data_access.quests_data import QuestsData
 from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
@@ -58,6 +59,7 @@ class AppContext:
     save_data: SaveData
     quests: QuestsData
     stories: StoriesData
+    players: PlayersData
     title_screen: TitleScreenData
     portal_screen: PortalScreenData
     spellbook_screen: SpellbookScreenData
@@ -94,6 +96,10 @@ def _load_npcs() -> NpcsData:
 
 def _load_objects() -> ObjectsData:
     return ObjectsData(f"{DATA_DIR}/objects.json")
+
+
+def _load_players() -> PlayersData:
+    return PlayersData(f"{DATA_DIR}/players.json")
 
 
 def _load_venues() -> VenuesData:
@@ -219,6 +225,7 @@ def create_app() -> AppContext:
     save_data = _load_save()
     quests = _load_quests()
     stories = _load_stories()
+    players = _load_players()
     title_screen = _load_title_screen()
     portal_screen = _load_portal_screen()
     spellbook_screen = _load_spellbook_screen()
@@ -248,6 +255,7 @@ def create_app() -> AppContext:
         spells_art=spells_art,
         glyphs=glyphs,
         objects=objects,
+        players=players,
         registry=registry,
         quests=quests,
         stories=stories,
@@ -279,6 +287,7 @@ def create_app() -> AppContext:
         save_data=save_data,
         quests=quests,
         stories=stories,
+        players=players,
         title_screen=title_screen,
         portal_screen=portal_screen,
         spellbook_screen=spellbook_screen,
@@ -308,6 +317,7 @@ def create_app() -> AppContext:
         save_data=save_data,
         quests=quests,
         stories=stories,
+        players=players,
         title_screen=title_screen,
         portal_screen=portal_screen,
         spellbook_screen=spellbook_screen,

@@ -284,6 +284,8 @@ def move_action_cursor(index: int, direction: str, commands: list[dict]) -> int:
 def _title_screen_state_key(player) -> str:
     if getattr(player, "title_name_input", False):
         return "title_name_input"
+    if getattr(player, "title_player_select", False):
+        return "title_player"
     if getattr(player, "title_name_select", False):
         return "title_name"
     if getattr(player, "title_start_confirm", False):
@@ -560,6 +562,17 @@ def _title_screen_config(ctx, state: GameState) -> tuple[list[str], list[dict]]:
             narrative.append("No save data found.")
         built.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
         items = built
+    if items == "player_select":
+        players = ctx.players.all() if hasattr(ctx, "players") else {}
+        if not isinstance(players, dict):
+            players = {}
+        if not players:
+            narrative = list(narrative)
+            narrative.append("No player art found.")
+        items = [
+            {"label": "Confirm", "command": "TITLE_PLAYER_CONFIRM"},
+            {"label": "Back", "command": "TITLE_PLAYER_BACK"},
+        ]
     if not isinstance(items, list):
         items = []
     commands = []
@@ -803,6 +816,35 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 key = key.upper() if shift_lock else key.lower()
             state.player.title_pending_name = buffer + key
             return None, None
+        return None, None
+
+    if (
+        state.title_mode
+        and getattr(state.player, "title_player_select", False)
+        and action in ("LEFT", "RIGHT", "BACK", "CONFIRM")
+    ):
+        players = ctx.players.all() if hasattr(ctx, "players") else {}
+        if not isinstance(players, dict):
+            players = {}
+        player_ids = sorted(str(key) for key in players.keys())
+        if not player_ids:
+            return None, None
+        cursor = int(getattr(state.player, "title_player_cursor", 0) or 0)
+        if cursor < 0 or cursor >= len(player_ids):
+            cursor = 0
+        state.player.title_player_cursor = cursor
+        if action in ("LEFT", "RIGHT"):
+            step = -1 if action == "LEFT" else 1
+            state.player.title_player_cursor = (cursor + step) % len(player_ids)
+            return None, None
+        if action == "BACK":
+            return "TITLE_PLAYER_BACK", None
+        if action == "CONFIRM":
+            commands = action_commands_for_state(ctx, state)
+            if 0 <= state.action_cursor < len(commands):
+                command = commands[state.action_cursor].get("command")
+                if command:
+                    return command, None
         return None, None
 
     if (
@@ -2119,11 +2161,22 @@ def apply_router_command(
 ) -> tuple[bool, Optional[str], Optional[str], bool, Optional[int]]:
     if not cmd:
         return False, action_cmd, cmd, False, None
+    if state.leveling_mode:
+        message, done = state.player.handle_level_up_input(cmd)
+        state.last_message = message
+        if done:
+            state.leveling_mode = False
+            state.level_up_notes = []
+            if hasattr(ctx, "save_data") and ctx.save_data:
+                ctx.save_data.save_player(state.player)
+        return True, action_cmd, cmd, True, state.target_index
+    pre_level = state.player.level
     pre_location = state.player.location
     pre_in_forest = state.player.location == "Forest"
     pre_alive = any(m.hp > 0 for m in state.opponents)
     pre_spell_mode = state.spell_mode
     pre_title_slot_select = getattr(state.player, "title_slot_select", False)
+    pre_title_player_select = getattr(state.player, "title_player_select", False)
     pre_title_fortune = getattr(state.player, "title_fortune", False)
     pre_title_confirm = getattr(state.player, "title_confirm", False)
     pre_portal_mode = state.portal_mode
@@ -2223,6 +2276,7 @@ def apply_router_command(
     state.quest_detail_page = cmd_state.quest_detail_page
     target_index = cmd_state.target_index
     post_title_slot_select = getattr(state.player, "title_slot_select", False)
+    post_title_player_select = getattr(state.player, "title_player_select", False)
     post_title_fortune = getattr(state.player, "title_fortune", False)
     post_title_confirm = getattr(state.player, "title_confirm", False)
     post_portal_mode = state.portal_mode
@@ -2233,6 +2287,10 @@ def apply_router_command(
     post_title_name_select = getattr(state.player, "title_name_select", False)
     post_title_start_confirm = getattr(state.player, "title_start_confirm", False)
     if post_title_slot_select and not pre_title_slot_select:
+        commands = action_commands_for_state(ctx, state)
+        state.action_cursor = 0
+        clamp_action_cursor(state, commands)
+    if post_title_player_select and not pre_title_player_select:
         commands = action_commands_for_state(ctx, state)
         state.action_cursor = 0
         clamp_action_cursor(state, commands)
@@ -2282,6 +2340,7 @@ def apply_router_command(
         (pre_title_fortune and not post_title_fortune)
         or (pre_title_confirm and not post_title_confirm)
         or (pre_title_slot_select and not post_title_slot_select)
+        or (pre_title_player_select and not post_title_player_select)
         or (pre_title_name_select and not post_title_name_select)
         or (pre_title_start_confirm and not post_title_start_confirm)
     ):
@@ -2313,6 +2372,7 @@ def apply_router_command(
     if state.player.location == "Title" and cmd_state.player.location != "Title":
         state.title_mode = False
     state.player = cmd_state.player
+    post_level = state.player.level
     post_location = state.player.location
     if hasattr(ctx, "audio"):
         ctx.audio.set_mode(state.player.flags.get("audio_mode"))
@@ -2353,6 +2413,13 @@ def apply_router_command(
             objects_data=ctx.objects,
             color_map_override=color_override
         )
+    if post_level > pre_level and not state.leveling_mode:
+        state.leveling_mode = True
+        spell_notes = spell_level_up_notes(ctx, state.player, pre_level, post_level)
+        element_notes = element_unlock_notes(ctx, state.player, pre_level, post_level)
+        state.level_up_notes = spell_notes + element_notes
+        if hasattr(ctx, "audio"):
+            ctx.audio.play_song_once("level_up")
     if action_cmd not in ctx.combat_actions:
         return True, action_cmd, cmd, True, target_index
     if action_cmd in ctx.spell_commands:
@@ -2426,9 +2493,6 @@ def resolve_player_action(
                 state.spell_target_mode = True
                 if not state.spell_target_command:
                     state.spell_target_command = cmd
-            if state.player.mp < base_cost and not has_charge:
-                state.last_message = f"Not enough MP to cast {name}."
-                return None
             if state.team_target_index is not None:
                 if state.team_target_index == 0:
                     target_type, target_ref = "player", state.player
@@ -2445,10 +2509,46 @@ def resolve_player_action(
             if target_type == "none":
                 state.last_message = "HP and MP are already full."
                 return None
-            if not has_charge:
+            used_charge = False
+            if element:
+                used_charge = state.player.consume_wand_charge(str(element))
+            if not used_charge:
+                if state.player.mp < base_cost:
+                    state.last_message = f"Not enough MP to cast {name}."
+                    return None
                 state.player.mp -= base_cost
             state.last_team_target_player = (target_type == "player")
-            if target_type != "player":
+            if target_type == "player":
+                gain_per_cast = max(0, 10 * rank)
+                max_stack = gain_per_cast * 5
+                if spell_id == "life_boost":
+                    current = int(state.player.temp_hp_bonus or 0)
+                    remaining = max(0, max_stack - current)
+                    gain = min(gain_per_cast, remaining)
+                    if gain > 0:
+                        animate_life_boost_gain(
+                            ctx,
+                            render_frame,
+                            state,
+                            generate_frame,
+                            gain,
+                        )
+                else:
+                    current = min(
+                        int(state.player.temp_atk_bonus or 0),
+                        int(state.player.temp_def_bonus or 0),
+                    )
+                    remaining = max(0, max_stack - current)
+                    gain = min(gain_per_cast, remaining)
+                    if gain > 0:
+                        animate_strength_gain(
+                            ctx,
+                            render_frame,
+                            state,
+                            generate_frame,
+                            gain,
+                        )
+            else:
                 gain_per_cast = max(0, 10 * rank)
                 max_stack = gain_per_cast * 5
                 if spell_id == "life_boost":

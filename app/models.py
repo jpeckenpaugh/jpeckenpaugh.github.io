@@ -21,6 +21,7 @@ class Frame:
 @dataclass
 class Player:
     name: str
+    avatar_id: str
     level: int
     xp: int
     stat_points: int
@@ -50,6 +51,7 @@ class Player:
     def to_dict(self) -> dict:
         return {
             "name": self.name,
+            "avatar_id": self.avatar_id,
             "level": self.level,
             "xp": self.xp,
             "stat_points": self.stat_points,
@@ -103,6 +105,7 @@ class Player:
             quests = {}
         return Player(
             name=data.get("name", "WARRIOR"),
+            avatar_id=str(data.get("avatar_id", "player_01") or "player_01"),
             level=int(data.get("level", 1)),
             xp=int(data.get("xp", 0)),
             stat_points=int(data.get("stat_points", 0)),

@@ -22,6 +22,7 @@ from app.data_access.music_data import MusicData
 from app.data_access.npcs_data import NpcsData
 from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
+from app.data_access.players_data import PlayersData
 from app.data_access.quests_data import QuestsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
@@ -79,6 +80,7 @@ class ScreenContext:
     save_data: object
     quests: QuestsData
     stories: StoriesData
+    players: PlayersData
     title_screen: TitleScreenData
     portal_screen: PortalScreenData
     spellbook_screen: SpellbookScreenData
@@ -319,6 +321,81 @@ def _title_state_config(
             narrative.append("No save data found.")
         built.append({"label": "Back", "command": "TITLE_SLOT_BACK"})
         items = built
+    if items == "player_select":
+        players = ctx.players.all() if hasattr(ctx, "players") else {}
+        if not isinstance(players, dict):
+            players = {}
+        player_ids = sorted(str(key) for key in players.keys())
+        if not player_ids:
+            narrative = list(narrative)
+            narrative.append("No player art found.")
+        else:
+            narrative = list(narrative)
+            if narrative and narrative[-1] != "":
+                narrative.append("")
+            selected_idx = getattr(player, "title_player_cursor", 0)
+            if selected_idx < 0 or selected_idx >= len(player_ids):
+                selected_idx = 0
+            arts = []
+            colors = ctx.colors.all() if hasattr(ctx, "colors") else {}
+            def _apply_mask_line(line: str, mask: str) -> str:
+                if not line or not isinstance(colors, dict):
+                    return line
+                out = []
+                padded_mask = mask.ljust(len(line))
+                for idx, ch in enumerate(line):
+                    mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                    code = _color_code_for_key(colors, mask_ch) if mask_ch else ""
+                    if code and ch != " ":
+                        out.append(f"{code}{ch}{ANSI.RESET}")
+                    else:
+                        out.append(ch)
+                return "".join(out)
+            for idx, player_id in enumerate(player_ids[:2]):
+                entry = players.get(player_id, {})
+                art = entry.get("art", [])
+                art_lines = [str(line) for line in art] if isinstance(art, list) else []
+                masks = entry.get("color_map", []) if isinstance(entry, dict) else []
+                if isinstance(masks, list) and masks and isinstance(colors, dict):
+                    colored = []
+                    for line, mask in zip(art_lines, masks):
+                        colored.append(_apply_mask_line(str(line), str(mask)))
+                    art_lines = colored
+                width = max((len(strip_ansi(line)) for line in art_lines), default=0)
+                height = max(len(art_lines), 1)
+                padded = [pad_or_trim_ansi(line, width).ljust(width) for line in art_lines]
+                while len(padded) < height:
+                    padded.append(" " * width)
+                arts.append((padded, width, height))
+            if arts:
+                max_height = max(height for _, _, height in arts)
+                gap = "   "
+                left_lines, left_width, left_height = arts[0]
+                right_lines = []
+                if len(arts) > 1:
+                    right_lines, right_width, right_height = arts[1]
+                for i in range(max_height):
+                    left = left_lines[i] if i < left_height else " " * left_width
+                    if right_lines:
+                        right = right_lines[i] if i < right_height else " " * right_width
+                        narrative.append(f"{left}{gap}{right}")
+                    else:
+                        narrative.append(left)
+                underline_left = " " * left_width
+                underline_right = ""
+                if selected_idx == 0 and left_width:
+                    underline_left = "_" * left_width
+                if len(arts) > 1:
+                    underline_right = " " * right_width
+                    if selected_idx == 1 and right_width:
+                        underline_right = "_" * right_width
+                    narrative.append(f"{underline_left}{gap}{underline_right}")
+                else:
+                    narrative.append(underline_left)
+        items = [
+            {"label": "Confirm", "command": "TITLE_PLAYER_CONFIRM"},
+            {"label": "Back", "command": "TITLE_PLAYER_BACK"},
+        ]
     detail_lines = menu_data.get("detail_lines", [])
     if isinstance(detail_lines, list) and detail_lines:
         narrative = list(narrative)
@@ -327,15 +404,23 @@ def _title_state_config(
     if menu_id == "title_start_confirm":
         pending_name = str(getattr(player, "title_pending_name", "") or "WARRIOR")
         pending_fortune = str(getattr(player, "title_pending_fortune", "") or "")
+        pending_avatar = str(getattr(player, "title_pending_player_id", "") or "")
         fortune_map = {
             "FORTUNE_POOR": "Poor (10 GP)",
             "FORTUNE_WELL_OFF": "Well-Off (100 GP)",
             "FORTUNE_ROYALTY": "Royalty (1,000 GP)",
         }
         fortune_label = fortune_map.get(pending_fortune, "Unknown")
+        avatar_label = pending_avatar or "Unknown"
+        if pending_avatar and hasattr(ctx, "players"):
+            avatar_entry = ctx.players.get(pending_avatar, {})
+            label = avatar_entry.get("label")
+            if label:
+                avatar_label = str(label)
         narrative = list(narrative)
         narrative.append("")
         narrative.append(f"Name: {pending_name[:16]}")
+        narrative.append(f"Avatar: {avatar_label}")
         narrative.append(f"Fortune: {fortune_label}")
     if not isinstance(items, list):
         items = []
@@ -398,6 +483,8 @@ def _title_menu_id(title_data: dict, player, menu_stack: list[str]) -> str:
     menu_id = menu_stack[-1] if menu_stack else title_data.get("root_menu", "title_root")
     if getattr(player, "title_name_input", False):
         menu_id = "title_name_input"
+    if getattr(player, "title_player_select", False):
+        menu_id = "title_player"
     if getattr(player, "title_name_select", False):
         menu_id = "title_name"
     if getattr(player, "title_confirm", False):
@@ -1186,6 +1273,7 @@ def generate_frame(
         atlas_margin = int(atlas_cfg.get("margin", 1) or 1)
         atlas_style = str(atlas_cfg.get("frame_style", "round") or "round")
         atlas_lines = []
+        opponent_masks = []
         art_opponent_id = None
         if quest_detail_mode and detail_quest:
             art_opponent_id = str(detail_quest.get("art_opponent") or "").strip()
@@ -1193,6 +1281,8 @@ def generate_frame(
             opponent_entry = ctx.opponents.get(art_opponent_id, {})
             if isinstance(opponent_entry, dict):
                 atlas_lines = opponent_entry.get("art", []) if isinstance(opponent_entry.get("art"), list) else []
+                if isinstance(opponent_entry.get("color_map"), list):
+                    opponent_masks = opponent_entry.get("color_map")
         if not atlas_lines:
             atlas_id = atlas_cfg.get("glyph_id", "atlas")
             atlas = ctx.glyphs.get(atlas_id, {}) if hasattr(ctx, "glyphs") else {}
@@ -1243,7 +1333,30 @@ def generate_frame(
                 flicker_digit = selected_map[selected_element]
                 flicker_on = int(time.time() / 0.35) % 2 == 0
         if art_opponent_id and atlas_lines:
-            colored_atlas = list(atlas_lines)
+            if opponent_masks and hasattr(ctx, "colors"):
+                colors = ctx.colors.all()
+                if isinstance(colors, dict):
+                    colored = []
+                    for line, mask in zip(atlas_lines, opponent_masks):
+                        line_str = str(line)
+                        mask_str = str(mask)
+                        padded_mask = mask_str.ljust(len(line_str))
+                        out = []
+                        for idx, ch in enumerate(line_str):
+                            mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                            code = _color_code_for_key(colors, mask_ch) if mask_ch else ""
+                            if code and ch != " ":
+                                out.append(f"{code}{ch}{ANSI.RESET}")
+                            else:
+                                out.append(ch)
+                        colored.append("".join(out))
+                    if len(opponent_masks) < len(atlas_lines):
+                        colored.extend(str(line) for line in atlas_lines[len(opponent_masks):])
+                    colored_atlas = colored
+                else:
+                    colored_atlas = list(atlas_lines)
+            else:
+                colored_atlas = list(atlas_lines)
         else:
             colored_atlas = [
                 _colorize_atlas_line(
@@ -2149,6 +2262,7 @@ def generate_frame(
         title_element = None
         unlocked_elements = ["base"]
         title_followers = []
+        title_avatar_id = ""
         menu_id = _title_menu_id(title_data, player, title_menu_stack or [])
         if hasattr(ctx, "save_data") and ctx.save_data:
             if getattr(player, "title_slot_select", False):
@@ -2167,6 +2281,9 @@ def generate_frame(
                             if isinstance(slot_data, dict):
                                 slot_player = slot_data.get("player", {})
                                 if isinstance(slot_player, dict):
+                                    avatar_id = slot_player.get("avatar_id")
+                                    if avatar_id:
+                                        title_avatar_id = str(avatar_id)
                                     elements = slot_player.get("elements")
                                     if isinstance(elements, list) and elements:
                                         unlocked_elements = elements
@@ -2184,6 +2301,9 @@ def generate_frame(
                     if isinstance(slot_data, dict):
                         slot_player = slot_data.get("player", {})
                         if isinstance(slot_player, dict):
+                            avatar_id = slot_player.get("avatar_id")
+                            if avatar_id:
+                                title_avatar_id = str(avatar_id)
                             elements = slot_player.get("elements")
                             if isinstance(elements, list) and elements:
                                 unlocked_elements = elements
@@ -2631,6 +2751,36 @@ def generate_frame(
             atlas_colored = [pad_or_trim_ansi(line, atlas_width).ljust(atlas_width) for line in atlas_colored]
 
         follower_art_blocks = []
+        if title_avatar_id and hasattr(ctx, "players"):
+            avatar = ctx.players.get(str(title_avatar_id), {})
+            if isinstance(avatar, dict):
+                art = avatar.get("art", [])
+                masks = avatar.get("color_map", [])
+                if isinstance(art, list) and art:
+                    if isinstance(masks, list) and masks and hasattr(ctx, "colors"):
+                        colors = ctx.colors.all() if hasattr(ctx, "colors") else {}
+                        if isinstance(colors, dict):
+                            def _apply_mask_line(line: str, mask: str) -> str:
+                                if not line:
+                                    return line
+                                out = []
+                                padded_mask = mask.ljust(len(line))
+                                for idx, ch in enumerate(line):
+                                    mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                                    code = _color_code_for_key(colors, mask_ch) if mask_ch else ""
+                                    if code and ch != " ":
+                                        out.append(f"{code}{ch}{ANSI.RESET}")
+                                    else:
+                                        out.append(ch)
+                                return "".join(out)
+                            colored = []
+                            for line, mask in zip(art, masks):
+                                colored.append(_apply_mask_line(str(line), str(mask)))
+                            follower_art_blocks.append(colored)
+                        else:
+                            follower_art_blocks.append([str(line) for line in art])
+                    else:
+                        follower_art_blocks.append([str(line) for line in art])
         if title_followers and hasattr(ctx, "opponents"):
             opponent_ids = set(ctx.opponents.all().keys()) if hasattr(ctx.opponents, "all") else set()
             fallback_map = {

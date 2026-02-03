@@ -52,6 +52,12 @@
         { "label": "Back", "command": "TITLE_NAME_BACK" }
       ]
     },
+    "title_player": {
+      "narrative": [
+        "Choose your adventurer."
+      ],
+      "items": "player_select"
+    },
     "title_audio": {
       "narrative": [
         "Audio settings."

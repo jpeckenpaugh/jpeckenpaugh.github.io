@@ -218,6 +218,7 @@ def main():
         quest_continent_index=0,
         quest_detail_id=None,
         quest_detail_page=0,
+        battle_trial_id=None,
     )
     state.player.location = "Title"
     state.player.sync_items(ITEMS)

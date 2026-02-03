@@ -1,5 +1,5 @@
 {
-  "version": 1770091991,
+  "version": 1770122399,
   "files": [
     ".gitignore",
     ".nojekyll",
@@ -34,6 +34,7 @@
     "app/data_access/npcs_data.py",
     "app/data_access/objects_data.py",
     "app/data_access/opponents_data.py",
+    "app/data_access/players_data.py",
     "app/data_access/portal_screen_data.py",
     "app/data_access/quests_data.py",
     "app/data_access/quests_screen_data.py",
@@ -65,7 +66,6 @@
     "audio.js",
     "build-time.txt",
     "color_map.py",
-    "data/.opponents.json.swp",
     "data/abilities.json",
     "data/characters.json",
     "data/colors.json",
@@ -82,6 +82,7 @@
     "data/npcs.json",
     "data/objects.json",
     "data/opponents.json",
+    "data/players.json",
     "data/portal_screen.json",
     "data/quests.json",
     "data/quests_screen.json",

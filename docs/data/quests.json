@@ -233,9 +233,6 @@
     "title": "Fight Sprites for Bites",
     "continent": "base",
     "on_start": {
-      "grant_flags": [
-        "mushy_06_trial_active"
-      ],
       "start_message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
     },
     "summary_pre": "Beba proposes a trial of strength against the forest fairies.",
@@ -273,9 +270,6 @@
     "title": "Ogre's Orb",
     "continent": "base",
     "on_start": {
-      "grant_flags": [
-        "mushy_07_trial_active"
-      ],
       "start_message": "Defeat the ogre in the forest to claim the magic orb."
     },
     "summary_pre": "Beba warns of an ogre terrorizing the fairies and hoarding a magic orb.",

@@ -16,6 +16,7 @@ from app.data_access.scenes_data import ScenesData
 from app.data_access.venues_data import VenuesData
 from app.data_access.menus_data import MenusData
 from app.data_access.objects_data import ObjectsData
+from app.data_access.players_data import PlayersData
 from app.data_access.save_data import SaveData
 from app.data_access.quests_data import QuestsData
 from app.data_access.stories_data import StoriesData
@@ -58,6 +59,7 @@ class CommandState:
     quest_mode: bool
     options_mode: bool
     action_cmd: Optional[str]
+    battle_trial_id: Optional[str] = None
     quest_continent_index: int = 0
     quest_detail_mode: bool = False
     quest_detail_id: Optional[str] = None
@@ -83,6 +85,7 @@ class RouterContext:
     spells_art: SpellsArtData
     glyphs: GlyphsData
     objects: ObjectsData
+    players: PlayersData
     quests: QuestsData
     stories: StoriesData
     title_screen: object
@@ -755,7 +758,8 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         if pending_slot:
             ctx.save_data.delete(pending_slot)
         state.player.title_confirm = False
-        state.player.title_name_select = True
+        state.player.title_player_select = True
+        state.player.title_player_cursor = 0
         state.player.title_slot_select = False
         return True
     if command_id == "TITLE_CONFIRM_NO":
@@ -771,6 +775,8 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_start_confirm = False
         state.player.title_pending_name = None
         state.player.title_pending_fortune = None
+        state.player.title_pending_player_id = None
+        state.player.title_player_cursor = 0
         state.player.title_name_shift = True
         next_slot = ctx.save_data.next_empty_slot(max_slots=100)
         if next_slot is None:
@@ -779,6 +785,31 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.player.title_pending_slot = fallback_slot
             return True
         state.player.title_pending_slot = next_slot
+        state.player.title_player_select = True
+        return True
+    if command_id == "TITLE_PLAYER_BACK":
+        state.player.title_player_select = False
+        return True
+    if command_id == "TITLE_PLAYER_CONFIRM":
+        players = ctx.players.all() if hasattr(ctx, "players") else {}
+        if isinstance(players, dict):
+            player_ids = sorted(str(key) for key in players.keys())
+        else:
+            player_ids = []
+        if not player_ids:
+            state.last_message = "No player art found."
+            return True
+        cursor = int(getattr(state.player, "title_player_cursor", 0) or 0)
+        cursor = max(0, min(cursor, len(player_ids) - 1))
+        state.player.title_pending_player_id = player_ids[cursor]
+        state.player.title_player_select = False
+        state.player.title_name_select = True
+        return True
+    if command_id.startswith("TITLE_PLAYER:"):
+        player_id = command_id.split(":", 1)[1].strip()
+        if player_id:
+            state.player.title_pending_player_id = player_id
+        state.player.title_player_select = False
         state.player.title_name_select = True
         return True
     if command_id == "TITLE_NAME_CUSTOM":
@@ -789,12 +820,30 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_name_shift = True
         return True
     if command_id == "TITLE_NAME_RANDOM":
-        name_choices = [
-            "Arin", "Bram", "Cora", "Dain", "Elow",
-            "Fenn", "Garen", "Hira", "Ivo", "Jora",
-            "Kael", "Lyra", "Mira", "Nox", "Orin",
-            "Pella", "Quin", "Rook", "Sera", "Taro",
-        ]
+        name_choices = []
+        pending_player_id = str(getattr(state.player, "title_pending_player_id", "") or "")
+        if pending_player_id and hasattr(ctx, "players"):
+            entry = ctx.players.get(pending_player_id, {})
+            names = entry.get("names", [])
+            if isinstance(names, list):
+                name_choices.extend(str(name) for name in names if str(name).strip())
+        if not name_choices and hasattr(ctx, "players"):
+            all_players = ctx.players.all()
+            if isinstance(all_players, dict):
+                for entry in all_players.values():
+                    if isinstance(entry, dict):
+                        names = entry.get("names", [])
+                        if isinstance(names, list):
+                            name_choices.extend(str(name) for name in names if str(name).strip())
+        if not name_choices:
+            name_choices = [
+                "Arin", "Bram", "Cora", "Dain", "Elow",
+                "Fenn", "Garen", "Hira", "Ivo", "Jora",
+                "Kael", "Lyra", "Mira", "Nox", "Orin",
+                "Pella", "Quin", "Rook", "Sera", "Taro",
+            ]
+        seen = set()
+        name_choices = [n for n in name_choices if not (n in seen or seen.add(n))]
         existing = ctx.save_data.existing_player_names(max_slots=100)
         available = [name for name in name_choices if name not in existing]
         max_len = 16
@@ -833,6 +882,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         return True
     if command_id == "TITLE_NAME_BACK":
         state.player.title_name_select = False
+        state.player.title_player_select = True
         return True
     if command_id.startswith("TITLE_NAME:"):
         name = command_id.split(":", 1)[1].strip()
@@ -887,7 +937,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.player.title_pending_slot = slot
             return True
         state.player.title_pending_slot = slot
-        state.player.title_name_select = True
+        state.player.title_player_select = True
         state.player.title_slot_select = False
         return True
     if command_id == "TITLE_START_CONFIRM_NO":
@@ -903,10 +953,12 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         pending_slot = getattr(state.player, "title_pending_slot", None) or 1
         pending_name = str(getattr(state.player, "title_pending_name", "") or "WARRIOR")
         pending_fortune = str(getattr(state.player, "title_pending_fortune", "") or "FORTUNE_POOR")
+        pending_avatar = str(getattr(state.player, "title_pending_player_id", "") or "player_01")
         ctx.save_data.set_current_slot(pending_slot)
         state.player = Player.from_dict({
             "gold": fortune_gold.get(pending_fortune, 10),
             "name": pending_name[:16],
+            "avatar_id": pending_avatar,
         })
         state.player.sync_items(ctx.items)
         sync_player_elements(ctx, state.player)
@@ -919,8 +971,10 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_pending_slot = None
         state.player.title_pending_name = None
         state.player.title_pending_fortune = None
+        state.player.title_pending_player_id = None
         state.player.title_name_select = False
         state.player.title_name_input = False
+        state.player.title_player_select = False
         state.player.has_save = False
         state.opponents = []
         state.loot_bank = {"xp": 0, "gold": 0}
@@ -1076,19 +1130,16 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     continue
                 follower_levels += int(follower.get("level", 1) or 1)
         total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
-        flags = getattr(state.player, "flags", {})
-        if not isinstance(flags, dict):
-            flags = {}
-            state.player.flags = flags
+        trial_id = None
         quests_state = getattr(state.player, "quests", {})
         if isinstance(quests_state, dict):
             mushy_07_state = quests_state.get("mushy_07", {})
             if isinstance(mushy_07_state, dict) and mushy_07_state.get("status") == "active":
-                flags["mushy_07_trial_active"] = True
+                trial_id = "mushy_07_trial"
             mushy_06_state = quests_state.get("mushy_06", {})
-            if isinstance(mushy_06_state, dict) and mushy_06_state.get("status") == "active":
-                flags["mushy_06_trial_active"] = True
-        if isinstance(flags, dict) and flags.get("mushy_07_trial_active"):
+            if isinstance(mushy_06_state, dict) and mushy_06_state.get("status") == "active" and not trial_id:
+                trial_id = "mushy_06_trial"
+        if trial_id == "mushy_07_trial":
             base = ctx.opponents_data.get("ogre", {})
             if isinstance(base, dict) and base:
                 boosted = dict(base)
@@ -1111,7 +1162,8 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     ANSI.FG_WHITE,
                     element=getattr(state.player, "current_element", "base")
                 )
-        elif isinstance(flags, dict) and flags.get("mushy_06_trial_active"):
+            state.battle_trial_id = "mushy_07_trial"
+        elif trial_id == "mushy_06_trial":
             base = ctx.opponents_data.get("fairy_baby", {})
             if isinstance(base, dict) and base:
                 boosted = dict(base)
@@ -1134,12 +1186,14 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     ANSI.FG_WHITE,
                     element=getattr(state.player, "current_element", "base")
                 )
+            state.battle_trial_id = "mushy_06_trial"
         else:
             state.opponents = ctx.opponents_data.spawn(
                 total_level,
                 ANSI.FG_WHITE,
                 element=getattr(state.player, "current_element", "base")
             )
+            state.battle_trial_id = None
         state.loot_bank = {"xp": 0, "gold": 0}
         if state.opponents:
             state.last_message = f"A {state.opponents[0].name} appears."

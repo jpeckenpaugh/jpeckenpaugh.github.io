@@ -1,0 +1,90 @@
+{
+  "player_01": {
+    "names": [
+      "Arin",
+      "Dain",
+      "Fenn",
+      "Garen",
+      "Ivo",
+      "Kael",
+      "Kori",
+      "Lior",
+      "Nico",
+      "Nox",
+      "Paz",
+      "Orin",
+      "Quin",
+      "Rook",
+      "Sage",
+      "Sol"
+    ],
+    "art": [
+      "  /)))\\",
+      " ()' '))",
+      " (( - ()",
+      " ,-\\./-.",
+      "|   :   |",
+      "|_| : |_|",
+      " \\'==='/",
+      "  |.|.|",
+      "  |_|_|",
+      " (__/__)"
+    ],
+    "color_map": [
+      "  gGgGg",
+      " Gge egG",
+      " gG r Gg",
+      " ttKKKtt",
+      "t   T   t",
+      "tTt T tTt",
+      " KKqqqKK",
+      "  bBbBb",
+      "  bBbBb",
+      " ZzzZzzZ"
+    ]
+  },
+  "player_02": {
+    "names": [
+      "Arin",
+      "Cora",
+      "Elow",
+      "Hira",
+      "Jora",
+      "Kori",
+      "Lior",
+      "Lyra",
+      "Mira",
+      "Nico",
+      "Pella",
+      "Paz",
+      "Sage",
+      "Sera",
+      "Sol",
+      "Taro"
+    ],
+    "art": [
+      "  ///\\\\",
+      " //. .|\\",
+      "//\\_-_/\\\\",
+      "\\/`'-'`\\/",
+      "/_|   |_\\",
+      " \\\\___//",
+      " /\\) (/\\",
+      "/_______\\",
+      "  |_|_|",
+      " (__/__)"
+    ],
+    "color_map": [
+      "  uUuUuU",
+      " uUe eUu",
+      "UuCcRcCUu",
+      "uFfFfFfFu",
+      "fFf   fFf",
+      " cCfffCc",
+      " ICc CcI",
+      "IiIiIiIiI",
+      "  zJzJz",
+      " JjjJjjJ"
+    ]
+  }
+}
