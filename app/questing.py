@@ -165,6 +165,7 @@ def _action_handlers() -> Dict[str, ActionHandler]:
         "set_flag_values": {"apply": _apply_set_flag_values},
         "set_recruit_only_types": {"apply": _apply_set_recruit_only},
         "clear_recruit_only_types": {"apply": _apply_clear_recruit_only},
+        "set_ui_hint": {"apply": _apply_set_ui_hint},
         "spend_gold": {"apply": _apply_spend_gold},
         "grant_follower": {"apply": _apply_grant_follower},
         "grant_items": {"apply": _apply_grant_items},
@@ -246,6 +247,22 @@ def _apply_set_recruit_only(player: Player, action: dict, ctx: Dict[str, Any], e
 
 def _apply_clear_recruit_only(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
     player.flags.pop("recruit_only_types", None)
+    return None
+
+
+def _apply_set_ui_hint(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    scene = action.get("scene")
+    action_command = action.get("action_command")
+    action_label = action.get("action_label")
+    hint = {}
+    if isinstance(scene, str) and scene:
+        hint["scene"] = scene
+    if isinstance(action_command, str) and action_command:
+        hint["action_command"] = action_command
+    if isinstance(action_label, str) and action_label:
+        hint["action_label"] = action_label
+    if hint:
+        player.flags["quest_ui_hint"] = hint
     return None
 
 

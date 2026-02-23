@@ -1058,6 +1058,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     if hasattr(ctx, "audio"):
                         ctx.audio.play_song_once("level_up")
                     return None, None
+                if _apply_quest_ui_hint(ctx, state):
+                    return None, None
                 state.quest_detail_mode = False
                 state.quest_detail_id = None
                 state.quest_detail_page = 0
@@ -1975,6 +1977,122 @@ def _open_quest_screen(ctx, state: GameState) -> None:
         state.quest_continent_index = elements.index(current)
     else:
         state.quest_continent_index = 0
+
+
+def _apply_quest_ui_hint(ctx, state: GameState) -> bool:
+    flags = getattr(state.player, "flags", {})
+    if not isinstance(flags, dict):
+        return False
+    hint = flags.pop("quest_ui_hint", None)
+    if not isinstance(hint, dict) or not hint:
+        return False
+    scene = str(hint.get("scene", "") or "").strip()
+    action_command = str(hint.get("action_command", "") or "").strip()
+    action_label = str(hint.get("action_label", "") or "").strip()
+    if scene:
+        pre_in_forest = state.player.location == "Forest"
+        pre_alive = any(m.hp > 0 for m in state.opponents)
+        cmd_state = CommandState(
+            player=state.player,
+            opponents=state.opponents,
+            loot_bank=state.loot_bank,
+            last_message=state.last_message,
+            current_venue_id=state.current_venue_id,
+            shop_mode=state.shop_mode,
+            shop_view=state.shop_view,
+            inventory_mode=state.inventory_mode,
+            inventory_items=state.inventory_items,
+            hall_mode=state.hall_mode,
+            hall_view=state.hall_view,
+            inn_mode=state.inn_mode,
+            stats_mode=state.stats_mode,
+            spell_mode=state.spell_mode,
+            followers_mode=state.followers_mode,
+            element_mode=state.element_mode,
+            alchemist_mode=state.alchemist_mode,
+            alchemy_first=state.alchemy_first,
+            alchemy_selecting=state.alchemy_selecting,
+            temple_mode=state.temple_mode,
+            smithy_mode=state.smithy_mode,
+            portal_mode=state.portal_mode,
+            quest_mode=state.quest_mode,
+            quest_detail_mode=state.quest_detail_mode,
+            options_mode=state.options_mode,
+            action_cmd=getattr(state, "action_cmd", None),
+            battle_trial_id=state.battle_trial_id,
+            quest_continent_index=state.quest_continent_index,
+            quest_detail_id=state.quest_detail_id,
+            quest_detail_page=state.quest_detail_page,
+            target_index=state.target_index,
+            command_target_override=scene,
+            command_service_override=None,
+        )
+        handle_command("ENTER_SCENE", cmd_state, ctx.router_ctx, key=None)
+        state.opponents = cmd_state.opponents
+        state.loot_bank = cmd_state.loot_bank
+        state.current_venue_id = cmd_state.current_venue_id
+        state.last_message = cmd_state.last_message
+        state.shop_mode = cmd_state.shop_mode
+        state.shop_view = cmd_state.shop_view
+        state.inventory_mode = cmd_state.inventory_mode
+        state.inventory_items = cmd_state.inventory_items
+        state.hall_mode = cmd_state.hall_mode
+        state.hall_view = cmd_state.hall_view
+        state.inn_mode = cmd_state.inn_mode
+        state.stats_mode = cmd_state.stats_mode
+        state.spell_mode = cmd_state.spell_mode
+        state.followers_mode = cmd_state.followers_mode
+        state.element_mode = cmd_state.element_mode
+        state.alchemist_mode = cmd_state.alchemist_mode
+        state.alchemy_first = cmd_state.alchemy_first
+        state.alchemy_selecting = cmd_state.alchemy_selecting
+        state.temple_mode = cmd_state.temple_mode
+        state.smithy_mode = cmd_state.smithy_mode
+        state.portal_mode = cmd_state.portal_mode
+        state.quest_mode = cmd_state.quest_mode
+        state.quest_detail_mode = cmd_state.quest_detail_mode
+        state.options_mode = cmd_state.options_mode
+        state.battle_trial_id = cmd_state.battle_trial_id
+        state.action_cmd = getattr(cmd_state, "action_cmd", None)
+        state.quest_continent_index = cmd_state.quest_continent_index
+        state.quest_detail_id = cmd_state.quest_detail_id
+        state.quest_detail_page = cmd_state.quest_detail_page
+        state.target_index = cmd_state.target_index
+        post_in_forest = state.player.location == "Forest"
+        post_alive = any(m.hp > 0 for m in state.opponents)
+        if not pre_in_forest and post_in_forest:
+            state.battle_log = []
+        if pre_in_forest and not post_in_forest:
+            state.battle_log = []
+            state.battle_trial_id = None
+        if post_in_forest and post_alive and not pre_alive:
+            state.battle_log = []
+            state.battle_escaped = False
+            state.battle_active = True
+            commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
+            state.action_cursor = state.battle_cursor
+            clamp_action_cursor(state, commands)
+    state.quest_mode = False
+    state.quest_detail_mode = False
+    state.quest_detail_id = None
+    state.quest_detail_page = 0
+    if action_command or action_label:
+        commands = action_commands_for_state(ctx, state)
+        target_idx = None
+        if action_command:
+            for i, cmd in enumerate(commands):
+                if cmd.get("command") == action_command:
+                    target_idx = i
+                    break
+        if target_idx is None and action_label:
+            for i, cmd in enumerate(commands):
+                if cmd.get("label") == action_label:
+                    target_idx = i
+                    break
+        if target_idx is not None:
+            state.action_cursor = target_idx
+            clamp_action_cursor(state, commands)
+    return True
 
 
 def _auto_open_next_quest_on_complete(ctx, state: GameState) -> bool:

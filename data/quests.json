@@ -36,6 +36,11 @@
         ]
       },
       {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "SPELLBOOK"
+      },
+      {
         "type": "grant_follower",
         "follower": {
           "type": "mushroom_baby",
