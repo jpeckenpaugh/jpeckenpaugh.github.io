@@ -36,10 +36,6 @@
         ]
       },
       {
-        "type": "set_follower_cap_extra",
-        "value": 2
-      },
-      {
         "type": "grant_follower",
         "follower": {
           "type": "mushroom_baby",
@@ -132,10 +128,6 @@
         "types": [
           "mushroom_baby"
         ]
-      },
-      {
-        "type": "set_follower_cap_extra",
-        "value": 2
       }
     ],
     "on_complete_actions": [
@@ -178,10 +170,6 @@
     "on_complete_actions": [
       {
         "type": "clear_recruit_only_types"
-      },
-      {
-        "type": "set_follower_cap",
-        "value": 2
       },
       {
         "type": "set_flags",
@@ -234,10 +222,6 @@
         "types": [
           "wolf_pup"
         ]
-      },
-      {
-        "type": "set_follower_cap_extra",
-        "value": 2
       }
     ],
     "on_complete_actions": [
@@ -282,42 +266,6 @@
       },
       {
         "type": "clear_recruit_only_types"
-      },
-      {
-        "type": "set_follower_cap",
-        "value": 3
-      }
-    ]
-  },
-  "island_01_quest_10": {
-    "title": "Island 01 Quest 10",
-    "continent": "base",
-    "summary_pre": "Mushy: Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out.",
-    "summary_active": "Player casts \"Animal Instinct\" spell and goes to the Forrest.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "wolf_pup",
-    "dialog": [
-      "Mushy: Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_07_complete"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "cast_spell",
-        "spell_id": "animal_instincts",
-        "count": 1
-      }
-    ],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_10_complete"
-        ]
       }
     ]
   },
@@ -339,7 +287,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_10_complete"
+        "island_01_quest_07_complete"
       ]
     },
     "objectives": [
@@ -414,10 +362,6 @@
         ]
       },
       {
-        "type": "set_follower_cap_extra",
-        "value": 2
-      },
-      {
         "type": "grant_follower",
         "follower": {
           "type": "fairy_baby",
@@ -464,10 +408,6 @@
         "type": "clear_recruit_only_types"
       },
       {
-        "type": "set_follower_cap",
-        "value": 3
-      },
-      {
         "type": "set_flags",
         "flags": [
           "island_01_quest_13_complete"
@@ -483,37 +423,12 @@
     "title": "Island 01 Quest 14",
     "continent": "base",
     "summary_pre": "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
-    "summary_active": "Player travels to the woods, the next opponent encounter is with the 4 fairies.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "fairy",
-    "dialog": [
-      "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
-      "If we can best them in a battle, they will grant us the \"Sprite Bite\" spell, so we can call them to help us attack in battle."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_13_complete"
-      ]
-    },
-    "objectives": [],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_14_complete"
-        ]
-      }
-    ]
-  },
-  "island_01_quest_15": {
-    "title": "Island 01 Quest 15",
-    "continent": "base",
-    "summary_pre": "Narration: Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?",
     "summary_active": "Player must win the battle against the 4 fairy warriors.",
     "summary_complete": "Quest complete.",
     "art_opponent": "fairy_teen",
     "dialog": [
+      "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
+      "If we can best them in a battle, they will grant us the \"Sprite Bite\" spell, so we can call them to help us attack in battle.",
       "Narration: Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?",
       "Beba: Oh, heya!  It's just me Beba, and my royal court.  Would you be so kind as to lend us your power?",
       "Narration: Hi Beba.  You know the rules.  If you can best us in a friendly battle, we will grant you the Sprite Bite spell so you can call us in battle to help vanquish your enemies.",
@@ -521,7 +436,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_14_complete"
+        "island_01_quest_13_complete"
       ]
     },
     "objectives": [
@@ -536,7 +451,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_15_complete"
+          "island_01_quest_14_complete"
         ]
       },
       {
@@ -548,9 +463,9 @@
       "scene_id": "island_01_quest_15_trial",
       "opponents": [
         {
-        "opponent_id": "fairy_teen",
-        "count": 4
-      }
+          "opponent_id": "fairy_teen",
+          "count": 4
+        }
       ]
     }
   },
@@ -566,7 +481,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_15_complete"
+        "island_01_quest_14_complete"
       ]
     },
     "objectives": [],
@@ -677,14 +592,6 @@
         ]
       },
       {
-        "type": "grant_mp_bonus",
-        "amount": 20
-      },
-      {
-        "type": "grant_spell_rank_up",
-        "amount": 1
-      },
-      {
         "type": "grant_xp",
         "amount": 100
       }
@@ -694,37 +601,12 @@
     "title": "Island 01 Quest 19",
     "continent": "base",
     "summary_pre": "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
-    "summary_active": "Next battle in forest will trigger opponent of baby Ogre.",
+    "summary_active": "Player must battle until finding 2 more baby ogres to join the team.",
     "summary_complete": "Quest complete.",
     "art_opponent": "ogre",
     "dialog": [
       "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
-      "And don't forget, we can always rest at the Inn to recover our HP and MP.  Nothing quite like a good nights rest, you know."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_18_complete"
-      ]
-    },
-    "objectives": [],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_19_complete"
-        ]
-      }
-    ]
-  },
-  "island_01_quest_20": {
-    "title": "Island 01 Quest 20",
-    "continent": "base",
-    "summary_pre": "Ogrito: Hello.  My name is Ogrito Pequeno.  You killed my father.  Prepare to die...",
-    "summary_active": "Orgrito joins the team",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "baby_ogre",
-    "dialog": [
+      "And don't forget, we can always rest at the Inn to recover our HP and MP.  Nothing quite like a good nights rest, you know.",
       "Ogrito: Hello.  My name is Ogrito Pequeno.  You killed my father.  Prepare to die...",
       "Beba: Aww, what a cute little baby ogre.  Are you lost kid?",
       "Ogrito: What?  No, didn't you hear me.  I am here to exact revenge against you fiends!",
@@ -737,24 +619,17 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_19_complete"
+        "island_01_quest_18_complete"
       ]
     },
     "objectives": [
       {
-        "type": "defeat_opponents",
-        "opponent_id": "baby_ogre",
-        "count": 1
+        "type": "recruit_follower",
+        "follower_type": "baby_ogre",
+        "count": 2
       }
     ],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_20_complete"
-        ]
-      },
+    "on_start_actions": [
       {
         "type": "grant_follower",
         "follower": {
@@ -765,71 +640,21 @@
         "required": true
       },
       {
-        "type": "grant_xp",
-        "amount": 120
-      }
-    ],
-    "trial": {
-      "scene_id": "island_01_quest_20_trial",
-      "opponents": [
-        {
-          "opponent_id": "baby_ogre",
-          "count": 1
-        }
-      ]
-    }
-  },
-  "island_01_quest_21": {
-    "title": "Island 01 Quest 21",
-    "continent": "base",
-    "summary_pre": "Mushy: You know, if we are going to keep this baby ogre on our team, we should find a couple more like him and fuse them at the Temple.",
-    "summary_active": "Player must battle until finding 2 more baby ogres, then fuse them at the Temple.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "baby_ogre",
-    "dialog": [
-      "Mushy: You know, if we are going to keep this baby ogre on our team, we should find a couple more like him and fuse them at the Temple."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_20_complete"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "fuse_followers",
-        "follower_type": "baby_ogre",
-        "count": 3
-      }
-    ],
-    "on_start_actions": [
-      {
         "type": "set_recruit_only_types",
         "types": [
           "baby_ogre"
         ]
-      },
-      {
-        "type": "set_follower_cap_extra",
-        "value": 2
       }
     ],
     "on_complete_actions": [
       {
-        "type": "clear_recruit_only_types"
-      },
-      {
-        "type": "set_follower_cap",
-        "value": 3
-      },
-      {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_21_complete"
+          "island_01_quest_19_complete"
         ]
       },
       {
-        "type": "grant_xp",
-        "amount": 120
+        "type": "clear_recruit_only_types"
       }
     ]
   },
@@ -846,7 +671,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_21_complete"
+        "island_01_quest_19_complete"
       ]
     },
     "objectives": [],
@@ -991,7 +816,7 @@
     "title": "Island 01 Quest 07",
     "continent": "base",
     "summary_pre": "Mushy: Our team is really progressing nicely!",
-    "summary_active": "Chase teaches the player the \"Animal Instinct\" spell.",
+    "summary_active": "Player casts \"Animal Instinct\" spell and goes to the Forrest.",
     "summary_complete": "Quest complete.",
     "art_opponent": "wolf_pup",
     "dialog": [
@@ -1001,14 +826,21 @@
       "Chase: Woof?",
       "Mushy: No, I'm just kidding. Alright I will tell them...",
       "So Chase says he can teach you a special magic ability \"Animal Instincts.\"  With this spell you will be able to sense opponents in the forrest before they appear.",
-      "This will let us get the jump on opponents, giving us an pre-emptive attack before the battle actually starts."
+      "This will let us get the jump on opponents, giving us an pre-emptive attack before the battle actually starts.",
+      "Mushy: Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out."
     ],
     "requirements": {
       "flags_required": [
         "island_01_quest_06_complete"
       ]
     },
-    "objectives": [],
+    "objectives": [
+      {
+        "type": "cast_spell",
+        "spell_id": "animal_instincts",
+        "count": 1
+      }
+    ],
     "on_start_actions": [
       {
         "type": "set_flags",

@@ -78,8 +78,6 @@ def _handle_socialize(ctx: CommandContext) -> str:
     follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
     if follower_type not in recruit_only_types:
         return "Why would I want to join your group?"
-    if getattr(ctx.player, "follower_slots_remaining", lambda: 0)() <= 0:
-        return "You cannot lead more followers."
     follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
     names = getattr(opponent, "follower_names", []) or []
     name = random.choice(names) if names else opponent.name

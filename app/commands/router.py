@@ -28,7 +28,7 @@ from app.commands.registry import CommandContext, CommandRegistry, dispatch_comm
 from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
 from app.data_access.spell_effects_data import SpellEffectsData
-from app.questing import evaluate_quests, emit_quest_events, ordered_quest_ids
+from app.questing import apply_actions, evaluate_quests, emit_quest_events, ordered_quest_ids
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
@@ -566,24 +566,44 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             idx = int(command_id.replace("NUM", "")) - 1
             if 0 <= idx < len(state.inventory_items):
                 item_id, _ = state.inventory_items[idx]
+                base_item_id = item_id.split(":", 1)[1] if item_id.startswith("item:") else item_id
                 target = None
                 if state.player.followers:
-                    item = ctx.items.get(item_id, {})
+                    item = ctx.items.get(base_item_id, {})
                     if isinstance(item, dict) and (int(item.get("hp", 0)) > 0 or int(item.get("mp", 0)) > 0):
                         target_type, target_ref = state.player.select_team_target(mode="combined")
                         if target_type == "follower":
                             target = target_ref
-                before_count = int(state.player.inventory.get(item_id, 0) or 0)
+                before_count = int(state.player.inventory.get(base_item_id, 0) or 0)
                 state.last_message = state.player.use_item(item_id, ctx.items, target=target)
-                after_count = int(state.player.inventory.get(item_id, 0) or 0)
+                after_count = int(state.player.inventory.get(base_item_id, 0) or 0)
                 used_count = max(0, before_count - after_count)
+                if used_count > 0:
+                    item = ctx.items.get(base_item_id, {})
+                    actions = item.get("use_actions", []) if isinstance(item, dict) else []
+                    if isinstance(actions, list) and actions:
+                        ok, error, effects = apply_actions(
+                            state.player,
+                            actions,
+                            items_data=ctx.items,
+                            spells_data=ctx.spells,
+                            followers_data=ctx.followers,
+                            quests_data=ctx.quests,
+                            objectives_data=ctx.quest_objectives,
+                            events_data=ctx.quest_events,
+                        )
+                        messages = effects.get("messages", [])
+                        if error:
+                            messages = messages + [error] if isinstance(messages, list) else [error]
+                        if messages:
+                            state.last_message = f"{state.last_message} " + " ".join(messages)
                 if used_count > 0 and hasattr(ctx, "quests") and ctx.quests is not None:
                     quest_messages = emit_quest_events(
                         state.player,
                         ctx.quests,
                         ctx.quest_events,
                         "use_item",
-                        [{"item_id": item_id, "count": used_count}],
+                        [{"item_id": base_item_id, "count": used_count}],
                         ctx.items,
                         ctx.spells,
                         ctx.followers,

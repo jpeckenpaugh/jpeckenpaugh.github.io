@@ -56,10 +56,7 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         has_fusion = any(count >= 3 for count in counts.values())
     in_town = getattr(player, "location", "") == "Town"
     in_temple = bool(getattr(player, "location", "") == "Town" and getattr(player, "current_venue_id", "") == "town_temple")
-    can_recruit = False
-    if has_recruitable:
-        slots = getattr(player, "follower_slots_remaining", lambda: 0)()
-        can_recruit = slots > 0
+    can_recruit = has_recruitable
     for cond in conditions:
         if cond == "has_opponents" and not has_opponents:
             return False

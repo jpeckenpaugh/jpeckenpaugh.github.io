@@ -285,20 +285,7 @@ class Player:
     def total_max_hp(self) -> int:
         return self.max_hp + int(self.temp_hp_bonus)
 
-    def follower_limit(self) -> int:
-        base_limit = 5
-        if isinstance(getattr(self, "flags", None), dict):
-            cap = self.flags.get("follower_cap")
-            if isinstance(cap, int) and cap > 0:
-                return min(base_limit, cap)
-        return base_limit
-
-    def follower_slots_remaining(self) -> int:
-        return max(0, self.follower_limit() - len(self.followers))
-
     def add_follower(self, follower: dict) -> bool:
-        if self.follower_slots_remaining() <= 0:
-            return False
         if not isinstance(self.followers, list):
             self.followers = []
         self._ensure_follower_id(follower)

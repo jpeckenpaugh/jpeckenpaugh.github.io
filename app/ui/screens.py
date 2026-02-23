@@ -1202,6 +1202,31 @@ def generate_frame(
         else:
             action_cursor = max(0, min(action_cursor, len(commands) - 1))
 
+        render_indices = list(range(len(commands)))
+        if not quest_detail_mode:
+            header_count = 2 if len(commands) >= 2 else 0
+            back_index = len(commands) - 1 if commands else -1
+            first_entry = header_count
+            last_entry = back_index - 1
+            quest_indices = list(range(first_entry, last_entry + 1)) if last_entry >= first_entry else []
+            visible_quests = 10
+            if len(quest_indices) > visible_quests:
+                pos = 0
+                if action_cursor in quest_indices:
+                    pos = quest_indices.index(action_cursor)
+                elif action_cursor == back_index:
+                    pos = len(quest_indices) - 1
+                window_start = max(0, min(pos - (visible_quests // 2), len(quest_indices) - visible_quests))
+                visible_indices = quest_indices[window_start:window_start + visible_quests]
+                render_indices = []
+                if header_count >= 1:
+                    render_indices.append(0)
+                if header_count >= 2:
+                    render_indices.append(1)
+                render_indices.extend(visible_indices)
+                if back_index >= 0:
+                    render_indices.append(back_index)
+
         menu_labels = []
         base_menu_labels = []
         for idx, entry in enumerate(commands):
@@ -1217,7 +1242,8 @@ def generate_frame(
         menu_width = max(10, max_label + 2 + (menu_margin * 2))
 
         menu_inner_width = max(1, menu_width - 2 - (menu_margin * 2))
-        for idx, entry in enumerate(commands):
+        for idx in render_indices:
+            entry = commands[idx]
             label = str(entry.get("label", ""))
             if entry.get("_header"):
                 line = center_ansi(label.strip(), menu_inner_width)
@@ -1750,7 +1776,7 @@ def generate_frame(
 
         menu_labels = []
         base_labels = []
-        menu_header = f"Followers: {count}/{player.follower_limit()}"
+        menu_header = f"Followers: {count}"
         menu_labels.append(center_ansi(menu_header, max(1, len(menu_header))))
         menu_labels.append("")
 

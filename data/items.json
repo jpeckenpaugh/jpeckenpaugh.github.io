@@ -743,7 +743,17 @@
     "mp": 0,
     "use_while_full": true,
     "price": 0,
-    "desc": "A glowing relic said to deepen your mana reserves."
+    "desc": "A glowing relic said to deepen your mana reserves.",
+    "use_actions": [
+      {
+        "type": "grant_mp_bonus",
+        "amount": 20
+      },
+      {
+        "type": "grant_spell_rank_up",
+        "amount": 1
+      }
+    ]
   },
   "golden_collar": {
     "name": "Golden Collar",
