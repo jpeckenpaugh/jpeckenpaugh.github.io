@@ -28,6 +28,7 @@ from app.data_access.quest_objectives_data import QuestObjectivesData
 from app.data_access.quest_events_data import QuestEventsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.spell_effects_data import SpellEffectsData
 from app.data_access.stories_data import StoriesData
 from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.quests_screen_data import QuestsScreenData
@@ -72,6 +73,7 @@ class ScreenContext:
     menus: MenusData
     commands: CommandsData
     spells: SpellsData
+    spell_effects: SpellEffectsData
     text: TextData
     colors: ColorsData
     frames: FramesData

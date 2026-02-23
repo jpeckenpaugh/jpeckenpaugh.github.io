@@ -1,0 +1,30 @@
+{
+  "elemental_damage": {
+    "kind": "damage",
+    "target_mode": "single_or_all_by_rank",
+    "rank_all_threshold": 2,
+    "atk_bonus_key": "atk_bonus",
+    "stun_chance_key": "stun_chance",
+    "rank3_damage_mult_key": "rank3_damage_mult",
+    "rank3_stun_bonus_key": "rank3_stun_bonus"
+  },
+  "support_boost": {
+    "kind": "support",
+    "target_mode": "team",
+    "per_rank_bonus": 10,
+    "max_stack_mult": 5,
+    "stats": [
+      "atk",
+      "defense"
+    ]
+  },
+  "support_life_boost": {
+    "kind": "support",
+    "target_mode": "team",
+    "per_rank_bonus": 10,
+    "max_stack_mult": 5,
+    "stats": [
+      "max_hp"
+    ]
+  }
+}

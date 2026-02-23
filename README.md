@@ -161,6 +161,7 @@ Game data is externalized into JSON:
 - `data/followers.json` — follower templates (base stats + abilities)
 - `data/quest_objectives.json` — quest objective registry (events, progress keys, completion rules)
 - `data/quest_events.json` — quest event emission rules (trigger → event payloads)
+- `data/spell_effects.json` — spell effect registry (behavior + targeting rules)
 
 ---
 
@@ -239,6 +240,14 @@ Quest UI labels are configured in `data/quests_screen.json` under `actions`:
 
 - `detail`: list of action ids (default `["next","back"]`)
 - `labels.next` / `labels.start` / `labels.back` / `labels.list_back`
+
+---
+
+## Spells (Data-Driven Effects)
+
+Spell behavior is driven by `data/spell_effects.json` and each spell declares an `effect_id`.
+Effects define targeting rules and behavior (e.g. damage vs support buffs). Spells without a
+valid `effect_id` fail preflight validation.
 
 ---
 

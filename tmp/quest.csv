@@ -1,0 +1,171 @@
+,US English
+Background,"The player starts the first island as a young person.  They have minimal life, no magic, and only 1 attack/defense points.  Basically, they are not able to fight any monsters in their initial state."
+,"By the end of this Island, the player will have a full team of 4, learn several magic spells, have full equipment.  The final task for this island will be to free the mystic tower from the evil influence, and be granted the Teleportation Stone which allows them to travel to Island #2."
+,
+,
+Quest 01,Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.
+,
+Mushy,"Wow, you are a real hero!  Thank you for saving me from that awful crow!"
+,"On our own, neither of us is strong enough to take on the monsters around here, but I have a little secret."
+,"I have a magic mushroom tea, and it is able to open your mind and allow you to understand basic magic."
+,"I can also show you how to cast a ""Strengthen"" that you will be able to use to raise our attack and defense points."
+,"The spell will use your Magic Points (MP) and will wear off over time.  But for a while, we will be able to fight the monsters in this area and win."
+,"Defeating monsters will grant us gold and experience.  If your life and magic points are getting low, we can visit the Inn in the nearby town, and sleep for the night."
+,"So what do you say?  Feel like trying my magic tea, and we can test our luck against some monsters?"
+,
+Story,Player will need to use the Strengthen spell to increase their attack and defense.  
+,Player will need to kill approximately 10 enemies to gain level 2.
+,
+Trigger,Player reaches Level 2.
+,
+Mushy,"See, that wasn't that hard!"
+,"Now that you have reached level 2, you have 10 ""status"" points that you can use to increase your base stats."
+,"You can power up your Life Points (HP), Mana Points (MP).  You should also increase your attack points and defense points, so we won't be so reliant on the Strengthen spell."
+,
+Trigger,Player is taken to level up screen and must use their 10 status points.
+,
+Mushy,"Now you know the basic of fighting, let's talk a bit about Fusion."
+,"I am just a small little mushroom, but if we can find 2 more mini mushrooms to join our team, then we will be able to fuse our powers to evolve into a stronger form."
+,"Don't worry, fushion doesn't hurt.  It is just another way to power up and combine our talents."
+,"If we fight a few more monsters, we are bound to come upon a few more mini mushrooms like me.  If I can convince 2 mushrooms to join us, then we will be able to fuse our powers together."
+,
+Trigger,Player must fight opponents and convince 2 mini mushrooms to join team.  Once there are 3 mini mushrooms on team....
+,
+Mushy,"Great!  Now that we have 3 mini mushrooms on our team, you can fuse us."
+,Travel to the town and visit the Temple.  The priestest there will be able to fuse us and evolve us to our next level.
+,
+Trigger,"Player must go to Town, Visit Temple, and Fuse 3 mini mushrooms."
+,
+Mushy,"We are making progress, but we really need to find more friends to join our team.  Let's so hunting in the forrest and see if we can recruit any more team members."
+,
+Trigger,Player leaves town and goes to the forrest.
+,
+Mushy,"Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause."
+,
+Trigger,You free Chase from the wolf trap.
+,
+Chase,Woof Woof!
+Mushy,What's that you say?  Your name is Chase?
+Chase,Woof Woof!
+Mushy,Of course you can join us!
+,[ Chase Joins Team ]
+Mushy,"Now that we have a Wolf Pup on our team, we should be able to recruit 2 more wolf pups, and then fuse them in Temple."
+,
+Trigger,Player must hunt opponents until finding 2 more wolf pups to join the team.
+,
+Mushy,"Now that we have 3 wolf pups on our team, let's go to the temple and fuse them."
+,
+Trigger,Player goes to Temple and Fuses 3 wolf pups.
+,
+Mushy,Our team is really progressing nicely!
+Chase,Woof.
+Mushy,What is it boy?  Timmy fell down a well?
+Chase,Woof?
+Mushy,"No, I'm just kidding. Alright I will tell them..."
+,"So Chase says he can teach you a special magic ability ""Animal Instincts.""  With this spell you will be able to sense opponents in the forrest before they appear."
+,"This will let us get the jump on opponents, giving us an pre-emptive attack before the battle actually starts."
+,
+Trigger,"Chase teaches the player the ""Animal Instinct"" spell."
+,
+Mushy,"Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out."
+,
+Trigger,"Player casts ""Animal Instinct"" spell and goes to the Forrest."
+,
+Narration,"Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follo."
+Mushy,It seems like Chase has picked up a scent.  We better follow him!
+Beba,Take that you mean trolls!
+Narration,You come upon a small fairy who appaers to be fighting 4 small trolls.
+Mushy,Hey Beba!  What kind of trouble have you gotten into today?
+Beba,"A fairy princess like me is never in trouble, Mushy.  You know that."
+,"But I suppose if you want to give me a hand in punishing these nasty trolls, I won't stop you."
+,
+Trigger,Team must win a battle against 4 baby trolls with Beba on their team.
+,
+Beba,"Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist."
+Narration,Beba joins the team.
+Beba,"It's only fair I share a bit of my magic knowledge with you.  Here, take this:"
+Narration,"Beba teaches the player the ""Healing"" spell."
+Beba,"We fairies are particuarly good at healing, so when your life is getting low, you can use that spell to restore some hit points."
+,"Besides healers, fairies are also known as powerful warriors.  What, I'm not kidding!"
+,"Tell you what, if we can find 2 more small faries to join our team, and we can evolve me to my next level, then I will introduce you to the 4 fairy warriors who live in these woods."
+,
+Trigger,Player has to battle opponents until finding 2 fairies to join the team.
+,
+Beba,Excellent!  Now let's head to the Temple and have the priestess fuse us faries.
+,
+Trigger,Player travels to temple and uses fuse on 3 faries.
+,
+Beba,"Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo."
+,"If we can best them in a battle, they will grant us the ""Sprite Bite"" spell, so we can call them to help us attack in battle."
+,
+Trigger,"Player travels to the woods, the next opponent encounter is with the 4 fairies."
+,
+Narration,"Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?"
+Beba,"Oh, heya!  It's just me Beba, and my royal court.  Would you be so kind as to lend us your power?"
+Narration,"Hi Beba.  You know the rules.  If you can best us in a friendly battle, we will grant you the Sprite Bite spell so you can call us in battle to help vanquish your enemies."
+Beba,"Ready or not, here we come!"
+,
+Trigger,Player must win the battle against the 4 fairy warriors.
+,
+Narration,"You have proven yourself, so as promised, here is the ""Sprite Bite"" spell.  And since it was just a friendly fight, we will restore your HP and MP as well."
+,
+Trigger,Player receives the Sprite Bite spell and full life/magic points.
+,
+Narration,"Now that we have aggreed to help you, there is something you can do for us."
+,There is a Giant Ogre who lives in these woods.  He recently stoll our mana stone.  This powerful relic can raise MP and magic power all at the same time.
+,"His cave is nearby.  With our combined power, we should be able to defeat the Giant Ogre and his minions, and recover the mana stone."
+,
+Trigger,Next Opponent player fights in the Forest will be the Giant Ogre.  Player must defeat Giant Ogre in battle.
+,
+Beba,I have never seen a real Mana Stone before.  With this I should be more powerful than ever!
+,"Okay fine, you can use the mana stone if you really want to.  It will grant you Spell XP, which will go a long way towards ranking up your spells."
+,"When spells increase in rank, they grow in power.  Attack spells of Rank 2 and 3 typically attack multiple enemies at once as well."
+,"And as an added bonus, this will grant you an additional 20 Mana Points.  This will really expand your magic capabilities, and let you cast more spells in a single day, before having to rest at the Inn to recoup your Mana."
+,
+Trigger,"Player Uses Mana Stone - spells receive 10 Rank XP each, advancing to rank 2.  Player receives 20 MP bonus as well."
+,
+Beba,"When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells."
+,"And don't forget, we can always rest at the Inn to recover our HP and MP.  Nothing quite like a good nights rest, you know."
+,
+Trigger,Next battle in forest will trigger opponent of baby Ogre.
+,
+Ogrito,Hello.  My name is Ogrito Pequeno.  You killed my father.  Prepare to die...
+Beba,"Aww, what a cute little baby ogre.  Are you lost kid?"
+Ogrito,"What?  No, didn't you hear me.  I am here to exact revenge against you fiends!"
+Chase,Ruff!  (Chase bats his Puppy Eyes at Ogrito)
+Ogrito,"No, that won't work on me.  I don't care how cute and cuddly you are!"
+Chase,Hmph... (Puppy Eyes just don't quit).
+Ogrito,"Ohh, you are just too cute.  I can't stay mad at you."
+,"To be honest, my dad was kind of a jerk.  He was always stealing magic relics anyway."
+,"Fine, I will hang out with you for a little while.  But just so you know, I will most likely kill you in the morning."
+,
+Trigger,Orgrito joins the team
+,
+Mushy,"You know, if we are going to keep this baby ogre on our team, we should find a couple more like him and fuse them at the Temple."
+,
+Trigger,"Player must battle until finding 2 more baby ogres, then fuse them at the Temple."
+,
+Ogrito,"Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!"
+,"Ok, fine.  Just this one time though."
+,
+Trigger,"Player learns ""Fit of Rage"" spell from Ogrito."
+,
+Ogrito,"Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem."
+,
+Trigger,"When traveling to Forest, player is interupted by a Golden Wolf Messenger."
+,
+Golden Wolf Messenger,Woof!
+Chase,Woof woof....
+Golden Wolf Messenger,"Woof, growl, woof woof."
+Chase,Woof.
+Narration,"Chase looks at you, as if he is waiting for a response."
+Mushy,"Oops, I forgot for a minute you don't speak Wolf...."
+,So it seems like there is a Poisonous Python that has been stealing pups from the Wolf Pack.  The Pack leader has asked for our help in rescuing the pups from the terrible snake.
+,
+Trigger,Player must defeat the Poisonous Python in battle.
+,
+Chase,Woof!
+Pups,Woof woof woof!
+Pack Leader,"Bark.  Woof, woof. Howl!"
+Narration,The Pack Leader give you the Golden Collar
+Mushy,"Wow, a Golden Collar from the Pack Leader himself.  As long as you wear this necklace on you, no Golden Wolf will dare to attack you in battle."

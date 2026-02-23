@@ -1970,27 +1970,44 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         spells = follower.get("spells", [])
         if not isinstance(spells, list):
             spells = []
-        # Priority: life_boost if needed, then strength, then elemental
-        if "life_boost" in spells:
-            spell = ctx.spells.get("life_boost", {})
+        # Priority: support spell for max HP, then support spell for ATK/DEF, then elemental
+        support_spells = []
+        for spell_id in spells:
+            spell = ctx.spells.get(spell_id, {})
+            effect_id = str(spell.get("effect_id", "") or "")
+            effect_cfg = ctx.spell_effects.get(effect_id, {}) if hasattr(ctx, "spell_effects") else {}
+            if isinstance(effect_cfg, dict) and effect_cfg.get("kind") == "support":
+                support_spells.append((spell_id, spell, effect_cfg))
+        support_cast = False
+        for spell_id, spell, effect_cfg in support_spells:
+            stats = effect_cfg.get("stats", [])
+            if not isinstance(stats, list):
+                stats = []
+            needs = False
+            if "max_hp" in stats and state.player.hp < state.player.total_max_hp():
+                needs = True
+            if ("atk" in stats or "defense" in stats) and (
+                state.player.temp_atk_bonus <= 0 or state.player.temp_def_bonus <= 0
+            ):
+                needs = True
+            if not needs:
+                continue
             can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
-            if can_cast and state.player.hp < state.player.total_max_hp():
-                if not use_charge:
-                    follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+            if not can_cast:
+                continue
+            if not use_charge:
+                follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+            if "max_hp" in stats:
                 animate_life_boost_gain(ctx, render_frame, state, generate_frame, 1)
-                name = follower.get("name", "Follower")
-                push_battle_message(state, f"{name} casts Life Boost.")
-                continue
-        if "strength" in spells:
-            spell = ctx.spells.get("strength", {})
-            can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
-            if can_cast and (state.player.temp_atk_bonus <= 0 or state.player.temp_def_bonus <= 0):
-                if not use_charge:
-                    follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+            if "atk" in stats or "defense" in stats:
                 animate_strength_gain(ctx, render_frame, state, generate_frame, 1)
-                name = follower.get("name", "Follower")
-                push_battle_message(state, f"{name} casts Strength.")
-                continue
+            name = follower.get("name", "Follower")
+            spell_name = spell.get("name", spell_id.title())
+            push_battle_message(state, f"{name} casts {spell_name}.")
+            support_cast = True
+            break
+        if support_cast:
+            continue
         wand = state.player.follower_gear_instance(follower, "wand")
         element = _follower_wand_element(wand)
         spell_id = _follower_element_spell_id(element) if element else None
@@ -2453,6 +2470,11 @@ def resolve_player_action(
         max_rank = ctx.spells.rank_for(spell, state.player, spell_id)
         base_cost = int(spell.get("mp_cost", 2))
         element = spell.get("element")
+        effect_id = str(spell.get("effect_id", "") or "")
+        effect_cfg = ctx.spell_effects.get(effect_id, {}) if hasattr(ctx, "spell_effects") else {}
+        if not effect_id or not isinstance(effect_cfg, dict) or not effect_cfg:
+            state.last_message = f"{name} fizzles with no effect."
+            return None
         has_charge = False
         if element:
             charges = state.player.wand_charges()
@@ -2465,17 +2487,21 @@ def resolve_player_action(
             return None
         rank = max(1, min(state.spell_cast_rank, max_rank, max_affordable))
         state.spell_cast_rank = rank
-        if rank >= 2:
-            state.last_spell_targets = [
-                i for i, opp in enumerate(state.opponents) if opp.hp > 0
-            ]
-        else:
-            if state.target_index is not None:
-                state.last_spell_targets = [state.target_index]
+        state.last_spell_targets = []
+        if effect_cfg.get("kind") == "damage":
+            target_mode = str(effect_cfg.get("target_mode", "") or "")
+            if target_mode == "single_or_all_by_rank":
+                threshold = int(effect_cfg.get("rank_all_threshold", 2) or 2)
+                if rank >= threshold:
+                    state.last_spell_targets = [
+                        i for i, opp in enumerate(state.opponents) if opp.hp > 0
+                    ]
+                elif state.target_index is not None:
+                    state.last_spell_targets = [state.target_index]
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
-        if spell_id in ("life_boost", "strength"):
+        if effect_cfg.get("kind") == "support":
             in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
             if state.spell_mode and not in_battle:
                 state.spell_target_mode = True
@@ -2506,10 +2532,15 @@ def resolve_player_action(
                     return None
                 state.player.mp -= base_cost
             state.last_team_target_player = (target_type == "player")
+            per_rank = int(effect_cfg.get("per_rank_bonus", 0) or 0)
+            max_stack_mult = int(effect_cfg.get("max_stack_mult", 5) or 5)
+            stats = effect_cfg.get("stats", [])
+            if not isinstance(stats, list):
+                stats = []
             if target_type == "player":
-                gain_per_cast = max(0, 10 * rank)
-                max_stack = gain_per_cast * 5
-                if spell_id == "life_boost":
+                gain_per_cast = max(0, per_rank * rank)
+                max_stack = gain_per_cast * max_stack_mult
+                if "max_hp" in stats:
                     current = int(state.player.temp_hp_bonus or 0)
                     remaining = max(0, max_stack - current)
                     gain = min(gain_per_cast, remaining)
@@ -2521,7 +2552,7 @@ def resolve_player_action(
                             generate_frame,
                             gain,
                         )
-                else:
+                if "atk" in stats or "defense" in stats:
                     current = min(
                         int(state.player.temp_atk_bonus or 0),
                         int(state.player.temp_def_bonus or 0),
@@ -2537,9 +2568,9 @@ def resolve_player_action(
                             gain,
                         )
             else:
-                gain_per_cast = max(0, 10 * rank)
-                max_stack = gain_per_cast * 5
-                if spell_id == "life_boost":
+                gain_per_cast = max(0, per_rank * rank)
+                max_stack = gain_per_cast * max_stack_mult
+                if "max_hp" in stats:
                     current = int(target_ref.get("temp_hp_bonus", 0) or 0)
                     remaining = max(0, max_stack - current)
                     gain = min(gain_per_cast, remaining)
@@ -2552,7 +2583,7 @@ def resolve_player_action(
                             target_ref,
                             gain,
                         )
-                else:
+                if "atk" in stats or "defense" in stats:
                     current_atk = int(target_ref.get("temp_atk_bonus", 0) or 0)
                     current_def = int(target_ref.get("temp_def_bonus", 0) or 0)
                     current = min(current_atk, current_def)
@@ -2568,8 +2599,7 @@ def resolve_player_action(
                             gain,
                         )
             target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
-            spell_label = "Life Boost" if spell_id == "life_boost" else "Strength"
-            state.last_message = f"You cast {spell_label} on {target_name}."
+            state.last_message = f"You cast {name} on {target_name}."
             if hasattr(ctx, "audio"):
                 ctx.audio.play_sfx_once("spell_up", "C4")
             return cmd
@@ -2580,9 +2610,9 @@ def resolve_player_action(
         message = cast_spell(
             state.player,
             state.opponents,
-            spell_id,
+            spell,
+            effect_cfg,
             loot=state.loot_bank,
-            spells_data=ctx.spells,
             target_index=state.target_index,
             rank=rank,
         )

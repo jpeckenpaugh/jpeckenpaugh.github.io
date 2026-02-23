@@ -29,7 +29,8 @@
       "flags_any": [
         "spell_spark_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "iceblast": {
     "name": "Iceblast",
@@ -62,7 +63,8 @@
       "flags_any": [
         "spell_iceblast_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "fireblast": {
     "name": "Fireblast",
@@ -95,7 +97,8 @@
       "flags_any": [
         "spell_fireblast_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "boulder": {
     "name": "Boulder",
@@ -128,7 +131,8 @@
       "flags_any": [
         "spell_boulder_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "tornado": {
     "name": "Tornado",
@@ -161,7 +165,8 @@
       "flags_any": [
         "spell_tornado_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "strength": {
     "name": "Strength",
@@ -180,7 +185,8 @@
       "flags_any": [
         "spell_strength_enabled"
       ]
-    }
+    },
+    "effect_id": "support_boost"
   },
   "tide": {
     "name": "Tide",
@@ -213,7 +219,8 @@
       "flags_any": [
         "spell_tide_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "radiance": {
     "name": "Radiance",
@@ -246,7 +253,8 @@
       "flags_any": [
         "spell_radiance_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "shade": {
     "name": "Shade",
@@ -279,7 +287,8 @@
       "flags_any": [
         "spell_shade_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "sprite_bite": {
     "name": "Sprite's Bite",
@@ -309,7 +318,8 @@
       "flags_any": [
         "spell_sprite_bite_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "life_boost": {
     "name": "Life Boost",
@@ -327,6 +337,7 @@
         "spell_life_boost_enabled"
       ]
     },
-    "class": "support"
+    "class": "support",
+    "effect_id": "support_life_boost"
   }
 }

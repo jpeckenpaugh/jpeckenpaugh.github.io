@@ -28,6 +28,7 @@ from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.stories_data import StoriesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.spell_effects_data import SpellEffectsData
 from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.quests_screen_data import QuestsScreenData
@@ -49,6 +50,7 @@ class AppContext:
     objects: ObjectsData
     venues: VenuesData
     spells: SpellsData
+    spell_effects: SpellEffectsData
     commands_data: CommandsData
     menus: MenusData
     texts: TextData
@@ -115,6 +117,9 @@ def _load_venues() -> VenuesData:
 def _load_spells() -> SpellsData:
     return SpellsData(f"{DATA_DIR}/spells.json")
 
+
+def _load_spell_effects() -> SpellEffectsData:
+    return SpellEffectsData(f"{DATA_DIR}/spell_effects.json")
 
 def _load_commands() -> CommandsData:
     return CommandsData(f"{DATA_DIR}/commands.json")
@@ -230,6 +235,7 @@ def create_app() -> AppContext:
     objects = _load_objects()
     venues = _load_venues()
     spells = _load_spells()
+    spell_effects = _load_spell_effects()
     commands_data = _load_commands()
     menus = _load_menus()
     texts = _load_texts()
@@ -269,6 +275,7 @@ def create_app() -> AppContext:
         venues=venues,
         save_data=save_data,
         spells=spells,
+        spell_effects=spell_effects,
         menus=menus,
         continents=continents,
         elements=elements,
@@ -300,6 +307,7 @@ def create_app() -> AppContext:
         menus=menus,
         commands=commands_data,
         spells=spells,
+        spell_effects=spell_effects,
         text=texts,
         colors=colors,
         frames=frames,
@@ -331,6 +339,7 @@ def create_app() -> AppContext:
         objects=objects,
         venues=venues,
         spells=spells,
+        spell_effects=spell_effects,
         commands_data=commands_data,
         menus=menus,
         texts=texts,

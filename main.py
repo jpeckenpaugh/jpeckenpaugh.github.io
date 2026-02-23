@@ -83,6 +83,22 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
     total = max(1, len(files))
     results = []
     start = time.time()
+    def _validate_spells_payload(payload: object, effects_payload: object) -> list[str]:
+        errors: list[str] = []
+        if not isinstance(payload, dict):
+            return ["spells.json root must be an object"]
+        effects = effects_payload if isinstance(effects_payload, dict) else {}
+        for spell_id, spell in payload.items():
+            if not isinstance(spell, dict):
+                errors.append(f"{spell_id}: spell entry must be an object")
+                continue
+            effect_id = str(spell.get("effect_id", "") or "")
+            if not effect_id:
+                errors.append(f"{spell_id}: effect_id is required")
+            elif effect_id not in effects:
+                errors.append(f"{spell_id}: unknown effect_id {effect_id}")
+        return errors
+
     def _validate_quests_payload(payload: object, objectives_payload: object, events_payload: object) -> list[str]:
         errors: list[str] = []
         if not isinstance(payload, dict):
@@ -134,6 +150,7 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
 
     objectives_payload = {}
     events_payload = {}
+    spell_effects_payload = {}
     if "quest_objectives.json" in files:
         try:
             with open(os.path.join(DATA_DIR, "quest_objectives.json"), "r", encoding="utf-8") as f:
@@ -146,6 +163,12 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 events_payload = json.load(f)
         except (OSError, JSONDecodeError):
             events_payload = {}
+    if "spell_effects.json" in files:
+        try:
+            with open(os.path.join(DATA_DIR, "spell_effects.json"), "r", encoding="utf-8") as f:
+                spell_effects_payload = json.load(f)
+        except (OSError, JSONDecodeError):
+            spell_effects_payload = {}
     for idx, name in enumerate(files):
         path = os.path.join(DATA_DIR, name)
         ok = True
@@ -162,6 +185,11 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 count = 1
             if name == "quest_events.json":
                 validation_errors = _validate_quest_events_payload(data)
+                if validation_errors:
+                    ok = False
+                    error = "; ".join(validation_errors)
+            if name == "spells.json":
+                validation_errors = _validate_spells_payload(data, spell_effects_payload)
                 if validation_errors:
                     ok = False
                     error = "; ".join(validation_errors)

@@ -27,6 +27,7 @@ from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
+from app.data_access.spell_effects_data import SpellEffectsData
 from app.questing import evaluate_quests, emit_quest_events, ordered_quest_ids
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
@@ -81,6 +82,7 @@ class RouterContext:
     venues: VenuesData
     save_data: SaveData
     spells: SpellsData
+    spell_effects: SpellEffectsData
     menus: MenusData
     continents: ContinentsData
     elements: ElementsData
