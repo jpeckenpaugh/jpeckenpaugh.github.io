@@ -53,6 +53,7 @@ class GameState:
     defend_evasion: float = 0.0
     action_effect_override: Optional[dict] = None
     level_up_notes: list[str] = field(default_factory=list)
+    pending_level_up: bool = False
     last_spell_targets: list[int] = field(default_factory=list)
     team_target_index: Optional[int] = None
     last_team_target_player: Optional[bool] = None

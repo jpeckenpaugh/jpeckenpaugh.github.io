@@ -1,0 +1,99 @@
+Quest 01
+Start: Quest 01: Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.
+Completion Trigger: Player reaches Level 2.
+
+Quest 02
+Start: Mushy: See, that wasn't that hard!
+Completion Trigger: Player is taken to level up screen and must use their 10 status points.
+
+Quest 03
+Start: Mushy: Now you know the basic of fighting, let's talk a bit about Fusion.
+Completion Trigger: Player must fight opponents and convince 2 mini mushrooms to join team.  Once there are 3 mini mushrooms on team....
+
+Quest 04
+Start: Mushy: Great!  Now that we have 3 mini mushrooms on our team, you can fuse us.
+Completion Trigger: Player must go to Town, Visit Temple, and Fuse 3 mini mushrooms.
+
+Quest 05
+Start: Mushy: We are making progress, but we really need to find more friends to join our team.  Let's so hunting in the forrest and see if we can recruit any more team members.
+Completion Trigger: Player leaves town and goes to the forrest.
+
+Quest 06
+Start: Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.
+Completion Trigger: You free Chase from the wolf trap.
+
+Quest 07
+Start: Chase: Woof Woof!
+Completion Trigger: Player must hunt opponents until finding 2 more wolf pups to join the team.
+
+Quest 08
+Start: Mushy: Now that we have 3 wolf pups on our team, let's go to the temple and fuse them.
+Completion Trigger: Player goes to Temple and Fuses 3 wolf pups.
+
+Quest 09
+Start: Mushy: Our team is really progressing nicely!
+Completion Trigger: Chase teaches the player the "Animal Instinct" spell.
+
+Quest 10
+Start: Mushy: Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out.
+Completion Trigger: Player casts "Animal Instinct" spell and goes to the Forrest.
+
+Quest 11
+Start: Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follo.
+Completion Trigger: Team must win a battle against 4 baby trolls with Beba on their team.
+
+Quest 12
+Start: Beba: Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist.
+Completion Trigger: Player has to battle opponents until finding 2 fairies to join the team.
+
+Quest 13
+Start: Beba: Excellent!  Now let's head to the Temple and have the priestess fuse us faries.
+Completion Trigger: Player travels to temple and uses fuse on 3 faries.
+
+Quest 14
+Start: Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.
+Completion Trigger: Player travels to the woods, the next opponent encounter is with the 4 fairies.
+
+Quest 15
+Start: Narration: Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?
+Completion Trigger: Player must win the battle against the 4 fairy warriors.
+
+Quest 16
+Start: Narration: You have proven yourself, so as promised, here is the "Sprite Bite" spell.  And since it was just a friendly fight, we will restore your HP and MP as well.
+Completion Trigger: Player receives the Sprite Bite spell and full life/magic points.
+
+Quest 17
+Start: Narration: Now that we have aggreed to help you, there is something you can do for us.
+Completion Trigger: Next Opponent player fights in the Forest will be the Giant Ogre.  Player must defeat Giant Ogre in battle.
+
+Quest 18
+Start: Beba: I have never seen a real Mana Stone before.  With this I should be more powerful than ever!
+Completion Trigger: Player Uses Mana Stone - spells receive 10 Rank XP each, advancing to rank 2.  Player receives 20 MP bonus as well.
+
+Quest 19
+Start: Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.
+Completion Trigger: Next battle in forest will trigger opponent of baby Ogre.
+
+Quest 20
+Start: Ogrito: Hello.  My name is Ogrito Pequeno.  You killed my father.  Prepare to die...
+Completion Trigger: Orgrito joins the team
+
+Quest 21
+Start: Mushy: You know, if we are going to keep this baby ogre on our team, we should find a couple more like him and fuse them at the Temple.
+Completion Trigger: Player must battle until finding 2 more baby ogres, then fuse them at the Temple.
+
+Quest 22
+Start: Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!
+Completion Trigger: Player learns "Fit of Rage" spell from Ogrito.
+
+Quest 23
+Start: Ogrito: Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem.
+Completion Trigger: When traveling to Forest, player is interupted by a Golden Wolf Messenger.
+
+Quest 24
+Start: Golden Wolf Messenger: Woof!
+Completion Trigger: Player must defeat the Poisonous Python in battle.
+
+Quest 25
+Start: Chase: Woof!
+Completion Trigger: (none)

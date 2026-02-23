@@ -60,5 +60,13 @@
       "item_id": "{item_id}",
       "count": "{count}"
     }
+  },
+  "location_change_visit_scene": {
+    "trigger": "location_change",
+    "event": "visit_scene",
+    "payload": {
+      "scene_id": "{scene_id}",
+      "count": "{count}"
+    }
   }
 }

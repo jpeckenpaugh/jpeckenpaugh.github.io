@@ -96,5 +96,8 @@
       "mode": "add",
       "count_key": "count"
     }
+  },
+  "reach_level": {
+    "completion": "reach_level"
   }
 }

@@ -1006,6 +1006,16 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                                 state.last_message = f"Quest started: {title}."
                         if hasattr(ctx, "save_data") and ctx.save_data:
                             ctx.save_data.save_player(state.player)
+                if state.pending_level_up:
+                    state.pending_level_up = False
+                    state.quest_mode = False
+                    state.quest_detail_mode = False
+                    state.quest_detail_id = None
+                    state.quest_detail_page = 0
+                    state.leveling_mode = True
+                    if hasattr(ctx, "audio"):
+                        ctx.audio.play_song_once("level_up")
+                    return None, None
                 state.quest_detail_mode = False
                 state.quest_detail_id = None
                 state.quest_detail_page = 0
@@ -1898,6 +1908,85 @@ def _open_quest_screen(ctx, state: GameState) -> None:
         state.quest_continent_index = 0
 
 
+def _handle_level_up_transition(ctx, state: GameState, pre_level: int, post_level: int) -> bool:
+    spell_notes = spell_level_up_notes(ctx, state.player, pre_level, post_level)
+    element_notes = element_unlock_notes(ctx, state.player, pre_level, post_level)
+    state.level_up_notes = spell_notes + element_notes
+    if hasattr(ctx, "quests") and ctx.quests is not None:
+        evaluate_quests(
+            state.player,
+            ctx.quests,
+            ctx.items,
+            ctx.spells,
+            ctx.followers,
+            ctx.quest_objectives,
+            ctx.quest_events,
+        )
+        ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests, state.player.current_element) if hasattr(ctx, "stories") else []
+        entries = quest_entries(
+            state.player,
+            ctx.quests,
+            ctx.items,
+            continent=state.player.current_element,
+            include_locked_next=False,
+            ordered_ids=ordered_ids,
+            objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
+        )
+        if entries:
+            entry = None
+            for candidate in entries:
+                if not isinstance(candidate, dict):
+                    continue
+                status = candidate.get("status")
+                if status not in ("available", "active"):
+                    continue
+                quest_def = candidate.get("quest", {})
+                if isinstance(quest_def, dict) and quest_def.get("auto_open_on_level_up"):
+                    entry = candidate
+                    break
+            if entry:
+                quest_id = entry.get("id")
+                quest_def = entry.get("quest", {}) if isinstance(entry, dict) else {}
+                status = entry.get("status")
+                if quest_id and isinstance(quest_def, dict):
+                    if status == "available":
+                        ok, error, start_messages = apply_quest_start_actions(
+                            state.player,
+                            quest_def,
+                            items_data=ctx.items,
+                            spells_data=ctx.spells,
+                            followers_data=ctx.followers,
+                            quests_data=ctx.quests,
+                            objectives_data=ctx.quest_objectives,
+                            events_data=ctx.quest_events,
+                        )
+                        if ok and start_quest(state.player, quest_id):
+                            _open_quest_screen(ctx, state)
+                            state.quest_detail_mode = True
+                            state.quest_detail_id = quest_id
+                            state.quest_detail_page = 0
+                            if start_messages:
+                                state.last_message = " ".join(str(m) for m in start_messages if m)
+                            state.pending_level_up = True
+                            return True
+                        if error:
+                            state.last_message = error
+                    elif status == "active":
+                        _open_quest_screen(ctx, state)
+                        state.quest_detail_mode = True
+                        state.quest_detail_id = quest_id
+                        state.quest_detail_page = 0
+                        state.pending_level_up = True
+                        return True
+    state.leveling_mode = True
+    if hasattr(ctx, "audio"):
+        ctx.audio.play_song_once("level_up")
+    return False
+
+
+
+
 def _follower_can_cast(player, follower: dict, spell: dict) -> tuple[bool, bool]:
     mp_cost = int(spell.get("mp_cost", 0) or 0)
     element = spell.get("element")
@@ -2291,16 +2380,43 @@ def apply_router_command(
     command_meta: Optional[dict],
     action_cmd: Optional[str],
 ) -> tuple[bool, Optional[str], Optional[str], bool, Optional[int]]:
+    if state.pending_level_up and not state.leveling_mode and not state.quest_mode and not state.quest_detail_mode:
+        state.pending_level_up = False
+        state.leveling_mode = True
+        if hasattr(ctx, "audio"):
+            ctx.audio.play_song_once("level_up")
+        return True, action_cmd, cmd, True, state.target_index
     if not cmd:
         return False, action_cmd, cmd, False, None
     if state.leveling_mode:
+        pre_points = int(state.player.stat_points)
         message, done = state.player.handle_level_up_input(cmd)
         state.last_message = message
+        quest_messages = []
+        spent = max(0, pre_points - int(state.player.stat_points))
+        if spent <= 0 and done and pre_points > 0 and int(state.player.stat_points) == 0:
+            spent = pre_points
+        if spent and hasattr(ctx, "quests") and ctx.quests is not None:
+            quest_messages = emit_quest_events(
+                state.player,
+                ctx.quests,
+                ctx.quest_events,
+                "spend_stat_points",
+                [{"count": spent}],
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+            )
+            if quest_messages:
+                state.last_message = f"{state.last_message} " + " ".join(quest_messages)
         if done:
             state.leveling_mode = False
             state.level_up_notes = []
             if hasattr(ctx, "save_data") and ctx.save_data:
                 ctx.save_data.save_player(state.player)
+            if quest_messages:
+                _open_quest_screen(ctx, state)
         return True, action_cmd, cmd, True, state.target_index
     pre_level = state.player.level
     pre_location = state.player.location
@@ -2508,6 +2624,21 @@ def apply_router_command(
     state.player = cmd_state.player
     post_level = state.player.level
     post_location = state.player.location
+    if pre_location != post_location and hasattr(ctx, "quests") and ctx.quests is not None:
+        quest_messages = emit_quest_events(
+            state.player,
+            ctx.quests,
+            ctx.quest_events,
+            "location_change",
+            [{"scene_id": post_location, "count": 1}],
+            ctx.items,
+            ctx.spells,
+            ctx.followers,
+            ctx.quest_objectives,
+        )
+        if quest_messages:
+            state.last_message = " ".join(quest_messages)
+            _open_quest_screen(ctx, state)
     if hasattr(ctx, "audio"):
         ctx.audio.set_mode(state.player.flags.get("audio_mode"))
         _ensure_audio_settings(ctx, state.player)
@@ -2548,12 +2679,8 @@ def apply_router_command(
             color_map_override=color_override
         )
     if post_level > pre_level and not state.leveling_mode:
-        state.leveling_mode = True
-        spell_notes = spell_level_up_notes(ctx, state.player, pre_level, post_level)
-        element_notes = element_unlock_notes(ctx, state.player, pre_level, post_level)
-        state.level_up_notes = spell_notes + element_notes
-        if hasattr(ctx, "audio"):
-            ctx.audio.play_song_once("level_up")
+        if _handle_level_up_transition(ctx, state, pre_level, post_level):
+            return True, action_cmd, cmd, True, target_index
     if action_cmd not in ctx.combat_actions:
         return True, action_cmd, cmd, True, target_index
     if action_cmd in ctx.spell_commands:
@@ -3270,12 +3397,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             f"{state.loot_bank['gold']} gold."
         ))
         if levels_gained > 0:
-            state.leveling_mode = True
-            spell_notes = spell_level_up_notes(ctx, state.player, pre_level, state.player.level)
-            element_notes = element_unlock_notes(ctx, state.player, pre_level, state.player.level)
-            state.level_up_notes = spell_notes + element_notes
-            if hasattr(ctx, "audio"):
-                ctx.audio.play_song_once("level_up")
+            _handle_level_up_transition(ctx, state, pre_level, state.player.level)
         else:
             if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
                 ctx.audio.play_song_once("battle_victory")

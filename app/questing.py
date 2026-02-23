@@ -41,8 +41,10 @@ def _objective_key(obj: dict, objectives_data) -> Optional[str]:
     obj_type = str(obj.get("type", ""))
     config = _objective_config(objectives_data, obj_type)
     template = config.get("key")
-    if not isinstance(template, str) or "{" not in template:
+    if not isinstance(template, str):
         return None
+    if "{" not in template:
+        return template
     result = template
     for key, value in obj.items():
         token = "{" + str(key) + "}"
@@ -95,6 +97,11 @@ def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict], 
         completion = config.get("completion")
         if completion == "equip_slots":
             if not _equip_slots_complete(player, obj):
+                return False
+            continue
+        if completion == "reach_level":
+            target_level = int(obj.get("level", 0) or 0)
+            if int(player.level) < target_level:
                 return False
             continue
         key = _objective_key(obj, objectives_data)
@@ -168,6 +175,7 @@ def _action_handlers() -> Dict[str, ActionHandler]:
         "grant_mp_bonus": {"apply": _apply_grant_mp_bonus},
         "grant_spell_rank_up": {"apply": _apply_grant_spell_rank_up},
         "grant_followers": {"apply": _apply_grant_followers},
+        "restore_full": {"apply": _apply_restore_full},
     }
 
 
@@ -296,6 +304,17 @@ def _apply_grant_xp(player: Player, action: dict, ctx: Dict[str, Any], effects: 
         return None
     effects["xp_gain"] = effects.get("xp_gain", 0) + amount
     effects["levels_gained"] = effects.get("levels_gained", 0) + player.gain_xp(amount)
+    return None
+
+
+def _apply_restore_full(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    player.hp = player.max_hp
+    player.mp = player.max_mp
+    player.temp_atk_bonus = 0
+    player.temp_def_bonus = 0
+    player.temp_hp_bonus = 0
+    if hasattr(player, "temp_evasion_bonus"):
+        player.temp_evasion_bonus = 0
     return None
 
 
