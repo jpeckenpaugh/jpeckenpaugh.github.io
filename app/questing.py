@@ -152,6 +152,7 @@ def _follower_template(entry: dict, followers_data: Optional[object]) -> dict:
 
 def _action_handlers() -> Dict[str, ActionHandler]:
     return {
+        "show_message": {"apply": _apply_show_message},
         "set_flags": {"apply": _apply_set_flags},
         "set_flag": {"apply": _apply_set_flag},
         "set_flag_values": {"apply": _apply_set_flag_values},
@@ -177,6 +178,13 @@ def _apply_set_flags(player: Player, action: dict, ctx: Dict[str, Any], effects:
     for flag in flags:
         if flag:
             player.flags[str(flag)] = True
+    return None
+
+
+def _apply_show_message(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    message = str(action.get("message", "") or "").strip()
+    if message:
+        effects["messages"] = effects.get("messages", []) + [message]
     return None
 
 
@@ -258,11 +266,12 @@ def _apply_grant_follower(player: Player, action: dict, ctx: Dict[str, Any], eff
             return "No room for another follower."
         return None
     if entry.get("count_as_recruit") and ctx.get("quests_data") is not None:
-        handle_event(
+        emit_quest_events(
             player,
             ctx["quests_data"],
+            ctx.get("events_data"),
             "recruit_follower",
-            {"follower_type": follower.get("type", ""), "count": 1},
+            [{"follower_type": follower.get("type", ""), "count": 1}],
             ctx.get("items_data"),
             ctx.get("spells_data"),
             ctx.get("followers_data"),
@@ -339,6 +348,7 @@ def _action_context(
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> Dict[str, Any]:
     pending_grants = 0
     for action in actions:
@@ -352,6 +362,7 @@ def _action_context(
         "followers_data": followers_data,
         "quests_data": quests_data,
         "objectives_data": objectives_data,
+        "events_data": events_data,
         "pending_grants": pending_grants,
     }
 
@@ -365,13 +376,14 @@ def apply_actions(
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
     dry_run: bool = False,
 ) -> Tuple[bool, Optional[str], dict]:
     if not actions:
         return True, None, {"xp_gain": 0, "levels_gained": 0}
     target = copy.deepcopy(player) if dry_run else player
     _ensure_player_quest_state(target)
-    effects = {"xp_gain": 0, "levels_gained": 0}
+    effects = {"xp_gain": 0, "levels_gained": 0, "messages": []}
     ctx = _action_context(
         actions,
         items_data=items_data,
@@ -379,6 +391,7 @@ def apply_actions(
         followers_data=followers_data,
         quests_data=quests_data,
         objectives_data=objectives_data,
+        events_data=events_data,
     )
     handlers = _action_handlers()
     for action in actions:
@@ -419,6 +432,7 @@ def _apply_rewards(
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> tuple[int, int]:
     actions = _complete_actions_for(quest)
     if not actions:
@@ -431,6 +445,7 @@ def _apply_rewards(
         followers_data=followers_data,
         quests_data=quests_data,
         objectives_data=objectives_data,
+        events_data=events_data,
     )
     if not ok:
         return 0, 0
@@ -452,10 +467,11 @@ def apply_quest_start_actions(
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
-) -> Tuple[bool, Optional[str]]:
+    events_data: Optional[object] = None,
+) -> Tuple[bool, Optional[str], List[str]]:
     actions = _start_actions_for(quest)
     if not actions:
-        return True, None
+        return True, None, []
     ok, error, _effects = apply_actions(
         player,
         actions,
@@ -464,11 +480,12 @@ def apply_quest_start_actions(
         followers_data=followers_data,
         quests_data=quests_data,
         objectives_data=objectives_data,
+        events_data=events_data,
         dry_run=True,
     )
     if not ok:
-        return False, error
-    ok, error, _effects = apply_actions(
+        return False, error, []
+    ok, error, effects = apply_actions(
         player,
         actions,
         items_data=items_data,
@@ -476,8 +493,10 @@ def apply_quest_start_actions(
         followers_data=followers_data,
         quests_data=quests_data,
         objectives_data=objectives_data,
+        events_data=events_data,
     )
-    return ok, error
+    messages = effects.get("messages", [])
+    return ok, error, messages if isinstance(messages, list) else []
 
 
 def start_quest(player: Player, quest_id: str) -> bool:
@@ -521,12 +540,13 @@ def quest_entries(
     include_locked_next: bool = False,
     ordered_ids: Optional[List[str]] = None,
     objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> List[dict]:
     _ensure_player_quest_state(player)
     entries: List[dict] = []
     if not quests_data:
         return entries
-    evaluate_quests(player, quests_data, items_data, objectives_data=objectives_data)
+    evaluate_quests(player, quests_data, items_data, objectives_data=objectives_data, events_data=events_data)
     quest_items = []
     if ordered_ids:
         for quest_id in ordered_ids:
@@ -570,6 +590,7 @@ def evaluate_quests(
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> List[str]:
     _ensure_player_quest_state(player)
     messages: List[str] = []
@@ -602,6 +623,7 @@ def evaluate_quests(
                 followers_data,
                 quests_data,
                 objectives_data,
+                events_data,
             )
             title = quest.get("title", quest_id)
             messages.append(f"Quest complete: {title}.")
@@ -681,6 +703,56 @@ def handle_event(
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> List[str]:
     record_event(player, quests_data, event_type, payload, objectives_data)
-    return evaluate_quests(player, quests_data, items_data, spells_data, followers_data, objectives_data)
+    return evaluate_quests(player, quests_data, items_data, spells_data, followers_data, objectives_data, events_data)
+
+
+def emit_quest_events(
+    player: Player,
+    quests_data,
+    events_data,
+    trigger: str,
+    payloads: List[Dict[str, Any]],
+    items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+) -> List[str]:
+    if not events_data or not hasattr(events_data, "all"):
+        return []
+    messages: List[str] = []
+    for _name, rule in events_data.all().items():
+        if not isinstance(rule, dict):
+            continue
+        if str(rule.get("trigger", "")) != trigger:
+            continue
+        event_name = str(rule.get("event", "") or "")
+        if not event_name:
+            continue
+        payload_template = rule.get("payload", {})
+        if not isinstance(payload_template, dict):
+            payload_template = {}
+        for payload in payloads:
+            event_payload: Dict[str, Any] = {}
+            for key, value in payload_template.items():
+                if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
+                    token = value[1:-1]
+                    event_payload[key] = payload.get(token, "")
+                else:
+                    event_payload[key] = value
+            if not event_payload:
+                continue
+            messages.extend(handle_event(
+                player,
+                quests_data,
+                event_name,
+                event_payload,
+                items_data,
+                spells_data,
+                followers_data,
+                objectives_data,
+                events_data,
+            ))
+    return messages

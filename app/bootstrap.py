@@ -23,6 +23,7 @@ from app.data_access.opponents_data import OpponentsData
 from app.data_access.players_data import PlayersData
 from app.data_access.quests_data import QuestsData
 from app.data_access.quest_objectives_data import QuestObjectivesData
+from app.data_access.quest_events_data import QuestEventsData
 from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.stories_data import StoriesData
@@ -61,6 +62,7 @@ class AppContext:
     save_data: SaveData
     quests: QuestsData
     quest_objectives: QuestObjectivesData
+    quest_events: QuestEventsData
     stories: StoriesData
     players: PlayersData
     title_screen: TitleScreenData
@@ -169,6 +171,10 @@ def _load_quest_objectives() -> QuestObjectivesData:
     return QuestObjectivesData(f"{DATA_DIR}/quest_objectives.json")
 
 
+def _load_quest_events() -> QuestEventsData:
+    return QuestEventsData(f"{DATA_DIR}/quest_events.json")
+
+
 def _load_stories() -> StoriesData:
     return StoriesData(f"{DATA_DIR}/stories.json")
 
@@ -237,6 +243,7 @@ def create_app() -> AppContext:
     save_data = _load_save()
     quests = _load_quests()
     quest_objectives = _load_quest_objectives()
+    quest_events = _load_quest_events()
     stories = _load_stories()
     players = _load_players()
     title_screen = _load_title_screen()
@@ -273,6 +280,7 @@ def create_app() -> AppContext:
         registry=registry,
         quests=quests,
         quest_objectives=quest_objectives,
+        quest_events=quest_events,
         stories=stories,
         title_screen=title_screen,
         portal_screen=portal_screen,
@@ -303,6 +311,7 @@ def create_app() -> AppContext:
         save_data=save_data,
         quests=quests,
         quest_objectives=quest_objectives,
+        quest_events=quest_events,
         stories=stories,
         players=players,
         title_screen=title_screen,
@@ -335,6 +344,7 @@ def create_app() -> AppContext:
         save_data=save_data,
         quests=quests,
         quest_objectives=quest_objectives,
+        quest_events=quest_events,
         stories=stories,
         players=players,
         title_screen=title_screen,

@@ -9,7 +9,7 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import apply_quest_start_actions, evaluate_quests, handle_event, ordered_quest_ids, quest_entries, start_quest
+from app.questing import apply_quest_start_actions, evaluate_quests, emit_quest_events, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -620,7 +620,11 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
             commands.append(entry)
         if not commands:
             commands.append({"label": "No continents available.", "_disabled": True})
-        commands.append({"label": "Back", "command": "B_KEY"})
+        actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+        labels = actions_cfg.get("labels", {}) if isinstance(actions_cfg, dict) else {}
+        if not isinstance(labels, dict):
+            labels = {}
+        commands.append({"label": labels.get("list_back", "Back"), "command": "B_KEY"})
         return commands
     if state.shop_mode or state.hall_mode or state.inn_mode or state.temple_mode or state.smithy_mode or state.alchemist_mode or state.portal_mode:
         venue_id = venue_id_from_state(state)
@@ -949,28 +953,39 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 dialog = []
             total_pages = max(1, len(dialog))
             state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
+            actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+            detail_ids = actions_cfg.get("detail", ["next", "back"])
+            if not isinstance(detail_ids, list) or not detail_ids:
+                detail_ids = ["next", "back"]
+            labels = actions_cfg.get("labels", {})
+            if not isinstance(labels, dict):
+                labels = {}
             if action in ("UP", "DOWN"):
                 direction = -1 if action == "UP" else 1
-                state.action_cursor = (state.action_cursor + direction) % 2
+                state.action_cursor = (state.action_cursor + direction) % len(detail_ids)
                 return None, None
             if action == "CONFIRM":
-                if state.action_cursor == 1:
+                if 0 <= state.action_cursor < len(detail_ids):
+                    action_id = str(detail_ids[state.action_cursor])
+                else:
+                    action_id = "next"
+                if action_id == "back":
                     state.quest_detail_mode = False
                     state.quest_detail_id = None
                     state.quest_detail_page = 0
                     return None, None
                 is_last = state.quest_detail_page >= total_pages - 1
-                if not is_last:
+                if not is_last and action_id == "next":
                     state.quest_detail_page += 1
+                    return None, None
+                if action_id not in ("next", "start"):
                     return None, None
                 quest_id = state.quest_detail_id
                 if quest_id:
                     qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
                         quest_def = detail_quest if isinstance(detail_quest, dict) else {}
-                        start_message = None
-                        start_message = str(quest_def.get("start_message", "") or "").strip() or None
-                        ok, error = apply_quest_start_actions(
+                        ok, error, start_messages = apply_quest_start_actions(
                             state.player,
                             quest_def,
                             items_data=ctx.items,
@@ -978,15 +993,16 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                             followers_data=ctx.followers,
                             quests_data=ctx.quests,
                             objectives_data=ctx.quest_objectives,
+                            events_data=ctx.quest_events,
                         )
                         if not ok:
                             state.last_message = error or "Unable to start quest."
                             return None, None
+                        if start_messages:
+                            state.last_message = " ".join(str(m) for m in start_messages if m)
                         if start_quest(state.player, quest_id):
                             title = quest_def.get("title", quest_id)
-                            if start_message:
-                                state.last_message = start_message
-                            else:
+                            if not state.last_message:
                                 state.last_message = f"Quest started: {title}."
                         if hasattr(ctx, "save_data") and ctx.save_data:
                             ctx.save_data.save_player(state.player)
@@ -1013,6 +1029,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             include_locked_next=True,
             ordered_ids=ordered_ids,
             objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
         ) if hasattr(ctx, "quests") else []
         commands = [{"label": "Continent", "_disabled": True}, {"label": "", "_disabled": True}]
         if entries:
@@ -1246,11 +1263,12 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 fused_type = fused.get("type", "follower")
                 state.last_message = f"{fused_name} is promoted to {fused_type.replace('_', ' ').title()}."
                 if hasattr(ctx, "quests") and ctx.quests is not None:
-                    quest_messages = handle_event(
+                    quest_messages = emit_quest_events(
                         state.player,
                         ctx.quests,
+                        ctx.quest_events,
                         "fuse_followers",
-                        {"follower_type": selected_type, "count": 3},
+                        [{"follower_type": selected_type, "count": 3}],
                         ctx.items,
                         ctx.spells,
                         ctx.followers,
@@ -2291,6 +2309,7 @@ def apply_router_command(
             ctx.items,
             continent=elements[state.quest_continent_index],
             objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
         ) if hasattr(ctx, "quests") else []
         commands = [{"_disabled": True}]
         if entries:
@@ -2601,6 +2620,7 @@ def resolve_player_action(
             items_data=ctx.items,
             followers_data=getattr(ctx, "followers", None),
             quest_objectives=getattr(ctx, "quest_objectives", None),
+            quest_events=getattr(ctx, "quest_events", None),
             target_index=state.target_index,
         ),
     )
@@ -2951,34 +2971,38 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     trial_id = state.battle_trial_id
     open_quest_screen = False
     if hasattr(ctx, "quests") and ctx.quests is not None:
+        defeated_payloads = []
         defeated_counts = {}
         for opponent in state.opponents:
             opponent_id = str(getattr(opponent, "opponent_id", "") or "")
             if not opponent_id:
                 continue
             defeated_counts[opponent_id] = defeated_counts.get(opponent_id, 0) + 1
-        if defeated_counts:
-            for opponent_id, count in defeated_counts.items():
-                quest_messages = handle_event(
-                    state.player,
-                    ctx.quests,
-                    "defeat_opponents",
-                    {"opponent_id": opponent_id, "count": count},
-                    ctx.items,
-                    ctx.spells,
-                    ctx.followers,
-                    ctx.quest_objectives,
-                )
-                for message in quest_messages:
-                    push_battle_message(state, message)
-                if quest_messages:
-                    open_quest_screen = True
+        for opponent_id, count in defeated_counts.items():
+            defeated_payloads.append({"opponent_id": opponent_id, "count": count})
+        if defeated_payloads:
+            quest_messages = emit_quest_events(
+                state.player,
+                ctx.quests,
+                ctx.quest_events,
+                "battle_end",
+                defeated_payloads,
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+            )
+            for message in quest_messages:
+                push_battle_message(state, message)
+            if quest_messages:
+                open_quest_screen = True
     if trial_id and hasattr(ctx, "quests") and ctx.quests is not None:
-        quest_messages = handle_event(
+        quest_messages = emit_quest_events(
             state.player,
             ctx.quests,
-            "visit_scene",
-            {"scene_id": trial_id},
+            ctx.quest_events,
+            "battle_end_trial",
+            [{"trial_id": trial_id}],
             ctx.items,
             ctx.spells,
             ctx.followers,
@@ -3080,6 +3104,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
                 ctx.spells,
                 ctx.followers,
                 ctx.quest_objectives,
+                ctx.quest_events,
             )
             for message in quest_messages:
                 push_battle_message(state, message)

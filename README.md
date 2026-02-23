@@ -160,6 +160,7 @@ Game data is externalized into JSON:
 - `data/abilities.json` — follower ability definitions
 - `data/followers.json` — follower templates (base stats + abilities)
 - `data/quest_objectives.json` — quest objective registry (events, progress keys, completion rules)
+- `data/quest_events.json` — quest event emission rules (trigger → event payloads)
 
 ---
 
@@ -186,6 +187,7 @@ Quest logic is driven by JSON and a registry-based action system.
 ### Quest Actions
 Quests can define `on_start_actions` and `on_complete_actions` as lists of action objects. Supported action types:
 
+- `show_message` (`message`)
 - `set_flags` (`flags`: list of flag ids)
 - `set_flag` (`key`, `value`)
 - `set_flag_values` (`values`: map)
@@ -207,7 +209,7 @@ Quests can define `on_start_actions` and `on_complete_actions` as lists of actio
 - `name` (optional override)
 - `count_as_recruit` (optional)
 - `overrides` (optional stat overrides)
-Start messages should be defined per quest using `start_message` at the quest root.
+Start messages should be defined using `show_message` in `on_start_actions`.
 
 ### Quest Objective Registry
 Objective behavior is declared in `data/quest_objectives.json`. Each objective type defines:
@@ -217,6 +219,26 @@ Objective behavior is declared in `data/quest_objectives.json`. Each objective t
 - `match` (object): payload/object key matching rules.
 - `update` (object): progress update rule (`mode`: `add` or `max`).
 - `completion` (string): special completion logic (currently `equip_slots`).
+
+### Quest Event Registry
+Quest event emission rules live in `data/quest_events.json`. Each rule defines:
+
+- `trigger` (string): name of the game trigger.
+- `event` (string): quest event to emit.
+- `payload` (object): payload template (supports `{token}` substitution).
+
+Current triggers:
+- `battle_end` (per defeated opponent)
+- `battle_end_trial` (trial completion)
+- `recruit_follower`
+- `fuse_followers`
+- `fuse_gear`
+
+### Quest UI Actions
+Quest UI labels are configured in `data/quests_screen.json` under `actions`:
+
+- `detail`: list of action ids (default `["next","back"]`)
+- `labels.next` / `labels.start` / `labels.back` / `labels.list_back`
 
 ---
 

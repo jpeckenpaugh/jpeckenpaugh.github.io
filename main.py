@@ -83,11 +83,12 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
     total = max(1, len(files))
     results = []
     start = time.time()
-    def _validate_quests_payload(payload: object, objectives_payload: object) -> list[str]:
+    def _validate_quests_payload(payload: object, objectives_payload: object, events_payload: object) -> list[str]:
         errors: list[str] = []
         if not isinstance(payload, dict):
             return ["quests.json root must be an object"]
         objectives = objectives_payload if isinstance(objectives_payload, dict) else {}
+        events = events_payload if isinstance(events_payload, dict) else {}
         for quest_id, quest in payload.items():
             if not isinstance(quest, dict):
                 errors.append(f"{quest_id}: quest entry must be an object")
@@ -98,6 +99,8 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 errors.append(f"{quest_id}: on_start_actions must be a list when present")
             if "on_complete_actions" in quest and not isinstance(quest.get("on_complete_actions"), list):
                 errors.append(f"{quest_id}: on_complete_actions must be a list when present")
+            if "start_message" in quest:
+                errors.append(f"{quest_id}: start_message is not supported; use show_message action")
             objectives_list = quest.get("objectives", [])
             if not isinstance(objectives_list, list):
                 continue
@@ -107,15 +110,42 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 obj_type = str(obj.get("type", "") or "")
                 if obj_type and obj_type not in objectives:
                     errors.append(f"{quest_id}: unknown objective type {obj_type}")
+            trial = quest.get("trial")
+            if isinstance(trial, dict) and "start_message" in trial:
+                errors.append(f"{quest_id}: trial.start_message is not supported; use show_message on start")
+        return errors
+
+    def _validate_quest_events_payload(payload: object) -> list[str]:
+        errors: list[str] = []
+        if not isinstance(payload, dict):
+            return ["quest_events.json root must be an object"]
+        for key, rule in payload.items():
+            if not isinstance(rule, dict):
+                errors.append(f"{key}: event rule must be an object")
+                continue
+            if not str(rule.get("trigger", "") or ""):
+                errors.append(f"{key}: trigger is required")
+            if not str(rule.get("event", "") or ""):
+                errors.append(f"{key}: event is required")
+            payload_def = rule.get("payload", {})
+            if not isinstance(payload_def, dict):
+                errors.append(f"{key}: payload must be an object")
         return errors
 
     objectives_payload = {}
+    events_payload = {}
     if "quest_objectives.json" in files:
         try:
             with open(os.path.join(DATA_DIR, "quest_objectives.json"), "r", encoding="utf-8") as f:
                 objectives_payload = json.load(f)
         except (OSError, JSONDecodeError):
             objectives_payload = {}
+    if "quest_events.json" in files:
+        try:
+            with open(os.path.join(DATA_DIR, "quest_events.json"), "r", encoding="utf-8") as f:
+                events_payload = json.load(f)
+        except (OSError, JSONDecodeError):
+            events_payload = {}
     for idx, name in enumerate(files):
         path = os.path.join(DATA_DIR, name)
         ok = True
@@ -130,8 +160,13 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 count = len(data)
             else:
                 count = 1
+            if name == "quest_events.json":
+                validation_errors = _validate_quest_events_payload(data)
+                if validation_errors:
+                    ok = False
+                    error = "; ".join(validation_errors)
             if name == "quests.json":
-                validation_errors = _validate_quests_payload(data, objectives_payload)
+                validation_errors = _validate_quests_payload(data, objectives_payload, events_payload)
                 if validation_errors:
                     ok = False
                     error = "; ".join(validation_errors)

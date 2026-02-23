@@ -28,6 +28,10 @@
     ],
     "on_start_actions": [
       {
+        "type": "show_message",
+        "message": "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
+      },
+      {
         "type": "set_flags",
         "flags": [
           "spell_life_boost_enabled",
@@ -72,8 +76,7 @@
         "type": "grant_xp",
         "amount": 100
       }
-    ],
-    "start_message": "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
+    ]
   },
   "mushy_02": {
     "title": "Wandcraft",
@@ -304,7 +307,6 @@
     "continent": "base",
     "trial": {
       "scene_id": "mushy_06_trial",
-      "start_message": "The fairy warriors gather to test your strength.",
       "opponents": [
         {
           "opponent_id": "fairy_baby",
@@ -360,14 +362,18 @@
         "amount": 100
       }
     ],
-    "start_message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
+    "on_start_actions": [
+      {
+        "type": "show_message",
+        "message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
+      }
+    ]
   },
   "mushy_07": {
     "title": "Ogre's Orb",
     "continent": "base",
     "trial": {
       "scene_id": "mushy_07_trial",
-      "start_message": "An ogre emerges, guarding a glowing orb.",
       "opponents": [
         {
           "opponent_id": "ogre",
@@ -431,6 +437,11 @@
         "amount": 100
       }
     ],
-    "start_message": "Defeat the ogre in the forest to claim the magic orb."
+    "on_start_actions": [
+      {
+        "type": "show_message",
+        "message": "Defeat the ogre in the forest to claim the magic orb."
+      }
+    ]
   }
 }

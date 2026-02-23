@@ -22,5 +22,17 @@
       "margin": 1,
       "frame_style": "round"
     }
+  },
+  "actions": {
+    "detail": [
+      "next",
+      "back"
+    ],
+    "labels": {
+      "next": "Next",
+      "start": "Start Quest",
+      "back": "Cancel",
+      "list_back": "Back"
+    }
   }
 }

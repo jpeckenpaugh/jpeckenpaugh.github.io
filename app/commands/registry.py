@@ -8,6 +8,7 @@ from app.data_access.quests_data import QuestsData
 from app.data_access.spells_data import SpellsData
 from app.data_access.followers_data import FollowersData
 from app.data_access.quest_objectives_data import QuestObjectivesData
+from app.data_access.quest_events_data import QuestEventsData
 from app.models import Player, Opponent
 
 CommandHandler = Callable[["CommandContext"], Optional[str]]
@@ -23,6 +24,7 @@ class CommandContext:
     quests_data: Optional[QuestsData] = None
     followers_data: Optional[FollowersData] = None
     quest_objectives: Optional[QuestObjectivesData] = None
+    quest_events: Optional[QuestEventsData] = None
     target_index: Optional[int] = None
 
 

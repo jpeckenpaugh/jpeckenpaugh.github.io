@@ -25,6 +25,7 @@ from app.data_access.opponents_data import OpponentsData
 from app.data_access.players_data import PlayersData
 from app.data_access.quests_data import QuestsData
 from app.data_access.quest_objectives_data import QuestObjectivesData
+from app.data_access.quest_events_data import QuestEventsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.stories_data import StoriesData
@@ -82,6 +83,7 @@ class ScreenContext:
     save_data: object
     quests: QuestsData
     quest_objectives: QuestObjectivesData
+    quest_events: QuestEventsData
     stories: StoriesData
     players: PlayersData
     title_screen: TitleScreenData
@@ -1128,6 +1130,7 @@ def generate_frame(
             include_locked_next=True,
             ordered_ids=ordered_ids,
             objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
         ) if hasattr(ctx, "quests") else []
         commands = []
         detail_quest = None
@@ -1141,10 +1144,25 @@ def generate_frame(
             total_pages = max(1, len(dialog_lines))
             quest_detail_page = max(0, min(quest_detail_page, total_pages - 1))
             is_last = quest_detail_page >= total_pages - 1
-            commands = [
-                {"label": "Start Quest" if is_last else "Next"},
-                {"label": "Cancel", "command": "B_KEY"},
-            ]
+            actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+            detail_ids = actions_cfg.get("detail", ["next", "back"])
+            if not isinstance(detail_ids, list) or not detail_ids:
+                detail_ids = ["next", "back"]
+            labels = actions_cfg.get("labels", {})
+            if not isinstance(labels, dict):
+                labels = {}
+            commands = []
+            for action_id in detail_ids:
+                action_id = str(action_id)
+                if action_id == "back":
+                    commands.append({"label": labels.get("back", "Cancel"), "command": "B_KEY"})
+                elif action_id == "start":
+                    commands.append({"label": labels.get("start", "Start Quest"), "command": "start"})
+                else:
+                    commands.append({
+                        "label": labels.get("start", "Start Quest") if is_last else labels.get("next", "Next"),
+                        "command": "next",
+                    })
         else:
             commands = [
                 {"label": continent_label, "_disabled": True, "_header": True},
@@ -1168,7 +1186,11 @@ def generate_frame(
                     })
             else:
                 commands.append({"label": "No quests available.", "_disabled": True})
-            commands.append({"label": "Back", "command": "B_KEY"})
+            actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+            labels = actions_cfg.get("labels", {}) if isinstance(actions_cfg, dict) else {}
+            if not isinstance(labels, dict):
+                labels = {}
+            commands.append({"label": labels.get("list_back", "Back"), "command": "B_KEY"})
 
         enabled = [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]
         if not enabled:

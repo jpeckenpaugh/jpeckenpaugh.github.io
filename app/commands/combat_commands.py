@@ -2,7 +2,7 @@ import random
 
 from app.combat import add_loot, primary_opponent, roll_damage
 from app.commands.registry import CommandRegistry, CommandContext
-from app.questing import handle_event
+from app.questing import emit_quest_events
 
 
 def register(registry: CommandRegistry):
@@ -121,11 +121,12 @@ def _handle_socialize(ctx: CommandContext) -> str:
     opponent.melted = True
     message = f"{name} joins your party."
     if ctx.quests_data is not None:
-        quest_messages = handle_event(
+        quest_messages = emit_quest_events(
             ctx.player,
             ctx.quests_data,
+            ctx.quest_events,
             "recruit_follower",
-            {"follower_type": follower_type, "count": 1},
+            [{"follower_type": follower_type, "count": 1}],
             ctx.items_data,
             ctx.spells_data,
             ctx.followers_data,

@@ -20,13 +20,14 @@ from app.data_access.players_data import PlayersData
 from app.data_access.save_data import SaveData
 from app.data_access.quests_data import QuestsData
 from app.data_access.quest_objectives_data import QuestObjectivesData
+from app.data_access.quest_events_data import QuestEventsData
 from app.data_access.stories_data import StoriesData
 from app.data_access.followers_data import FollowersData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
-from app.questing import evaluate_quests, handle_event, ordered_quest_ids
+from app.questing import evaluate_quests, emit_quest_events, ordered_quest_ids
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
@@ -90,6 +91,7 @@ class RouterContext:
     players: PlayersData
     quests: QuestsData
     quest_objectives: QuestObjectivesData
+    quest_events: QuestEventsData
     stories: StoriesData
     followers: FollowersData
     title_screen: object
@@ -270,6 +272,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                 ctx.spells,
                 ctx.followers,
                 ctx.quest_objectives,
+                ctx.quest_events,
             )
             if quest_messages:
                 state.last_message = " ".join(quest_messages)
@@ -386,11 +389,12 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         fused_type = fused.get("type", "follower")
         state.last_message = f"{fused_name} is promoted to {fused_type.replace('_', ' ').title()}."
         if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = handle_event(
+            quest_messages = emit_quest_events(
                 state.player,
                 ctx.quests,
+                ctx.quest_events,
                 "fuse_followers",
-                {"follower_type": fuse_type, "count": 3},
+                [{"follower_type": fuse_type, "count": 3}],
                 ctx.items,
                 ctx.spells,
                 ctx.followers,
@@ -564,6 +568,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                         ctx.spells,
                         ctx.followers,
                         ctx.quest_objectives,
+                        ctx.quest_events,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -704,6 +709,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         quests_data=ctx.quests,
         followers_data=ctx.followers,
         quest_objectives=ctx.quest_objectives,
+        quest_events=ctx.quest_events,
         target_index=state.target_index,
     )
     if command_id in ("ATTACK", "SPARK", "LIFE_BOOST", "DEFEND", "SOCIALIZE"):
@@ -1234,12 +1240,7 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
             )
             state.battle_trial_id = None
         state.loot_bank = {"xp": 0, "gold": 0}
-        start_message = None
-        if isinstance(trial, dict):
-            start_message = str(trial.get("start_message", "") or "").strip() or None
-        if start_message:
-            state.last_message = start_message
-        elif state.opponents:
+        if state.opponents:
             state.last_message = f"A {state.opponents[0].name} appears."
         else:
             state.last_message = "All is quiet. No enemies in sight."
