@@ -83,6 +83,22 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
     total = max(1, len(files))
     results = []
     start = time.time()
+    def _validate_quests_payload(payload: object) -> list[str]:
+        errors: list[str] = []
+        if not isinstance(payload, dict):
+            return ["quests.json root must be an object"]
+        for quest_id, quest in payload.items():
+            if not isinstance(quest, dict):
+                errors.append(f"{quest_id}: quest entry must be an object")
+                continue
+            if "on_start" in quest or "on_complete" in quest or "rewards" in quest:
+                errors.append(f"{quest_id}: legacy fields found (on_start/on_complete/rewards)")
+            if "on_start_actions" in quest and not isinstance(quest.get("on_start_actions"), list):
+                errors.append(f"{quest_id}: on_start_actions must be a list when present")
+            if "on_complete_actions" in quest and not isinstance(quest.get("on_complete_actions"), list):
+                errors.append(f"{quest_id}: on_complete_actions must be a list when present")
+        return errors
+
     for idx, name in enumerate(files):
         path = os.path.join(DATA_DIR, name)
         ok = True
@@ -97,6 +113,11 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 count = len(data)
             else:
                 count = 1
+            if name == "quests.json":
+                validation_errors = _validate_quests_payload(data)
+                if validation_errors:
+                    ok = False
+                    error = "; ".join(validation_errors)
         except (OSError, JSONDecodeError) as exc:
             ok = False
             error = str(exc)
@@ -248,7 +269,7 @@ def main():
         APP.audio.set_mode(state.player.flags.get("audio_mode"))
         music_vol = int(state.player.flags.get("audio_music_volume", 5) or 0) / 5.0
         sfx_vol = int(state.player.flags.get("audio_sfx_volume", 5) or 0) / 5.0
-        wave = str(state.player.flags.get("audio_wave", "square") or "square")
+        wave = str(state.player.flags.get("audio_wave", "harp") or "harp")
         APP.audio.set_defaults(music_vol, sfx_vol, wave)
         APP.audio.on_location_change(None, "Title")
 

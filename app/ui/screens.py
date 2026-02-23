@@ -31,6 +31,7 @@ from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.quests_screen_data import QuestsScreenData
 from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.followers_screen_data import FollowersScreenData
+from app.data_access.followers_data import FollowersData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
@@ -86,6 +87,7 @@ class ScreenContext:
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
+    followers: FollowersData
     music: MusicData
 
 
@@ -465,7 +467,7 @@ def _title_state_config(
         sfx_volume = int(flags.get("audio_sfx_volume", 5) or 0)
         music_volume = max(0, min(5, music_volume))
         sfx_volume = max(0, min(5, sfx_volume))
-        wave = str(flags.get("audio_wave", "square") or "square")
+        wave = str(flags.get("audio_wave", "harp") or "harp")
         def _bar(value: int) -> str:
             return "[" + ("#" * value) + ("." * (5 - value)) + "]"
         for entry in commands:

@@ -30,6 +30,7 @@ from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.quests_screen_data import QuestsScreenData
 from app.data_access.followers_screen_data import FollowersScreenData
+from app.data_access.followers_data import FollowersData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.text_data import TextData
 from app.data_access.venues_data import VenuesData
@@ -65,6 +66,7 @@ class AppContext:
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
+    followers: FollowersData
     music: MusicData
     audio: AudioManager
     registry: object
@@ -185,6 +187,10 @@ def _load_followers_screen() -> FollowersScreenData:
     return FollowersScreenData(f"{DATA_DIR}/followers_screen.json")
 
 
+def _load_followers() -> FollowersData:
+    return FollowersData(f"{DATA_DIR}/followers.json")
+
+
 def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
     spell_commands = {
         spell.get("command_id")
@@ -231,6 +237,7 @@ def create_app() -> AppContext:
     spellbook_screen = _load_spellbook_screen()
     quests_screen = _load_quests_screen()
     followers_screen = _load_followers_screen()
+    followers = _load_followers()
     music_data = _load_music()
     audio = AudioManager(f"{DATA_DIR}/music.json")
 
@@ -264,6 +271,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        followers=followers,
         audio=audio,
     )
     screen_ctx = ScreenContext(
@@ -293,6 +301,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        followers=followers,
         music=music_data,
     )
 
@@ -323,6 +332,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        followers=followers,
         music=music_data,
         audio=audio,
         registry=registry,

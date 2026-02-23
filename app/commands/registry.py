@@ -6,6 +6,7 @@ from typing import Callable, Dict, List, Optional
 from app.data_access.items_data import ItemsData
 from app.data_access.quests_data import QuestsData
 from app.data_access.spells_data import SpellsData
+from app.data_access.followers_data import FollowersData
 from app.models import Player, Opponent
 
 CommandHandler = Callable[["CommandContext"], Optional[str]]
@@ -19,6 +20,7 @@ class CommandContext:
     spells_data: SpellsData
     items_data: ItemsData
     quests_data: Optional[QuestsData] = None
+    followers_data: Optional[FollowersData] = None
     target_index: Optional[int] = None
 
 

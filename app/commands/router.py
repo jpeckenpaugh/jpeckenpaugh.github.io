@@ -20,11 +20,12 @@ from app.data_access.players_data import PlayersData
 from app.data_access.save_data import SaveData
 from app.data_access.quests_data import QuestsData
 from app.data_access.stories_data import StoriesData
+from app.data_access.followers_data import FollowersData
 from app.models import Player, Opponent
 from app.commands.registry import CommandContext, CommandRegistry, dispatch_command
 from app.commands.scene_commands import command_is_enabled
 from app.data_access.spells_data import SpellsData
-from app.questing import evaluate_quests, handle_event
+from app.questing import evaluate_quests, handle_event, ordered_quest_ids
 from app.venues import handle_venue_command, venue_id_from_state
 from app.ui.ansi import ANSI
 from app.ui.rendering import animate_battle_start
@@ -88,6 +89,7 @@ class RouterContext:
     players: PlayersData
     quests: QuestsData
     stories: StoriesData
+    followers: FollowersData
     title_screen: object
     portal_screen: object
     spellbook_screen: object
@@ -259,7 +261,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.quest_continent_index = 0
         state.last_message = "Your quests await."
         if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells, ctx.followers)
             if quest_messages:
                 state.last_message = " ".join(quest_messages)
         return True
@@ -382,6 +384,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                 {"follower_type": fuse_type, "count": 3},
                 ctx.items,
                 ctx.spells,
+                ctx.followers,
             )
             if quest_messages:
                 state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -544,7 +547,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                             target = target_ref
                 state.last_message = state.player.use_item(item_id, ctx.items, target=target)
                 if hasattr(ctx, "quests") and ctx.quests is not None:
-                    quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+                    quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells, ctx.followers)
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
                         _enter_quest_screen(ctx, state, keep_message=True)
@@ -682,6 +685,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         spells_data=ctx.spells,
         items_data=ctx.items,
         quests_data=ctx.quests,
+        followers_data=ctx.followers,
         target_index=state.target_index,
     )
     if command_id in ("ATTACK", "SPARK", "LIFE_BOOST", "DEFEND", "SOCIALIZE"):
@@ -929,7 +933,16 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.inn_mode = False
             state.spell_mode = False
             state.last_message = "You arrive in town."
-            if not getattr(state.player, "flags", {}).get("quest_mushy_01_complete", False):
+            flags = getattr(state.player, "flags", {})
+            has_quest_completion = False
+            if isinstance(flags, dict):
+                for key, value in flags.items():
+                    if not key or not isinstance(key, str):
+                        continue
+                    if key.startswith("quest_") and key.endswith("_complete") and bool(value):
+                        has_quest_completion = True
+                        break
+            if not has_quest_completion:
                 _enter_quest_screen(ctx, state)
             return True
         if ctx.save_data.exists(slot):
@@ -1034,6 +1047,58 @@ def _command_target(
     return None
 
 
+def _active_trial(ctx: RouterContext, state: CommandState) -> Optional[dict]:
+    if not hasattr(ctx, "quests") or ctx.quests is None:
+        return None
+    quests_state = getattr(state.player, "quests", {})
+    if not isinstance(quests_state, dict):
+        return None
+    ordered_ids = []
+    if hasattr(ctx, "stories") and ctx.stories is not None:
+        ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests)
+    quest_items = ordered_ids or list(ctx.quests.all().keys())
+    for quest_id in quest_items:
+        qstate = quests_state.get(quest_id, {})
+        if not isinstance(qstate, dict) or qstate.get("status") != "active":
+            continue
+        quest_def = ctx.quests.get(quest_id, {})
+        if not isinstance(quest_def, dict):
+            continue
+        trial = quest_def.get("trial")
+        if isinstance(trial, dict):
+            return {"quest_id": quest_id, "trial": trial}
+    return None
+
+
+def _trial_opponents(ctx: RouterContext, trial: dict) -> List[Opponent]:
+    opponents: List[Opponent] = []
+    entries = trial.get("opponents", [])
+    if not isinstance(entries, list):
+        return opponents
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        base_id = str(entry.get("opponent_id", entry.get("id", "")) or "")
+        if not base_id:
+            continue
+        element = str(entry.get("element", "") or "")
+        if element:
+            base = ctx.opponents_data.build_variant(base_id, element)
+        else:
+            base = ctx.opponents_data.get(base_id, {})
+        if not isinstance(base, dict) or not base:
+            continue
+        base = dict(base)
+        base["opponent_id"] = base_id
+        overrides = entry.get("overrides", {})
+        if isinstance(overrides, dict):
+            base.update(overrides)
+        count = max(1, int(entry.get("count", 1) or 1))
+        for _ in range(count):
+            opponents.append(ctx.opponents_data.create(dict(base), ANSI.FG_WHITE))
+    return opponents
+
+
 def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool:
     def _build_forest_objects() -> None:
         scene = ctx.scenes.get("forest", {})
@@ -1130,63 +1195,19 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                     continue
                 follower_levels += int(follower.get("level", 1) or 1)
         total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
-        trial_id = None
-        quests_state = getattr(state.player, "quests", {})
-        if isinstance(quests_state, dict):
-            mushy_07_state = quests_state.get("mushy_07", {})
-            if isinstance(mushy_07_state, dict) and mushy_07_state.get("status") == "active":
-                trial_id = "mushy_07_trial"
-            mushy_06_state = quests_state.get("mushy_06", {})
-            if isinstance(mushy_06_state, dict) and mushy_06_state.get("status") == "active" and not trial_id:
-                trial_id = "mushy_06_trial"
-        if trial_id == "mushy_07_trial":
-            base = ctx.opponents_data.get("ogre", {})
-            if isinstance(base, dict) and base:
-                boosted = dict(base)
-                boosted.update({
-                    "name": "Ogre",
-                    "level": 10,
-                    "hp": 120,
-                    "max_hp": 120,
-                    "atk": 70,
-                    "defense": 45,
-                    "action_chance": 1.0,
-                    "recruitable": False,
-                    "recruit_cost": 0,
-                    "recruit_chance": 0.0,
-                })
-                state.opponents = [ctx.opponents_data.create(dict(boosted), ANSI.FG_WHITE)]
-            else:
+        trial_entry = _active_trial(ctx, state)
+        trial = trial_entry.get("trial") if isinstance(trial_entry, dict) else None
+        if isinstance(trial, dict):
+            state.opponents = _trial_opponents(ctx, trial)
+            trial_id = str(trial.get("scene_id", "") or "")
+            state.battle_trial_id = trial_id or None
+            if not state.opponents:
                 state.opponents = ctx.opponents_data.spawn(
                     total_level,
                     ANSI.FG_WHITE,
                     element=getattr(state.player, "current_element", "base")
                 )
-            state.battle_trial_id = "mushy_07_trial"
-        elif trial_id == "mushy_06_trial":
-            base = ctx.opponents_data.get("fairy_baby", {})
-            if isinstance(base, dict) and base:
-                boosted = dict(base)
-                boosted.update({
-                    "name": "Fairy Mage",
-                    "level": 8,
-                    "hp": 35,
-                    "max_hp": 35,
-                    "atk": 18,
-                    "defense": 16,
-                    "action_chance": 1.2,
-                    "recruitable": False,
-                    "recruit_cost": 0,
-                    "recruit_chance": 0.0,
-                })
-                state.opponents = [ctx.opponents_data.create(dict(boosted), ANSI.FG_WHITE) for _ in range(4)]
-            else:
-                state.opponents = ctx.opponents_data.spawn(
-                    total_level,
-                    ANSI.FG_WHITE,
-                    element=getattr(state.player, "current_element", "base")
-                )
-            state.battle_trial_id = "mushy_06_trial"
+                state.battle_trial_id = None
         else:
             state.opponents = ctx.opponents_data.spawn(
                 total_level,
@@ -1195,7 +1216,12 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
             )
             state.battle_trial_id = None
         state.loot_bank = {"xp": 0, "gold": 0}
-        if state.opponents:
+        start_message = None
+        if isinstance(trial, dict):
+            start_message = str(trial.get("start_message", "") or "").strip() or None
+        if start_message:
+            state.last_message = start_message
+        elif state.opponents:
             state.last_message = f"A {state.opponents[0].name} appears."
         else:
             state.last_message = "All is quiet. No enemies in sight."

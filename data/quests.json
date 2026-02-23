@@ -2,26 +2,6 @@
   "mushy_01": {
     "title": "Once upon a time...",
     "continent": "base",
-    "on_start": {
-      "grant_follower": {
-        "type": "mushroom_baby",
-        "name": "Mushy",
-        "count_as_recruit": true
-      },
-      "grant_flags": [
-        "spell_life_boost_enabled",
-        "spell_strength_enabled"
-      ],
-      "recruit_only_types": [
-        "mushroom_baby"
-      ],
-      "follower_cap_extra": 2,
-      "start_message": "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
-    },
-    "on_complete": {
-      "clear_recruit_only": true,
-      "follower_cap": 2
-    },
     "summary_pre": "A tiny mushroom offers help but warns the forest is deadly.",
     "summary_active": "Use the 'Strength' spell to boost your stats temporariy.  Fight opponents in the forest, and recruit three mushroom babies then fuse them at the temple.",
     "summary_complete": "Quest complete.",
@@ -46,13 +26,54 @@
         "count": 3
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_01_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_life_boost_enabled",
+          "spell_strength_enabled"
+        ]
+      },
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "mushroom_baby"
+        ]
+      },
+      {
+        "type": "set_follower_cap_extra",
+        "value": 2
+      },
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "mushroom_baby",
+          "name": "Mushy",
+          "count_as_recruit": true
+        },
+        "required": true
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "clear_recruit_only_types"
+      },
+      {
+        "type": "set_follower_cap",
+        "value": 2
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_01_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ],
+    "start_message": "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
   },
   "mushy_02": {
     "title": "Wandcraft",
@@ -79,13 +100,18 @@
         "count": 3
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_02_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_02_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ]
   },
   "mushy_03": {
     "title": "Gear up",
@@ -120,33 +146,22 @@
         "count": 6
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_03_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_03_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ]
   },
   "mushy_04": {
     "title": "Beba Hexa",
     "continent": "base",
-    "on_start": {
-      "grant_follower": {
-        "type": "fairy_baby",
-        "name": "Beba",
-        "count_as_recruit": true
-      },
-      "gp_cost": 100,
-      "recruit_only_types": [
-        "fairy_baby"
-      ],
-      "follower_cap_extra": 2
-    },
-    "on_complete": {
-      "clear_recruit_only": true,
-      "follower_cap": 3
-    },
     "summary_pre": "Mushy has a fairy friend who might grow into a queen.",
     "summary_active": "Recruit three fairy babies and fuse them into a fairy teen.",
     "summary_complete": "Quest complete.",
@@ -171,32 +186,54 @@
         "count": 3
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_04_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_start_actions": [
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "fairy_baby"
+        ]
+      },
+      {
+        "type": "set_follower_cap_extra",
+        "value": 2
+      },
+      {
+        "type": "spend_gold",
+        "amount": 100
+      },
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "fairy_baby",
+          "name": "Beba",
+          "count_as_recruit": true
+        },
+        "required": true
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "clear_recruit_only_types"
+      },
+      {
+        "type": "set_follower_cap",
+        "value": 3
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_04_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ]
   },
   "mushy_05": {
     "title": "Chase the Moon",
     "continent": "base",
-    "on_start": {
-      "grant_follower": {
-        "type": "wolf_pup",
-        "name": "Chase",
-        "count_as_recruit": true
-      },
-      "recruit_only_types": [
-        "wolf_pup"
-      ],
-      "follower_cap_extra": 2
-    },
-    "on_complete": {
-      "clear_recruit_only": true,
-      "follower_cap": 3
-    },
     "summary_pre": "A young wolf longs to run beneath the wandering tower\u2019s shadow.",
     "summary_active": "Recruit three wolf pups and fuse them into a full wolf.",
     "summary_complete": "Quest complete.",
@@ -221,19 +258,71 @@
         "count": 3
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_05_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_start_actions": [
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "wolf_pup"
+        ]
+      },
+      {
+        "type": "set_follower_cap_extra",
+        "value": 2
+      },
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "wolf_pup",
+          "name": "Chase",
+          "count_as_recruit": true
+        },
+        "required": true
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "clear_recruit_only_types"
+      },
+      {
+        "type": "set_follower_cap",
+        "value": 3
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_05_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ]
   },
   "mushy_06": {
     "title": "Fight Sprites for Bites",
     "continent": "base",
-    "on_start": {
-      "start_message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
+    "trial": {
+      "scene_id": "mushy_06_trial",
+      "start_message": "The fairy warriors gather to test your strength.",
+      "opponents": [
+        {
+          "opponent_id": "fairy_baby",
+          "count": 4,
+          "overrides": {
+            "name": "Fairy Mage",
+            "level": 8,
+            "hp": 35,
+            "max_hp": 35,
+            "atk": 18,
+            "defense": 16,
+            "action_chance": 1.2,
+            "recruitable": false,
+            "recruit_cost": 0,
+            "recruit_chance": 0.0
+          }
+        }
+      ]
     },
     "summary_pre": "Beba proposes a trial of strength against the forest fairies.",
     "summary_active": "Defeat the four fairies in the forest.",
@@ -253,24 +342,50 @@
     },
     "objectives": [
       {
-        "type": "visit_scene",
-        "id": "mushy_06_trial"
+        "type": "defeat_opponents",
+        "opponent_id": "fairy_baby",
+        "count": 4
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_06_complete",
-        "spell_sprite_bite_enabled"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_06_complete",
+          "spell_sprite_bite_enabled"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ],
+    "start_message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
   },
   "mushy_07": {
     "title": "Ogre's Orb",
     "continent": "base",
-    "on_start": {
-      "start_message": "Defeat the ogre in the forest to claim the magic orb."
+    "trial": {
+      "scene_id": "mushy_07_trial",
+      "start_message": "An ogre emerges, guarding a glowing orb.",
+      "opponents": [
+        {
+          "opponent_id": "ogre",
+          "count": 1,
+          "overrides": {
+            "name": "Ogre",
+            "level": 10,
+            "hp": 120,
+            "max_hp": 120,
+            "atk": 70,
+            "defense": 45,
+            "action_chance": 1.0,
+            "recruitable": false,
+            "recruit_cost": 0,
+            "recruit_chance": 0.0
+          }
+        }
+      ]
     },
     "summary_pre": "Beba warns of an ogre terrorizing the fairies and hoarding a magic orb.",
     "summary_active": "Defeat the ogre in the forest.",
@@ -291,19 +406,32 @@
     },
     "objectives": [
       {
-        "type": "visit_scene",
-        "id": "mushy_07_trial"
+        "type": "defeat_opponents",
+        "opponent_id": "ogre",
+        "count": 1
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_07_complete"
-      ],
-      "mp_bonus": 20,
-      "spell_rank_up": 1,
-      "items": [],
-      "xp": 100
-    }
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_07_complete"
+        ]
+      },
+      {
+        "type": "grant_mp_bonus",
+        "amount": 20
+      },
+      {
+        "type": "grant_spell_rank_up",
+        "amount": 1
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ],
+    "start_message": "Defeat the ogre in the forest to claim the magic orb."
   },
   "unlock_continent_01": {
     "title": "[PLACEHOLDER_TITLE]",
@@ -328,12 +456,17 @@
         "count": 1
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "unlock_continent_[PLACEHOLDER_CONTINENT_ID]"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "unlock_continent_[PLACEHOLDER_CONTINENT_ID]"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ]
   }
 }

@@ -159,6 +159,7 @@ Game data is externalized into JSON:
 - `data/glyphs.json` — glyph art (atlas, etc.)
 - `data/spells_art.json` — reusable spell animation art
 - `data/abilities.json` — follower ability definitions
+- `data/followers.json` — follower templates (base stats + abilities)
 
 ---
 
@@ -175,6 +176,38 @@ python3 main.py
 
 - `python3 color_map.py` — print the current color map (including random bands)
 - `python3 render.py` — render objects/NPCs/opponents/venues/spells from JSON
+
+---
+
+## Quests (Data-Driven Actions)
+
+Quest logic is driven by JSON and a registry-based action system.
+
+### Quest Actions
+Quests can define `on_start_actions` and `on_complete_actions` as lists of action objects. Supported action types:
+
+- `set_flags` (`flags`: list of flag ids)
+- `set_flag` (`key`, `value`)
+- `set_flag_values` (`values`: map)
+- `set_recruit_only_types` (`types`: list)
+- `clear_recruit_only_types`
+- `set_follower_cap` (`value`)
+- `set_follower_cap_extra` (`value`)
+- `clear_follower_cap`
+- `spend_gold` (`amount`)
+- `grant_follower` (`follower`: entry, optional `required`)
+- `grant_followers` (`followers`: list of entries)
+- `grant_items` (`items`: list of item ids)
+- `grant_xp` (`amount`)
+- `grant_mp_bonus` (`amount`)
+- `grant_spell_rank_up` (`amount`)
+
+`grant_follower` accepts a follower entry with:
+- `type` (template id from `data/followers.json`)
+- `name` (optional override)
+- `count_as_recruit` (optional)
+- `overrides` (optional stat overrides)
+Start messages should be defined per quest using `start_message` at the quest root.
 
 ---
 

@@ -9,7 +9,7 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import build_follower_from_entry, evaluate_quests, handle_event, ordered_quest_ids, quest_entries, start_quest
+from app.questing import apply_quest_start_actions, evaluate_quests, handle_event, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -307,7 +307,7 @@ def _audio_defaults_from_player(player) -> tuple[float, float, str]:
     sfx_volume = int(flags.get("audio_sfx_volume", 5) or 0)
     music_volume = max(0, min(5, music_volume))
     sfx_volume = max(0, min(5, sfx_volume))
-    wave = str(flags.get("audio_wave", "square") or "square")
+    wave = str(flags.get("audio_wave", "harp") or "harp")
     return music_volume / 5.0, sfx_volume / 5.0, wave
 
 
@@ -969,54 +969,18 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
                         quest_def = detail_quest if isinstance(detail_quest, dict) else {}
                         start_message = None
-                        on_start = quest_def.get("on_start", {}) if isinstance(quest_def.get("on_start", {}), dict) else {}
-                        if not hasattr(state.player, "flags") or not isinstance(state.player.flags, dict):
-                            state.player.flags = {}
-                        grant_flags = on_start.get("grant_flags", [])
-                        if isinstance(grant_flags, list):
-                            for flag in grant_flags:
-                                state.player.flags[str(flag)] = True
-                        recruit_only_types = on_start.get("recruit_only_types", [])
-                        if isinstance(recruit_only_types, list) and recruit_only_types:
-                            state.player.flags["recruit_only_types"] = [str(t) for t in recruit_only_types if t]
-                        grant_follower = on_start.get("grant_follower", {})
-                        grant_type = ""
-                        if isinstance(grant_follower, dict):
-                            grant_type = str(grant_follower.get("type", "") or "").strip()
-                        follower_cap = on_start.get("follower_cap")
-                        if isinstance(follower_cap, int) and follower_cap > 0:
-                            state.player.flags["follower_cap"] = follower_cap
-                        follower_cap_extra = on_start.get("follower_cap_extra")
-                        if isinstance(follower_cap_extra, int) and follower_cap_extra > 0:
-                            base_count = len(state.player.followers) if isinstance(state.player.followers, list) else 0
-                            if grant_type:
-                                base_count += 1
-                            state.player.flags["follower_cap"] = base_count + follower_cap_extra
-                        if grant_type and state.player.follower_slots_remaining() <= 0:
-                            state.last_message = "No room for another follower."
+                        start_message = str(quest_def.get("start_message", "") or "").strip() or None
+                        ok, error = apply_quest_start_actions(
+                            state.player,
+                            quest_def,
+                            items_data=ctx.items,
+                            spells_data=ctx.spells,
+                            followers_data=ctx.followers,
+                            quests_data=ctx.quests,
+                        )
+                        if not ok:
+                            state.last_message = error or "Unable to start quest."
                             return None, None
-                        gp_cost = int(on_start.get("gp_cost", 0) or 0)
-                        if gp_cost > 0:
-                            if int(getattr(state.player, "gold", 0) or 0) < gp_cost:
-                                state.last_message = "Not enough GP."
-                                return None, None
-                            state.player.gold = int(getattr(state.player, "gold", 0) or 0) - gp_cost
-                        if grant_type:
-                            follower = build_follower_from_entry(grant_follower)
-                            if follower:
-                                if not state.player.add_follower(follower):
-                                    state.last_message = "No room for another follower."
-                                    return None, None
-                                if grant_follower.get("count_as_recruit") and hasattr(ctx, "quests") and ctx.quests is not None:
-                                    handle_event(
-                                        state.player,
-                                        ctx.quests,
-                                        "recruit_follower",
-                                        {"follower_type": follower.get("type", ""), "count": 1},
-                                        ctx.items,
-                                        ctx.spells,
-                                    )
-                        start_message = str(on_start.get("start_message", "") or "").strip() or None
                         if start_quest(state.player, quest_id):
                             title = quest_def.get("title", quest_id)
                             if start_message:
@@ -1287,6 +1251,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                         {"follower_type": selected_type, "count": 3},
                         ctx.items,
                         ctx.spells,
+                        ctx.followers,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -1602,7 +1567,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     flags["audio_sfx_volume"] = value
                 elif cmd == "TITLE_AUDIO_WAVE":
                     choices = ["square", "sine", "triangle", "sawtooth", "piano", "harp"]
-                    current = str(flags.get("audio_wave", "square") or "square")
+                    current = str(flags.get("audio_wave", "harp") or "harp")
                     if current not in choices:
                         current = "square"
                     idx = (choices.index(current) + delta) % len(choices)
@@ -1616,7 +1581,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     ctx.save_data.save_settings({
                         "audio_music_volume": flags.get("audio_music_volume", 5),
                         "audio_sfx_volume": flags.get("audio_sfx_volume", 5),
-                        "audio_wave": flags.get("audio_wave", "square"),
+                        "audio_wave": flags.get("audio_wave", "harp"),
                     })
             return None, None
         if action == "BACK":
@@ -2630,6 +2595,7 @@ def resolve_player_action(
             loot=state.loot_bank,
             spells_data=ctx.spells,
             items_data=ctx.items,
+            followers_data=getattr(ctx, "followers", None),
             target_index=state.target_index,
         ),
     )
@@ -2979,6 +2945,28 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
         return
     trial_id = state.battle_trial_id
     open_quest_screen = False
+    if hasattr(ctx, "quests") and ctx.quests is not None:
+        defeated_counts = {}
+        for opponent in state.opponents:
+            opponent_id = str(getattr(opponent, "opponent_id", "") or "")
+            if not opponent_id:
+                continue
+            defeated_counts[opponent_id] = defeated_counts.get(opponent_id, 0) + 1
+        if defeated_counts:
+            for opponent_id, count in defeated_counts.items():
+                quest_messages = handle_event(
+                    state.player,
+                    ctx.quests,
+                    "defeat_opponents",
+                    {"opponent_id": opponent_id, "count": count},
+                    ctx.items,
+                    ctx.spells,
+                    ctx.followers,
+                )
+                for message in quest_messages:
+                    push_battle_message(state, message)
+                if quest_messages:
+                    open_quest_screen = True
     if trial_id and hasattr(ctx, "quests") and ctx.quests is not None:
         quest_messages = handle_event(
             state.player,
@@ -2987,6 +2975,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             {"scene_id": trial_id},
             ctx.items,
             ctx.spells,
+            ctx.followers,
         )
         for message in quest_messages:
             push_battle_message(state, message)
@@ -3077,7 +3066,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
                 ctx.audio.play_song_once("battle_victory")
         if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells)
+            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells, ctx.followers)
             for message in quest_messages:
                 push_battle_message(state, message)
             if quest_messages:

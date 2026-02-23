@@ -961,6 +961,7 @@ class Player:
 class Opponent:
     name: str
     element: str
+    opponent_id: str
     level: int
     hp: int
     max_hp: int

@@ -83,6 +83,7 @@ class OpponentsData:
         base = dict(self._opponents.get(base_id, {}))
         if not base:
             return {}
+        base["opponent_id"] = base_id
         meta = self._variant_meta()
         level_offsets = meta.get("level_offsets", {})
         multipliers = meta.get("stat_multipliers", {})
@@ -110,6 +111,7 @@ class OpponentsData:
     def create(self, data: dict, art_color: str) -> Opponent:
         name = data.get("name", "Slime")
         element = data.get("element", "base")
+        opponent_id = str(data.get("opponent_id", data.get("id", "")) or "")
         level = int(data.get("level", 1))
         hp = int(data.get("hp", 10))
         atk = int(data.get("atk", 5))
@@ -135,6 +137,7 @@ class OpponentsData:
         return Opponent(
             name=name,
             element=element,
+            opponent_id=opponent_id,
             level=level,
             hp=hp,
             max_hp=hp,

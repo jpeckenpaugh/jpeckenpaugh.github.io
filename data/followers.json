@@ -1,0 +1,52 @@
+{
+  "mushroom_baby": {
+    "name": "Mushy",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 4,
+    "defense": 2,
+    "hp": 12,
+    "max_hp": 12,
+    "mp": 6,
+    "max_mp": 6,
+    "equipment": {},
+    "abilities": [
+      "mushroom_tea_brew"
+    ],
+    "active_ability": "mushroom_tea_brew"
+  },
+  "fairy_baby": {
+    "name": "Beba",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 4,
+    "defense": 2,
+    "hp": 12,
+    "max_hp": 12,
+    "mp": 6,
+    "max_mp": 6,
+    "equipment": {},
+    "abilities": [
+      "fairy_heal",
+      "fairy_mana"
+    ],
+    "active_ability": "fairy_heal"
+  },
+  "wolf_pup": {
+    "name": "Chase",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 4,
+    "defense": 2,
+    "hp": 12,
+    "max_hp": 12,
+    "mp": 6,
+    "max_mp": 6,
+    "equipment": {},
+    "abilities": [],
+    "active_ability": ""
+  }
+}
