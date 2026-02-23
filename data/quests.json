@@ -512,7 +512,7 @@
     "summary_pre": "Narration: Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?",
     "summary_active": "Player must win the battle against the 4 fairy warriors.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "fairy",
+    "art_opponent": "fairy_teen",
     "dialog": [
       "Narration: Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?",
       "Beba: Oh, heya!  It's just me Beba, and my royal court.  Would you be so kind as to lend us your power?",
@@ -527,7 +527,7 @@
     "objectives": [
       {
         "type": "defeat_opponents",
-        "opponent_id": "fairy",
+        "opponent_id": "fairy_teen",
         "count": 4
       }
     ],
@@ -548,9 +548,9 @@
       "scene_id": "island_01_quest_15_trial",
       "opponents": [
         {
-          "opponent_id": "fairy",
-          "count": 4
-        }
+        "opponent_id": "fairy_teen",
+        "count": 4
+      }
       ]
     }
   },
