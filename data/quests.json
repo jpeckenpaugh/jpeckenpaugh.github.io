@@ -3,16 +3,18 @@
     "title": "Once upon a time...",
     "continent": "base",
     "summary_pre": "A crow attacks a tiny mushroom in the clearing.",
-    "summary_active": "Chase off the crow and learn basic magic from Mushy.",
+    "summary_active": "Use the 'Strengthen' spell to power up, and fights some opponents...",
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "You hear a commotion. A young mushroom is being attacked by a large crow.",
-      "You rush in and drive the crow away.",
-      "Mushy thanks you and offers a magic mushroom tea to open your mind to basic spells.",
-      "He teaches Strength to raise ATK/DEF and Life Boost to raise max HP.",
-      "Cast Strength, then head into the forest to fight and recruit two more mushroom babies.",
-      "With three mushrooms, the temple can fuse you into a stronger form."
+      "You hear a commotion ahead.  There is a crow pestering a small mushroom.  Instinctively you pick up a stick off the ground and run towards them, scaring the crow off.",
+      "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
+      "Mushy: On our own, neither of us is strong enough to take on the monsters around here, but I have a little secret.",
+      "Mushy: I have a magic mushroom tea, and it is able to open your mind and allow you to understand basic magic.",
+      "I can also show you how to cast a \"Strengthen\" spell that you will raise our attack and defense points.",
+      "The spell will use your Magic Points (MP) and will wear off over time.  But for a while, we will be able to fight the monsters in this area and win.",
+      "Defeating monsters will grant us gold and experience.  If your life and magic points are getting low, we can visit the Inn in the nearby town, and sleep for the night.",
+      "So what do you say?  Feel like trying my magic tea, and we can test our luck against some monsters?"
     ],
     "requirements": {
       "flags_required": [],
