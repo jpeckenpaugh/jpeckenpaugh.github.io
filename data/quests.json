@@ -88,7 +88,13 @@
         "count": 10
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "town",
+        "action_label": "Temple"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "set_flags",
@@ -133,6 +139,11 @@
         "types": [
           "mushroom_baby"
         ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
       }
     ],
     "on_complete_actions": [
@@ -171,7 +182,13 @@
         "count": 3
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "town",
+        "action_label": "Temple"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "clear_recruit_only_types"

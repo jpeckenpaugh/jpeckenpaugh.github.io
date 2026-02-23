@@ -1048,6 +1048,11 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                         _append_debug_log(
                             f"quest_start quest_id={quest_id} pending_level_up={state.pending_level_up} stat_points={state.player.stat_points}"
                         )
+                    else:
+                        quest_def = detail_quest if isinstance(detail_quest, dict) else {}
+                        hint = _hint_from_quest(quest_def)
+                        if hint:
+                            _queue_ui_hint_from_quest(state.player, quest_def)
                 if state.pending_level_up:
                     state.pending_level_up = False
                     state.quest_mode = False
@@ -1123,6 +1128,19 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 quest_id = entry.get("quest_id")
                 if quest_id:
                     qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
+                    if isinstance(qstate, dict) and qstate.get("status") == "active":
+                        quest_def = entry.get("quest", {})
+                        hint = _hint_from_quest(quest_def)
+                        _append_debug_log(
+                            f"quest_list_active quest_id={quest_id} hint={'yes' if hint else 'no'} loc={state.player.location}"
+                        )
+                        if hint and _apply_ui_hint(ctx, state, hint):
+                            return None, None
+                        state.quest_detail_mode = True
+                        state.quest_detail_id = quest_id
+                        state.quest_detail_page = 0
+                        state.action_cursor = 0
+                        return None, None
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
                         if entry.get("status") == "locked":
                             return None, None
@@ -1979,16 +1997,23 @@ def _open_quest_screen(ctx, state: GameState) -> None:
         state.quest_continent_index = 0
 
 
-def _apply_quest_ui_hint(ctx, state: GameState) -> bool:
-    flags = getattr(state.player, "flags", {})
-    if not isinstance(flags, dict):
-        return False
-    hint = flags.pop("quest_ui_hint", None)
+def _apply_ui_hint(ctx, state: GameState, hint: dict) -> bool:
     if not isinstance(hint, dict) or not hint:
         return False
     scene = str(hint.get("scene", "") or "").strip()
     action_command = str(hint.get("action_command", "") or "").strip()
     action_label = str(hint.get("action_label", "") or "").strip()
+    _append_debug_log(
+        "ui_hint start "
+        f"scene={scene or '-'} cmd={action_command or '-'} label={action_label or '-'} "
+        f"loc={state.player.location}"
+    )
+    if scene:
+        scene_lower = scene.lower()
+        if scene_lower == "forest" and state.player.location == "Forest":
+            scene = ""
+        elif scene_lower == "town" and state.player.location == "Town":
+            scene = ""
     if scene:
         pre_in_forest = state.player.location == "Forest"
         pre_alive = any(m.hp > 0 for m in state.opponents)
@@ -2092,7 +2117,59 @@ def _apply_quest_ui_hint(ctx, state: GameState) -> bool:
         if target_idx is not None:
             state.action_cursor = target_idx
             clamp_action_cursor(state, commands)
+    _append_debug_log(
+        "ui_hint done "
+        f"loc={state.player.location} quest_mode={state.quest_mode} cursor={state.action_cursor}"
+    )
     return True
+
+
+def _hint_from_quest(quest_def: dict) -> Optional[dict]:
+    if not isinstance(quest_def, dict):
+        return None
+    actions = quest_def.get("on_start_actions", [])
+    if not isinstance(actions, list):
+        return None
+    hint: Optional[dict] = None
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        if action.get("type") != "set_ui_hint":
+            continue
+        entry = {}
+        scene = action.get("scene")
+        action_command = action.get("action_command")
+        action_label = action.get("action_label")
+        if isinstance(scene, str) and scene:
+            entry["scene"] = scene
+        if isinstance(action_command, str) and action_command:
+            entry["action_command"] = action_command
+        if isinstance(action_label, str) and action_label:
+            entry["action_label"] = action_label
+        if entry:
+            hint = entry
+            break
+    return hint
+
+
+def _queue_ui_hint_from_quest(player: Player, quest_def: dict) -> bool:
+    hint = _hint_from_quest(quest_def)
+    if not hint:
+        return False
+    flags = getattr(player, "flags", {})
+    if not isinstance(flags, dict):
+        flags = {}
+        player.flags = flags
+    flags["quest_ui_hint"] = hint
+    return True
+
+
+def _apply_quest_ui_hint(ctx, state: GameState) -> bool:
+    flags = getattr(state.player, "flags", {})
+    if not isinstance(flags, dict):
+        return False
+    hint = flags.pop("quest_ui_hint", None)
+    return _apply_ui_hint(ctx, state, hint)
 
 
 def _auto_open_next_quest_on_complete(ctx, state: GameState) -> bool:
