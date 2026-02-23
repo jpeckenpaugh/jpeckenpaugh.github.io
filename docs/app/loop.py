@@ -1672,7 +1672,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     flags["audio_sfx_volume"] = value
                 elif cmd == "TITLE_AUDIO_WAVE":
                     choices = ["square", "sine", "triangle", "sawtooth", "piano", "harp"]
-                    current = str(flags.get("audio_wave", "harp") or "harp")
+                    current = str(flags.get("audio_wave", "triangle") or "triangle")
                     if current not in choices:
                         current = "square"
                     idx = (choices.index(current) + delta) % len(choices)
@@ -1686,7 +1686,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     ctx.save_data.save_settings({
                         "audio_music_volume": flags.get("audio_music_volume", 5),
                         "audio_sfx_volume": flags.get("audio_sfx_volume", 5),
-                        "audio_wave": flags.get("audio_wave", "harp"),
+                        "audio_wave": flags.get("audio_wave", "triangle"),
                     })
             return None, None
         if action == "BACK":

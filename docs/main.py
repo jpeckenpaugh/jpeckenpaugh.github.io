@@ -351,7 +351,7 @@ def main():
         APP.audio.set_mode(state.player.flags.get("audio_mode"))
         music_vol = int(state.player.flags.get("audio_music_volume", 5) or 0) / 5.0
         sfx_vol = int(state.player.flags.get("audio_sfx_volume", 5) or 0) / 5.0
-        wave = str(state.player.flags.get("audio_wave", "harp") or "harp")
+        wave = str(state.player.flags.get("audio_wave", "triangle") or "triangle")
         APP.audio.set_defaults(music_vol, sfx_vol, wave)
         APP.audio.on_location_change(None, "Title")
 
