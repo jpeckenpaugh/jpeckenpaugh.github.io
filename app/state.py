@@ -78,6 +78,9 @@ class GameState:
     title_intro_wave: Optional[str] = None
     battle_escaped: bool = False
     battle_active: bool = False
+    preemptive_turns: int = 0
+    debug_temp_atk: Optional[int] = None
+    debug_temp_def: Optional[int] = None
     asset_explorer_focus: str = "list"
     asset_explorer_info_scroll: int = 0
     asset_explorer_preview_key: Optional[str] = None

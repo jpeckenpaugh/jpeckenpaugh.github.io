@@ -1,101 +1,416 @@
-[03:06:44] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:12:00] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:15:38] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:16:38] pending_level_up trigger cmd=ENTER_SCENE action_cmd=None level=2 stat_points=10
-[03:19:01] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:19:50] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[03:23:11] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:24:01] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
-[03:29:02] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:30:10] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[03:31:24] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
-[03:31:47] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
-[03:36:03] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:36:37] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[03:37:27] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=10
-[03:38:50] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=10
-[03:39:12] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[03:39:42] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[03:40:14] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=10
-[03:41:16] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=10
-[04:04:12] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[04:05:01] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
-[04:05:33] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
-[04:05:54] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
-[04:12:13] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[04:12:50] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
-[04:22:35] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[04:23:16] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[04:36:32] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[05:00:40] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[05:01:13] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
-[05:01:59] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
-[05:02:20] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
-[05:03:04] quest_start quest_id=island_01_quest_06 pending_level_up=False stat_points=0
-[05:05:38] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[05:06:24] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
-[05:08:05] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[05:08:46] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[05:12:47] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[05:13:27] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[05:14:17] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
-[05:14:32] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
-[05:15:34] quest_start quest_id=island_01_quest_06 pending_level_up=False stat_points=0
-[05:17:02] quest_start quest_id=island_01_quest_07 pending_level_up=False stat_points=0
-[05:17:09] quest_start quest_id=island_01_quest_10 pending_level_up=False stat_points=0
-[05:17:49] quest_start quest_id=island_01_quest_11 pending_level_up=False stat_points=0
-[05:18:47] quest_start quest_id=island_01_quest_12 pending_level_up=False stat_points=0
-[05:20:48] quest_start quest_id=island_01_quest_13 pending_level_up=False stat_points=0
-[05:21:07] quest_start quest_id=island_01_quest_14 pending_level_up=False stat_points=0
-[05:23:34] quest_start quest_id=island_01_quest_15 pending_level_up=False stat_points=0
-[05:30:46] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[05:31:28] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[05:31:53] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=10
-[05:32:12] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
-[05:32:27] quest_start quest_id=island_01_quest_06 pending_level_up=False stat_points=0
-[05:32:51] quest_start quest_id=island_01_quest_07 pending_level_up=False stat_points=0
-[05:32:57] quest_start quest_id=island_01_quest_10 pending_level_up=False stat_points=0
-[05:33:29] quest_start quest_id=island_01_quest_11 pending_level_up=False stat_points=0
-[05:34:23] quest_start quest_id=island_01_quest_12 pending_level_up=False stat_points=0
-[05:35:39] quest_start quest_id=island_01_quest_13 pending_level_up=False stat_points=0
-[05:35:54] quest_start quest_id=island_01_quest_14 pending_level_up=False stat_points=0
-[05:36:09] quest_start quest_id=island_01_quest_15 pending_level_up=False stat_points=0
-[05:36:45] quest_start quest_id=island_01_quest_16 pending_level_up=False stat_points=0
-[05:37:01] quest_start quest_id=island_01_quest_17 pending_level_up=False stat_points=0
-[05:38:09] quest_start quest_id=island_01_quest_18 pending_level_up=False stat_points=0
-[05:50:01] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[05:50:42] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
-[05:51:12] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
-[05:51:30] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
-[05:53:07] quest_start quest_id=island_01_quest_06 pending_level_up=False stat_points=0
-[05:53:31] quest_start quest_id=island_01_quest_07 pending_level_up=False stat_points=0
-[05:53:43] quest_start quest_id=island_01_quest_10 pending_level_up=False stat_points=0
-[05:54:32] quest_start quest_id=island_01_quest_11 pending_level_up=False stat_points=0
-[05:57:14] quest_start quest_id=island_01_quest_12 pending_level_up=False stat_points=0
-[06:08:43] quest_start quest_id=island_01_quest_13 pending_level_up=False stat_points=0
-[06:09:09] quest_start quest_id=island_01_quest_14 pending_level_up=False stat_points=0
-[06:09:46] quest_start quest_id=island_01_quest_16 pending_level_up=False stat_points=0
-[06:10:08] quest_start quest_id=island_01_quest_17 pending_level_up=False stat_points=0
-[06:11:08] quest_start quest_id=island_01_quest_18 pending_level_up=False stat_points=0
-[06:16:59] quest_start quest_id=island_01_quest_19 pending_level_up=False stat_points=0
-[06:17:30] quest_start quest_id=island_01_quest_20 pending_level_up=False stat_points=0
-[06:18:27] quest_start quest_id=island_01_quest_21 pending_level_up=False stat_points=0
-[06:41:50] quest_start quest_id=island_01_quest_22 pending_level_up=False stat_points=0
-[06:42:01] quest_start quest_id=island_01_quest_23 pending_level_up=False stat_points=0
-[06:57:36] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
-[06:58:29] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
-[06:59:42] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
-[06:59:58] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
-[07:00:51] quest_start quest_id=island_01_quest_06 pending_level_up=False stat_points=0
-[07:01:20] quest_start quest_id=island_01_quest_07 pending_level_up=False stat_points=0
-[07:02:01] quest_start quest_id=island_01_quest_11 pending_level_up=False stat_points=0
-[07:02:50] quest_start quest_id=island_01_quest_12 pending_level_up=False stat_points=0
-[07:04:11] quest_start quest_id=island_01_quest_13 pending_level_up=False stat_points=0
-[07:04:40] quest_start quest_id=island_01_quest_14 pending_level_up=False stat_points=0
-[07:05:25] quest_start quest_id=island_01_quest_16 pending_level_up=False stat_points=0
-[07:05:58] quest_start quest_id=island_01_quest_17 pending_level_up=False stat_points=0
-[07:07:06] quest_start quest_id=island_01_quest_18 pending_level_up=False stat_points=0
-[07:08:03] quest_start quest_id=island_01_quest_19 pending_level_up=False stat_points=0
-[07:11:17] quest_start quest_id=island_01_quest_22 pending_level_up=False stat_points=0
-[07:11:35] quest_start quest_id=island_01_quest_23 pending_level_up=False stat_points=0
-[07:12:17] quest_start quest_id=island_01_quest_25 pending_level_up=False stat_points=0
+[08:14:57] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[08:15:04] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[08:15:04] temp_set temp_atk_bonus from=0 to=4
+[08:15:04] support_apply stat=atk target=player gain=4.220645615462971 new_player_atk=4 new_player_def=0
+[08:15:04] temp_set temp_def_bonus from=0 to=2
+[08:15:04] support_apply stat=defense target=player gain=2.2909188886884504 new_player_atk=4 new_player_def=2
+[08:15:04] spell_support spell=strength rank=1 target=player temp_atk=4 temp_def=2
+[08:15:04] temp_set temp_atk_bonus from=4 to=5
+[08:15:04] temp_set temp_def_bonus from=2 to=3
+[08:15:04] temp_set temp_atk_bonus from=5 to=6
+[08:15:04] temp_set temp_def_bonus from=3 to=4
+[08:15:04] temp_set temp_atk_bonus from=6 to=7
+[08:15:04] temp_set temp_def_bonus from=4 to=5
+[08:15:04] temp_set temp_atk_bonus from=7 to=8
+[08:15:04] temp_set temp_def_bonus from=5 to=6
+[08:15:04] temp_set temp_atk_bonus from=8 to=9
+[08:15:04] temp_set temp_def_bonus from=6 to=7
+[08:15:04] temp_set temp_atk_bonus from=9 to=10
+[08:15:04] temp_set temp_def_bonus from=7 to=8
+[08:15:04] temp_set temp_atk_bonus from=10 to=11
+[08:15:04] temp_set temp_def_bonus from=8 to=9
+[08:15:04] temp_set temp_atk_bonus from=11 to=12
+[08:15:04] temp_set temp_def_bonus from=9 to=10
+[08:15:04] temp_set temp_atk_bonus from=12 to=13
+[08:15:04] temp_set temp_def_bonus from=10 to=11
+[08:15:04] temp_set temp_atk_bonus from=13 to=14
+[08:15:04] temp_set temp_def_bonus from=11 to=12
+[08:15:05] support_apply start caller=resolve_player_action target=player player_temp_atk=14 player_temp_def=12
+[08:15:05] temp_set temp_atk_bonus from=14 to=19
+[08:15:05] support_apply stat=atk target=player gain=5.24237995044882 new_player_atk=19 new_player_def=12
+[08:15:05] temp_set temp_def_bonus from=12 to=15
+[08:15:05] support_apply stat=defense target=player gain=3.4232720320833234 new_player_atk=19 new_player_def=15
+[08:15:05] spell_support spell=strength rank=1 target=player temp_atk=19 temp_def=15
+[08:15:05] temp_set temp_atk_bonus from=19 to=20
+[08:15:05] temp_set temp_def_bonus from=15 to=16
+[08:15:06] temp_set temp_atk_bonus from=20 to=21
+[08:15:06] temp_set temp_def_bonus from=16 to=17
+[08:15:06] temp_set temp_atk_bonus from=21 to=22
+[08:15:06] temp_set temp_def_bonus from=17 to=18
+[08:15:06] temp_set temp_atk_bonus from=22 to=23
+[08:15:06] temp_set temp_def_bonus from=18 to=19
+[08:15:06] temp_set temp_atk_bonus from=23 to=24
+[08:15:06] temp_set temp_def_bonus from=19 to=20
+[08:15:06] temp_set temp_atk_bonus from=24 to=25
+[08:15:06] temp_set temp_def_bonus from=20 to=21
+[08:15:06] temp_set temp_atk_bonus from=25 to=26
+[08:15:06] temp_set temp_def_bonus from=21 to=22
+[08:15:06] temp_set temp_atk_bonus from=26 to=27
+[08:15:06] temp_set temp_def_bonus from=22 to=23
+[08:15:06] temp_set temp_atk_bonus from=27 to=28
+[08:15:06] temp_set temp_def_bonus from=23 to=24
+[08:15:06] temp_set temp_atk_bonus from=28 to=29
+[08:15:06] temp_set temp_def_bonus from=24 to=25
+[08:17:51] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[08:18:05] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[08:18:05] temp_set temp_atk_bonus from=0 to=5
+[08:18:05] support_apply stat=atk target=player gain=5.1564584619494855 new_player_atk=5 new_player_def=0
+[08:18:05] temp_set temp_def_bonus from=0 to=4
+[08:18:05] support_apply stat=defense target=player gain=3.7366604464898847 new_player_atk=5 new_player_def=4
+[08:18:05] spell_support spell=strength rank=1 target=player temp_atk=5 temp_def=4
+[08:18:10] support_apply start caller=resolve_player_action target=player player_temp_atk=5 player_temp_def=4
+[08:18:10] temp_set temp_atk_bonus from=5 to=10
+[08:18:10] support_apply stat=atk target=player gain=5.43028890051057 new_player_atk=10 new_player_def=4
+[08:18:10] temp_set temp_def_bonus from=4 to=8
+[08:18:10] support_apply stat=defense target=player gain=3.593264997318986 new_player_atk=10 new_player_def=8
+[08:18:10] spell_support spell=strength rank=1 target=player temp_atk=10 temp_def=8
+[08:18:17] support_apply start caller=resolve_player_action target=follower player_temp_atk=10 player_temp_def=8
+[08:18:17] support_apply stat=atk target=follower gain=5.707836893970475 new_player_atk=10 new_player_def=8
+[08:18:17] support_apply stat=defense target=follower gain=2.0702637891880897 new_player_atk=10 new_player_def=8
+[08:18:17] spell_support spell=strength rank=1 target=follower temp_atk=10 temp_def=8
+[08:18:18] support_apply start caller=resolve_player_action target=player player_temp_atk=10 player_temp_def=8
+[08:18:18] temp_set temp_atk_bonus from=10 to=16
+[08:18:18] support_apply stat=atk target=player gain=5.991960618578493 new_player_atk=16 new_player_def=8
+[08:18:18] temp_set temp_def_bonus from=8 to=12
+[08:18:18] support_apply stat=defense target=player gain=3.616187769996042 new_player_atk=16 new_player_def=12
+[08:18:18] spell_support spell=strength rank=1 target=player temp_atk=16 temp_def=12
+[08:18:19] support_apply start caller=resolve_player_action target=follower player_temp_atk=16 player_temp_def=12
+[08:18:19] support_apply stat=atk target=follower gain=4.3194513629153235 new_player_atk=16 new_player_def=12
+[08:18:19] support_apply stat=defense target=follower gain=2.622073462979161 new_player_atk=16 new_player_def=12
+[08:18:19] spell_support spell=strength rank=1 target=follower temp_atk=16 temp_def=12
+[08:18:28] temp_set temp_atk_bonus from=16 to=15
+[08:18:28] temp_set temp_def_bonus from=12 to=11
+[08:18:30] temp_set temp_atk_bonus from=15 to=14
+[08:18:30] temp_set temp_def_bonus from=11 to=10
+[08:18:32] temp_set temp_atk_bonus from=14 to=13
+[08:18:32] temp_set temp_def_bonus from=10 to=9
+[08:18:35] temp_set temp_atk_bonus from=13 to=12
+[08:18:35] temp_set temp_def_bonus from=9 to=8
+[08:18:37] temp_set temp_atk_bonus from=12 to=11
+[08:18:37] temp_set temp_def_bonus from=8 to=7
+[08:18:40] temp_set temp_atk_bonus from=11 to=10
+[08:18:40] temp_set temp_def_bonus from=7 to=6
+[08:18:43] temp_set temp_atk_bonus from=10 to=9
+[08:18:43] temp_set temp_def_bonus from=6 to=5
+[08:18:46] temp_set temp_atk_bonus from=9 to=8
+[08:18:46] temp_set temp_def_bonus from=5 to=4
+[08:18:52] temp_set temp_atk_bonus from=8 to=7
+[08:18:52] temp_set temp_def_bonus from=4 to=3
+[08:18:55] temp_set temp_atk_bonus from=7 to=6
+[08:18:55] temp_set temp_def_bonus from=3 to=2
+[08:18:59] support_apply start caller=resolve_player_action target=player player_temp_atk=6 player_temp_def=2
+[08:18:59] temp_set temp_atk_bonus from=6 to=12
+[08:18:59] support_apply stat=atk target=player gain=5.610615627125718 new_player_atk=12 new_player_def=2
+[08:18:59] temp_set temp_def_bonus from=2 to=5
+[08:18:59] support_apply stat=defense target=player gain=2.866444975542382 new_player_atk=12 new_player_def=5
+[08:18:59] spell_support spell=strength rank=1 target=player temp_atk=12 temp_def=5
+[08:19:00] temp_set temp_atk_bonus from=12 to=11
+[08:19:00] temp_set temp_def_bonus from=5 to=4
+[08:19:04] temp_set temp_atk_bonus from=11 to=10
+[08:19:04] temp_set temp_def_bonus from=4 to=3
+[08:19:06] temp_set temp_atk_bonus from=10 to=9
+[08:19:06] temp_set temp_def_bonus from=3 to=2
+[08:19:08] temp_set temp_atk_bonus from=9 to=8
+[08:19:08] temp_set temp_def_bonus from=2 to=1
+[08:19:42] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[08:19:53] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[08:19:53] temp_set temp_atk_bonus from=0 to=5
+[08:19:53] support_apply stat=atk target=player gain=5.351242587524593 new_player_atk=5 new_player_def=0
+[08:19:53] temp_set temp_def_bonus from=0 to=3
+[08:19:53] support_apply stat=defense target=player gain=3.0321773714288955 new_player_atk=5 new_player_def=3
+[08:19:53] spell_support spell=strength rank=1 target=player temp_atk=5 temp_def=3
+[08:19:55] support_apply start caller=resolve_player_action target=player player_temp_atk=5 player_temp_def=3
+[08:19:55] temp_set temp_atk_bonus from=5 to=10
+[08:19:55] support_apply stat=atk target=player gain=5.131207574914422 new_player_atk=10 new_player_def=3
+[08:19:55] temp_set temp_def_bonus from=3 to=6
+[08:19:55] support_apply stat=defense target=player gain=2.520185736938122 new_player_atk=10 new_player_def=6
+[08:19:55] spell_support spell=strength rank=1 target=player temp_atk=10 temp_def=6
+[08:19:57] support_apply start caller=resolve_player_action target=player player_temp_atk=10 player_temp_def=6
+[08:19:57] temp_set temp_atk_bonus from=10 to=16
+[08:19:57] support_apply stat=atk target=player gain=5.768262106462015 new_player_atk=16 new_player_def=6
+[08:19:57] temp_set temp_def_bonus from=6 to=8
+[08:19:57] support_apply stat=defense target=player gain=2.2461717358634963 new_player_atk=16 new_player_def=8
+[08:19:57] spell_support spell=strength rank=1 target=player temp_atk=16 temp_def=8
+[08:19:59] support_apply start caller=resolve_player_action target=player player_temp_atk=16 player_temp_def=8
+[08:19:59] temp_set temp_atk_bonus from=16 to=22
+[08:19:59] support_apply stat=atk target=player gain=5.763710792752399 new_player_atk=22 new_player_def=8
+[08:19:59] temp_set temp_def_bonus from=8 to=11
+[08:19:59] support_apply stat=defense target=player gain=3.363021411244721 new_player_atk=22 new_player_def=11
+[08:19:59] spell_support spell=strength rank=1 target=player temp_atk=22 temp_def=11
+[08:20:02] support_apply start caller=resolve_player_action target=player player_temp_atk=22 player_temp_def=11
+[08:20:02] temp_set temp_atk_bonus from=22 to=23
+[08:20:02] support_apply stat=atk target=player gain=4.657639388529833 new_player_atk=23 new_player_def=11
+[08:20:02] temp_set temp_def_bonus from=11 to=10
+[08:20:02] support_apply stat=defense target=player gain=2.095786708261579 new_player_atk=23 new_player_def=10
+[08:20:02] spell_support spell=strength rank=1 target=player temp_atk=23 temp_def=10
+[08:20:15] temp_set temp_atk_bonus from=23 to=22
+[08:20:15] temp_set temp_def_bonus from=10 to=9
+[08:20:23] temp_set temp_atk_bonus from=22 to=21
+[08:20:23] temp_set temp_def_bonus from=9 to=8
+[08:20:26] temp_set temp_atk_bonus from=21 to=20
+[08:20:26] temp_set temp_def_bonus from=8 to=7
+[08:20:27] temp_set temp_atk_bonus from=20 to=19
+[08:20:27] temp_set temp_def_bonus from=7 to=6
+[08:20:29] temp_set temp_atk_bonus from=19 to=18
+[08:20:29] temp_set temp_def_bonus from=6 to=5
+[08:20:32] temp_set temp_atk_bonus from=18 to=17
+[08:20:32] temp_set temp_def_bonus from=5 to=4
+[08:20:34] temp_set temp_atk_bonus from=17 to=16
+[08:20:34] temp_set temp_def_bonus from=4 to=3
+[08:20:37] temp_set temp_atk_bonus from=16 to=15
+[08:20:37] temp_set temp_def_bonus from=3 to=2
+[08:25:18] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[08:25:25] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[08:25:25] temp_set temp_atk_bonus from=0 to=7
+[08:25:25] support_apply stat=atk target=player gain=6.783470465422334 new_player_atk=7 new_player_def=0
+[08:25:25] temp_set temp_def_bonus from=0 to=6
+[08:25:25] support_apply stat=defense target=player gain=5.9429130052382915 new_player_atk=7 new_player_def=6
+[08:25:25] temp_set temp_atk_bonus from=7 to=8
+[08:25:25] temp_set temp_def_bonus from=6 to=7
+[08:25:25] temp_set temp_atk_bonus from=8 to=9
+[08:25:25] temp_set temp_def_bonus from=7 to=8
+[08:25:26] temp_set temp_atk_bonus from=9 to=10
+[08:25:26] temp_set temp_def_bonus from=8 to=9
+[08:25:26] temp_set temp_atk_bonus from=10 to=11
+[08:25:26] temp_set temp_def_bonus from=9 to=10
+[08:25:26] temp_set temp_atk_bonus from=11 to=12
+[08:25:26] temp_set temp_def_bonus from=10 to=11
+[08:25:26] temp_set temp_atk_bonus from=12 to=13
+[08:25:26] temp_set temp_def_bonus from=11 to=12
+[08:25:26] temp_set temp_atk_bonus from=13 to=14
+[08:25:26] temp_set temp_def_bonus from=12 to=13
+[08:25:26] spell_support spell=strength rank=1 target=player temp_atk=14 temp_def=13
+[08:25:38] support_apply start caller=resolve_player_action target=player player_temp_atk=14 player_temp_def=13
+[08:25:38] temp_set temp_atk_bonus from=14 to=21
+[08:25:38] support_apply stat=atk target=player gain=7.01876384567184 new_player_atk=21 new_player_def=13
+[08:25:38] temp_set temp_def_bonus from=13 to=17
+[08:25:38] support_apply stat=defense target=player gain=4.394608948217189 new_player_atk=21 new_player_def=17
+[08:25:38] temp_set temp_atk_bonus from=21 to=22
+[08:25:38] temp_set temp_def_bonus from=17 to=18
+[08:25:38] temp_set temp_atk_bonus from=22 to=23
+[08:25:38] temp_set temp_def_bonus from=18 to=19
+[08:25:38] temp_set temp_atk_bonus from=23 to=24
+[08:25:38] temp_set temp_def_bonus from=19 to=20
+[08:25:38] temp_set temp_atk_bonus from=24 to=25
+[08:25:38] temp_set temp_def_bonus from=20 to=21
+[08:25:38] temp_set temp_atk_bonus from=25 to=26
+[08:25:38] temp_set temp_def_bonus from=21 to=22
+[08:25:38] temp_set temp_atk_bonus from=26 to=27
+[08:25:38] temp_set temp_def_bonus from=22 to=23
+[08:25:38] temp_set temp_atk_bonus from=27 to=28
+[08:25:38] temp_set temp_def_bonus from=23 to=24
+[08:25:38] spell_support spell=strength rank=1 target=player temp_atk=28 temp_def=24
+[08:26:51] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[08:26:58] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[08:26:58] temp_set temp_atk_bonus from=0 to=6
+[08:26:58] support_apply stat=atk target=player gain=6.299501951180414 new_player_atk=6 new_player_def=0
+[08:26:58] temp_set temp_def_bonus from=0 to=6
+[08:26:58] support_apply stat=defense target=player gain=5.611547033745611 new_player_atk=6 new_player_def=6
+[08:26:58] temp_set temp_atk_bonus from=6 to=7
+[08:26:58] temp_set temp_def_bonus from=6 to=7
+[08:26:58] temp_set temp_atk_bonus from=7 to=8
+[08:26:58] temp_set temp_def_bonus from=7 to=8
+[08:26:58] temp_set temp_atk_bonus from=8 to=9
+[08:26:58] temp_set temp_def_bonus from=8 to=9
+[08:26:58] temp_set temp_atk_bonus from=9 to=10
+[08:26:58] temp_set temp_def_bonus from=9 to=10
+[08:26:58] temp_set temp_atk_bonus from=10 to=11
+[08:26:58] temp_set temp_def_bonus from=10 to=11
+[08:26:58] temp_set temp_atk_bonus from=11 to=12
+[08:26:58] temp_set temp_def_bonus from=11 to=12
+[08:26:58] spell_support spell=strength rank=1 target=player temp_atk=12 temp_def=12
+[08:27:02] support_apply start caller=resolve_player_action target=player player_temp_atk=12 player_temp_def=12
+[08:27:02] temp_set temp_atk_bonus from=12 to=19
+[08:27:02] support_apply stat=atk target=player gain=7.345934235654151 new_player_atk=19 new_player_def=12
+[08:27:02] temp_set temp_def_bonus from=12 to=17
+[08:27:02] support_apply stat=defense target=player gain=4.832586940988876 new_player_atk=19 new_player_def=17
+[08:27:02] temp_set temp_atk_bonus from=19 to=20
+[08:27:02] temp_set temp_def_bonus from=17 to=18
+[08:27:02] temp_set temp_atk_bonus from=20 to=21
+[08:27:02] temp_set temp_def_bonus from=18 to=19
+[08:27:02] temp_set temp_atk_bonus from=21 to=22
+[08:27:02] temp_set temp_def_bonus from=19 to=20
+[08:27:02] temp_set temp_atk_bonus from=22 to=23
+[08:27:02] temp_set temp_def_bonus from=20 to=21
+[08:27:02] temp_set temp_atk_bonus from=23 to=24
+[08:27:02] temp_set temp_def_bonus from=21 to=22
+[08:27:02] temp_set temp_atk_bonus from=24 to=25
+[08:27:02] temp_set temp_def_bonus from=22 to=23
+[08:27:02] temp_set temp_atk_bonus from=25 to=26
+[08:27:02] temp_set temp_def_bonus from=23 to=24
+[08:27:02] spell_support spell=strength rank=1 target=player temp_atk=26 temp_def=24
+[08:27:20] support_apply start caller=resolve_player_action target=follower player_temp_atk=26 player_temp_def=24
+[08:27:20] support_apply stat=atk target=follower gain=7.895383949749133 new_player_atk=26 new_player_def=24
+[08:27:20] support_apply stat=defense target=follower gain=5.896948980323115 new_player_atk=26 new_player_def=24
+[08:27:20] spell_support spell=strength rank=1 target=follower temp_atk=26 temp_def=24
+[08:29:50] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[08:29:55] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[08:29:55] temp_set temp_atk_bonus from=0 to=8
+[08:29:55] support_apply stat=atk target=player gain=7.971158633828708 new_player_atk=8 new_player_def=0
+[08:29:55] temp_set temp_def_bonus from=0 to=4
+[08:29:55] support_apply stat=defense target=player gain=4.125857026974707 new_player_atk=8 new_player_def=4
+[08:29:55] temp_set temp_atk_bonus from=8 to=1
+[08:29:55] temp_set temp_def_bonus from=4 to=1
+[08:29:55] temp_set temp_atk_bonus from=1 to=2
+[08:29:55] temp_set temp_def_bonus from=1 to=2
+[08:29:55] temp_set temp_atk_bonus from=2 to=3
+[08:29:55] temp_set temp_def_bonus from=2 to=3
+[08:29:55] temp_set temp_atk_bonus from=3 to=4
+[08:29:55] temp_set temp_def_bonus from=3 to=4
+[08:29:55] temp_set temp_atk_bonus from=4 to=5
+[08:29:55] temp_set temp_atk_bonus from=5 to=6
+[08:29:55] temp_set temp_atk_bonus from=6 to=7
+[08:29:55] temp_set temp_atk_bonus from=7 to=8
+[08:29:55] spell_support spell=strength rank=1 target=player temp_atk=8 temp_def=4
+[08:29:59] support_apply start caller=resolve_player_action target=follower player_temp_atk=8 player_temp_def=4
+[08:29:59] support_apply stat=atk target=follower gain=6.135611533298778 new_player_atk=8 new_player_def=4
+[08:29:59] support_apply stat=defense target=follower gain=5.632833146472785 new_player_atk=8 new_player_def=4
+[08:29:59] spell_support spell=strength rank=1 target=follower temp_atk=8 temp_def=4
+[08:33:48] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[08:33:54] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[08:33:54] temp_set temp_atk_bonus from=0 to=6
+[08:33:54] support_apply stat=atk target=player gain=6.442725399270667 new_player_atk=6 new_player_def=0
+[08:33:54] temp_set temp_def_bonus from=0 to=4
+[08:33:54] support_apply stat=defense target=player gain=4.265609684365302 new_player_atk=6 new_player_def=4
+[08:33:54] temp_set temp_atk_bonus from=6 to=1
+[08:33:54] temp_set temp_def_bonus from=4 to=1
+[08:33:54] temp_set temp_atk_bonus from=1 to=2
+[08:33:54] temp_set temp_def_bonus from=1 to=2
+[08:33:54] temp_set temp_atk_bonus from=2 to=3
+[08:33:54] temp_set temp_def_bonus from=2 to=3
+[08:33:54] temp_set temp_atk_bonus from=3 to=4
+[08:33:54] temp_set temp_def_bonus from=3 to=4
+[08:33:54] temp_set temp_atk_bonus from=4 to=5
+[08:33:54] temp_set temp_atk_bonus from=5 to=6
+[08:33:54] spell_support spell=strength rank=1 target=player temp_atk=6 temp_def=4
+[08:33:56] support_apply start caller=resolve_player_action target=follower player_temp_atk=6 player_temp_def=4
+[08:33:56] support_apply stat=atk target=follower gain=7.621859242246181 new_player_atk=6 new_player_def=4
+[08:33:56] support_apply stat=defense target=follower gain=4.244786600595 new_player_atk=6 new_player_def=4
+[08:33:57] spell_support spell=strength rank=1 target=follower temp_atk=6 temp_def=4
+[08:33:57] support_apply start caller=resolve_player_action target=player player_temp_atk=6 player_temp_def=4
+[08:33:57] temp_set temp_atk_bonus from=6 to=13
+[08:33:57] support_apply stat=atk target=player gain=6.53092254369262 new_player_atk=13 new_player_def=4
+[08:33:57] temp_set temp_def_bonus from=4 to=8
+[08:33:57] support_apply stat=defense target=player gain=4.040054250981647 new_player_atk=13 new_player_def=8
+[08:33:57] temp_set temp_atk_bonus from=13 to=7
+[08:33:57] temp_set temp_def_bonus from=8 to=5
+[08:33:58] temp_set temp_atk_bonus from=7 to=8
+[08:33:58] temp_set temp_def_bonus from=5 to=6
+[08:33:58] temp_set temp_atk_bonus from=8 to=9
+[08:33:58] temp_set temp_def_bonus from=6 to=7
+[08:33:58] temp_set temp_atk_bonus from=9 to=10
+[08:33:58] temp_set temp_def_bonus from=7 to=8
+[08:33:58] temp_set temp_atk_bonus from=10 to=11
+[08:33:58] temp_set temp_atk_bonus from=11 to=12
+[08:33:58] temp_set temp_atk_bonus from=12 to=13
+[08:33:58] spell_support spell=strength rank=1 target=player temp_atk=13 temp_def=8
+[08:33:59] support_apply start caller=resolve_player_action target=player player_temp_atk=13 player_temp_def=8
+[08:33:59] temp_set temp_atk_bonus from=13 to=20
+[08:33:59] support_apply stat=atk target=player gain=6.734740982979844 new_player_atk=20 new_player_def=8
+[08:33:59] temp_set temp_def_bonus from=8 to=13
+[08:33:59] support_apply stat=defense target=player gain=5.4504572811058205 new_player_atk=20 new_player_def=13
+[08:33:59] temp_set temp_atk_bonus from=20 to=14
+[08:33:59] temp_set temp_def_bonus from=13 to=9
+[08:33:59] temp_set temp_atk_bonus from=14 to=15
+[08:33:59] temp_set temp_def_bonus from=9 to=10
+[08:33:59] temp_set temp_atk_bonus from=15 to=16
+[08:33:59] temp_set temp_def_bonus from=10 to=11
+[08:33:59] temp_set temp_atk_bonus from=16 to=17
+[08:33:59] temp_set temp_def_bonus from=11 to=12
+[08:33:59] temp_set temp_atk_bonus from=17 to=18
+[08:33:59] temp_set temp_def_bonus from=12 to=13
+[08:33:59] temp_set temp_atk_bonus from=18 to=19
+[08:33:59] temp_set temp_atk_bonus from=19 to=20
+[08:33:59] spell_support spell=strength rank=1 target=player temp_atk=20 temp_def=13
+[08:34:02] support_apply start caller=resolve_player_action target=follower player_temp_atk=20 player_temp_def=13
+[08:34:02] support_apply stat=atk target=follower gain=6.762359824018102 new_player_atk=20 new_player_def=13
+[08:34:02] support_apply stat=defense target=follower gain=5.2621386918811925 new_player_atk=20 new_player_def=13
+[08:34:02] spell_support spell=strength rank=1 target=follower temp_atk=20 temp_def=13
+[08:34:17] temp_set temp_atk_bonus from=20 to=19
+[08:34:17] temp_set temp_def_bonus from=13 to=12
+[08:34:19] temp_set temp_atk_bonus from=19 to=18
+[08:34:19] temp_set temp_def_bonus from=12 to=11
+[08:34:22] temp_set temp_atk_bonus from=18 to=17
+[08:34:22] temp_set temp_def_bonus from=11 to=10
+[08:34:57] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
+[08:36:05] temp_set temp_atk_bonus from=17 to=16
+[08:36:05] temp_set temp_def_bonus from=10 to=9
+[08:36:08] temp_set temp_atk_bonus from=16 to=15
+[08:36:08] temp_set temp_def_bonus from=9 to=8
+[08:36:09] temp_set temp_atk_bonus from=15 to=14
+[08:36:09] temp_set temp_def_bonus from=8 to=7
+[08:36:11] temp_set temp_atk_bonus from=14 to=13
+[08:36:11] temp_set temp_def_bonus from=7 to=6
+[08:36:17] temp_set temp_atk_bonus from=13 to=12
+[08:36:17] temp_set temp_def_bonus from=6 to=5
+[08:36:22] temp_set temp_atk_bonus from=12 to=11
+[08:36:22] temp_set temp_def_bonus from=5 to=4
+[08:36:29] support_apply start caller=resolve_player_action target=player player_temp_atk=11 player_temp_def=4
+[08:36:29] temp_set temp_atk_bonus from=11 to=17
+[08:36:29] support_apply stat=atk target=player gain=6.086496685457093 new_player_atk=17 new_player_def=4
+[08:36:29] temp_set temp_def_bonus from=4 to=8
+[08:36:29] support_apply stat=defense target=player gain=4.127105889348049 new_player_atk=17 new_player_def=8
+[08:36:29] temp_set temp_atk_bonus from=17 to=12
+[08:36:29] temp_set temp_def_bonus from=8 to=5
+[08:36:29] temp_set temp_atk_bonus from=12 to=13
+[08:36:29] temp_set temp_def_bonus from=5 to=6
+[08:36:29] temp_set temp_atk_bonus from=13 to=14
+[08:36:29] temp_set temp_def_bonus from=6 to=7
+[08:36:29] temp_set temp_atk_bonus from=14 to=15
+[08:36:29] temp_set temp_def_bonus from=7 to=8
+[08:36:29] temp_set temp_atk_bonus from=15 to=16
+[08:36:29] temp_set temp_atk_bonus from=16 to=17
+[08:36:29] spell_support spell=strength rank=1 target=player temp_atk=17 temp_def=8
+[08:36:30] support_apply start caller=resolve_player_action target=player player_temp_atk=17 player_temp_def=8
+[08:36:30] temp_set temp_atk_bonus from=17 to=24
+[08:36:30] support_apply stat=atk target=player gain=7.449341138700899 new_player_atk=24 new_player_def=8
+[08:36:30] temp_set temp_def_bonus from=8 to=13
+[08:36:30] support_apply stat=defense target=player gain=4.962321862225226 new_player_atk=24 new_player_def=13
+[08:36:30] temp_set temp_atk_bonus from=24 to=18
+[08:36:30] temp_set temp_def_bonus from=13 to=9
+[08:36:30] temp_set temp_atk_bonus from=18 to=19
+[08:36:30] temp_set temp_def_bonus from=9 to=10
+[08:36:30] temp_set temp_atk_bonus from=19 to=20
+[08:36:30] temp_set temp_def_bonus from=10 to=11
+[08:36:30] temp_set temp_atk_bonus from=20 to=21
+[08:36:30] temp_set temp_def_bonus from=11 to=12
+[08:36:30] temp_set temp_atk_bonus from=21 to=22
+[08:36:30] temp_set temp_def_bonus from=12 to=13
+[08:36:30] temp_set temp_atk_bonus from=22 to=23
+[08:36:30] temp_set temp_atk_bonus from=23 to=24
+[08:36:30] spell_support spell=strength rank=1 target=player temp_atk=24 temp_def=13
+[08:36:31] support_apply start caller=resolve_player_action target=player player_temp_atk=24 player_temp_def=13
+[08:36:31] temp_set temp_atk_bonus from=24 to=31
+[08:36:31] support_apply stat=atk target=player gain=7.368648409244478 new_player_atk=31 new_player_def=13
+[08:36:31] temp_set temp_def_bonus from=13 to=18
+[08:36:31] support_apply stat=defense target=player gain=5.281107902042283 new_player_atk=31 new_player_def=18
+[08:36:31] temp_set temp_atk_bonus from=31 to=25
+[08:36:31] temp_set temp_def_bonus from=18 to=14
+[08:36:31] temp_set temp_atk_bonus from=25 to=26
+[08:36:31] temp_set temp_def_bonus from=14 to=15
+[08:36:31] temp_set temp_atk_bonus from=26 to=27
+[08:36:31] temp_set temp_def_bonus from=15 to=16
+[08:36:31] temp_set temp_atk_bonus from=27 to=28
+[08:36:31] temp_set temp_def_bonus from=16 to=17
+[08:36:31] temp_set temp_atk_bonus from=28 to=29
+[08:36:31] temp_set temp_def_bonus from=17 to=18
+[08:36:31] temp_set temp_atk_bonus from=29 to=30
+[08:36:31] temp_set temp_atk_bonus from=30 to=31
+[08:36:31] spell_support spell=strength rank=1 target=player temp_atk=31 temp_def=18
+[08:36:33] support_apply start caller=resolve_player_action target=follower player_temp_atk=31 player_temp_def=18
+[08:36:33] support_apply stat=atk target=follower gain=7.3147790720663 new_player_atk=31 new_player_def=18
+[08:36:33] support_apply stat=defense target=follower gain=5.995599535363963 new_player_atk=31 new_player_def=18
+[08:36:33] spell_support spell=strength rank=1 target=follower temp_atk=31 temp_def=18
+[08:36:35] support_apply start caller=resolve_player_action target=follower player_temp_atk=31 player_temp_def=18
+[08:36:35] support_apply stat=atk target=follower gain=7.746837236279583 new_player_atk=31 new_player_def=18
+[08:36:35] support_apply stat=defense target=follower gain=4.49803458955068 new_player_atk=31 new_player_def=18
+[08:36:36] spell_support spell=strength rank=1 target=follower temp_atk=31 temp_def=18
+[08:36:37] support_apply start caller=resolve_player_action target=follower player_temp_atk=31 player_temp_def=18
+[08:36:37] support_apply stat=atk target=follower gain=7.319781776763608 new_player_atk=31 new_player_def=18
+[08:36:37] support_apply stat=defense target=follower gain=4.965769843192367 new_player_atk=31 new_player_def=18
+[08:36:38] spell_support spell=strength rank=1 target=follower temp_atk=31 temp_def=18
+[08:36:47] temp_set temp_atk_bonus from=31 to=30
+[08:36:47] temp_set temp_def_bonus from=18 to=17
+[08:36:49] temp_set temp_atk_bonus from=30 to=29
+[08:36:49] temp_set temp_def_bonus from=17 to=16
+[08:36:52] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=10

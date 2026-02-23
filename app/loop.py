@@ -151,13 +151,28 @@ def render_battle_pause(ctx, render_frame, state: GameState, generate_frame, mes
     time.sleep(battle_action_delay(state.player))
 
 
-def animate_strength_gain(ctx, render_frame, state: GameState, generate_frame, gain: int) -> None:
-    if gain <= 0:
+def animate_strength_gain(
+    ctx,
+    render_frame,
+    state: GameState,
+    generate_frame,
+    atk_gain: int,
+    def_gain: int,
+    *,
+    start_atk: Optional[int] = None,
+    start_def: Optional[int] = None,
+) -> None:
+    if atk_gain <= 0 and def_gain <= 0:
         return
+    max_gain = max(atk_gain, def_gain)
     delay = max(0.05, battle_action_delay(state.player) / 3) / 4
-    for _ in range(gain):
-        state.player.temp_atk_bonus += 1
-        state.player.temp_def_bonus += 1
+    if start_atk is None:
+        start_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0) - atk_gain
+    if start_def is None:
+        start_def = int(getattr(state.player, "temp_def_bonus", 0) or 0) - def_gain
+    for step in range(1, max_gain + 1):
+        state.player.temp_atk_bonus = start_atk + min(step, atk_gain)
+        state.player.temp_def_bonus = start_def + min(step, def_gain)
         render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
         time.sleep(delay)
 
@@ -202,14 +217,23 @@ def animate_follower_strength_gain(
     state: GameState,
     generate_frame,
     follower: dict,
-    gain: int,
+    atk_gain: int,
+    def_gain: int,
+    *,
+    start_atk: Optional[int] = None,
+    start_def: Optional[int] = None,
 ) -> None:
-    if gain <= 0:
+    if atk_gain <= 0 and def_gain <= 0:
         return
+    max_gain = max(atk_gain, def_gain)
     delay = max(0.05, battle_action_delay(state.player) / 3) / 4
-    for _ in range(gain):
-        follower["temp_atk_bonus"] = int(follower.get("temp_atk_bonus", 0) or 0) + 1
-        follower["temp_def_bonus"] = int(follower.get("temp_def_bonus", 0) or 0) + 1
+    if start_atk is None:
+        start_atk = int(follower.get("temp_atk_bonus", 0) or 0) - atk_gain
+    if start_def is None:
+        start_def = int(follower.get("temp_def_bonus", 0) or 0) - def_gain
+    for step in range(1, max_gain + 1):
+        follower["temp_atk_bonus"] = start_atk + min(step, atk_gain)
+        follower["temp_def_bonus"] = start_def + min(step, def_gain)
         render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
         time.sleep(delay)
 
@@ -2362,14 +2386,29 @@ def _apply_support_deltas(
     stat_deltas: list,
     rank: int,
     player: Player,
-) -> None:
+) -> dict:
+    import inspect
+    caller = inspect.stack()[1].function
+    _append_debug_log(
+        f"support_apply start caller={caller} target={target_type} "
+        f"player_temp_atk={getattr(player, 'temp_atk_bonus', 0)} "
+        f"player_temp_def={getattr(player, 'temp_def_bonus', 0)}"
+    )
+    applied: dict[str, int] = {}
     for entry in stat_deltas:
         if not isinstance(entry, dict):
             continue
         stat = str(entry.get("stat", "") or "")
-        per_rank = entry.get("per_rank", 0)
         try:
-            gain_per_cast = float(per_rank) * max(1, int(rank))
+            if "per_rank_min" in entry or "per_rank_max" in entry:
+                low = float(entry.get("per_rank_min", 0) or 0)
+                high = float(entry.get("per_rank_max", 0) or 0)
+                if high < low:
+                    low, high = high, low
+                per_rank = random.uniform(low, high)
+            else:
+                per_rank = float(entry.get("per_rank", 0))
+            gain_per_cast = per_rank * max(1, int(rank))
         except (TypeError, ValueError):
             continue
         if gain_per_cast == 0:
@@ -2404,6 +2443,12 @@ def _apply_support_deltas(
             setattr(player, attr, new_value)
         else:
             target_ref[attr] = new_value
+        applied[stat] = int(round(delta))
+        _append_debug_log(
+            f"support_apply stat={stat} target={target_type} gain={gain_per_cast} "
+            f"new_player_atk={getattr(player, 'temp_atk_bonus', 0)} "
+            f"new_player_def={getattr(player, 'temp_def_bonus', 0)}"
+        )
         if stat == "max_hp":
             if target_type == "player":
                 max_hp = player.total_max_hp()
@@ -2418,6 +2463,7 @@ def _apply_support_deltas(
                     target_ref["hp"] = min(max_hp, current_hp + int(round(delta)))
                 else:
                     target_ref["hp"] = min(current_hp, max_hp)
+    return applied
 
 
 def spell_level_up_notes(ctx, player, prev_level: int, new_level: int) -> list[str]:
@@ -2498,6 +2544,8 @@ def apply_router_command(
     pre_location = state.player.location
     pre_in_forest = state.player.location == "Forest"
     pre_alive = any(m.hp > 0 for m in state.opponents)
+    pre_temp_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0)
+    pre_temp_def = int(getattr(state.player, "temp_def_bonus", 0) or 0)
     pre_spell_mode = state.spell_mode
     pre_title_slot_select = getattr(state.player, "title_slot_select", False)
     pre_title_player_select = getattr(state.player, "title_player_select", False)
@@ -2564,6 +2612,9 @@ def apply_router_command(
         state.battle_log = []
         state.battle_escaped = False
         state.battle_active = True
+        if isinstance(state.player.flags, dict) and state.player.flags.pop("next_battle_preemptive", False):
+            state.preemptive_turns = max(0, int(state.preemptive_turns)) + 1
+            push_battle_message(state, "Your instincts trigger a pre-emptive strike!")
         commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
         state.action_cursor = state.battle_cursor
         clamp_action_cursor(state, commands)
@@ -2573,6 +2624,13 @@ def apply_router_command(
         state.battle_active = False
         state.battle_trial_id = None
     push_battle_message(state, cmd_state.last_message)
+    post_temp_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0)
+    post_temp_def = int(getattr(state.player, "temp_def_bonus", 0) or 0)
+    if post_temp_atk != pre_temp_atk or post_temp_def != pre_temp_def:
+        _append_debug_log(
+            f"temp_change cmd={cmd} pre_atk={pre_temp_atk} pre_def={pre_temp_def} "
+            f"post_atk={post_temp_atk} post_def={post_temp_def} msg={cmd_state.last_message}"
+        )
     state.shop_mode = cmd_state.shop_mode
     state.shop_view = cmd_state.shop_view
     state.inventory_mode = cmd_state.inventory_mode
@@ -2861,12 +2919,42 @@ def resolve_player_action(
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
-        if effect_kind in ("support", "heal"):
-            in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
-            if state.spell_mode and not in_battle:
+        if effect_kind == "battle_prep":
+            if state.player.flags.get("next_battle_preemptive"):
+                state.last_message = "Your senses are already sharpened for the next battle."
+                return None
+            used_charge = False
+            if element:
+                used_charge = state.player.consume_wand_charge(str(element))
+            if not used_charge:
+                if state.player.mp < base_cost:
+                    state.last_message = f"Not enough MP to cast {name}."
+                    return None
+            state.player.mp -= base_cost
+            state.player.flags["next_battle_preemptive"] = True
+            state.last_message = f"You cast {name}."
+            if hasattr(ctx, "audio"):
+                ctx.audio.play_sfx_once("spell_up", "C4")
+            if hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = emit_quest_events(
+                    state.player,
+                    ctx.quests,
+                    ctx.quest_events,
+                    "cast_spell",
+                    [{"spell_id": spell_id, "count": 1}],
+                    ctx.items,
+                    ctx.spells,
+                    ctx.followers,
+                    ctx.quest_objectives,
+                )
+                if quest_messages:
+                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                    _open_quest_screen(ctx, state)
+            if state.spell_mode:
                 state.spell_target_mode = True
-                if not state.spell_target_command:
-                    state.spell_target_command = cmd
+                state.spell_target_command = cmd
+            return cmd
+        if effect_kind in ("support", "heal"):
             target_mode = str(effect_cfg.get("target_missing_mode", "combined") or "combined")
             if state.team_target_index is not None:
                 if state.team_target_index == 0:
@@ -2915,15 +3003,53 @@ def resolve_player_action(
                 stat_deltas = effect_cfg.get("stat_deltas", [])
                 if not isinstance(stat_deltas, list):
                     stat_deltas = []
-                _apply_support_deltas(
+                applied = _apply_support_deltas(
                     target_type,
                     target_ref,
                     stat_deltas,
                     rank,
                     state.player,
                 )
+                if applied:
+                    if state.spell_mode:
+                        state.spell_target_mode = True
+                        state.spell_target_command = cmd
+                    atk_gain = int(applied.get("atk", 0) or 0)
+                    def_gain = int(applied.get("defense", 0) or 0)
+                    if target_type == "player" and (atk_gain > 0 or def_gain > 0):
+                        start_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0) - atk_gain
+                        start_def = int(getattr(state.player, "temp_def_bonus", 0) or 0) - def_gain
+                        animate_strength_gain(
+                            ctx,
+                            render_frame,
+                            state,
+                            generate_frame,
+                            atk_gain,
+                            def_gain,
+                            start_atk=start_atk,
+                            start_def=start_def,
+                        )
+                    elif isinstance(target_ref, dict) and (atk_gain > 0 or def_gain > 0):
+                        start_atk = int(target_ref.get("temp_atk_bonus", 0) or 0) - atk_gain
+                        start_def = int(target_ref.get("temp_def_bonus", 0) or 0) - def_gain
+                        animate_follower_strength_gain(
+                            ctx,
+                            render_frame,
+                            state,
+                            generate_frame,
+                            target_ref,
+                            atk_gain,
+                            def_gain,
+                            start_atk=start_atk,
+                            start_def=start_def,
+                        )
             target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
             state.last_message = f"You cast {name} on {target_name}."
+            _append_debug_log(
+                f"spell_support spell={spell_id} rank={rank} target={target_type} "
+                f"temp_atk={getattr(state.player, 'temp_atk_bonus', 0)} "
+                f"temp_def={getattr(state.player, 'temp_def_bonus', 0)}"
+            )
             if hasattr(ctx, "audio"):
                 ctx.audio.play_sfx_once("spell_up", "C4")
             if hasattr(ctx, "quests") and ctx.quests is not None:
@@ -3134,6 +3260,9 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
     if action_cmd not in ctx.combat_actions or not any(opponent.hp > 0 for opponent in state.opponents):
         return False
     if action_cmd == "FLEE":
+        return False
+    if getattr(state, "preemptive_turns", 0) > 0:
+        state.preemptive_turns = max(0, int(state.preemptive_turns) - 1)
         return False
     if state.player.location == "Forest":
         render_battle_pause(ctx, render_frame, state, generate_frame, _status_message(state, None))

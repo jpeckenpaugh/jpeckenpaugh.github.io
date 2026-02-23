@@ -180,7 +180,7 @@
     "effect_loops_rank2": 3,
     "effect_loops_rank3": 4,
     "art_id": "potion",
-    "desc": "Raise ATK and DEF by 10 over a brief surge.",
+    "desc": "Raise ATK and DEF with a brief surge.",
     "unlock": {
       "flags_any": [
         "spell_strength_enabled"
@@ -366,7 +366,7 @@
     "requires_target": false,
     "art_id": "potion",
     "element": "base",
-    "desc": "Sharpen senses to evade enemy strikes.",
+    "desc": "Sharpen senses to gain a pre-emptive turn in the next battle.",
     "level_required": 0,
     "unlock": {
       "flags_any": [
@@ -374,7 +374,7 @@
       ]
     },
     "class": "support",
-    "effect_id": "support_evasion"
+    "effect_id": "preemptive_next_battle"
   },
   "puppy_eyes": {
     "name": "Puppy Eyes",

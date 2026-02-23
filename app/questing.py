@@ -176,10 +176,32 @@ def _action_handlers() -> Dict[str, ActionHandler]:
     }
 
 
+def _record_spell_flags(player: Player, values: dict) -> None:
+    if not isinstance(values, dict):
+        return
+    order = player.flags.get("spell_order")
+    if not isinstance(order, list):
+        order = []
+    updated = False
+    for key, value in values.items():
+        if not value:
+            continue
+        if not isinstance(key, str):
+            continue
+        if key.startswith("spell_") and key.endswith("_enabled"):
+            spell_id = key[len("spell_"):-len("_enabled")]
+            if spell_id and spell_id not in order:
+                order.append(spell_id)
+                updated = True
+    if updated:
+        player.flags["spell_order"] = order
+
+
 def _apply_set_flags(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
     flags = action.get("flags", [])
     if not isinstance(flags, list):
         return None
+    _record_spell_flags(player, {str(flag): True for flag in flags if flag})
     for flag in flags:
         if flag:
             player.flags[str(flag)] = True
@@ -198,6 +220,7 @@ def _apply_set_flag(player: Player, action: dict, ctx: Dict[str, Any], effects: 
     if not key:
         return None
     value = action.get("value", True)
+    _record_spell_flags(player, {str(key): value})
     player.flags[str(key)] = value
     return None
 
@@ -206,6 +229,7 @@ def _apply_set_flag_values(player: Player, action: dict, ctx: Dict[str, Any], ef
     values = action.get("values", {})
     if not isinstance(values, dict):
         return None
+    _record_spell_flags(player, values)
     for key, value in values.items():
         if key:
             player.flags[str(key)] = value

@@ -15,12 +15,14 @@
     "stat_deltas": [
       {
         "stat": "atk",
-        "per_rank": 10,
+        "per_rank_min": 6,
+        "per_rank_max": 8,
         "max_stack_mult": 5
       },
       {
         "stat": "defense",
-        "per_rank": 10,
+        "per_rank_min": 4,
+        "per_rank_max": 6,
         "max_stack_mult": 5
       }
     ]
@@ -81,5 +83,8 @@
     "poison_damage_per_rank": 2,
     "atk_debuff": -2,
     "def_debuff": -2
+  },
+  "preemptive_next_battle": {
+    "kind": "battle_prep"
   }
 }

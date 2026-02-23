@@ -83,7 +83,24 @@ class SpellsData:
                 if not allowed:
                     continue
             entries.append((spell_id, spell))
-        entries.sort(key=lambda item: (int(item[1].get("level_required", 0) or 0), item[0]))
+        order = flags.get("spell_order") if isinstance(flags, dict) else None
+        if not isinstance(order, list):
+            order = []
+        if not order and isinstance(flags, dict):
+            for spell_id, _spell in entries:
+                if flags.get(f"spell_{spell_id}_enabled"):
+                    order.append(spell_id)
+            if order and not isinstance(player, int):
+                flags["spell_order"] = order
+        order_index = {spell_id: idx for idx, spell_id in enumerate(order)}
+
+        def _sort_key(item: Tuple[str, dict]):
+            spell_id, spell = item
+            if spell_id in order_index:
+                return (0, order_index[spell_id])
+            return (1, int(spell.get("level_required", 0) or 0), spell_id)
+
+        entries.sort(key=_sort_key)
         return entries
 
     def rank_for(self, spell: dict, player, spell_id: Optional[str] = None) -> int:

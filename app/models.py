@@ -49,6 +49,26 @@ class Player:
     flags: dict = field(default_factory=dict)
     quests: dict = field(default_factory=dict)
 
+    def __setattr__(self, name, value):
+        if name in ("temp_atk_bonus", "temp_def_bonus"):
+            try:
+                current = getattr(self, name)
+            except Exception:
+                current = None
+            if current != value:
+                try:
+                    import os
+                    from datetime import datetime
+                    os.makedirs("tmp", exist_ok=True)
+                    with open("tmp/quest_debug.log", "a", encoding="utf-8") as handle:
+                        handle.write(
+                            f"[{datetime.now().strftime('%H:%M:%S')}] temp_set {name} "
+                            f"from={current} to={value}\n"
+                        )
+                except OSError:
+                    pass
+        super().__setattr__(name, value)
+
     def to_dict(self) -> dict:
         return {
             "name": self.name,

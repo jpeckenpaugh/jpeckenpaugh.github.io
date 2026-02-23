@@ -768,34 +768,6 @@ def main():
         )
         if action_cmd == "ATTACK" and hasattr(APP, "audio"):
             APP.audio.play_sfx_once("attack_sfx", "A4")
-        in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
-        if (
-            state.spell_mode
-            and not in_battle
-            and action_cmd in ("STRENGTH", "HEAL")
-        ):
-            state.spell_target_mode = True
-            if not state.spell_target_command:
-                state.spell_target_command = action_cmd
-        if action_cmd in ("STRENGTH", "HEAL") and state.last_team_target_player:
-            spell_entry = APP.spells.by_command_id(action_cmd)
-            if spell_entry:
-                _, spell = spell_entry
-                rank = APP.spells.rank_for(spell, state.player.level)
-                gain_per_cast = max(0, 10 * rank)
-                max_stack = gain_per_cast * 5
-                if action_cmd == "STRENGTH":
-                    current = min(state.player.temp_atk_bonus, state.player.temp_def_bonus)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    animate_strength_gain(APP, render_frame, state, generate_frame, gain)
-                else:
-                    current = state.player.temp_hp_bonus
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    animate_life_boost_gain(APP, render_frame, state, generate_frame, gain)
-        if action_cmd in ("STRENGTH", "HEAL"):
-            state.last_team_target_player = None
         handle_offensive_action(APP, state, action_cmd)
         if action_cmd:
             state.target_index = None
