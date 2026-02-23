@@ -667,7 +667,8 @@
     "art_opponent": "baby_ogre",
     "dialog": [
       "Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!",
-      "Ok, fine.  Just this one time though."
+      "Ok, fine.  Just this one time though.",
+      "Ogrito: Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem."
     ],
     "requirements": {
       "flags_required": [
@@ -695,38 +696,6 @@
   "island_01_quest_23": {
     "title": "Island 01 Quest 23",
     "continent": "base",
-    "summary_pre": "Ogrito: Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem.",
-    "summary_active": "When traveling to Forest, player is interupted by a Golden Wolf Messenger.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "wolf_pup",
-    "dialog": [
-      "Ogrito: Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_22_complete"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "visit_scene",
-        "id": "forest",
-        "count": 1
-      }
-    ],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_23_complete"
-        ]
-      }
-    ]
-  },
-  "island_01_quest_24": {
-    "title": "Island 01 Quest 24",
-    "continent": "base",
     "summary_pre": "Golden Wolf Messenger: Woof!",
     "summary_active": "Player must defeat the Poisonous Python in battle.",
     "summary_complete": "Quest complete.",
@@ -742,7 +711,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_23_complete"
+        "island_01_quest_22_complete"
       ]
     },
     "objectives": [
@@ -757,7 +726,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_24_complete",
+          "island_01_quest_23_complete",
           "spell_snake_bite_enabled"
         ]
       },
@@ -773,7 +742,7 @@
       }
     ],
     "trial": {
-      "scene_id": "island_01_quest_24_trial",
+      "scene_id": "island_01_quest_23_trial",
       "opponents": [
         {
           "opponent_id": "poisonous_python",
@@ -798,7 +767,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_24_complete"
+        "island_01_quest_23_complete"
       ]
     },
     "objectives": [],
