@@ -29,7 +29,8 @@
       "flags_any": [
         "spell_spark_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "iceblast": {
     "name": "Iceblast",
@@ -62,7 +63,8 @@
       "flags_any": [
         "spell_iceblast_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "fireblast": {
     "name": "Fireblast",
@@ -95,7 +97,8 @@
       "flags_any": [
         "spell_fireblast_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "boulder": {
     "name": "Boulder",
@@ -128,7 +131,8 @@
       "flags_any": [
         "spell_boulder_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "tornado": {
     "name": "Tornado",
@@ -161,7 +165,8 @@
       "flags_any": [
         "spell_tornado_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "strength": {
     "name": "Strength",
@@ -175,12 +180,13 @@
     "effect_loops_rank2": 3,
     "effect_loops_rank3": 4,
     "art_id": "potion",
-    "desc": "Raise ATK and DEF by 10 over a brief surge.",
+    "desc": "Raise ATK and DEF with a brief surge.",
     "unlock": {
       "flags_any": [
         "spell_strength_enabled"
       ]
-    }
+    },
+    "effect_id": "support_boost"
   },
   "tide": {
     "name": "Tide",
@@ -213,7 +219,8 @@
       "flags_any": [
         "spell_tide_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "radiance": {
     "name": "Radiance",
@@ -246,7 +253,8 @@
       "flags_any": [
         "spell_radiance_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "shade": {
     "name": "Shade",
@@ -279,7 +287,8 @@
       "flags_any": [
         "spell_shade_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "sprite_bite": {
     "name": "Sprite's Bite",
@@ -309,7 +318,8 @@
       "flags_any": [
         "spell_sprite_bite_enabled"
       ]
-    }
+    },
+    "effect_id": "elemental_damage"
   },
   "life_boost": {
     "name": "Life Boost",
@@ -327,6 +337,105 @@
         "spell_life_boost_enabled"
       ]
     },
-    "class": "support"
+    "class": "support",
+    "effect_id": "support_life_boost"
+  },
+  "healing": {
+    "name": "Healing",
+    "command_id": "HEALING",
+    "anim": "heal",
+    "mp_cost": 6,
+    "requires_target": false,
+    "art_id": "potion",
+    "element": "base",
+    "desc": "Restore a chunk of HP to a teammate.",
+    "level_required": 0,
+    "unlock": {
+      "flags_any": [
+        "spell_healing_enabled"
+      ]
+    },
+    "class": "support",
+    "effect_id": "healing_touch"
+  },
+  "animal_instincts": {
+    "name": "Animal Instincts",
+    "command_id": "ANIMAL_INSTINCTS",
+    "anim": "flash_melt",
+    "mp_cost": 3,
+    "requires_target": false,
+    "art_id": "potion",
+    "element": "base",
+    "desc": "Sharpen senses to gain a pre-emptive turn in the next battle.",
+    "level_required": 0,
+    "unlock": {
+      "flags_any": [
+        "spell_animal_instincts_enabled"
+      ]
+    },
+    "class": "support",
+    "effect_id": "preemptive_next_battle"
+  },
+  "puppy_eyes": {
+    "name": "Puppy Eyes",
+    "command_id": "PUPPY_EYES",
+    "anim": "flash_melt",
+    "mp_cost": 4,
+    "requires_target": false,
+    "art_id": "potion",
+    "element": "base",
+    "desc": "Raise ATK sharply while lowering DEF.",
+    "level_required": 0,
+    "unlock": {
+      "flags_any": [
+        "spell_puppy_eyes_enabled"
+      ]
+    },
+    "class": "support",
+    "effect_id": "support_rage"
+  },
+  "burst_of_rage": {
+    "name": "Burst of Rage",
+    "command_id": "BURST_OF_RAGE",
+    "anim": "flash_melt",
+    "mp_cost": 4,
+    "requires_target": false,
+    "art_id": "potion",
+    "element": "base",
+    "desc": "Surge ATK at the cost of DEF.",
+    "level_required": 0,
+    "unlock": {
+      "flags_any": [
+        "spell_burst_of_rage_enabled"
+      ]
+    },
+    "class": "support",
+    "effect_id": "support_rage"
+  },
+  "snake_bite": {
+    "name": "Snake Bite",
+    "command_id": "SNAKE_BITE",
+    "anim": "flash_melt",
+    "mp_cost": 6,
+    "requires_target": true,
+    "class": "elemental",
+    "element": "base",
+    "level_required": 0,
+    "desc": "Poison a foe, weakening them over time.",
+    "effect": {
+      "type": "overlay",
+      "color_key": "g",
+      "variation": 0.12,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.06,
+      "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_snake_bite_enabled"
+      ]
+    },
+    "effect_id": "snake_poison"
   }
 }

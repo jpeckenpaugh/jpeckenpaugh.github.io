@@ -41,7 +41,8 @@
       "  bBbBb",
       "  bBbBb",
       " ZzzZzzZ"
-    ]
+    ],
+    "label": "Guy"
   },
   "player_02": {
     "names": [
@@ -85,6 +86,7 @@
       "IiIiIiIiI",
       "  zJzJz",
       " JjjJjjJ"
-    ]
+    ],
+    "label": "Gal"
   }
 }

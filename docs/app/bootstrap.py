@@ -22,14 +22,18 @@ from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
 from app.data_access.players_data import PlayersData
 from app.data_access.quests_data import QuestsData
+from app.data_access.quest_objectives_data import QuestObjectivesData
+from app.data_access.quest_events_data import QuestEventsData
 from app.data_access.save_data import SaveData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.stories_data import StoriesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.spell_effects_data import SpellEffectsData
 from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.quests_screen_data import QuestsScreenData
 from app.data_access.followers_screen_data import FollowersScreenData
+from app.data_access.followers_data import FollowersData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.text_data import TextData
 from app.data_access.venues_data import VenuesData
@@ -46,6 +50,7 @@ class AppContext:
     objects: ObjectsData
     venues: VenuesData
     spells: SpellsData
+    spell_effects: SpellEffectsData
     commands_data: CommandsData
     menus: MenusData
     texts: TextData
@@ -58,6 +63,8 @@ class AppContext:
     glyphs: GlyphsData
     save_data: SaveData
     quests: QuestsData
+    quest_objectives: QuestObjectivesData
+    quest_events: QuestEventsData
     stories: StoriesData
     players: PlayersData
     title_screen: TitleScreenData
@@ -65,6 +72,7 @@ class AppContext:
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
+    followers: FollowersData
     music: MusicData
     audio: AudioManager
     registry: object
@@ -109,6 +117,9 @@ def _load_venues() -> VenuesData:
 def _load_spells() -> SpellsData:
     return SpellsData(f"{DATA_DIR}/spells.json")
 
+
+def _load_spell_effects() -> SpellEffectsData:
+    return SpellEffectsData(f"{DATA_DIR}/spell_effects.json")
 
 def _load_commands() -> CommandsData:
     return CommandsData(f"{DATA_DIR}/commands.json")
@@ -161,6 +172,14 @@ def _load_quests() -> QuestsData:
     return QuestsData(f"{DATA_DIR}/quests.json")
 
 
+def _load_quest_objectives() -> QuestObjectivesData:
+    return QuestObjectivesData(f"{DATA_DIR}/quest_objectives.json")
+
+
+def _load_quest_events() -> QuestEventsData:
+    return QuestEventsData(f"{DATA_DIR}/quest_events.json")
+
+
 def _load_stories() -> StoriesData:
     return StoriesData(f"{DATA_DIR}/stories.json")
 
@@ -183,6 +202,10 @@ def _load_quests_screen() -> QuestsScreenData:
 
 def _load_followers_screen() -> FollowersScreenData:
     return FollowersScreenData(f"{DATA_DIR}/followers_screen.json")
+
+
+def _load_followers() -> FollowersData:
+    return FollowersData(f"{DATA_DIR}/followers.json")
 
 
 def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
@@ -212,6 +235,7 @@ def create_app() -> AppContext:
     objects = _load_objects()
     venues = _load_venues()
     spells = _load_spells()
+    spell_effects = _load_spell_effects()
     commands_data = _load_commands()
     menus = _load_menus()
     texts = _load_texts()
@@ -224,6 +248,8 @@ def create_app() -> AppContext:
     continents = _load_continents()
     save_data = _load_save()
     quests = _load_quests()
+    quest_objectives = _load_quest_objectives()
+    quest_events = _load_quest_events()
     stories = _load_stories()
     players = _load_players()
     title_screen = _load_title_screen()
@@ -231,6 +257,7 @@ def create_app() -> AppContext:
     spellbook_screen = _load_spellbook_screen()
     quests_screen = _load_quests_screen()
     followers_screen = _load_followers_screen()
+    followers = _load_followers()
     music_data = _load_music()
     audio = AudioManager(f"{DATA_DIR}/music.json")
 
@@ -248,6 +275,7 @@ def create_app() -> AppContext:
         venues=venues,
         save_data=save_data,
         spells=spells,
+        spell_effects=spell_effects,
         menus=menus,
         continents=continents,
         elements=elements,
@@ -258,12 +286,15 @@ def create_app() -> AppContext:
         players=players,
         registry=registry,
         quests=quests,
+        quest_objectives=quest_objectives,
+        quest_events=quest_events,
         stories=stories,
         title_screen=title_screen,
         portal_screen=portal_screen,
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        followers=followers,
         audio=audio,
     )
     screen_ctx = ScreenContext(
@@ -276,6 +307,7 @@ def create_app() -> AppContext:
         menus=menus,
         commands=commands_data,
         spells=spells,
+        spell_effects=spell_effects,
         text=texts,
         colors=colors,
         frames=frames,
@@ -286,6 +318,8 @@ def create_app() -> AppContext:
         glyphs=glyphs,
         save_data=save_data,
         quests=quests,
+        quest_objectives=quest_objectives,
+        quest_events=quest_events,
         stories=stories,
         players=players,
         title_screen=title_screen,
@@ -293,6 +327,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        followers=followers,
         music=music_data,
     )
 
@@ -304,6 +339,7 @@ def create_app() -> AppContext:
         objects=objects,
         venues=venues,
         spells=spells,
+        spell_effects=spell_effects,
         commands_data=commands_data,
         menus=menus,
         texts=texts,
@@ -316,6 +352,8 @@ def create_app() -> AppContext:
         glyphs=glyphs,
         save_data=save_data,
         quests=quests,
+        quest_objectives=quest_objectives,
+        quest_events=quest_events,
         stories=stories,
         players=players,
         title_screen=title_screen,
@@ -323,6 +361,7 @@ def create_app() -> AppContext:
         spellbook_screen=spellbook_screen,
         quests_screen=quests_screen,
         followers_screen=followers_screen,
+        followers=followers,
         music=music_data,
         audio=audio,
         registry=registry,

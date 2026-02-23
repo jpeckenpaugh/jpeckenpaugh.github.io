@@ -83,6 +83,7 @@ class OpponentsData:
         base = dict(self._opponents.get(base_id, {}))
         if not base:
             return {}
+        base["opponent_id"] = base_id
         meta = self._variant_meta()
         level_offsets = meta.get("level_offsets", {})
         multipliers = meta.get("stat_multipliers", {})
@@ -110,6 +111,7 @@ class OpponentsData:
     def create(self, data: dict, art_color: str) -> Opponent:
         name = data.get("name", "Slime")
         element = data.get("element", "base")
+        opponent_id = str(data.get("opponent_id", data.get("id", "")) or "")
         level = int(data.get("level", 1))
         hp = int(data.get("hp", 10))
         atk = int(data.get("atk", 5))
@@ -120,9 +122,6 @@ class OpponentsData:
         arrival = data.get("arrival", "appears")
         variation = data.get("variation", 0.0)
         jitter_stability = data.get("jitter_stability", True)
-        recruitable = bool(data.get("recruitable", False))
-        recruit_cost = int(data.get("recruit_cost", 0) or 0)
-        recruit_chance = float(data.get("recruit_chance", 0.0) or 0.0)
         follower_type = str(data.get("follower_type", "") or "")
         follower_names = data.get("follower_names", [])
         if not isinstance(follower_names, list):
@@ -135,6 +134,7 @@ class OpponentsData:
         return Opponent(
             name=name,
             element=element,
+            opponent_id=opponent_id,
             level=level,
             hp=hp,
             max_hp=hp,
@@ -147,9 +147,6 @@ class OpponentsData:
             art_color=art_color,
             color_map=color_map,
             arrival=arrival,
-            recruitable=recruitable,
-            recruit_cost=recruit_cost,
-            recruit_chance=recruit_chance,
             follower_type=follower_type,
             follower_names=follower_names,
             variation=variation,

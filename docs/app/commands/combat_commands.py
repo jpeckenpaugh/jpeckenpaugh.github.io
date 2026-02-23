@@ -2,7 +2,7 @@ import random
 
 from app.combat import add_loot, primary_opponent, roll_damage
 from app.commands.registry import CommandRegistry, CommandContext
-from app.questing import handle_event
+from app.questing import emit_quest_events
 
 
 def register(registry: CommandRegistry):
@@ -24,7 +24,8 @@ def _handle_attack(ctx: CommandContext) -> str:
         return "There is nothing to attack."
     sword_points = ctx.player.gear_points_by_slot("sword")
     elem_bonus = sum(int(v) for v in sword_points.values()) if isinstance(sword_points, dict) else 0
-    damage, crit, miss = roll_damage(ctx.player.total_atk() + elem_bonus, opponent.defense)
+    defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+    damage, crit, miss = roll_damage(ctx.player.total_atk() + elem_bonus, defense_value)
     if miss:
         return f"You miss the {opponent.name}."
     opponent.hp = max(0, opponent.hp - damage)
@@ -72,20 +73,11 @@ def _handle_socialize(ctx: CommandContext) -> str:
     recruit_only_types = None
     if isinstance(getattr(ctx.player, "flags", None), dict):
         recruit_only_types = ctx.player.flags.get("recruit_only_types")
-    if isinstance(recruit_only_types, list) and recruit_only_types:
-        if getattr(opponent, "follower_type", "") not in recruit_only_types:
-            return "Why would I want to join your group?"
-    if not getattr(opponent, "recruitable", False):
-        return f"The {opponent.name} shows no interest."
-    if getattr(ctx.player, "follower_slots_remaining", lambda: 0)() <= 0:
-        return "You cannot lead more followers."
-    cost = int(getattr(opponent, "recruit_cost", 0) or 0)
-    if ctx.player.gold < cost:
-        return "Not enough GP."
-    ctx.player.gold -= cost
-    chance = float(getattr(opponent, "recruit_chance", 0.0) or 0.0)
-    if random.random() > chance:
-        return f"The {opponent.name} refuses your offer."
+    if not isinstance(recruit_only_types, list) or not recruit_only_types:
+        return "Recruiting is only possible during quests."
+    follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
+    if follower_type not in recruit_only_types:
+        return "Why would I want to join your group?"
     follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
     names = getattr(opponent, "follower_names", []) or []
     name = random.choice(names) if names else opponent.name
@@ -121,14 +113,19 @@ def _handle_socialize(ctx: CommandContext) -> str:
     opponent.melted = True
     message = f"{name} joins your party."
     if ctx.quests_data is not None:
-        quest_messages = handle_event(
+        quest_messages = emit_quest_events(
             ctx.player,
             ctx.quests_data,
+            ctx.quest_events,
             "recruit_follower",
-            {"follower_type": follower_type, "count": 1},
+            [{"follower_type": follower_type, "count": 1}],
             ctx.items_data,
             ctx.spells_data,
+            ctx.followers_data,
+            ctx.quest_objectives,
         )
         if quest_messages:
+            if any(str(msg).startswith("Quest complete:") for msg in quest_messages):
+                ctx.player.flags["quest_open_pending"] = True
             message = f"{message} " + " ".join(quest_messages)
     return message

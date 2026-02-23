@@ -22,12 +22,14 @@ from app.loop import (
     handle_offensive_action,
     map_input_to_command,
     maybe_begin_target_select,
+    _open_quest_screen,
     read_input,
     render_frame_state,
     run_target_select,
     run_opponent_turns,
     resolve_player_action,
 )
+from app.questing import handle_event
 from app.input import read_keypress, read_keypress_timeout
 from app.models import Player, Frame
 from app.player_sync import sync_player_elements
@@ -83,6 +85,92 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
     total = max(1, len(files))
     results = []
     start = time.time()
+    def _validate_spells_payload(payload: object, effects_payload: object) -> list[str]:
+        errors: list[str] = []
+        if not isinstance(payload, dict):
+            return ["spells.json root must be an object"]
+        effects = effects_payload if isinstance(effects_payload, dict) else {}
+        for spell_id, spell in payload.items():
+            if not isinstance(spell, dict):
+                errors.append(f"{spell_id}: spell entry must be an object")
+                continue
+            effect_id = str(spell.get("effect_id", "") or "")
+            if not effect_id:
+                errors.append(f"{spell_id}: effect_id is required")
+            elif effect_id not in effects:
+                errors.append(f"{spell_id}: unknown effect_id {effect_id}")
+        return errors
+
+    def _validate_quests_payload(payload: object, objectives_payload: object, events_payload: object) -> list[str]:
+        errors: list[str] = []
+        if not isinstance(payload, dict):
+            return ["quests.json root must be an object"]
+        objectives = objectives_payload if isinstance(objectives_payload, dict) else {}
+        events = events_payload if isinstance(events_payload, dict) else {}
+        for quest_id, quest in payload.items():
+            if not isinstance(quest, dict):
+                errors.append(f"{quest_id}: quest entry must be an object")
+                continue
+            if "on_start" in quest or "on_complete" in quest or "rewards" in quest:
+                errors.append(f"{quest_id}: legacy fields found (on_start/on_complete/rewards)")
+            if "on_start_actions" in quest and not isinstance(quest.get("on_start_actions"), list):
+                errors.append(f"{quest_id}: on_start_actions must be a list when present")
+            if "on_complete_actions" in quest and not isinstance(quest.get("on_complete_actions"), list):
+                errors.append(f"{quest_id}: on_complete_actions must be a list when present")
+            if "start_message" in quest:
+                errors.append(f"{quest_id}: start_message is not supported; use show_message action")
+            objectives_list = quest.get("objectives", [])
+            if not isinstance(objectives_list, list):
+                continue
+            for obj in objectives_list:
+                if not isinstance(obj, dict):
+                    continue
+                obj_type = str(obj.get("type", "") or "")
+                if obj_type and obj_type not in objectives:
+                    errors.append(f"{quest_id}: unknown objective type {obj_type}")
+            trial = quest.get("trial")
+            if isinstance(trial, dict) and "start_message" in trial:
+                errors.append(f"{quest_id}: trial.start_message is not supported; use show_message on start")
+        return errors
+
+    def _validate_quest_events_payload(payload: object) -> list[str]:
+        errors: list[str] = []
+        if not isinstance(payload, dict):
+            return ["quest_events.json root must be an object"]
+        for key, rule in payload.items():
+            if not isinstance(rule, dict):
+                errors.append(f"{key}: event rule must be an object")
+                continue
+            if not str(rule.get("trigger", "") or ""):
+                errors.append(f"{key}: trigger is required")
+            if not str(rule.get("event", "") or ""):
+                errors.append(f"{key}: event is required")
+            payload_def = rule.get("payload", {})
+            if not isinstance(payload_def, dict):
+                errors.append(f"{key}: payload must be an object")
+        return errors
+
+    objectives_payload = {}
+    events_payload = {}
+    spell_effects_payload = {}
+    if "quest_objectives.json" in files:
+        try:
+            with open(os.path.join(DATA_DIR, "quest_objectives.json"), "r", encoding="utf-8") as f:
+                objectives_payload = json.load(f)
+        except (OSError, JSONDecodeError):
+            objectives_payload = {}
+    if "quest_events.json" in files:
+        try:
+            with open(os.path.join(DATA_DIR, "quest_events.json"), "r", encoding="utf-8") as f:
+                events_payload = json.load(f)
+        except (OSError, JSONDecodeError):
+            events_payload = {}
+    if "spell_effects.json" in files:
+        try:
+            with open(os.path.join(DATA_DIR, "spell_effects.json"), "r", encoding="utf-8") as f:
+                spell_effects_payload = json.load(f)
+        except (OSError, JSONDecodeError):
+            spell_effects_payload = {}
     for idx, name in enumerate(files):
         path = os.path.join(DATA_DIR, name)
         ok = True
@@ -97,6 +185,21 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 count = len(data)
             else:
                 count = 1
+            if name == "quest_events.json":
+                validation_errors = _validate_quest_events_payload(data)
+                if validation_errors:
+                    ok = False
+                    error = "; ".join(validation_errors)
+            if name == "spells.json":
+                validation_errors = _validate_spells_payload(data, spell_effects_payload)
+                if validation_errors:
+                    ok = False
+                    error = "; ".join(validation_errors)
+            if name == "quests.json":
+                validation_errors = _validate_quests_payload(data, objectives_payload, events_payload)
+                if validation_errors:
+                    ok = False
+                    error = "; ".join(validation_errors)
         except (OSError, JSONDecodeError) as exc:
             ok = False
             error = str(exc)
@@ -248,7 +351,7 @@ def main():
         APP.audio.set_mode(state.player.flags.get("audio_mode"))
         music_vol = int(state.player.flags.get("audio_music_volume", 5) or 0) / 5.0
         sfx_vol = int(state.player.flags.get("audio_sfx_volume", 5) or 0) / 5.0
-        wave = str(state.player.flags.get("audio_wave", "square") or "square")
+        wave = str(state.player.flags.get("audio_wave", "harp") or "harp")
         APP.audio.set_defaults(music_vol, sfx_vol, wave)
         APP.audio.on_location_change(None, "Title")
 
@@ -431,6 +534,24 @@ def main():
             after_points = getattr(state.player, "stat_points", 0)
             if after_points < before_points and hasattr(APP, "audio"):
                 APP.audio.play_sfx_once("point_added_sfx", "C4")
+            spent = max(0, int(before_points) - int(after_points))
+            if spent and hasattr(APP, "quests") and APP.quests is not None:
+                quest_messages = handle_event(
+                    state.player,
+                    APP.quests,
+                    "spend_stat_points",
+                    {"count": spent},
+                    APP.items,
+                    APP.spells,
+                    APP.followers,
+                    APP.quest_objectives,
+                    APP.quest_events,
+                )
+                if quest_messages:
+                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                    _open_quest_screen(APP, state)
+            if spent or leveling_done:
+                SAVE_DATA.save_player(state.player)
             if leveling_done:
                 state.leveling_mode = False
                 state.level_up_notes = []
@@ -647,34 +768,6 @@ def main():
         )
         if action_cmd == "ATTACK" and hasattr(APP, "audio"):
             APP.audio.play_sfx_once("attack_sfx", "A4")
-        in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
-        if (
-            state.spell_mode
-            and not in_battle
-            and action_cmd in ("STRENGTH", "HEAL")
-        ):
-            state.spell_target_mode = True
-            if not state.spell_target_command:
-                state.spell_target_command = action_cmd
-        if action_cmd in ("STRENGTH", "HEAL") and state.last_team_target_player:
-            spell_entry = APP.spells.by_command_id(action_cmd)
-            if spell_entry:
-                _, spell = spell_entry
-                rank = APP.spells.rank_for(spell, state.player.level)
-                gain_per_cast = max(0, 10 * rank)
-                max_stack = gain_per_cast * 5
-                if action_cmd == "STRENGTH":
-                    current = min(state.player.temp_atk_bonus, state.player.temp_def_bonus)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    animate_strength_gain(APP, render_frame, state, generate_frame, gain)
-                else:
-                    current = state.player.temp_hp_bonus
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    animate_life_boost_gain(APP, render_frame, state, generate_frame, gain)
-        if action_cmd in ("STRENGTH", "HEAL"):
-            state.last_team_target_player = None
         handle_offensive_action(APP, state, action_cmd)
         if action_cmd:
             state.target_index = None

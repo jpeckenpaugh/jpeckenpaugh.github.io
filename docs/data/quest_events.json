@@ -1,0 +1,72 @@
+{
+  "battle_end_defeat_opponents": {
+    "trigger": "battle_end",
+    "event": "defeat_opponents",
+    "payload": {
+      "opponent_id": "{opponent_id}",
+      "count": "{count}"
+    }
+  },
+  "trial_visit_scene": {
+    "trigger": "battle_end_trial",
+    "event": "visit_scene",
+    "payload": {
+      "scene_id": "{trial_id}"
+    }
+  },
+  "recruit_follower": {
+    "trigger": "recruit_follower",
+    "event": "recruit_follower",
+    "payload": {
+      "follower_type": "{follower_type}",
+      "count": "{count}"
+    }
+  },
+  "fuse_followers": {
+    "trigger": "fuse_followers",
+    "event": "fuse_followers",
+    "payload": {
+      "follower_type": "{follower_type}",
+      "count": "{count}"
+    }
+  },
+  "fuse_gear": {
+    "trigger": "fuse_gear",
+    "event": "fuse_gear",
+    "payload": {
+      "item_id": "{item_id}",
+      "rank": "{rank}"
+    }
+  },
+  "spend_stat_points": {
+    "trigger": "spend_stat_points",
+    "event": "spend_stat_points",
+    "payload": {
+      "count": "{count}"
+    }
+  },
+  "cast_spell": {
+    "trigger": "cast_spell",
+    "event": "cast_spell",
+    "payload": {
+      "spell_id": "{spell_id}",
+      "count": "{count}"
+    }
+  },
+  "use_item": {
+    "trigger": "use_item",
+    "event": "use_item",
+    "payload": {
+      "item_id": "{item_id}",
+      "count": "{count}"
+    }
+  },
+  "location_change_visit_scene": {
+    "trigger": "location_change",
+    "event": "visit_scene",
+    "payload": {
+      "scene_id": "{scene_id}",
+      "count": "{count}"
+    }
+  }
+}

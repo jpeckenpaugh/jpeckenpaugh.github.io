@@ -1,8 +1,13 @@
 """Quest progression helpers."""
 
-from typing import Any, Dict, Iterable, List, Optional
+import copy
+from typing import Any, Callable, Dict, Iterable, List, Optional, TypedDict, Tuple
 
 from app.models import Player
+
+
+class ActionHandler(TypedDict, total=False):
+    apply: Callable[[Player, dict, Dict[str, Any], dict], Optional[str]]
 
 
 def _ensure_player_quest_state(player: Player) -> None:
@@ -25,21 +30,27 @@ def _quest_state(player: Player, quest_id: str) -> dict:
     return entry
 
 
-def _objective_key(obj: dict) -> Optional[str]:
+def _objective_config(objectives_data, obj_type: str) -> dict:
+    if objectives_data is None or not hasattr(objectives_data, "get"):
+        return {}
+    config = objectives_data.get(obj_type, {})
+    return config if isinstance(config, dict) else {}
+
+
+def _objective_key(obj: dict, objectives_data) -> Optional[str]:
     obj_type = str(obj.get("type", ""))
-    if obj_type == "recruit_follower":
-        follower_type = str(obj.get("follower_type", ""))
-        return f"recruit_follower:{follower_type}"
-    if obj_type == "fuse_followers":
-        follower_type = str(obj.get("follower_type", ""))
-        return f"fuse_followers:{follower_type}"
-    if obj_type == "visit_scene":
-        scene_id = str(obj.get("id", ""))
-        return f"visit_scene:{scene_id}"
-    if obj_type == "fuse_gear":
-        item_id = str(obj.get("item_id", ""))
-        return f"fuse_gear:{item_id}"
-    return None
+    config = _objective_config(objectives_data, obj_type)
+    template = config.get("key")
+    if not isinstance(template, str):
+        return None
+    if "{" not in template:
+        return template
+    result = template
+    for key, value in obj.items():
+        token = "{" + str(key) + "}"
+        if token in result:
+            result = result.replace(token, str(value))
+    return result if result != template else None
 
 
 def _requirements_met(player: Player, quest: dict) -> bool:
@@ -77,24 +88,23 @@ def requirement_summary(player: Player, quest: dict) -> str:
     return "Requirement not met."
 
 
-def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict]) -> bool:
+def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict], objectives_data) -> bool:
     for obj in objectives:
         if not isinstance(obj, dict):
             continue
         obj_type = str(obj.get("type", ""))
-        if obj_type == "equip_slots":
-            slots = obj.get("slots", [])
-            if not isinstance(slots, list):
-                slots = []
-            needed = int(obj.get("count", 0) or 0)
-            if not needed:
-                needed = len(slots)
-            equipment = player.equipment if isinstance(player.equipment, dict) else {}
-            equipped = sum(1 for slot in slots if equipment.get(str(slot)))
-            if equipped < needed:
+        config = _objective_config(objectives_data, obj_type)
+        completion = config.get("completion")
+        if completion == "equip_slots":
+            if not _equip_slots_complete(player, obj):
                 return False
             continue
-        key = _objective_key(obj)
+        if completion == "reach_level":
+            target_level = int(obj.get("level", 0) or 0)
+            if int(player.level) < target_level:
+                return False
+            continue
+        key = _objective_key(obj, objectives_data)
         if not key:
             continue
         needed = int(obj.get("count", 1) or 1)
@@ -104,36 +114,347 @@ def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict]) 
     return True
 
 
-def _build_follower(entry: dict) -> dict:
+def _equip_slots_complete(player: Player, obj: dict) -> bool:
+    slots = obj.get("slots", [])
+    if not isinstance(slots, list):
+        slots = []
+    needed = int(obj.get("count", 0) or 0)
+    if not needed:
+        needed = len(slots)
+    equipment = player.equipment if isinstance(player.equipment, dict) else {}
+    equipped = sum(1 for slot in slots if equipment.get(str(slot)))
+    return equipped >= needed
+
+
+def _follower_template(entry: dict, followers_data: Optional[object]) -> dict:
     follower_type = str(entry.get("type", "follower"))
-    base_name = entry.get("name")
+    template = {}
+    if followers_data is not None and hasattr(followers_data, "get"):
+        template = followers_data.get(follower_type, {}) or {}
+    if not isinstance(template, dict):
+        template = {}
+    base = dict(template)
+    base_name = entry.get("name") or base.get("name")
     if not base_name:
         base_name = follower_type.replace("_", " ").title()
-    abilities = []
-    active = ""
-    if follower_type == "fairy":
-        abilities = ["fairy_heal", "fairy_mana"]
-        active = "fairy_heal"
-    if follower_type.startswith("mushroom"):
-        abilities = ["mushroom_tea_brew"]
-    if not active and abilities:
-        active = abilities[0]
+    base.setdefault("level", 1)
+    base.setdefault("xp", 0)
+    base.setdefault("max_level", 5)
+    base.setdefault("atk", 4)
+    base.setdefault("defense", 2)
+    base.setdefault("hp", 12)
+    base.setdefault("max_hp", base.get("hp", 12))
+    base.setdefault("mp", 6)
+    base.setdefault("max_mp", base.get("mp", 6))
+    base.setdefault("equipment", {})
+    base.setdefault("abilities", [])
+    base.setdefault("active_ability", "")
+    base["type"] = follower_type
+    base["name"] = base_name
+    overrides = entry.get("overrides", {})
+    if isinstance(overrides, dict):
+        base.update(overrides)
+    return base
+
+
+def _action_handlers() -> Dict[str, ActionHandler]:
     return {
-        "type": follower_type,
-        "name": base_name,
-        "level": 1,
-        "xp": 0,
-        "max_level": 5,
-        "atk": 4,
-        "defense": 2,
-        "hp": 12,
-        "max_hp": 12,
-        "mp": 6,
-        "max_mp": 6,
-        "equipment": {},
-        "abilities": abilities,
-        "active_ability": active,
+        "show_message": {"apply": _apply_show_message},
+        "set_flags": {"apply": _apply_set_flags},
+        "set_flag": {"apply": _apply_set_flag},
+        "set_flag_values": {"apply": _apply_set_flag_values},
+        "set_recruit_only_types": {"apply": _apply_set_recruit_only},
+        "clear_recruit_only_types": {"apply": _apply_clear_recruit_only},
+        "set_ui_hint": {"apply": _apply_set_ui_hint},
+        "spend_gold": {"apply": _apply_spend_gold},
+        "grant_follower": {"apply": _apply_grant_follower},
+        "grant_items": {"apply": _apply_grant_items},
+        "grant_xp": {"apply": _apply_grant_xp},
+        "grant_mp_bonus": {"apply": _apply_grant_mp_bonus},
+        "grant_spell_rank_up": {"apply": _apply_grant_spell_rank_up},
+        "grant_followers": {"apply": _apply_grant_followers},
+        "restore_full": {"apply": _apply_restore_full},
     }
+
+
+def _record_spell_flags(player: Player, values: dict) -> None:
+    if not isinstance(values, dict):
+        return
+    order = player.flags.get("spell_order")
+    if not isinstance(order, list):
+        order = []
+    updated = False
+    for key, value in values.items():
+        if not value:
+            continue
+        if not isinstance(key, str):
+            continue
+        if key.startswith("spell_") and key.endswith("_enabled"):
+            spell_id = key[len("spell_"):-len("_enabled")]
+            if spell_id and spell_id not in order:
+                order.append(spell_id)
+                updated = True
+    if updated:
+        player.flags["spell_order"] = order
+
+
+def _apply_set_flags(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    flags = action.get("flags", [])
+    if not isinstance(flags, list):
+        return None
+    _record_spell_flags(player, {str(flag): True for flag in flags if flag})
+    for flag in flags:
+        if flag:
+            player.flags[str(flag)] = True
+    return None
+
+
+def _apply_show_message(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    message = str(action.get("message", "") or "").strip()
+    if message:
+        effects["messages"] = effects.get("messages", []) + [message]
+    return None
+
+
+def _apply_set_flag(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    key = action.get("key")
+    if not key:
+        return None
+    value = action.get("value", True)
+    _record_spell_flags(player, {str(key): value})
+    player.flags[str(key)] = value
+    return None
+
+
+def _apply_set_flag_values(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    values = action.get("values", {})
+    if not isinstance(values, dict):
+        return None
+    _record_spell_flags(player, values)
+    for key, value in values.items():
+        if key:
+            player.flags[str(key)] = value
+    return None
+
+
+def _apply_set_recruit_only(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    types = action.get("types", [])
+    if not isinstance(types, list):
+        return None
+    player.flags["recruit_only_types"] = [str(t) for t in types if t]
+    return None
+
+
+def _apply_clear_recruit_only(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    player.flags.pop("recruit_only_types", None)
+    return None
+
+
+def _apply_set_ui_hint(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    scene = action.get("scene")
+    action_command = action.get("action_command")
+    action_label = action.get("action_label")
+    hint = {}
+    if isinstance(scene, str) and scene:
+        hint["scene"] = scene
+    if isinstance(action_command, str) and action_command:
+        hint["action_command"] = action_command
+    if isinstance(action_label, str) and action_label:
+        hint["action_label"] = action_label
+    if hint:
+        player.flags["quest_ui_hint"] = hint
+    return None
+
+
+def _apply_spend_gold(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    amount = int(action.get("amount", 0) or 0)
+    if amount <= 0:
+        return None
+    gold = int(getattr(player, "gold", 0) or 0)
+    if gold < amount:
+        return "Not enough GP."
+    player.gold = gold - amount
+    return None
+
+
+def _apply_grant_follower(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    entry = action.get("follower")
+    if not isinstance(entry, dict):
+        return None
+    follower = build_follower_from_entry(entry, ctx.get("followers_data"))
+    if not follower:
+        return None
+    if not player.add_follower(follower):
+        if action.get("required"):
+            return "No room for another follower."
+        return None
+    if entry.get("count_as_recruit") and ctx.get("quests_data") is not None:
+        emit_quest_events(
+            player,
+            ctx["quests_data"],
+            ctx.get("events_data"),
+            "recruit_follower",
+            [{"follower_type": follower.get("type", ""), "count": 1}],
+            ctx.get("items_data"),
+            ctx.get("spells_data"),
+            ctx.get("followers_data"),
+            ctx.get("objectives_data"),
+        )
+    return None
+
+
+def _apply_grant_items(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    items = action.get("items", [])
+    if not isinstance(items, list):
+        return None
+    for item_id in items:
+        if item_id:
+            player.add_item(str(item_id), 1)
+    return None
+
+
+def _apply_grant_xp(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    amount = int(action.get("amount", 0) or 0)
+    if amount <= 0:
+        return None
+    effects["xp_gain"] = effects.get("xp_gain", 0) + amount
+    effects["levels_gained"] = effects.get("levels_gained", 0) + player.gain_xp(amount)
+    return None
+
+
+def _apply_restore_full(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    player.hp = player.max_hp
+    player.mp = player.max_mp
+    player.temp_atk_bonus = 0
+    player.temp_def_bonus = 0
+    player.temp_hp_bonus = 0
+    if hasattr(player, "temp_evasion_bonus"):
+        player.temp_evasion_bonus = 0
+    return None
+
+
+def _apply_grant_mp_bonus(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    bonus = int(action.get("amount", 0) or 0)
+    if bonus <= 0:
+        return None
+    player.max_mp += bonus
+    player.mp += bonus
+    return None
+
+
+def _apply_grant_spell_rank_up(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    amount = int(action.get("amount", 0) or 0)
+    spells_data = ctx.get("spells_data")
+    items_data = ctx.get("items_data")
+    if amount <= 0 or spells_data is None:
+        return None
+    ranks = player.flags.get("spell_ranks")
+    if not isinstance(ranks, dict):
+        ranks = {}
+    available = spells_data.available(player, items_data) if hasattr(spells_data, "available") else []
+    for spell_id, _spell in available:
+        current = ranks.get(str(spell_id))
+        if not isinstance(current, int) or current < 1:
+            current = 1
+        ranks[str(spell_id)] = min(3, current + amount)
+    player.flags["spell_ranks"] = ranks
+    return None
+
+
+def _apply_grant_followers(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    entries = action.get("followers", [])
+    if not isinstance(entries, list):
+        return None
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        follower = build_follower_from_entry(entry, ctx.get("followers_data"))
+        if follower:
+            player.add_follower(follower)
+    return None
+
+
+def _action_context(
+    actions: List[dict],
+    *,
+    items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
+) -> Dict[str, Any]:
+    pending_grants = 0
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        if action.get("type") == "grant_follower":
+            pending_grants += 1
+    return {
+        "items_data": items_data,
+        "spells_data": spells_data,
+        "followers_data": followers_data,
+        "quests_data": quests_data,
+        "objectives_data": objectives_data,
+        "events_data": events_data,
+        "pending_grants": pending_grants,
+    }
+
+
+def apply_actions(
+    player: Player,
+    actions: List[dict],
+    *,
+    items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
+    dry_run: bool = False,
+) -> Tuple[bool, Optional[str], dict]:
+    if not actions:
+        return True, None, {"xp_gain": 0, "levels_gained": 0}
+    target = copy.deepcopy(player) if dry_run else player
+    _ensure_player_quest_state(target)
+    effects = {"xp_gain": 0, "levels_gained": 0, "messages": []}
+    ctx = _action_context(
+        actions,
+        items_data=items_data,
+        spells_data=spells_data,
+        followers_data=followers_data,
+        quests_data=quests_data,
+        objectives_data=objectives_data,
+        events_data=events_data,
+    )
+    handlers = _action_handlers()
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        action_type = str(action.get("type", "") or "")
+        handler = handlers.get(action_type)
+        if not handler or "apply" not in handler:
+            continue
+        error = handler["apply"](target, action, ctx, effects)
+        if error:
+            return False, error, effects
+    return True, None, effects
+
+
+def _start_actions_for(quest: dict) -> List[dict]:
+    actions = []
+    start_actions = quest.get("on_start_actions", [])
+    if isinstance(start_actions, list) and start_actions:
+        return [a for a in start_actions if isinstance(a, dict)]
+    return actions
+
+
+def _complete_actions_for(quest: dict) -> List[dict]:
+    actions = []
+    complete_actions = quest.get("on_complete_actions", [])
+    if isinstance(complete_actions, list) and complete_actions:
+        actions.extend([a for a in complete_actions if isinstance(a, dict)])
+    return actions
 
 
 def _apply_rewards(
@@ -142,73 +463,74 @@ def _apply_rewards(
     quest: dict,
     items_data: Optional[object] = None,
     spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> tuple[int, int]:
-    rewards = quest.get("rewards", {})
-    if not isinstance(rewards, dict):
-        rewards = {}
-    on_complete = quest.get("on_complete", {})
-    if not isinstance(on_complete, dict):
-        on_complete = {}
-    flags_set = rewards.get("flags_set", [])
-    if not isinstance(flags_set, list):
-        flags_set = []
-    for flag in flags_set:
-        player.flags[str(flag)] = True
-    flags_set_values = rewards.get("flags_set_values", {})
-    if isinstance(flags_set_values, dict):
-        for key, value in flags_set_values.items():
-            if not key:
-                continue
-            player.flags[str(key)] = value
-    mp_bonus = int(rewards.get("mp_bonus", 0) or 0)
-    if mp_bonus:
-        player.max_mp += mp_bonus
-        player.mp += mp_bonus
-    spell_rank_up = int(rewards.get("spell_rank_up", 0) or 0)
-    if spell_rank_up > 0 and spells_data is not None:
-        ranks = player.flags.get("spell_ranks")
-        if not isinstance(ranks, dict):
-            ranks = {}
-        available = spells_data.available(player, items_data) if hasattr(spells_data, "available") else []
-        for spell_id, _spell in available:
-            current = ranks.get(str(spell_id))
-            if not isinstance(current, int) or current < 1:
-                current = 1
-            ranks[str(spell_id)] = min(3, current + spell_rank_up)
-        player.flags["spell_ranks"] = ranks
-    if on_complete.get("clear_recruit_only") and isinstance(getattr(player, "flags", None), dict):
-        player.flags.pop("recruit_only_types", None)
-    if isinstance(getattr(player, "flags", None), dict):
-        if on_complete.get("clear_follower_cap"):
-            player.flags.pop("follower_cap", None)
-        follower_cap = on_complete.get("follower_cap")
-        if isinstance(follower_cap, int) and follower_cap > 0:
-            player.flags["follower_cap"] = follower_cap
-    items = rewards.get("items", [])
-    if not isinstance(items, list):
-        items = []
-    for item_id in items:
-        if not item_id:
-            continue
-        player.add_item(str(item_id), 1)
-    followers_add = rewards.get("followers_add", [])
-    if isinstance(followers_add, list):
-        for follower_entry in followers_add:
-            if not isinstance(follower_entry, dict):
-                continue
-            follower = _build_follower(follower_entry)
-            player.add_follower(follower)
-    xp_gain = int(rewards.get("xp", 0) or 0)
-    levels_gained = 0
-    if xp_gain > 0:
-        levels_gained = player.gain_xp(xp_gain)
-    return xp_gain, levels_gained
+    actions = _complete_actions_for(quest)
+    if not actions:
+        return 0, 0
+    ok, _error, effects = apply_actions(
+        player,
+        actions,
+        items_data=items_data,
+        spells_data=spells_data,
+        followers_data=followers_data,
+        quests_data=quests_data,
+        objectives_data=objectives_data,
+        events_data=events_data,
+    )
+    if not ok:
+        return 0, 0
+    return int(effects.get("xp_gain", 0) or 0), int(effects.get("levels_gained", 0) or 0)
 
 
-def build_follower_from_entry(entry: dict) -> Optional[dict]:
+def build_follower_from_entry(entry: dict, followers_data: Optional[object] = None) -> Optional[dict]:
     if not isinstance(entry, dict):
         return None
-    return _build_follower(entry)
+    return _follower_template(entry, followers_data)
+
+
+def apply_quest_start_actions(
+    player: Player,
+    quest: dict,
+    *,
+    items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
+) -> Tuple[bool, Optional[str], List[str]]:
+    actions = _start_actions_for(quest)
+    if not actions:
+        return True, None, []
+    ok, error, _effects = apply_actions(
+        player,
+        actions,
+        items_data=items_data,
+        spells_data=spells_data,
+        followers_data=followers_data,
+        quests_data=quests_data,
+        objectives_data=objectives_data,
+        events_data=events_data,
+        dry_run=True,
+    )
+    if not ok:
+        return False, error, []
+    ok, error, effects = apply_actions(
+        player,
+        actions,
+        items_data=items_data,
+        spells_data=spells_data,
+        followers_data=followers_data,
+        quests_data=quests_data,
+        objectives_data=objectives_data,
+        events_data=events_data,
+    )
+    messages = effects.get("messages", [])
+    return ok, error, messages if isinstance(messages, list) else []
 
 
 def start_quest(player: Player, quest_id: str) -> bool:
@@ -251,12 +573,14 @@ def quest_entries(
     continent: Optional[str] = None,
     include_locked_next: bool = False,
     ordered_ids: Optional[List[str]] = None,
+    objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> List[dict]:
     _ensure_player_quest_state(player)
     entries: List[dict] = []
     if not quests_data:
         return entries
-    evaluate_quests(player, quests_data, items_data)
+    evaluate_quests(player, quests_data, items_data, objectives_data=objectives_data, events_data=events_data)
     quest_items = []
     if ordered_ids:
         for quest_id in ordered_ids:
@@ -298,6 +622,9 @@ def evaluate_quests(
     quests_data,
     items_data: Optional[object] = None,
     spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> List[str]:
     _ensure_player_quest_state(player)
     messages: List[str] = []
@@ -318,28 +645,20 @@ def evaluate_quests(
             if not isinstance(objectives, list):
                 objectives = []
             progress = qstate.get("progress", {})
-            if isinstance(progress, dict):
-                for obj in objectives:
-                    if not isinstance(obj, dict):
-                        continue
-                    if str(obj.get("type", "")) != "recruit_follower":
-                        continue
-                    follower_type = str(obj.get("follower_type", ""))
-                    if not follower_type:
-                        continue
-                    needed = int(obj.get("count", 1) or 1)
-                    current = int(progress.get(_objective_key(obj), 0) or 0)
-                    if current >= needed:
-                        continue
-                    fuse_key = f"fuse_followers:{follower_type}"
-                    fuse_count = int(progress.get(fuse_key, 0) or 0)
-                    if fuse_count >= needed:
-                        progress[_objective_key(obj)] = needed
-                qstate["progress"] = progress
-            if not _objectives_met(player, qstate.get("progress", {}), objectives):
+            if not _objectives_met(player, qstate.get("progress", {}), objectives, objectives_data):
                 continue
             qstate["status"] = "complete"
-            xp_gain, _levels_gained = _apply_rewards(player, quest_id, quest, items_data, spells_data)
+            xp_gain, _levels_gained = _apply_rewards(
+                player,
+                quest_id,
+                quest,
+                items_data,
+                spells_data,
+                followers_data,
+                quests_data,
+                objectives_data,
+                events_data,
+            )
             title = quest.get("title", quest_id)
             messages.append(f"Quest complete: {title}.")
             if xp_gain > 0:
@@ -353,6 +672,7 @@ def record_event(
     quests_data,
     event_type: str,
     payload: Optional[Dict[str, Any]] = None,
+    objectives_data: Optional[object] = None,
 ) -> None:
     _ensure_player_quest_state(player)
     payload = payload or {}
@@ -366,31 +686,45 @@ def record_event(
             if not isinstance(obj, dict):
                 continue
             obj_type = str(obj.get("type", ""))
-            if obj_type != event_type:
+            config = _objective_config(objectives_data, obj_type)
+            event_name = str(config.get("event", "") or "")
+            if not event_name or event_name != event_type:
                 continue
-            if event_type == "fuse_gear":
-                item_id = str(obj.get("item_id", ""))
-                if item_id and item_id != str(payload.get("item_id", "")):
+            qstate = player.quests.get(quest_id)
+            if not isinstance(qstate, dict) or qstate.get("status") != "active":
+                continue
+            match = config.get("match", {})
+            if not isinstance(match, dict):
+                match = {}
+            object_key = str(match.get("object_key", "") or "")
+            payload_key = str(match.get("payload_key", "") or "")
+            if object_key and payload_key:
+                obj_value = str(obj.get(object_key, "") or "")
+                payload_value = str(payload.get(payload_key, "") or "")
+                if obj_value and obj_value != payload_value:
                     continue
-            if event_type in ("recruit_follower", "fuse_followers"):
-                follower_type = str(obj.get("follower_type", ""))
-                if follower_type and follower_type != str(payload.get("follower_type", "")):
-                    continue
-            if event_type == "visit_scene":
-                scene_id = str(obj.get("id", ""))
-                if scene_id and scene_id != str(payload.get("scene_id", "")):
-                    continue
-            key = _objective_key(obj)
+            key = _objective_key(obj, objectives_data)
             if not key:
                 continue
-            qstate = _quest_state(player, quest_id)
             progress = qstate.get("progress", {})
             current = int(progress.get(key, 0) or 0)
-            if event_type == "fuse_gear":
-                rank = int(payload.get("rank", payload.get("count", 1)) or 1)
-                progress[key] = max(current, rank)
+            update = config.get("update", {})
+            if not isinstance(update, dict):
+                update = {}
+            mode = str(update.get("mode", "add") or "add")
+            count_key = update.get("count_key", "count")
+            count_value = 1
+            if isinstance(count_key, list):
+                for key_name in count_key:
+                    if key_name in payload:
+                        count_value = int(payload.get(key_name, 1) or 1)
+                        break
             else:
-                progress[key] = current + int(payload.get("count", 1) or 1)
+                count_value = int(payload.get(str(count_key), 1) or 1)
+            if mode == "max":
+                progress[key] = max(current, count_value)
+            else:
+                progress[key] = current + count_value
             qstate["progress"] = progress
 
 
@@ -401,6 +735,58 @@ def handle_event(
     payload: Optional[Dict[str, Any]] = None,
     items_data: Optional[object] = None,
     spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+    events_data: Optional[object] = None,
 ) -> List[str]:
-    record_event(player, quests_data, event_type, payload)
-    return evaluate_quests(player, quests_data, items_data, spells_data)
+    record_event(player, quests_data, event_type, payload, objectives_data)
+    return evaluate_quests(player, quests_data, items_data, spells_data, followers_data, objectives_data, events_data)
+
+
+def emit_quest_events(
+    player: Player,
+    quests_data,
+    events_data,
+    trigger: str,
+    payloads: List[Dict[str, Any]],
+    items_data: Optional[object] = None,
+    spells_data: Optional[object] = None,
+    followers_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
+) -> List[str]:
+    if not events_data or not hasattr(events_data, "all"):
+        return []
+    messages: List[str] = []
+    for _name, rule in events_data.all().items():
+        if not isinstance(rule, dict):
+            continue
+        if str(rule.get("trigger", "")) != trigger:
+            continue
+        event_name = str(rule.get("event", "") or "")
+        if not event_name:
+            continue
+        payload_template = rule.get("payload", {})
+        if not isinstance(payload_template, dict):
+            payload_template = {}
+        for payload in payloads:
+            event_payload: Dict[str, Any] = {}
+            for key, value in payload_template.items():
+                if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
+                    token = value[1:-1]
+                    event_payload[key] = payload.get(token, "")
+                else:
+                    event_payload[key] = value
+            if not event_payload:
+                continue
+            messages.extend(handle_event(
+                player,
+                quests_data,
+                event_name,
+                event_payload,
+                items_data,
+                spells_data,
+                followers_data,
+                objectives_data,
+                events_data,
+            ))
+    return messages

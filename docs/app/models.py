@@ -45,8 +45,29 @@ class Player:
     temp_atk_bonus: int = 0
     temp_def_bonus: int = 0
     temp_hp_bonus: int = 0
+    temp_evasion_bonus: int = 0
     flags: dict = field(default_factory=dict)
     quests: dict = field(default_factory=dict)
+
+    def __setattr__(self, name, value):
+        if name in ("temp_atk_bonus", "temp_def_bonus"):
+            try:
+                current = getattr(self, name)
+            except Exception:
+                current = None
+            if current != value:
+                try:
+                    import os
+                    from datetime import datetime
+                    os.makedirs("tmp", exist_ok=True)
+                    with open("tmp/quest_debug.log", "a", encoding="utf-8") as handle:
+                        handle.write(
+                            f"[{datetime.now().strftime('%H:%M:%S')}] temp_set {name} "
+                            f"from={current} to={value}\n"
+                        )
+                except OSError:
+                    pass
+        super().__setattr__(name, value)
 
     def to_dict(self) -> dict:
         return {
@@ -129,6 +150,7 @@ class Player:
             temp_atk_bonus=0,
             temp_def_bonus=0,
             temp_hp_bonus=0,
+            temp_evasion_bonus=0,
             flags=flags,
             quests=quests,
         )
@@ -283,20 +305,7 @@ class Player:
     def total_max_hp(self) -> int:
         return self.max_hp + int(self.temp_hp_bonus)
 
-    def follower_limit(self) -> int:
-        base_limit = 5
-        if isinstance(getattr(self, "flags", None), dict):
-            cap = self.flags.get("follower_cap")
-            if isinstance(cap, int) and cap > 0:
-                return min(base_limit, cap)
-        return base_limit
-
-    def follower_slots_remaining(self) -> int:
-        return max(0, self.follower_limit() - len(self.followers))
-
     def add_follower(self, follower: dict) -> bool:
-        if self.follower_slots_remaining() <= 0:
-            return False
         if not isinstance(self.followers, list):
             self.followers = []
         self._ensure_follower_id(follower)
@@ -568,6 +577,8 @@ class Player:
             fused_type = "fairy_teen"
         elif follower_type == "wolf_pup":
             fused_type = "wolf"
+        elif follower_type == "baby_ogre":
+            fused_type = "ogre"
         base_name = fused_type.replace("_", " ").title() or "Follower"
         abilities = []
         active = ""
@@ -589,6 +600,10 @@ class Player:
             fused_name = "Wolf"
             if any(name == "Chase" for name in kept_names):
                 fused_name = "Chase"
+        if follower_type == "baby_ogre":
+            fused_name = "Ogre"
+            if any(name == "Ogrito" for name in kept_names):
+                fused_name = "Ogrito"
         fused = {
             "type": fused_type,
             "name": fused_name,
@@ -727,8 +742,9 @@ class Player:
             return "You do not have that item."
         hp_gain = int(item.get("hp", 0))
         mp_gain = int(item.get("mp", 0))
+        allow_full = bool(item.get("use_while_full")) or str(item.get("type", "") or "") == "quest"
         if target is None:
-            if self.hp == self.max_hp and self.mp == self.max_mp:
+            if not allow_full and self.hp == self.max_hp and self.mp == self.max_mp:
                 return "HP and MP are already full."
             self.hp = min(self.max_hp, self.hp + hp_gain)
             self.mp = min(self.max_mp, self.mp + mp_gain)
@@ -737,7 +753,7 @@ class Player:
             max_mp = int(target.get("max_mp", 0) or 0)
             hp = int(target.get("hp", max_hp) or max_hp)
             mp = int(target.get("mp", max_mp) or max_mp)
-            if hp >= max_hp and mp >= max_mp:
+            if not allow_full and hp >= max_hp and mp >= max_mp:
                 return "That follower is already full."
             target["hp"] = min(max_hp, hp + hp_gain)
             target["mp"] = min(max_mp, mp + mp_gain)
@@ -961,6 +977,7 @@ class Player:
 class Opponent:
     name: str
     element: str
+    opponent_id: str
     level: int
     hp: int
     max_hp: int
@@ -973,11 +990,12 @@ class Opponent:
     art_color: str
     color_map: List[str]
     arrival: str
-    recruitable: bool = False
-    recruit_cost: int = 0
-    recruit_chance: float = 0.0
     follower_type: str = ""
     follower_names: List[str] = field(default_factory=list)
     variation: float = 0.0
     jitter_stability: bool = True
     ai: Optional[dict] = None
+    temp_atk_bonus: int = 0
+    temp_def_bonus: int = 0
+    poison_turns: int = 0
+    poison_damage: int = 0

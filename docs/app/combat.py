@@ -3,7 +3,6 @@
 import random
 from typing import List, Optional, Tuple
 
-from app.data_access.spells_data import SpellsData
 from app.models import Player, Opponent
 
 
@@ -63,14 +62,13 @@ def add_loot(loot: dict, xp: int, gold: int):
 def cast_spell(
     player: Player,
     opponents: List[Opponent],
-    spell_id: str,
+    spell: dict,
+    effect: dict,
     loot: dict,
-    spells_data: SpellsData,
     target_index: Optional[int] = None,
     rank: int = 1
 ) -> str:
-    spell = spells_data.get(spell_id, {})
-    name = spell.get("name", spell_id.title())
+    name = spell.get("name", "Spell")
     mp_cost = int(spell.get("mp_cost", 2)) * max(1, rank)
     element = spell.get("element")
     used_charge = False
@@ -79,19 +77,10 @@ def cast_spell(
     if not used_charge and player.mp < mp_cost:
         return f"Not enough MP to cast {name}."
 
-    if spell_id == "strength":
-        if not used_charge:
-            player.mp -= mp_cost
-        return "You cast Strength. Your power surges."
-
-    if spell_id == "life_boost":
-        if not used_charge:
-            player.mp -= mp_cost
-        return "You cast Life Boost. Your vitality surges."
-
-    if spell.get("class") == "elemental" or spell_id == "spark":
+    if effect.get("kind") == "damage":
         targets: List[Opponent] = []
-        if rank >= 2:
+        threshold = int(effect.get("rank_all_threshold", 2) or 2)
+        if rank >= threshold:
             targets = [opp for opp in opponents if opp.hp > 0]
         else:
             opponent = None
@@ -107,14 +96,17 @@ def cast_spell(
             return "There is nothing to target."
         if not used_charge:
             player.mp -= mp_cost
-        atk_bonus = int(spell.get("atk_bonus", 2))
+        atk_bonus_key = str(effect.get("atk_bonus_key", "atk_bonus") or "atk_bonus")
+        atk_bonus = int(spell.get(atk_bonus_key, 2))
         if element:
             ring_bonus = player.element_points_total(str(element), slots=["ring"])
             atk_bonus += int(ring_bonus)
-        damage_mult = float(spell.get("rank3_damage_mult", 1.25)) if rank >= 3 else 1.0
+        rank3_mult_key = str(effect.get("rank3_damage_mult_key", "rank3_damage_mult") or "rank3_damage_mult")
+        damage_mult = float(spell.get(rank3_mult_key, 1.0)) if rank >= 3 else 1.0
         messages = []
         for opponent in targets:
-            damage, crit, miss = roll_damage(player.total_atk() + atk_bonus, opponent.defense)
+            defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+            damage, crit, miss = roll_damage(player.total_atk() + atk_bonus, defense_value)
             damage = int(damage * damage_mult)
             if miss:
                 messages.append(f"Your {name} misses the {opponent.name}.")
@@ -127,9 +119,11 @@ def cast_spell(
                 opponent.melted = False
                 messages.append(f"Your {name} fells the {opponent.name}.")
                 continue
-            stun_chance = float(spell.get("stun_chance", 0.4))
+            stun_chance_key = str(effect.get("stun_chance_key", "stun_chance") or "stun_chance")
+            stun_chance = float(spell.get(stun_chance_key, 0.0))
             if rank >= 3:
-                stun_chance = min(0.95, stun_chance + float(spell.get("rank3_stun_bonus", 0.1)))
+                rank3_stun_key = str(effect.get("rank3_stun_bonus_key", "rank3_stun_bonus") or "rank3_stun_bonus")
+                stun_chance = min(0.95, stun_chance + float(spell.get(rank3_stun_key, 0.0)))
             stunned_turns = try_stun(opponent, stun_chance)
             if crit:
                 message = f"Critical {name}! You hit the {opponent.name} for {damage}."
@@ -138,6 +132,51 @@ def cast_spell(
             if stunned_turns > 0:
                 message += f" It is stunned for {stunned_turns} turn(s)."
             messages.append(message)
+        return " ".join(messages)
+
+    if effect.get("kind") == "status":
+        targets: List[Opponent] = []
+        threshold = int(effect.get("rank_all_threshold", 2) or 2)
+        if rank >= threshold:
+            targets = [opp for opp in opponents if opp.hp > 0]
+        else:
+            opponent = None
+            if target_index is not None and 0 <= target_index < len(opponents):
+                candidate = opponents[target_index]
+                if candidate.hp > 0:
+                    opponent = candidate
+            if opponent is None:
+                opponent = primary_opponent(opponents)
+            if opponent:
+                targets = [opponent]
+        if not targets:
+            return "There is nothing to target."
+        if not used_charge:
+            player.mp -= mp_cost
+        base_turns = int(effect.get("poison_turns", 0) or 0)
+        per_rank_turns = int(effect.get("poison_turns_per_rank", 0) or 0)
+        base_damage = int(effect.get("poison_damage", 0) or 0)
+        per_rank_damage = int(effect.get("poison_damage_per_rank", 0) or 0)
+        atk_debuff = int(effect.get("atk_debuff", 0) or 0) * max(1, rank)
+        def_debuff = int(effect.get("def_debuff", 0) or 0) * max(1, rank)
+        turns = base_turns + per_rank_turns * max(0, rank - 1)
+        damage = base_damage + per_rank_damage * max(0, rank - 1)
+        messages = []
+        for opponent in targets:
+            if turns > 0:
+                opponent.poison_turns = max(opponent.poison_turns, turns)
+            if damage > 0:
+                opponent.poison_damage = max(opponent.poison_damage, damage)
+            if atk_debuff != 0:
+                current = int(getattr(opponent, "temp_atk_bonus", 0) or 0)
+                opponent.temp_atk_bonus = min(current, atk_debuff) if atk_debuff < 0 else max(current, atk_debuff)
+            if def_debuff != 0:
+                current = int(getattr(opponent, "temp_def_bonus", 0) or 0)
+                opponent.temp_def_bonus = min(current, def_debuff) if def_debuff < 0 else max(current, def_debuff)
+            parts = [f"{opponent.name} is poisoned"]
+            if atk_debuff < 0 or def_debuff < 0:
+                parts.append("and weakened")
+            messages.append(" ".join(parts) + ".")
         return " ".join(messages)
 
     return f"{name} fizzles with no effect."

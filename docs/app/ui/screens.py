@@ -24,13 +24,17 @@ from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
 from app.data_access.players_data import PlayersData
 from app.data_access.quests_data import QuestsData
+from app.data_access.quest_objectives_data import QuestObjectivesData
+from app.data_access.quest_events_data import QuestEventsData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
+from app.data_access.spell_effects_data import SpellEffectsData
 from app.data_access.stories_data import StoriesData
 from app.data_access.portal_screen_data import PortalScreenData
 from app.data_access.quests_screen_data import QuestsScreenData
 from app.data_access.spellbook_screen_data import SpellbookScreenData
 from app.data_access.followers_screen_data import FollowersScreenData
+from app.data_access.followers_data import FollowersData
 from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
@@ -69,6 +73,7 @@ class ScreenContext:
     menus: MenusData
     commands: CommandsData
     spells: SpellsData
+    spell_effects: SpellEffectsData
     text: TextData
     colors: ColorsData
     frames: FramesData
@@ -79,6 +84,8 @@ class ScreenContext:
     glyphs: GlyphsData
     save_data: object
     quests: QuestsData
+    quest_objectives: QuestObjectivesData
+    quest_events: QuestEventsData
     stories: StoriesData
     players: PlayersData
     title_screen: TitleScreenData
@@ -86,6 +93,7 @@ class ScreenContext:
     spellbook_screen: SpellbookScreenData
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
+    followers: FollowersData
     music: MusicData
 
 
@@ -465,7 +473,7 @@ def _title_state_config(
         sfx_volume = int(flags.get("audio_sfx_volume", 5) or 0)
         music_volume = max(0, min(5, music_volume))
         sfx_volume = max(0, min(5, sfx_volume))
-        wave = str(flags.get("audio_wave", "square") or "square")
+        wave = str(flags.get("audio_wave", "harp") or "harp")
         def _bar(value: int) -> str:
             return "[" + ("#" * value) + ("." * (5 - value)) + "]"
         for entry in commands:
@@ -1123,6 +1131,8 @@ def generate_frame(
             continent=selected_element,
             include_locked_next=True,
             ordered_ids=ordered_ids,
+            objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
         ) if hasattr(ctx, "quests") else []
         commands = []
         detail_quest = None
@@ -1136,10 +1146,25 @@ def generate_frame(
             total_pages = max(1, len(dialog_lines))
             quest_detail_page = max(0, min(quest_detail_page, total_pages - 1))
             is_last = quest_detail_page >= total_pages - 1
-            commands = [
-                {"label": "Start Quest" if is_last else "Next"},
-                {"label": "Cancel", "command": "B_KEY"},
-            ]
+            actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+            detail_ids = actions_cfg.get("detail", ["next", "back"])
+            if not isinstance(detail_ids, list) or not detail_ids:
+                detail_ids = ["next", "back"]
+            labels = actions_cfg.get("labels", {})
+            if not isinstance(labels, dict):
+                labels = {}
+            commands = []
+            for action_id in detail_ids:
+                action_id = str(action_id)
+                if action_id == "back":
+                    commands.append({"label": labels.get("back", "Cancel"), "command": "B_KEY"})
+                elif action_id == "start":
+                    commands.append({"label": labels.get("start", "Start Quest"), "command": "start"})
+                else:
+                    commands.append({
+                        "label": labels.get("start", "Start Quest") if is_last else labels.get("next", "Next"),
+                        "command": "next",
+                    })
         else:
             commands = [
                 {"label": continent_label, "_disabled": True, "_header": True},
@@ -1163,7 +1188,11 @@ def generate_frame(
                     })
             else:
                 commands.append({"label": "No quests available.", "_disabled": True})
-            commands.append({"label": "Back", "command": "B_KEY"})
+            actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+            labels = actions_cfg.get("labels", {}) if isinstance(actions_cfg, dict) else {}
+            if not isinstance(labels, dict):
+                labels = {}
+            commands.append({"label": labels.get("list_back", "Back"), "command": "B_KEY"})
 
         enabled = [i for i, cmd in enumerate(commands) if not cmd.get("_disabled")]
         if not enabled:
@@ -1172,6 +1201,31 @@ def generate_frame(
             action_cursor = enabled[0]
         else:
             action_cursor = max(0, min(action_cursor, len(commands) - 1))
+
+        render_indices = list(range(len(commands)))
+        if not quest_detail_mode:
+            header_count = 2 if len(commands) >= 2 else 0
+            back_index = len(commands) - 1 if commands else -1
+            first_entry = header_count
+            last_entry = back_index - 1
+            quest_indices = list(range(first_entry, last_entry + 1)) if last_entry >= first_entry else []
+            visible_quests = 10
+            if len(quest_indices) > visible_quests:
+                pos = 0
+                if action_cursor in quest_indices:
+                    pos = quest_indices.index(action_cursor)
+                elif action_cursor == back_index:
+                    pos = len(quest_indices) - 1
+                window_start = max(0, min(pos - (visible_quests // 2), len(quest_indices) - visible_quests))
+                visible_indices = quest_indices[window_start:window_start + visible_quests]
+                render_indices = []
+                if header_count >= 1:
+                    render_indices.append(0)
+                if header_count >= 2:
+                    render_indices.append(1)
+                render_indices.extend(visible_indices)
+                if back_index >= 0:
+                    render_indices.append(back_index)
 
         menu_labels = []
         base_menu_labels = []
@@ -1188,7 +1242,8 @@ def generate_frame(
         menu_width = max(10, max_label + 2 + (menu_margin * 2))
 
         menu_inner_width = max(1, menu_width - 2 - (menu_margin * 2))
-        for idx, entry in enumerate(commands):
+        for idx in render_indices:
+            entry = commands[idx]
             label = str(entry.get("label", ""))
             if entry.get("_header"):
                 line = center_ansi(label.strip(), menu_inner_width)
@@ -1721,7 +1776,7 @@ def generate_frame(
 
         menu_labels = []
         base_labels = []
-        menu_header = f"Followers: {count}/{player.follower_limit()}"
+        menu_header = f"Followers: {count}"
         menu_labels.append(center_ansi(menu_header, max(1, len(menu_header))))
         menu_labels.append("")
 
@@ -1928,15 +1983,14 @@ def generate_frame(
         atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))
         def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0))
         temp_hp = int(getattr(player, "temp_hp_bonus", 0))
-        hp_total = player.max_hp + temp_hp
         hp_line = f"HP: {player.hp} / {player.max_hp}"
         if temp_hp:
             hp_line = f"HP: {player.hp} / {player.max_hp} (+{temp_hp})"
         body = [
             hp_line,
             f"MP: {player.mp} / {player.max_mp}",
-            f"ATK: {player.atk} (+{atk_bonus})",
-            f"DEF: {player.defense} (+{def_bonus})",
+            f"ATK: {player.atk} ({atk_bonus:+d})",
+            f"DEF: {player.defense} ({def_bonus:+d})",
             f"Level: {player.level}  XP: {player.xp}  GP: {player.gold}",
             f"Stat points available: {player.stat_points}",
         ]
@@ -2139,10 +2193,10 @@ def generate_frame(
                 mp_text = f"MP: {mp} / {max_mp}"
                 atk_text = f"ATK: {atk_total}"
                 if atk_bonus:
-                    atk_text = f"{atk_text} (+{atk_bonus})"
+                    atk_text = f"{atk_text} ({atk_bonus:+d})"
                 def_text = f"DEF: {def_total}"
                 if def_bonus:
-                    def_text = f"{def_text} (+{def_bonus})"
+                    def_text = f"{def_text} ({def_bonus:+d})"
             else:
                 base_max_hp = int(target.get("max_hp", 0) or 0)
                 temp_hp = int(target.get("temp_hp_bonus", 0) or 0)
@@ -2160,10 +2214,10 @@ def generate_frame(
                 mp_text = f"MP: {mp} / {max_mp}"
                 atk_text = f"ATK: {atk_total}"
                 if atk_bonus:
-                    atk_text = f"{atk_text} (+{atk_bonus})"
+                    atk_text = f"{atk_text} ({atk_bonus:+d})"
                 def_text = f"DEF: {def_total}"
                 if def_bonus:
-                    def_text = f"{def_text} (+{def_bonus})"
+                    def_text = f"{def_text} ({def_bonus:+d})"
             stat_line = (
                 f"{color(hp_text, ANSI.FG_GREEN)}  "
                 f"{color(mp_text, ANSI.FG_MAGENTA)}  "

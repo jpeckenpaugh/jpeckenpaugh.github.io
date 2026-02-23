@@ -1,43 +1,179 @@
 {
-  "mushy_01": {
-    "title": "Once upon a time...",
+  "island_01_quest_01": {
+    "title": "Island 01 Quest 01",
     "continent": "base",
-    "on_start": {
-      "grant_follower": {
-        "type": "mushroom_baby",
-        "name": "Mushy",
-        "count_as_recruit": true
-      },
-      "grant_flags": [
-        "spell_life_boost_enabled",
-        "spell_strength_enabled"
-      ],
-      "recruit_only_types": [
-        "mushroom_baby"
-      ],
-      "follower_cap_extra": 2,
-      "start_message": "Cast Strength from your spellbook, then head out to the Forest and find some opponents."
-    },
-    "on_complete": {
-      "clear_recruit_only": true,
-      "follower_cap": 2
-    },
-    "summary_pre": "A tiny mushroom offers help but warns the forest is deadly.",
-    "summary_active": "Use the 'Strength' spell to boost your stats temporariy.  Fight opponents in the forest, and recruit three mushroom babies then fuse them at the temple.",
+    "summary_pre": "Quest 01: Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.",
+    "summary_active": "Player reaches Level 2.",
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Hi there! I\u2019m Mushy. Nice to meet you! You and I may be low-level now. If we head into the forest like this, we won\u2019t stand much chance against the monsters we\u2019d find.",
-      "But I have a little secret. I can teach you a couple basic spells to boost our stats. They\u2019ll use MP, and the effects wear off over time.",
-      "Life Boost adds 10 HP to your max life, and Strength adds 10 points to both Attack and Defense.",
-      "Let me break it down: these effects cost MP to cast, and they stack. With a few casts, you\u2019ll be strong enough to trample some monsters.",
-      "Stat boosts won\u2019t carry into the next day, so if you rest at the Inn, the effects reset. Resting also fully restores your HP and MP, so the next day you can recast the spells and power up before heading out again.",
-      "If you take me with you, I\u2019ll teach you these two spells and we can take down some enemies together. They\u2019ll reward us with XP and GP. While battling, we can also recruit two more baby mushrooms using the \u201cSocialize\u201d feature. Once you have three baby mushrooms on the team, the priestess at the temple can merge us into a stronger Mushroom.",
-      "So what do you say? Let me join you, and let\u2019s see how we fare against real monsters."
+      "Quest 01: Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.",
+      "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
+      "On our own, neither of us is strong enough to take on the monsters around here, but I have a little secret.",
+      "I have a magic mushroom tea, and it is able to open your mind and allow you to understand basic magic.",
+      "I can also show you how to cast a \"Strengthen\" that you will be able to use to raise our attack and defense points.",
+      "The spell will use your Magic Points (MP) and will wear off over time.  But for a while, we will be able to fight the monsters in this area and win.",
+      "Defeating monsters will grant us gold and experience.  If your life and magic points are getting low, we can visit the Inn in the nearby town, and sleep for the night.",
+      "So what do you say?  Feel like trying my magic tea, and we can test our luck against some monsters?",
+      "Story: Player will need to use the Strengthen spell to increase their attack and defense.",
+      "Player will need to kill approximately 10 enemies to gain level 2."
     ],
     "requirements": {
       "flags_required": [],
       "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "reach_level",
+        "level": 2
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_strength_enabled"
+        ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "SPELLBOOK"
+      },
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "mushroom_baby",
+          "name": "Mushy",
+          "count_as_recruit": true
+        },
+        "required": true
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_01_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 50
+      }
+    ]
+  },
+  "island_01_quest_02": {
+    "title": "Island 01 Quest 02",
+    "continent": "base",
+    "auto_open_on_level_up": true,
+    "summary_pre": "Mushy: See, that wasn't that hard!",
+    "summary_active": "Player is taken to level up screen and must use their 10 status points.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "mushroom_baby",
+    "dialog": [
+      "Mushy: See, that wasn't that hard!",
+      "Now that you have reached level 2, you have 10 \"status\" points that you can use to increase your base stats.",
+      "You can power up your Life Points (HP), Mana Points (MP).  You should also increase your attack points and defense points, so we won't be so reliant on the Strengthen spell."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_01_complete"
+      ],
+      "level_min": 2
+    },
+    "objectives": [
+      {
+        "type": "spend_stat_points",
+        "count": 10
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "town",
+        "action_label": "Temple"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_02_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 50
+      }
+    ]
+  },
+  "island_01_quest_03": {
+    "title": "Island 01 Quest 03",
+    "continent": "base",
+    "summary_pre": "Mushy: Now you know the basic of fighting, let's talk a bit about Fusion.",
+    "summary_active": "Player must fight opponents and convince 2 mini mushrooms to join team.  Once there are 3 mini mushrooms on team....",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "mushroom_baby",
+    "dialog": [
+      "Mushy: Now you know the basic of fighting, let's talk a bit about Fusion.",
+      "I am just a small little mushroom, but if we can find 2 more mini mushrooms to join our team, then we will be able to fuse our powers to evolve into a stronger form.",
+      "Don't worry, fushion doesn't hurt.  It is just another way to power up and combine our talents.",
+      "If we fight a few more monsters, we are bound to come upon a few more mini mushrooms like me.  If I can convince 2 mushrooms to join us, then we will be able to fuse our powers together."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_02_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "recruit_follower",
+        "follower_type": "mushroom_baby",
+        "count": 2
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "mushroom_baby"
+        ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_03_complete"
+        ]
+      },
+      {
+        "type": "clear_recruit_only_types"
+      }
+    ]
+  },
+  "island_01_quest_04": {
+    "title": "Island 01 Quest 04",
+    "continent": "base",
+    "auto_open_on_complete": true,
+    "summary_pre": "Mushy: Great!  Now that we have 3 mini mushrooms on our team, you can fuse us.",
+    "summary_active": "Player must go to Town, Visit Temple, and Fuse 3 mini mushrooms.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "mushroom_teen",
+    "dialog": [
+      "Mushy: Great!  Now that we have 3 mini mushrooms on our team, you can fuse us.",
+      "Travel to the town and visit the Temple.  The priestest there will be able to fuse us and evolve us to our next level."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_03_complete"
+      ]
     },
     "objectives": [
       {
@@ -46,122 +182,239 @@
         "count": 3
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_01_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "town",
+        "action_label": "Temple"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "clear_recruit_only_types"
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_04_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 80
+      }
+    ]
   },
-  "mushy_02": {
-    "title": "Wandcraft",
+  "island_01_quest_05": {
+    "title": "Island 01 Quest 05",
     "continent": "base",
-    "summary_pre": "The alchemist can fuse gear into stronger forms.",
-    "summary_active": "Buy 3 Oak Wands and fuse them into 1 by visiting the Alchemist.",
+    "summary_pre": "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
+    "summary_active": "Recruit two more wolf pups to join the team.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "mushroom_baby",
+    "art_opponent": "wolf_pup",
     "dialog": [
-      "Now that you know a few basic spells, let's talk about wands.  Spells normally consume your Mana Points (MP) to cast.  Mana will refresh each day (after sleeping at the Inn), but it is still limited.",
-      "In addition to increasing the potency of your spells, wands can store charges, letting you cast spells without spending MP. To use a wand in battle, you must equip it so it is ready to use.",
-      "Wands can be bought in the Shop, but the wands they sell here can only hold a single spell charge.  Luckily the Alchemist in town can fuse gear together to combine and increase its power.",
-      "Buy 3 Oak Wands and fuse them into one at the Alchemist.  If you don't have enough GP yet, go hunting in the Forest."
+      "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
+      "The pup is grateful.  He decides to join us.  We'll call him Chase.",
+      "Now we should find two more wolf pups so they can fight alongside us."
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_01_complete"
+        "island_01_quest_04_complete"
       ]
     },
     "objectives": [
       {
-        "type": "fuse_gear",
-        "item_id": "oak_wand",
+        "type": "recruit_follower",
+        "follower_type": "wolf_pup",
+        "count": 2
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "wolf_pup",
+          "name": "Chase",
+          "count_as_recruit": false
+        },
+        "required": true
+      },
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "wolf_pup"
+        ]
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_05_complete"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_06": {
+    "title": "Island 01 Quest 06",
+    "continent": "base",
+    "summary_pre": "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
+    "summary_active": "Player must go to Town, Visit Temple, and Fuse 3 wolf pups.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "wolf_pup",
+    "dialog": [
+      "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
+      "Travel to the town and visit the Temple.  The priestest there will be able to fuse the wolf pups and evolve them to their next level."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_05_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "fuse_followers",
+        "follower_type": "wolf_pup",
         "count": 3
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_02_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_06_complete"
+        ]
+      },
+      {
+        "type": "clear_recruit_only_types"
+      }
+    ]
   },
-  "mushy_03": {
-    "title": "Gear up",
+  "island_01_quest_11": {
+    "title": "Island 01 Quest 11",
     "continent": "base",
-    "summary_pre": "Mushy urges you to gear up before the next trials.",
-    "summary_active": "Buy and equip one of each gear type.",
+    "summary_pre": "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follo.",
+    "summary_active": "Team must win a battle against 4 baby trolls with Beba on their team.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "mushroom_teen",
+    "art_opponent": "baby_troll",
     "dialog": [
-      "Before we push further, we should gear up. You already have your wand, which gives you extra spell casts and increases your spell power, but there is more to adventuring than just magic.",
-      "There are different kinds of items that you can equip to yourself to help boost different stats.",
-      "Swords are good to raise your Attack power, shields and armor bolster Defense, and rings and bracelets can have different enchantments and bonuses.",
-      "Visit the Shop to buy at leaet one of each different type of gear.  Purchased items will auto-equip to you, or you can browse under Options -> Inventory to change which items are equipped.",
-      "If you don't have enough Gold to buy everything at this point, we can go hunting in the Forest to collect GP."
+      "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follo.",
+      "Mushy: It seems like Chase has picked up a scent.  We better follow him!",
+      "Beba: Take that you mean trolls!",
+      "Narration: You come upon a small fairy who appaers to be fighting 4 small trolls.",
+      "Mushy: Hey Beba!  What kind of trouble have you gotten into today?",
+      "Beba: A fairy princess like me is never in trouble, Mushy.  You know that.",
+      "But I suppose if you want to give me a hand in punishing these nasty trolls, I won't stop you."
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_02_complete"
+        "island_01_quest_07_complete"
       ]
     },
     "objectives": [
       {
-        "type": "equip_slots",
-        "slots": [
-          "sword",
-          "shield",
-          "armor",
-          "ring",
-          "bracelet",
-          "wand"
-        ],
-        "count": 6
+        "type": "defeat_opponents",
+        "opponent_id": "baby_troll",
+        "count": 4
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_03_complete"
-      ],
-      "items": [],
-      "xp": 100
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_11_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_11_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_troll",
+          "count": 4
+        }
+      ]
     }
   },
-  "mushy_04": {
-    "title": "Beba Hexa",
+  "island_01_quest_12": {
+    "title": "Island 01 Quest 12",
     "continent": "base",
-    "on_start": {
-      "grant_follower": {
-        "type": "fairy_baby",
-        "name": "Beba",
-        "count_as_recruit": true
-      },
-      "gp_cost": 100,
-      "recruit_only_types": [
-        "fairy_baby"
-      ],
-      "follower_cap_extra": 2
-    },
-    "on_complete": {
-      "clear_recruit_only": true,
-      "follower_cap": 3
-    },
-    "summary_pre": "Mushy has a fairy friend who might grow into a queen.",
-    "summary_active": "Recruit three fairy babies and fuse them into a fairy teen.",
+    "summary_pre": "Beba: Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist.",
+    "summary_active": "Player has to battle opponents until finding 2 fairies to join the team.",
     "summary_complete": "Quest complete.",
     "art_opponent": "fairy_baby",
     "dialog": [
-      "Mushy has a friend to introduce. Her name is Beba, and she is tiny, sparkly, and very dramatic.",
-      "She is not strong yet, but Beba is a princess. One day she could grow into a full Fairy Queen.",
-      "Beba will cost 100 GP to recruit, but once she joins, other fairies will join for 60 GP each. It is worth it.",
-      "If we help her gather a small court, she will blossom faster. That means recruiting a few fairy babies.",
-      "Once we have three fairy babies, the temple can fuse them into a stronger fairy teen.",
-      "Ready to meet Beba and give her a proper royal escort?"
+      "Beba: Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist.",
+      "Narration: Beba joins the team.",
+      "Beba: It's only fair I share a bit of my magic knowledge with you.  Here, take this:",
+      "Narration: Beba teaches the player the \"Healing\" spell.",
+      "Beba: We fairies are particuarly good at healing, so when your life is getting low, you can use that spell to restore some hit points.",
+      "Besides healers, fairies are also known as powerful warriors.  What, I'm not kidding!",
+      "Tell you what, if we can find 2 more small faries to join our team, and we can evolve me to my next level, then I will introduce you to the 4 fairy warriors who live in these woods."
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_03_complete"
+        "island_01_quest_11_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "recruit_follower",
+        "follower_type": "fairy_baby",
+        "count": 2
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_healing_enabled"
+        ]
+      },
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "fairy_baby"
+        ]
+      },
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "fairy_baby",
+          "name": "Beba",
+          "count_as_recruit": true
+        },
+        "required": true
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_12_complete"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_13": {
+    "title": "Island 01 Quest 13",
+    "continent": "base",
+    "summary_pre": "Beba: Excellent!  Now let's head to the Temple and have the priestess fuse us faries.",
+    "summary_active": "Player travels to temple and uses fuse on 3 faries.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "fairy_teen",
+    "dialog": [
+      "Beba: Excellent!  Now let's head to the Temple and have the priestess fuse us faries."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_12_complete"
       ]
     },
     "objectives": [
@@ -171,169 +424,404 @@
         "count": 3
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_04_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
-  },
-  "mushy_05": {
-    "title": "Chase the Moon",
-    "continent": "base",
-    "on_start": {
-      "grant_follower": {
-        "type": "wolf_pup",
-        "name": "Chase",
-        "count_as_recruit": true
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "clear_recruit_only_types"
       },
-      "recruit_only_types": [
-        "wolf_pup"
-      ],
-      "follower_cap_extra": 2
-    },
-    "on_complete": {
-      "clear_recruit_only": true,
-      "follower_cap": 3
-    },
-    "summary_pre": "A young wolf longs to run beneath the wandering tower\u2019s shadow.",
-    "summary_active": "Recruit three wolf pups and fuse them into a full wolf.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "wolf_pup",
-    "dialog": [
-      "Mushy whispers about a wolf pup named Chase who runs the ridge each night, following the moon\u2019s path.",
-      "Chase is quick but young, still learning to guard the pack. He wants a team that can keep up with him.",
-      "If we help him gather two more wolf pups, the temple can fuse their bond into a full-grown wolf.",
-      "A true wolf will give us the bite and grit to face what waits beyond the forest.",
-      "Ready to run with Chase and learn the rhythm of the moon?"
-    ],
-    "requirements": {
-      "flags_required": [
-        "quest_mushy_04_complete"
-      ],
-      "level_min": 3
-    },
-    "objectives": [
       {
-        "type": "fuse_followers",
-        "follower_type": "wolf_pup",
-        "count": 3
-      }
-    ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_05_complete"
-      ],
-      "items": [],
-      "xp": 100
-    }
-  },
-  "mushy_06": {
-    "title": "Fight Sprites for Bites",
-    "continent": "base",
-    "on_start": {
-      "start_message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
-    },
-    "summary_pre": "Beba proposes a trial of strength against the forest fairies.",
-    "summary_active": "Defeat the four fairies in the forest.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "fairy_baby",
-    "dialog": [
-      "We are really working well as a team so far, but it's time to push your magic skills to the next level.",
-      "Besides the basic stat enhancing spells you currently have, there are powerful attack spells that can do damange directly to enemies.",
-      "There are four fairy warriors nearby in the forrest, and if you are able to prove your strength to them, they will grant you a spell that allows you to call them into battle to inflict damage on your enemies.",
-      "If you feel you are ready for this challenge, we can travel to the forest to do battle with them.  But be warned, these will be the hardest enemies you have faced up to this point."
-    ],
-    "requirements": {
-      "flags_required": [
-        "quest_mushy_05_complete"
-      ],
-      "level_min": 3
-    },
-    "objectives": [
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_13_complete"
+        ]
+      },
       {
-        "type": "visit_scene",
-        "id": "mushy_06_trial"
+        "type": "grant_xp",
+        "amount": 100
       }
-    ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_06_complete",
-        "spell_sprite_bite_enabled"
-      ],
-      "items": [],
-      "xp": 100
-    }
+    ]
   },
-  "mushy_07": {
-    "title": "Ogre's Orb",
+  "island_01_quest_14": {
+    "title": "Island 01 Quest 14",
     "continent": "base",
-    "on_start": {
-      "start_message": "Defeat the ogre in the forest to claim the magic orb."
-    },
-    "summary_pre": "Beba warns of an ogre terrorizing the fairies and hoarding a magic orb.",
-    "summary_active": "Defeat the ogre in the forest.",
+    "summary_pre": "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
+    "summary_active": "Player must win the battle against the 4 fairy warriors.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "ogre",
+    "art_opponent": "fairy_teen",
     "dialog": [
-      "We've made new allies among the fairies, but a threat looms nearby.",
-      "An ogre has been terrorizing the forest and stealing treasures from the fairy clans.",
-      "The ogre carries a magic orb said to deepen your mana pool and empower your spells.",
-      "If you can defeat the ogre in the forest, the fairies will let you keep the orb.",
-      "Ranked-up spells strike harder and can also hit multiple targets at once."
+      "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
+      "If we can best them in a battle, they will grant us the \"Sprite Bite\" spell, so we can call them to help us attack in battle.",
+      "Narration: Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?",
+      "Beba: Oh, heya!  It's just me Beba, and my royal court.  Would you be so kind as to lend us your power?",
+      "Narration: Hi Beba.  You know the rules.  If you can best us in a friendly battle, we will grant you the Sprite Bite spell so you can call us in battle to help vanquish your enemies.",
+      "Beba: Ready or not, here we come!"
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_06_complete"
-      ],
-      "level_min": 4
-    },
-    "objectives": [
-      {
-        "type": "visit_scene",
-        "id": "mushy_07_trial"
-      }
-    ],
-    "rewards": {
-      "flags_set": [
-        "quest_mushy_07_complete"
-      ],
-      "mp_bonus": 20,
-      "spell_rank_up": 1,
-      "items": [],
-      "xp": 100
-    }
-  },
-  "unlock_continent_01": {
-    "title": "[PLACEHOLDER_TITLE]",
-    "continent": "base",
-    "summary_pre": "[PLACEHOLDER_SUMMARY_PRE]",
-    "summary_active": "[PLACEHOLDER_SUMMARY_ACTIVE]",
-    "summary_complete": "[PLACEHOLDER_SUMMARY_COMPLETE]",
-    "art_opponent": "[PLACEHOLDER_OPPONENT_ID]",
-    "dialog": [
-      "[PLACEHOLDER_DIALOG_LINE_1]",
-      "[PLACEHOLDER_DIALOG_LINE_2]"
-    ],
-    "requirements": {
-      "flags_required": [
-        "[PLACEHOLDER_FLAG_ID]"
+        "island_01_quest_13_complete"
       ]
     },
     "objectives": [
       {
-        "type": "[PLACEHOLDER_OBJECTIVE_TYPE]",
-        "id": "[PLACEHOLDER_OBJECTIVE_ID]",
+        "type": "defeat_opponents",
+        "opponent_id": "fairy_teen",
+        "count": 4
+      }
+    ],
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_14_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 120
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_15_trial",
+      "opponents": [
+        {
+          "opponent_id": "fairy_teen",
+          "count": 4
+        }
+      ]
+    }
+  },
+  "island_01_quest_16": {
+    "title": "Island 01 Quest 16",
+    "continent": "base",
+    "summary_pre": "Narration: You have proven yourself, so as promised, here is the \"Sprite Bite\" spell.  And since it was just a friendly fight, we will restore your HP and MP as well.",
+    "summary_active": "Next Opponent player fights in the Forest will be the Giant Ogre.  Player must defeat Giant Ogre in battle.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "ogre",
+    "dialog": [
+      "Narration: You have proven yourself, so as promised, here is the \"Sprite Bite\" spell.  And since it was just a friendly fight, we will restore your HP and MP as well.",
+      "Narration: Now that we have aggreed to help you, there is something you can do for us.",
+      "There is a Giant Ogre who lives in these woods.  He recently stoll our mana stone.  This powerful relic can raise MP and magic power all at the same time.",
+      "His cave is nearby.  With our combined power, we should be able to defeat the Giant Ogre and his minions, and recover the mana stone."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_14_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "ogre",
         "count": 1
       }
     ],
-    "rewards": {
-      "flags_set": [
-        "unlock_continent_[PLACEHOLDER_CONTINENT_ID]"
-      ],
-      "items": [],
-      "xp": 100
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_sprite_bite_enabled"
+        ]
+      },
+      {
+        "type": "restore_full"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_16_complete"
+        ]
+      },
+      {
+        "type": "grant_items",
+        "items": [
+          "mana_stone"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 120
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_16_trial",
+      "opponents": [
+        {
+          "opponent_id": "ogre",
+          "count": 1
+        }
+      ]
     }
+  },
+  "island_01_quest_18": {
+    "title": "Island 01 Quest 18",
+    "continent": "base",
+    "summary_pre": "Beba: I have never seen a real Mana Stone before.  With this I should be more powerful than ever!",
+    "summary_active": "Player Uses Mana Stone - spells receive 10 Rank XP each, advancing to rank 2.  Player receives 20 MP bonus as well.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "ogre",
+    "dialog": [
+      "Beba: I have never seen a real Mana Stone before.  With this I should be more powerful than ever!",
+      "Okay fine, you can use the mana stone if you really want to.  It will grant you Spell XP, which will go a long way towards ranking up your spells.",
+      "When spells increase in rank, they grow in power.  Attack spells of Rank 2 and 3 typically attack multiple enemies at once as well.",
+      "And as an added bonus, this will grant you an additional 20 Mana Points.  This will really expand your magic capabilities, and let you cast more spells in a single day, before having to rest at the Inn to recoup your Mana."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_16_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "use_item",
+        "item_id": "mana_stone",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_18_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ]
+  },
+  "island_01_quest_19": {
+    "title": "Island 01 Quest 19",
+    "continent": "base",
+    "summary_pre": "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
+    "summary_active": "Player must battle until finding 2 more baby ogres to join the team.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "ogre",
+    "dialog": [
+      "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
+      "And don't forget, we can always rest at the Inn to recover our HP and MP.  Nothing quite like a good nights rest, you know.",
+      "Ogrito: Hello.  My name is Ogrito Pequeno.  You killed my father.  Prepare to die...",
+      "Beba: Aww, what a cute little baby ogre.  Are you lost kid?",
+      "Ogrito: What?  No, didn't you hear me.  I am here to exact revenge against you fiends!",
+      "Chase: Ruff!  (Chase bats his Puppy Eyes at Ogrito)",
+      "Ogrito: No, that won't work on me.  I don't care how cute and cuddly you are!",
+      "Chase: Hmph... (Puppy Eyes just don't quit).",
+      "Ogrito: Ohh, you are just too cute.  I can't stay mad at you.",
+      "To be honest, my dad was kind of a jerk.  He was always stealing magic relics anyway.",
+      "Fine, I will hang out with you for a little while.  But just so you know, I will most likely kill you in the morning."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_18_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "recruit_follower",
+        "follower_type": "baby_ogre",
+        "count": 2
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "baby_ogre",
+          "name": "Ogrito",
+          "count_as_recruit": true
+        },
+        "required": true
+      },
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "baby_ogre"
+        ]
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_19_complete"
+        ]
+      },
+      {
+        "type": "clear_recruit_only_types"
+      }
+    ]
+  },
+  "island_01_quest_22": {
+    "title": "Island 01 Quest 22",
+    "continent": "base",
+    "summary_pre": "Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!",
+    "summary_active": "Player learns \"Fit of Rage\" spell from Ogrito.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_ogre",
+    "dialog": [
+      "Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!",
+      "Ok, fine.  Just this one time though.",
+      "Ogrito: Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_19_complete"
+      ]
+    },
+    "objectives": [],
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_burst_of_rage_enabled"
+        ]
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_22_complete"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_23": {
+    "title": "Island 01 Quest 23",
+    "continent": "base",
+    "summary_pre": "Golden Wolf Messenger: Woof!",
+    "summary_active": "Player must defeat the Poisonous Python in battle.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "poisonous_python",
+    "dialog": [
+      "Golden Wolf Messenger: Woof!",
+      "Chase: Woof woof....",
+      "Golden Wolf Messenger: Woof, growl, woof woof.",
+      "Chase: Woof.",
+      "Narration: Chase looks at you, as if he is waiting for a response.",
+      "Mushy: Oops, I forgot for a minute you don't speak Wolf....",
+      "So it seems like there is a Poisonous Python that has been stealing pups from the Wolf Pack.  The Pack leader has asked for our help in rescuing the pups from the terrible snake."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_22_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "poisonous_python",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_23_complete",
+          "spell_snake_bite_enabled"
+        ]
+      },
+      {
+        "type": "grant_items",
+        "items": [
+          "golden_collar"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 140
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_23_trial",
+      "opponents": [
+        {
+          "opponent_id": "poisonous_python",
+          "count": 1
+        }
+      ]
+    }
+  },
+  "island_01_quest_25": {
+    "title": "Island 01 Quest 25",
+    "continent": "base",
+    "summary_pre": "Chase: Woof!",
+    "summary_active": "",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "wolf",
+    "dialog": [
+      "Chase: Woof!",
+      "Pups: Woof woof woof!",
+      "Pack Leader: Bark.  Woof, woof. Howl!",
+      "Narration: The Pack Leader give you the Golden Collar",
+      "Mushy: Wow, a Golden Collar from the Pack Leader himself.  As long as you wear this necklace on you, no Golden Wolf will dare to attack you in battle."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_23_complete"
+      ]
+    },
+    "objectives": [],
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_25_complete"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_07": {
+    "title": "Island 01 Quest 07",
+    "continent": "base",
+    "summary_pre": "Mushy: Our team is really progressing nicely!",
+    "summary_active": "Player casts \"Animal Instinct\" spell and goes to the Forrest.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "wolf_pup",
+    "dialog": [
+      "Mushy: Our team is really progressing nicely!",
+      "Chase: Woof.",
+      "Mushy: What is it boy?  Timmy fell down a well?",
+      "Chase: Woof?",
+      "Mushy: No, I'm just kidding. Alright I will tell them...",
+      "So Chase says he can teach you a special magic ability \"Animal Instincts.\"  With this spell you will be able to sense opponents in the forrest before they appear.",
+      "This will let us get the jump on opponents, giving us an pre-emptive attack before the battle actually starts.",
+      "Mushy: Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_06_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "cast_spell",
+        "spell_id": "animal_instincts",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_animal_instincts_enabled"
+        ]
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_07_complete"
+        ]
+      }
+    ]
   }
 }

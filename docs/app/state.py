@@ -53,6 +53,7 @@ class GameState:
     defend_evasion: float = 0.0
     action_effect_override: Optional[dict] = None
     level_up_notes: list[str] = field(default_factory=list)
+    pending_level_up: bool = False
     last_spell_targets: list[int] = field(default_factory=list)
     team_target_index: Optional[int] = None
     last_team_target_player: Optional[bool] = None
@@ -77,6 +78,9 @@ class GameState:
     title_intro_wave: Optional[str] = None
     battle_escaped: bool = False
     battle_active: bool = False
+    preemptive_turns: int = 0
+    debug_temp_atk: Optional[int] = None
+    debug_temp_def: Optional[int] = None
     asset_explorer_focus: str = "list"
     asset_explorer_info_scroll: int = 0
     asset_explorer_preview_key: Optional[str] = None

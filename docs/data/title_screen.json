@@ -47,9 +47,18 @@
         "Choose your name."
       ],
       "items": [
-        { "label": "Custom...", "command": "TITLE_NAME_CUSTOM" },
-        { "label": "Random", "command": "TITLE_NAME_RANDOM" },
-        { "label": "Back", "command": "TITLE_NAME_BACK" }
+        {
+          "label": "Auto",
+          "command": "TITLE_NAME_RANDOM"
+        },
+        {
+          "label": "Custom...",
+          "command": "TITLE_NAME_CUSTOM"
+        },
+        {
+          "label": "Back",
+          "command": "TITLE_NAME_BACK"
+        }
       ]
     },
     "title_player": {
@@ -63,10 +72,22 @@
         "Audio settings."
       ],
       "items": [
-        { "label": "Music", "command": "TITLE_AUDIO_MUSIC" },
-        { "label": "Instrument", "command": "TITLE_AUDIO_WAVE" },
-        { "label": "SFX", "command": "TITLE_AUDIO_SFX" },
-        { "label": "Back", "command": "TITLE_MENU_BACK" }
+        {
+          "label": "Music",
+          "command": "TITLE_AUDIO_MUSIC"
+        },
+        {
+          "label": "Instrument",
+          "command": "TITLE_AUDIO_WAVE"
+        },
+        {
+          "label": "SFX",
+          "command": "TITLE_AUDIO_SFX"
+        },
+        {
+          "label": "Back",
+          "command": "TITLE_MENU_BACK"
+        }
       ]
     },
     "title_start_confirm": {
@@ -76,8 +97,14 @@
         "Your save will be created now."
       ],
       "items": [
-        { "label": "Begin adventure", "command": "TITLE_START_CONFIRM_YES" },
-        { "label": "Back", "command": "TITLE_START_CONFIRM_NO" }
+        {
+          "label": "Begin adventure",
+          "command": "TITLE_START_CONFIRM_YES"
+        },
+        {
+          "label": "Back",
+          "command": "TITLE_START_CONFIRM_NO"
+        }
       ]
     },
     "title_confirm": {

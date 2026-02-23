@@ -1,0 +1,90 @@
+{
+  "elemental_damage": {
+    "kind": "damage",
+    "target_mode": "single_or_all_by_rank",
+    "rank_all_threshold": 2,
+    "atk_bonus_key": "atk_bonus",
+    "stun_chance_key": "stun_chance",
+    "rank3_damage_mult_key": "rank3_damage_mult",
+    "rank3_stun_bonus_key": "rank3_stun_bonus"
+  },
+  "support_boost": {
+    "kind": "support",
+    "target_missing_mode": "combined",
+    "target_allow_full": true,
+    "stat_deltas": [
+      {
+        "stat": "atk",
+        "per_rank_min": 6,
+        "per_rank_max": 8,
+        "max_stack_mult": 5
+      },
+      {
+        "stat": "defense",
+        "per_rank_min": 4,
+        "per_rank_max": 6,
+        "max_stack_mult": 5
+      }
+    ]
+  },
+  "support_life_boost": {
+    "kind": "support",
+    "target_missing_mode": "combined",
+    "target_allow_full": true,
+    "stat_deltas": [
+      {
+        "stat": "max_hp",
+        "per_rank": 10,
+        "max_stack_mult": 5
+      }
+    ]
+  },
+  "support_evasion": {
+    "kind": "support",
+    "target_missing_mode": "combined",
+    "target_allow_full": true,
+    "stat_deltas": [
+      {
+        "stat": "evasion",
+        "per_rank": 1,
+        "max_stack_mult": 5
+      }
+    ]
+  },
+  "support_rage": {
+    "kind": "support",
+    "target_missing_mode": "combined",
+    "target_allow_full": true,
+    "stat_deltas": [
+      {
+        "stat": "atk",
+        "per_rank": 25,
+        "max_stack_mult": 2
+      },
+      {
+        "stat": "defense",
+        "per_rank": -5,
+        "min_stack_mult": 4
+      }
+    ]
+  },
+  "healing_touch": {
+    "kind": "heal",
+    "target_missing_mode": "hp",
+    "hp_per_rank": 20
+  },
+  "snake_poison": {
+    "kind": "status",
+    "target_mode": "single_or_all_by_rank",
+    "rank_all_threshold": 2,
+    "poison_turns": 3,
+    "poison_turns_per_rank": 1,
+    "poison_damage": 4,
+    "poison_damage_per_rank": 2,
+    "atk_debuff": -2,
+    "def_debuff": -2
+  },
+  "preemptive_next_battle": {
+    "kind": "battle_prep"
+  }
+}

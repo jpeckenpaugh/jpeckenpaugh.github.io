@@ -342,7 +342,7 @@ def _audio_defaults_from_player(player) -> tuple[float, float, str]:
     sfx_volume = int(flags.get("audio_sfx_volume", 5) or 0)
     music_volume = max(0, min(5, music_volume))
     sfx_volume = max(0, min(5, sfx_volume))
-    wave = str(flags.get("audio_wave", "harp") or "harp")
+    wave = str(flags.get("audio_wave", "triangle") or "triangle")
     return music_volume / 5.0, sfx_volume / 5.0, wave
 
 

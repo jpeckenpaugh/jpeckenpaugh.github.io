@@ -2,14 +2,16 @@
 
 import random
 import time
+from datetime import datetime
 from typing import Optional
 import json
+import os
 
 from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
-from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import build_follower_from_entry, evaluate_quests, handle_event, ordered_quest_ids, quest_entries, start_quest
+from app.combat import add_loot, battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
+from app.questing import apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -27,6 +29,15 @@ from app.ui.rendering import (
 )
 from app.ui.text import format_text
 from app.venues import venue_actions, venue_id_from_state
+
+
+def _append_debug_log(message: str) -> None:
+    try:
+        os.makedirs("tmp", exist_ok=True)
+        with open("tmp/quest_debug.log", "a", encoding="utf-8") as handle:
+            handle.write(f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
+    except OSError:
+        return
 
 
 def _spell_effect_with_art(ctx, spell: dict) -> Optional[dict]:
@@ -140,13 +151,28 @@ def render_battle_pause(ctx, render_frame, state: GameState, generate_frame, mes
     time.sleep(battle_action_delay(state.player))
 
 
-def animate_strength_gain(ctx, render_frame, state: GameState, generate_frame, gain: int) -> None:
-    if gain <= 0:
+def animate_strength_gain(
+    ctx,
+    render_frame,
+    state: GameState,
+    generate_frame,
+    atk_gain: int,
+    def_gain: int,
+    *,
+    start_atk: Optional[int] = None,
+    start_def: Optional[int] = None,
+) -> None:
+    if atk_gain <= 0 and def_gain <= 0:
         return
+    max_gain = max(atk_gain, def_gain)
     delay = max(0.05, battle_action_delay(state.player) / 3) / 4
-    for _ in range(gain):
-        state.player.temp_atk_bonus += 1
-        state.player.temp_def_bonus += 1
+    if start_atk is None:
+        start_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0) - atk_gain
+    if start_def is None:
+        start_def = int(getattr(state.player, "temp_def_bonus", 0) or 0) - def_gain
+    for step in range(1, max_gain + 1):
+        state.player.temp_atk_bonus = start_atk + min(step, atk_gain)
+        state.player.temp_def_bonus = start_def + min(step, def_gain)
         render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
         time.sleep(delay)
 
@@ -191,14 +217,23 @@ def animate_follower_strength_gain(
     state: GameState,
     generate_frame,
     follower: dict,
-    gain: int,
+    atk_gain: int,
+    def_gain: int,
+    *,
+    start_atk: Optional[int] = None,
+    start_def: Optional[int] = None,
 ) -> None:
-    if gain <= 0:
+    if atk_gain <= 0 and def_gain <= 0:
         return
+    max_gain = max(atk_gain, def_gain)
     delay = max(0.05, battle_action_delay(state.player) / 3) / 4
-    for _ in range(gain):
-        follower["temp_atk_bonus"] = int(follower.get("temp_atk_bonus", 0) or 0) + 1
-        follower["temp_def_bonus"] = int(follower.get("temp_def_bonus", 0) or 0) + 1
+    if start_atk is None:
+        start_atk = int(follower.get("temp_atk_bonus", 0) or 0) - atk_gain
+    if start_def is None:
+        start_def = int(follower.get("temp_def_bonus", 0) or 0) - def_gain
+    for step in range(1, max_gain + 1):
+        follower["temp_atk_bonus"] = start_atk + min(step, atk_gain)
+        follower["temp_def_bonus"] = start_def + min(step, def_gain)
         render_frame_state(ctx, render_frame, state, generate_frame, message=_status_message(state, None))
         time.sleep(delay)
 
@@ -307,7 +342,7 @@ def _audio_defaults_from_player(player) -> tuple[float, float, str]:
     sfx_volume = int(flags.get("audio_sfx_volume", 5) or 0)
     music_volume = max(0, min(5, music_volume))
     sfx_volume = max(0, min(5, sfx_volume))
-    wave = str(flags.get("audio_wave", "square") or "square")
+    wave = str(flags.get("audio_wave", "triangle") or "triangle")
     return music_volume / 5.0, sfx_volume / 5.0, wave
 
 
@@ -620,7 +655,11 @@ def action_commands_for_state(ctx, state: GameState) -> list[dict]:
             commands.append(entry)
         if not commands:
             commands.append({"label": "No continents available.", "_disabled": True})
-        commands.append({"label": "Back", "command": "B_KEY"})
+        actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+        labels = actions_cfg.get("labels", {}) if isinstance(actions_cfg, dict) else {}
+        if not isinstance(labels, dict):
+            labels = {}
+        commands.append({"label": labels.get("list_back", "Back"), "command": "B_KEY"})
         return commands
     if state.shop_mode or state.hall_mode or state.inn_mode or state.temple_mode or state.smithy_mode or state.alchemist_mode or state.portal_mode:
         venue_id = venue_id_from_state(state)
@@ -832,10 +871,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         cursor = int(getattr(state.player, "title_player_cursor", 0) or 0)
         if cursor < 0 or cursor >= len(player_ids):
             cursor = 0
+        if not getattr(state.player, "title_player_cursor_set", False):
+            cursor = random.randint(0, len(player_ids) - 1)
+            state.player.title_player_cursor_set = True
         state.player.title_player_cursor = cursor
         if action in ("LEFT", "RIGHT"):
             step = -1 if action == "LEFT" else 1
             state.player.title_player_cursor = (cursor + step) % len(player_ids)
+            state.player.title_player_cursor_set = True
             return None, None
         if action == "BACK":
             return "TITLE_PLAYER_BACK", None
@@ -949,82 +992,79 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 dialog = []
             total_pages = max(1, len(dialog))
             state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
+            actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
+            detail_ids = actions_cfg.get("detail", ["next", "back"])
+            if not isinstance(detail_ids, list) or not detail_ids:
+                detail_ids = ["next", "back"]
+            labels = actions_cfg.get("labels", {})
+            if not isinstance(labels, dict):
+                labels = {}
             if action in ("UP", "DOWN"):
                 direction = -1 if action == "UP" else 1
-                state.action_cursor = (state.action_cursor + direction) % 2
+                state.action_cursor = (state.action_cursor + direction) % len(detail_ids)
                 return None, None
             if action == "CONFIRM":
-                if state.action_cursor == 1:
+                if 0 <= state.action_cursor < len(detail_ids):
+                    action_id = str(detail_ids[state.action_cursor])
+                else:
+                    action_id = "next"
+                if action_id == "back":
                     state.quest_detail_mode = False
                     state.quest_detail_id = None
                     state.quest_detail_page = 0
                     return None, None
                 is_last = state.quest_detail_page >= total_pages - 1
-                if not is_last:
+                if not is_last and action_id == "next":
                     state.quest_detail_page += 1
+                    return None, None
+                if action_id not in ("next", "start"):
                     return None, None
                 quest_id = state.quest_detail_id
                 if quest_id:
                     qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
                         quest_def = detail_quest if isinstance(detail_quest, dict) else {}
-                        start_message = None
-                        on_start = quest_def.get("on_start", {}) if isinstance(quest_def.get("on_start", {}), dict) else {}
-                        if not hasattr(state.player, "flags") or not isinstance(state.player.flags, dict):
-                            state.player.flags = {}
-                        grant_flags = on_start.get("grant_flags", [])
-                        if isinstance(grant_flags, list):
-                            for flag in grant_flags:
-                                state.player.flags[str(flag)] = True
-                        recruit_only_types = on_start.get("recruit_only_types", [])
-                        if isinstance(recruit_only_types, list) and recruit_only_types:
-                            state.player.flags["recruit_only_types"] = [str(t) for t in recruit_only_types if t]
-                        grant_follower = on_start.get("grant_follower", {})
-                        grant_type = ""
-                        if isinstance(grant_follower, dict):
-                            grant_type = str(grant_follower.get("type", "") or "").strip()
-                        follower_cap = on_start.get("follower_cap")
-                        if isinstance(follower_cap, int) and follower_cap > 0:
-                            state.player.flags["follower_cap"] = follower_cap
-                        follower_cap_extra = on_start.get("follower_cap_extra")
-                        if isinstance(follower_cap_extra, int) and follower_cap_extra > 0:
-                            base_count = len(state.player.followers) if isinstance(state.player.followers, list) else 0
-                            if grant_type:
-                                base_count += 1
-                            state.player.flags["follower_cap"] = base_count + follower_cap_extra
-                        if grant_type and state.player.follower_slots_remaining() <= 0:
-                            state.last_message = "No room for another follower."
+                        ok, error, start_messages = apply_quest_start_actions(
+                            state.player,
+                            quest_def,
+                            items_data=ctx.items,
+                            spells_data=ctx.spells,
+                            followers_data=ctx.followers,
+                            quests_data=ctx.quests,
+                            objectives_data=ctx.quest_objectives,
+                            events_data=ctx.quest_events,
+                        )
+                        if not ok:
+                            state.last_message = error or "Unable to start quest."
                             return None, None
-                        gp_cost = int(on_start.get("gp_cost", 0) or 0)
-                        if gp_cost > 0:
-                            if int(getattr(state.player, "gold", 0) or 0) < gp_cost:
-                                state.last_message = "Not enough GP."
-                                return None, None
-                            state.player.gold = int(getattr(state.player, "gold", 0) or 0) - gp_cost
-                        if grant_type:
-                            follower = build_follower_from_entry(grant_follower)
-                            if follower:
-                                if not state.player.add_follower(follower):
-                                    state.last_message = "No room for another follower."
-                                    return None, None
-                                if grant_follower.get("count_as_recruit") and hasattr(ctx, "quests") and ctx.quests is not None:
-                                    handle_event(
-                                        state.player,
-                                        ctx.quests,
-                                        "recruit_follower",
-                                        {"follower_type": follower.get("type", ""), "count": 1},
-                                        ctx.items,
-                                        ctx.spells,
-                                    )
-                        start_message = str(on_start.get("start_message", "") or "").strip() or None
+                        if start_messages:
+                            state.last_message = " ".join(str(m) for m in start_messages if m)
                         if start_quest(state.player, quest_id):
                             title = quest_def.get("title", quest_id)
-                            if start_message:
-                                state.last_message = start_message
-                            else:
+                            if not state.last_message:
                                 state.last_message = f"Quest started: {title}."
                         if hasattr(ctx, "save_data") and ctx.save_data:
                             ctx.save_data.save_player(state.player)
+                        _append_debug_log(
+                            f"quest_start quest_id={quest_id} pending_level_up={state.pending_level_up} stat_points={state.player.stat_points}"
+                        )
+                    else:
+                        quest_def = detail_quest if isinstance(detail_quest, dict) else {}
+                        hint = _hint_from_quest(quest_def)
+                        if hint:
+                            _queue_ui_hint_from_quest(state.player, quest_def)
+                if state.pending_level_up:
+                    state.pending_level_up = False
+                    state.quest_mode = False
+                    state.quest_detail_mode = False
+                    state.quest_detail_id = None
+                    state.quest_detail_page = 0
+                    state.leveling_mode = True
+                    if hasattr(ctx, "audio"):
+                        ctx.audio.play_song_once("level_up")
+                    return None, None
+                if _apply_quest_ui_hint(ctx, state):
+                    return None, None
                 state.quest_detail_mode = False
                 state.quest_detail_id = None
                 state.quest_detail_page = 0
@@ -1047,6 +1087,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             continent=elements[state.quest_continent_index],
             include_locked_next=True,
             ordered_ids=ordered_ids,
+            objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
         ) if hasattr(ctx, "quests") else []
         commands = [{"label": "Continent", "_disabled": True}, {"label": "", "_disabled": True}]
         if entries:
@@ -1086,6 +1128,19 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 quest_id = entry.get("quest_id")
                 if quest_id:
                     qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
+                    if isinstance(qstate, dict) and qstate.get("status") == "active":
+                        quest_def = entry.get("quest", {})
+                        hint = _hint_from_quest(quest_def)
+                        _append_debug_log(
+                            f"quest_list_active quest_id={quest_id} hint={'yes' if hint else 'no'} loc={state.player.location}"
+                        )
+                        if hint and _apply_ui_hint(ctx, state, hint):
+                            return None, None
+                        state.quest_detail_mode = True
+                        state.quest_detail_id = quest_id
+                        state.quest_detail_page = 0
+                        state.action_cursor = 0
+                        return None, None
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
                         if entry.get("status") == "locked":
                             return None, None
@@ -1106,6 +1161,10 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         available_spells = []
         if hasattr(ctx, "spells") and hasattr(ctx, "items"):
             available_spells = ctx.spells.available(state.player, ctx.items)
+        xp_multiplier = int(state.player.flags.get("xp_multiplier", 5) or 5)
+        if xp_multiplier not in (1, 2, 5, 10):
+            xp_multiplier = 5
+            state.player.flags["xp_multiplier"] = xp_multiplier
         for entry in menu.get("actions", []):
             if not entry.get("command"):
                 continue
@@ -1114,6 +1173,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 cmd_entry["_disabled"] = True
             if cmd_entry.get("command") == "SPELLBOOK" and not available_spells:
                 cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "XP_MULTIPLIER":
+                cmd_entry["label"] = f"XP Multiplier: {xp_multiplier}x"
             actions.append(cmd_entry)
         if not actions:
             return None, None
@@ -1140,7 +1201,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if actions[state.menu_cursor].get("_disabled"):
                 return None, None
             cmd = actions[state.menu_cursor].get("command")
-            if cmd != "TOGGLE_AUDIO":
+            if cmd not in ("TOGGLE_AUDIO", "XP_MULTIPLIER"):
                 state.options_mode = False
             return cmd, None
         return None, None
@@ -1280,13 +1341,16 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 fused_type = fused.get("type", "follower")
                 state.last_message = f"{fused_name} is promoted to {fused_type.replace('_', ' ').title()}."
                 if hasattr(ctx, "quests") and ctx.quests is not None:
-                    quest_messages = handle_event(
+                    quest_messages = emit_quest_events(
                         state.player,
                         ctx.quests,
+                        ctx.quest_events,
                         "fuse_followers",
-                        {"follower_type": selected_type, "count": 3},
+                        [{"follower_type": selected_type, "count": 3}],
                         ctx.items,
                         ctx.spells,
+                        ctx.followers,
+                        ctx.quest_objectives,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -1511,6 +1575,12 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         clamp_action_cursor(state, commands)
         title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
         menu_id = _title_menu_id_from_state(title_data, state.player, state.title_menu_stack)
+        if menu_id != "title_fortune":
+            state.player.title_fortune_cursor_set = False
+        elif not getattr(state.player, "title_fortune_cursor_set", False):
+            if commands:
+                state.action_cursor = min(1, len(commands) - 1)
+                state.player.title_fortune_cursor_set = True
         if menu_id == "title_assets_list":
             asset_type = state.asset_explorer_type or ""
             if not asset_type:
@@ -1602,7 +1672,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     flags["audio_sfx_volume"] = value
                 elif cmd == "TITLE_AUDIO_WAVE":
                     choices = ["square", "sine", "triangle", "sawtooth", "piano", "harp"]
-                    current = str(flags.get("audio_wave", "square") or "square")
+                    current = str(flags.get("audio_wave", "harp") or "harp")
                     if current not in choices:
                         current = "square"
                     idx = (choices.index(current) + delta) % len(choices)
@@ -1616,7 +1686,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     ctx.save_data.save_settings({
                         "audio_music_volume": flags.get("audio_music_volume", 5),
                         "audio_sfx_volume": flags.get("audio_sfx_volume", 5),
-                        "audio_wave": flags.get("audio_wave", "square"),
+                        "audio_wave": flags.get("audio_wave", "harp"),
                     })
             return None, None
         if action == "BACK":
@@ -1819,6 +1889,21 @@ def maybe_begin_target_select(ctx, state: GameState, cmd: Optional[str]) -> bool
             rank = ctx.spells.rank_for(spell, state.player, spell_id)
             if rank >= 2:
                 return False
+    if cmd == "SOCIALIZE":
+        recruit_only_types = None
+        if isinstance(getattr(state.player, "flags", None), dict):
+            recruit_only_types = state.player.flags.get("recruit_only_types")
+        if not isinstance(recruit_only_types, list):
+            recruit_only_types = []
+        if recruit_only_types:
+            for idx, opp in enumerate(state.opponents):
+                if opp.hp <= 0:
+                    continue
+                follower_type = getattr(opp, "follower_type", "") or opp.name.lower()
+                if follower_type in recruit_only_types:
+                    state.target_index = idx
+                    return False
+        return False
     targeted = cmd in ("ATTACK", "SOCIALIZE") or cmd in ctx.targeted_spell_commands
     if not targeted:
         return False
@@ -1912,6 +1997,298 @@ def _open_quest_screen(ctx, state: GameState) -> None:
         state.quest_continent_index = 0
 
 
+def _apply_ui_hint(ctx, state: GameState, hint: dict) -> bool:
+    if not isinstance(hint, dict) or not hint:
+        return False
+    scene = str(hint.get("scene", "") or "").strip()
+    action_command = str(hint.get("action_command", "") or "").strip()
+    action_label = str(hint.get("action_label", "") or "").strip()
+    _append_debug_log(
+        "ui_hint start "
+        f"scene={scene or '-'} cmd={action_command or '-'} label={action_label or '-'} "
+        f"loc={state.player.location}"
+    )
+    if scene:
+        scene_lower = scene.lower()
+        if scene_lower == "forest" and state.player.location == "Forest":
+            scene = ""
+        elif scene_lower == "town" and state.player.location == "Town":
+            scene = ""
+    if scene:
+        pre_in_forest = state.player.location == "Forest"
+        pre_alive = any(m.hp > 0 for m in state.opponents)
+        cmd_state = CommandState(
+            player=state.player,
+            opponents=state.opponents,
+            loot_bank=state.loot_bank,
+            last_message=state.last_message,
+            current_venue_id=state.current_venue_id,
+            shop_mode=state.shop_mode,
+            shop_view=state.shop_view,
+            inventory_mode=state.inventory_mode,
+            inventory_items=state.inventory_items,
+            hall_mode=state.hall_mode,
+            hall_view=state.hall_view,
+            inn_mode=state.inn_mode,
+            stats_mode=state.stats_mode,
+            spell_mode=state.spell_mode,
+            followers_mode=state.followers_mode,
+            element_mode=state.element_mode,
+            alchemist_mode=state.alchemist_mode,
+            alchemy_first=state.alchemy_first,
+            alchemy_selecting=state.alchemy_selecting,
+            temple_mode=state.temple_mode,
+            smithy_mode=state.smithy_mode,
+            portal_mode=state.portal_mode,
+            quest_mode=state.quest_mode,
+            quest_detail_mode=state.quest_detail_mode,
+            options_mode=state.options_mode,
+            action_cmd=getattr(state, "action_cmd", None),
+            battle_trial_id=state.battle_trial_id,
+            quest_continent_index=state.quest_continent_index,
+            quest_detail_id=state.quest_detail_id,
+            quest_detail_page=state.quest_detail_page,
+            target_index=state.target_index,
+            command_target_override=scene,
+            command_service_override=None,
+        )
+        handle_command("ENTER_SCENE", cmd_state, ctx.router_ctx, key=None)
+        state.opponents = cmd_state.opponents
+        state.loot_bank = cmd_state.loot_bank
+        state.current_venue_id = cmd_state.current_venue_id
+        state.last_message = cmd_state.last_message
+        state.shop_mode = cmd_state.shop_mode
+        state.shop_view = cmd_state.shop_view
+        state.inventory_mode = cmd_state.inventory_mode
+        state.inventory_items = cmd_state.inventory_items
+        state.hall_mode = cmd_state.hall_mode
+        state.hall_view = cmd_state.hall_view
+        state.inn_mode = cmd_state.inn_mode
+        state.stats_mode = cmd_state.stats_mode
+        state.spell_mode = cmd_state.spell_mode
+        state.followers_mode = cmd_state.followers_mode
+        state.element_mode = cmd_state.element_mode
+        state.alchemist_mode = cmd_state.alchemist_mode
+        state.alchemy_first = cmd_state.alchemy_first
+        state.alchemy_selecting = cmd_state.alchemy_selecting
+        state.temple_mode = cmd_state.temple_mode
+        state.smithy_mode = cmd_state.smithy_mode
+        state.portal_mode = cmd_state.portal_mode
+        state.quest_mode = cmd_state.quest_mode
+        state.quest_detail_mode = cmd_state.quest_detail_mode
+        state.options_mode = cmd_state.options_mode
+        state.battle_trial_id = cmd_state.battle_trial_id
+        state.action_cmd = getattr(cmd_state, "action_cmd", None)
+        state.quest_continent_index = cmd_state.quest_continent_index
+        state.quest_detail_id = cmd_state.quest_detail_id
+        state.quest_detail_page = cmd_state.quest_detail_page
+        state.target_index = cmd_state.target_index
+        post_in_forest = state.player.location == "Forest"
+        post_alive = any(m.hp > 0 for m in state.opponents)
+        if not pre_in_forest and post_in_forest:
+            state.battle_log = []
+        if pre_in_forest and not post_in_forest:
+            state.battle_log = []
+            state.battle_trial_id = None
+        if post_in_forest and post_alive and not pre_alive:
+            state.battle_log = []
+            state.battle_escaped = False
+            state.battle_active = True
+            commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
+            state.action_cursor = state.battle_cursor
+            clamp_action_cursor(state, commands)
+    state.quest_mode = False
+    state.quest_detail_mode = False
+    state.quest_detail_id = None
+    state.quest_detail_page = 0
+    if action_command or action_label:
+        commands = action_commands_for_state(ctx, state)
+        target_idx = None
+        if action_command:
+            for i, cmd in enumerate(commands):
+                if cmd.get("command") == action_command:
+                    target_idx = i
+                    break
+        if target_idx is None and action_label:
+            for i, cmd in enumerate(commands):
+                if cmd.get("label") == action_label:
+                    target_idx = i
+                    break
+        if target_idx is not None:
+            state.action_cursor = target_idx
+            clamp_action_cursor(state, commands)
+    _append_debug_log(
+        "ui_hint done "
+        f"loc={state.player.location} quest_mode={state.quest_mode} cursor={state.action_cursor}"
+    )
+    return True
+
+
+def _hint_from_quest(quest_def: dict) -> Optional[dict]:
+    if not isinstance(quest_def, dict):
+        return None
+    actions = quest_def.get("on_start_actions", [])
+    if not isinstance(actions, list):
+        return None
+    hint: Optional[dict] = None
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        if action.get("type") != "set_ui_hint":
+            continue
+        entry = {}
+        scene = action.get("scene")
+        action_command = action.get("action_command")
+        action_label = action.get("action_label")
+        if isinstance(scene, str) and scene:
+            entry["scene"] = scene
+        if isinstance(action_command, str) and action_command:
+            entry["action_command"] = action_command
+        if isinstance(action_label, str) and action_label:
+            entry["action_label"] = action_label
+        if entry:
+            hint = entry
+            break
+    return hint
+
+
+def _queue_ui_hint_from_quest(player: Player, quest_def: dict) -> bool:
+    hint = _hint_from_quest(quest_def)
+    if not hint:
+        return False
+    flags = getattr(player, "flags", {})
+    if not isinstance(flags, dict):
+        flags = {}
+        player.flags = flags
+    flags["quest_ui_hint"] = hint
+    return True
+
+
+def _apply_quest_ui_hint(ctx, state: GameState) -> bool:
+    flags = getattr(state.player, "flags", {})
+    if not isinstance(flags, dict):
+        return False
+    hint = flags.pop("quest_ui_hint", None)
+    return _apply_ui_hint(ctx, state, hint)
+
+
+def _auto_open_next_quest_on_complete(ctx, state: GameState) -> bool:
+    if not hasattr(ctx, "quests") or ctx.quests is None:
+        return False
+    ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests, state.player.current_element) if hasattr(ctx, "stories") else []
+    entries = quest_entries(
+        state.player,
+        ctx.quests,
+        ctx.items,
+        continent=state.player.current_element,
+        include_locked_next=False,
+        ordered_ids=ordered_ids,
+        objectives_data=ctx.quest_objectives,
+        events_data=ctx.quest_events,
+    )
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        status = entry.get("status")
+        if status not in ("available", "active"):
+            continue
+        quest_def = entry.get("quest", {})
+        if not isinstance(quest_def, dict):
+            continue
+        if not quest_def.get("auto_open_on_complete"):
+            continue
+        quest_id = entry.get("id")
+        if not quest_id:
+            continue
+        _open_quest_screen(ctx, state)
+        state.quest_detail_mode = True
+        state.quest_detail_id = quest_id
+        state.quest_detail_page = 0
+        return True
+    return False
+
+
+def _handle_level_up_transition(ctx, state: GameState, pre_level: int, post_level: int) -> bool:
+    spell_notes = spell_level_up_notes(ctx, state.player, pre_level, post_level)
+    element_notes = element_unlock_notes(ctx, state.player, pre_level, post_level)
+    state.level_up_notes = spell_notes + element_notes
+    if hasattr(ctx, "quests") and ctx.quests is not None:
+        quest_messages = evaluate_quests(
+            state.player,
+            ctx.quests,
+            ctx.items,
+            ctx.spells,
+            ctx.followers,
+            ctx.quest_objectives,
+            ctx.quest_events,
+        )
+        if quest_messages and hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
+        ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests, state.player.current_element) if hasattr(ctx, "stories") else []
+        entries = quest_entries(
+            state.player,
+            ctx.quests,
+            ctx.items,
+            continent=state.player.current_element,
+            include_locked_next=False,
+            ordered_ids=ordered_ids,
+            objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
+        )
+        if entries:
+            entry = None
+            for candidate in entries:
+                if not isinstance(candidate, dict):
+                    continue
+                status = candidate.get("status")
+                if status not in ("available", "active"):
+                    continue
+                quest_def = candidate.get("quest", {})
+                if isinstance(quest_def, dict) and quest_def.get("auto_open_on_level_up"):
+                    entry = candidate
+                    break
+            if entry:
+                quest_id = entry.get("id")
+                quest_def = entry.get("quest", {}) if isinstance(entry, dict) else {}
+                status = entry.get("status")
+                if quest_id and isinstance(quest_def, dict):
+                    if status == "available":
+                        ok, error, start_messages = apply_quest_start_actions(
+                            state.player,
+                            quest_def,
+                            items_data=ctx.items,
+                            spells_data=ctx.spells,
+                            followers_data=ctx.followers,
+                            quests_data=ctx.quests,
+                            objectives_data=ctx.quest_objectives,
+                            events_data=ctx.quest_events,
+                        )
+                        if ok and start_quest(state.player, quest_id):
+                            _open_quest_screen(ctx, state)
+                            state.quest_detail_mode = True
+                            state.quest_detail_id = quest_id
+                            state.quest_detail_page = 0
+                            if start_messages:
+                                state.last_message = " ".join(str(m) for m in start_messages if m)
+                            state.pending_level_up = True
+                            return True
+                        if error:
+                            state.last_message = error
+                    elif status == "active":
+                        _open_quest_screen(ctx, state)
+                        state.quest_detail_mode = True
+                        state.quest_detail_id = quest_id
+                        state.quest_detail_page = 0
+                        state.pending_level_up = True
+                        return True
+    state.leveling_mode = True
+    if hasattr(ctx, "audio"):
+        ctx.audio.play_song_once("level_up")
+    return False
+
+
+
+
 def _follower_can_cast(player, follower: dict, spell: dict) -> tuple[bool, bool]:
     mp_cost = int(spell.get("mp_cost", 0) or 0)
     element = spell.get("element")
@@ -1967,7 +2344,8 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
             if not alive:
                 continue
             opponent = min(alive, key=lambda opp: opp.hp)
-            damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), opponent.defense)
+            defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+            damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), defense_value)
             name = follower.get("name", "Follower")
             if miss:
                 push_battle_message(state, f"{name} misses the {opponent.name}.")
@@ -1984,27 +2362,92 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         spells = follower.get("spells", [])
         if not isinstance(spells, list):
             spells = []
-        # Priority: life_boost if needed, then strength, then elemental
-        if "life_boost" in spells:
-            spell = ctx.spells.get("life_boost", {})
-            can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
-            if can_cast and state.player.hp < state.player.total_max_hp():
-                if not use_charge:
-                    follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
-                animate_life_boost_gain(ctx, render_frame, state, generate_frame, 1)
-                name = follower.get("name", "Follower")
-                push_battle_message(state, f"{name} casts Life Boost.")
+        # Priority: support/heal spells, then elemental
+        support_spells = []
+        heal_spells = []
+        for spell_id in spells:
+            spell = ctx.spells.get(spell_id, {})
+            effect_id = str(spell.get("effect_id", "") or "")
+            effect_cfg = ctx.spell_effects.get(effect_id, {}) if hasattr(ctx, "spell_effects") else {}
+            if isinstance(effect_cfg, dict) and effect_cfg.get("kind") == "support":
+                support_spells.append((spell_id, spell, effect_cfg))
+            if isinstance(effect_cfg, dict) and effect_cfg.get("kind") == "heal":
+                heal_spells.append((spell_id, spell, effect_cfg))
+        support_cast = False
+        for spell_id, spell, effect_cfg in support_spells:
+            stat_deltas = effect_cfg.get("stat_deltas", [])
+            if not isinstance(stat_deltas, list):
+                stat_deltas = []
+            needs = False
+            for entry in stat_deltas:
+                if not isinstance(entry, dict):
+                    continue
+                stat = str(entry.get("stat", "") or "")
+                per_rank = entry.get("per_rank", 0)
+                try:
+                    per_rank = float(per_rank)
+                except (TypeError, ValueError):
+                    per_rank = 0
+                if per_rank <= 0:
+                    continue
+                if stat == "max_hp" and state.player.hp < state.player.total_max_hp():
+                    needs = True
+                elif stat in ("atk", "defense") and (
+                    state.player.temp_atk_bonus <= 0 or state.player.temp_def_bonus <= 0
+                ):
+                    needs = True
+                elif stat == "evasion" and state.player.temp_evasion_bonus <= 0:
+                    needs = True
+            if not needs:
                 continue
-        if "strength" in spells:
-            spell = ctx.spells.get("strength", {})
             can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
-            if can_cast and (state.player.temp_atk_bonus <= 0 or state.player.temp_def_bonus <= 0):
-                if not use_charge:
-                    follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
-                animate_strength_gain(ctx, render_frame, state, generate_frame, 1)
-                name = follower.get("name", "Follower")
-                push_battle_message(state, f"{name} casts Strength.")
+            if not can_cast:
                 continue
+            if not use_charge:
+                follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+            _apply_support_deltas("player", state.player, stat_deltas, 1, state.player)
+            name = follower.get("name", "Follower")
+            spell_name = spell.get("name", spell_id.title())
+            push_battle_message(state, f"{name} casts {spell_name}.")
+            support_cast = True
+            break
+        if support_cast:
+            continue
+        heal_cast = False
+        for spell_id, spell, effect_cfg in heal_spells:
+            target_type, target_ref = state.player.select_team_target(mode="hp")
+            if target_type == "none":
+                continue
+            can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
+            if not can_cast:
+                continue
+            if not use_charge:
+                follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+            hp_per_rank = int(effect_cfg.get("hp_per_rank", 0) or 0)
+            mp_per_rank = int(effect_cfg.get("mp_per_rank", 0) or 0)
+            healed_hp, healed_mp = _apply_spell_heal(
+                target_type,
+                target_ref,
+                hp_per_rank,
+                mp_per_rank,
+                state.player,
+            )
+            if healed_hp <= 0 and healed_mp <= 0:
+                continue
+            name = follower.get("name", "Follower")
+            spell_name = spell.get("name", spell_id.title())
+            target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
+            parts = []
+            if healed_hp:
+                parts.append(f"{healed_hp} HP")
+            if healed_mp:
+                parts.append(f"{healed_mp} MP")
+            restored = " and ".join(parts)
+            push_battle_message(state, f"{name} casts {spell_name} on {target_name}, restoring {restored}.")
+            heal_cast = True
+            break
+        if heal_cast:
+            continue
         wand = state.player.follower_gear_instance(follower, "wand")
         element = _follower_wand_element(wand)
         spell_id = _follower_element_spell_id(element) if element else None
@@ -2024,7 +2467,8 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
                 if element:
                     atk_bonus += state.player.follower_element_points_total(follower, str(element))
                 damage_mult = float(spell.get("rank3_damage_mult", 1.25)) if spell.get("rank3_damage_mult") else 1.0
-                damage, crit, miss = roll_damage(state.player.follower_total_atk(follower) + atk_bonus, opponent.defense)
+                defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+                damage, crit, miss = roll_damage(state.player.follower_total_atk(follower) + atk_bonus, defense_value)
                 damage = int(damage * damage_mult)
                 name = follower.get("name", "Follower")
                 spell_name = spell.get("name", spell_id.title())
@@ -2050,7 +2494,8 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         if target is None:
             continue
         opponent = state.opponents[target]
-        damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), opponent.defense)
+        defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+        damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), defense_value)
         name = follower.get("name", "Follower")
         if miss:
             push_battle_message(state, f"{name} misses the {opponent.name}.")
@@ -2116,6 +2561,106 @@ def _apply_item_heal(target, item: dict, player: Player) -> tuple[int, int]:
     return healed_hp, healed_mp
 
 
+def _apply_spell_heal(
+    target_type: str,
+    target_ref,
+    hp_gain: int,
+    mp_gain: int,
+    player: Player,
+) -> tuple[int, int]:
+    if hp_gain <= 0 and mp_gain <= 0:
+        return 0, 0
+    item = {"hp": hp_gain, "mp": mp_gain}
+    target = target_ref if target_type == "follower" else "player"
+    return _apply_item_heal(target, item, player)
+
+
+def _apply_support_deltas(
+    target_type: str,
+    target_ref,
+    stat_deltas: list,
+    rank: int,
+    player: Player,
+) -> dict:
+    import inspect
+    caller = inspect.stack()[1].function
+    _append_debug_log(
+        f"support_apply start caller={caller} target={target_type} "
+        f"player_temp_atk={getattr(player, 'temp_atk_bonus', 0)} "
+        f"player_temp_def={getattr(player, 'temp_def_bonus', 0)}"
+    )
+    applied: dict[str, int] = {}
+    for entry in stat_deltas:
+        if not isinstance(entry, dict):
+            continue
+        stat = str(entry.get("stat", "") or "")
+        try:
+            if "per_rank_min" in entry or "per_rank_max" in entry:
+                low = float(entry.get("per_rank_min", 0) or 0)
+                high = float(entry.get("per_rank_max", 0) or 0)
+                if high < low:
+                    low, high = high, low
+                per_rank = random.uniform(low, high)
+            else:
+                per_rank = float(entry.get("per_rank", 0))
+            gain_per_cast = per_rank * max(1, int(rank))
+        except (TypeError, ValueError):
+            continue
+        if gain_per_cast == 0:
+            continue
+        if stat == "atk":
+            attr = "temp_atk_bonus"
+        elif stat == "defense":
+            attr = "temp_def_bonus"
+        elif stat == "max_hp":
+            attr = "temp_hp_bonus"
+        elif stat == "evasion":
+            attr = "temp_evasion_bonus"
+        else:
+            continue
+        if target_type == "player":
+            current = float(getattr(player, attr, 0) or 0)
+        elif isinstance(target_ref, dict):
+            current = float(target_ref.get(attr, 0) or 0)
+        else:
+            continue
+        if gain_per_cast > 0:
+            max_stack_mult = int(entry.get("max_stack_mult", 5) or 5)
+            max_stack = gain_per_cast * max_stack_mult
+            new_value = min(max_stack, current + gain_per_cast)
+        else:
+            min_stack_mult = int(entry.get("min_stack_mult", 5) or 5)
+            min_stack = gain_per_cast * min_stack_mult
+            new_value = max(min_stack, current + gain_per_cast)
+        new_value = int(round(new_value))
+        delta = new_value - current
+        if target_type == "player":
+            setattr(player, attr, new_value)
+        else:
+            target_ref[attr] = new_value
+        applied[stat] = int(round(delta))
+        _append_debug_log(
+            f"support_apply stat={stat} target={target_type} gain={gain_per_cast} "
+            f"new_player_atk={getattr(player, 'temp_atk_bonus', 0)} "
+            f"new_player_def={getattr(player, 'temp_def_bonus', 0)}"
+        )
+        if stat == "max_hp":
+            if target_type == "player":
+                max_hp = player.total_max_hp()
+                if delta > 0:
+                    player.hp = min(max_hp, player.hp + int(round(delta)))
+                else:
+                    player.hp = min(player.hp, max_hp)
+            else:
+                max_hp = player.follower_total_max_hp(target_ref)
+                current_hp = int(target_ref.get("hp", max_hp) or max_hp)
+                if delta > 0:
+                    target_ref["hp"] = min(max_hp, current_hp + int(round(delta)))
+                else:
+                    target_ref["hp"] = min(current_hp, max_hp)
+    return applied
+
+
 def spell_level_up_notes(ctx, player, prev_level: int, new_level: int) -> list[str]:
     notes = []
     for spell_id, spell in ctx.spells.available(player, ctx.items):
@@ -2159,21 +2704,43 @@ def apply_router_command(
     command_meta: Optional[dict],
     action_cmd: Optional[str],
 ) -> tuple[bool, Optional[str], Optional[str], bool, Optional[int]]:
+    if state.pending_level_up and not state.leveling_mode and not state.quest_mode and not state.quest_detail_mode:
+        _append_debug_log(
+            f"pending_level_up trigger cmd={cmd} action_cmd={action_cmd} level={state.player.level} stat_points={state.player.stat_points}"
+        )
+        state.pending_level_up = False
+        state.leveling_mode = True
+        if hasattr(ctx, "audio"):
+            ctx.audio.play_song_once("level_up")
+        return True, action_cmd, cmd, True, state.target_index
     if not cmd:
         return False, action_cmd, cmd, False, None
     if state.leveling_mode:
+        pre_points = int(state.player.stat_points)
         message, done = state.player.handle_level_up_input(cmd)
         state.last_message = message
+        spent = max(0, pre_points - int(state.player.stat_points))
+        if spent <= 0 and done and pre_points > 0 and int(state.player.stat_points) == 0:
+            spent = pre_points
+        q2 = getattr(state.player, "quests", {}).get("island_01_quest_02", {}) if hasattr(state.player, "quests") else {}
+        _append_debug_log(
+            f"level_up cmd={cmd} pre_points={pre_points} post_points={state.player.stat_points} spent={spent} done={done} q2={q2}"
+        )
         if done:
             state.leveling_mode = False
             state.level_up_notes = []
             if hasattr(ctx, "save_data") and ctx.save_data:
                 ctx.save_data.save_player(state.player)
+        elif spent and hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
         return True, action_cmd, cmd, True, state.target_index
     pre_level = state.player.level
+    pre_stat_points = int(state.player.stat_points)
     pre_location = state.player.location
     pre_in_forest = state.player.location == "Forest"
     pre_alive = any(m.hp > 0 for m in state.opponents)
+    pre_temp_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0)
+    pre_temp_def = int(getattr(state.player, "temp_def_bonus", 0) or 0)
     pre_spell_mode = state.spell_mode
     pre_title_slot_select = getattr(state.player, "title_slot_select", False)
     pre_title_player_select = getattr(state.player, "title_player_select", False)
@@ -2240,6 +2807,9 @@ def apply_router_command(
         state.battle_log = []
         state.battle_escaped = False
         state.battle_active = True
+        if isinstance(state.player.flags, dict) and state.player.flags.pop("next_battle_preemptive", False):
+            state.preemptive_turns = max(0, int(state.preemptive_turns)) + 1
+            push_battle_message(state, "Your instincts trigger a pre-emptive strike!")
         commands = scene_commands(ctx.scenes, ctx.commands_data, "forest", state.player, state.opponents)
         state.action_cursor = state.battle_cursor
         clamp_action_cursor(state, commands)
@@ -2249,6 +2819,13 @@ def apply_router_command(
         state.battle_active = False
         state.battle_trial_id = None
     push_battle_message(state, cmd_state.last_message)
+    post_temp_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0)
+    post_temp_def = int(getattr(state.player, "temp_def_bonus", 0) or 0)
+    if post_temp_atk != pre_temp_atk or post_temp_def != pre_temp_def:
+        _append_debug_log(
+            f"temp_change cmd={cmd} pre_atk={pre_temp_atk} pre_def={pre_temp_def} "
+            f"post_atk={post_temp_atk} post_def={post_temp_def} msg={cmd_state.last_message}"
+        )
     state.shop_mode = cmd_state.shop_mode
     state.shop_view = cmd_state.shop_view
     state.inventory_mode = cmd_state.inventory_mode
@@ -2292,10 +2869,11 @@ def apply_router_command(
         clamp_action_cursor(state, commands)
     if post_title_player_select and not pre_title_player_select:
         commands = action_commands_for_state(ctx, state)
+        if not getattr(state.player, "title_player_cursor_set", False):
+            state.player.title_player_cursor = random.randint(0, max(0, len(ctx.players.all()) - 1))
+            state.player.title_player_cursor_set = True
         state.action_cursor = 0
         clamp_action_cursor(state, commands)
-    if post_title_fortune and not pre_title_fortune:
-        state.action_cursor = 0
     if post_title_confirm and not pre_title_confirm:
         state.action_cursor = 0
     if post_title_name_select and not pre_title_name_select:
@@ -2322,6 +2900,8 @@ def apply_router_command(
             ctx.quests,
             ctx.items,
             continent=elements[state.quest_continent_index],
+            objectives_data=ctx.quest_objectives,
+            events_data=ctx.quest_events,
         ) if hasattr(ctx, "quests") else []
         commands = [{"_disabled": True}]
         if entries:
@@ -2346,6 +2926,10 @@ def apply_router_command(
     ):
         commands = action_commands_for_state(ctx, state)
         state.action_cursor = 0
+        clamp_action_cursor(state, commands)
+    if post_title_fortune and not pre_title_fortune:
+        commands = action_commands_for_state(ctx, state)
+        state.action_cursor = 1
         clamp_action_cursor(state, commands)
     if state.spell_mode and not pre_spell_mode:
         state.menu_cursor = state.spell_cursor
@@ -2372,8 +2956,45 @@ def apply_router_command(
     if state.player.location == "Title" and cmd_state.player.location != "Title":
         state.title_mode = False
     state.player = cmd_state.player
+    post_stat_points = int(state.player.stat_points)
+    stat_spent = max(0, pre_stat_points - post_stat_points)
+    if stat_spent > 0 and hasattr(ctx, "quests") and ctx.quests is not None:
+        quest_messages = handle_event(
+            state.player,
+            ctx.quests,
+            "spend_stat_points",
+            {"count": stat_spent},
+            ctx.items,
+            ctx.spells,
+            ctx.followers,
+            ctx.quest_objectives,
+            ctx.quest_events,
+        )
+        if quest_messages:
+            state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+            _open_quest_screen(ctx, state)
+        if hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
+        _append_debug_log(
+            f"stat_spent delta={stat_spent} pre={pre_stat_points} post={post_stat_points} q2={getattr(state.player,'quests',{}).get('island_01_quest_02',{})}"
+        )
     post_level = state.player.level
     post_location = state.player.location
+    if pre_location != post_location and hasattr(ctx, "quests") and ctx.quests is not None:
+        quest_messages = emit_quest_events(
+            state.player,
+            ctx.quests,
+            ctx.quest_events,
+            "location_change",
+            [{"scene_id": post_location, "count": 1}],
+            ctx.items,
+            ctx.spells,
+            ctx.followers,
+            ctx.quest_objectives,
+        )
+        if quest_messages:
+            state.last_message = " ".join(quest_messages)
+            _open_quest_screen(ctx, state)
     if hasattr(ctx, "audio"):
         ctx.audio.set_mode(state.player.flags.get("audio_mode"))
         _ensure_audio_settings(ctx, state.player)
@@ -2414,12 +3035,8 @@ def apply_router_command(
             color_map_override=color_override
         )
     if post_level > pre_level and not state.leveling_mode:
-        state.leveling_mode = True
-        spell_notes = spell_level_up_notes(ctx, state.player, pre_level, post_level)
-        element_notes = element_unlock_notes(ctx, state.player, pre_level, post_level)
-        state.level_up_notes = spell_notes + element_notes
-        if hasattr(ctx, "audio"):
-            ctx.audio.play_song_once("level_up")
+        if _handle_level_up_transition(ctx, state, pre_level, post_level):
+            return True, action_cmd, cmd, True, target_index
     if action_cmd not in ctx.combat_actions:
         return True, action_cmd, cmd, True, target_index
     if action_cmd in ctx.spell_commands:
@@ -2465,6 +3082,12 @@ def resolve_player_action(
         max_rank = ctx.spells.rank_for(spell, state.player, spell_id)
         base_cost = int(spell.get("mp_cost", 2))
         element = spell.get("element")
+        effect_id = str(spell.get("effect_id", "") or "")
+        effect_cfg = ctx.spell_effects.get(effect_id, {}) if hasattr(ctx, "spell_effects") else {}
+        effect_kind = str(effect_cfg.get("kind", "") or "")
+        if not effect_id or not isinstance(effect_cfg, dict) or not effect_cfg:
+            state.last_message = f"{name} fizzles with no effect."
+            return None
         has_charge = False
         if element:
             charges = state.player.wand_charges()
@@ -2477,22 +3100,57 @@ def resolve_player_action(
             return None
         rank = max(1, min(state.spell_cast_rank, max_rank, max_affordable))
         state.spell_cast_rank = rank
-        if rank >= 2:
-            state.last_spell_targets = [
-                i for i, opp in enumerate(state.opponents) if opp.hp > 0
-            ]
-        else:
-            if state.target_index is not None:
-                state.last_spell_targets = [state.target_index]
+        state.last_spell_targets = []
+        if effect_kind in ("damage", "status"):
+            target_mode = str(effect_cfg.get("target_mode", "") or "")
+            if target_mode == "single_or_all_by_rank":
+                threshold = int(effect_cfg.get("rank_all_threshold", 2) or 2)
+                if rank >= threshold:
+                    state.last_spell_targets = [
+                        i for i, opp in enumerate(state.opponents) if opp.hp > 0
+                    ]
+                elif state.target_index is not None:
+                    state.last_spell_targets = [state.target_index]
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
-        if spell_id in ("life_boost", "strength"):
-            in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
-            if state.spell_mode and not in_battle:
+        if effect_kind == "battle_prep":
+            if state.player.flags.get("next_battle_preemptive"):
+                state.last_message = "Your senses are already sharpened for the next battle."
+                return None
+            used_charge = False
+            if element:
+                used_charge = state.player.consume_wand_charge(str(element))
+            if not used_charge:
+                if state.player.mp < base_cost:
+                    state.last_message = f"Not enough MP to cast {name}."
+                    return None
+            state.player.mp -= base_cost
+            state.player.flags["next_battle_preemptive"] = True
+            state.last_message = f"You cast {name}."
+            if hasattr(ctx, "audio"):
+                ctx.audio.play_sfx_once("spell_up", "C4")
+            if hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = emit_quest_events(
+                    state.player,
+                    ctx.quests,
+                    ctx.quest_events,
+                    "cast_spell",
+                    [{"spell_id": spell_id, "count": 1}],
+                    ctx.items,
+                    ctx.spells,
+                    ctx.followers,
+                    ctx.quest_objectives,
+                )
+                if quest_messages:
+                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                    _open_quest_screen(ctx, state)
+            if state.spell_mode:
                 state.spell_target_mode = True
-                if not state.spell_target_command:
-                    state.spell_target_command = cmd
+                state.spell_target_command = cmd
+            return cmd
+        if effect_kind in ("support", "heal"):
+            target_mode = str(effect_cfg.get("target_missing_mode", "combined") or "combined")
             if state.team_target_index is not None:
                 if state.team_target_index == 0:
                     target_type, target_ref = "player", state.player
@@ -2502,13 +3160,16 @@ def resolve_player_action(
                     if isinstance(followers, list) and 0 <= idx < len(followers):
                         target_type, target_ref = "follower", followers[idx]
                     else:
-                        target_type, target_ref = state.player.select_team_target(mode="combined")
+                        target_type, target_ref = state.player.select_team_target(mode=target_mode)
             else:
-                target_type, target_ref = state.player.select_team_target(mode="combined")
+                target_type, target_ref = state.player.select_team_target(mode=target_mode)
             state.team_target_index = None
             if target_type == "none":
-                state.last_message = "HP and MP are already full."
-                return None
+                if effect_cfg.get("target_allow_full"):
+                    target_type, target_ref = "player", state.player
+                else:
+                    state.last_message = "HP and MP are already full."
+                    return None
             used_charge = False
             if element:
                 used_charge = state.player.consume_wand_charge(str(element))
@@ -2516,74 +3177,91 @@ def resolve_player_action(
                 if state.player.mp < base_cost:
                     state.last_message = f"Not enough MP to cast {name}."
                     return None
-                state.player.mp -= base_cost
+            state.player.mp -= base_cost
             state.last_team_target_player = (target_type == "player")
-            if target_type == "player":
-                gain_per_cast = max(0, 10 * rank)
-                max_stack = gain_per_cast * 5
-                if spell_id == "life_boost":
-                    current = int(state.player.temp_hp_bonus or 0)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
-                        animate_life_boost_gain(
-                            ctx,
-                            render_frame,
-                            state,
-                            generate_frame,
-                            gain,
-                        )
-                else:
-                    current = min(
-                        int(state.player.temp_atk_bonus or 0),
-                        int(state.player.temp_def_bonus or 0),
-                    )
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
+            if effect_kind == "heal":
+                hp_per_rank = int(effect_cfg.get("hp_per_rank", 0) or 0)
+                mp_per_rank = int(effect_cfg.get("mp_per_rank", 0) or 0)
+                hp_gain = max(0, hp_per_rank * rank)
+                mp_gain = max(0, mp_per_rank * rank)
+                healed_hp, healed_mp = _apply_spell_heal(
+                    target_type,
+                    target_ref,
+                    hp_gain,
+                    mp_gain,
+                    state.player,
+                )
+                if healed_hp <= 0 and healed_mp <= 0:
+                    state.last_message = "HP and MP are already full."
+                    return None
+            else:
+                stat_deltas = effect_cfg.get("stat_deltas", [])
+                if not isinstance(stat_deltas, list):
+                    stat_deltas = []
+                applied = _apply_support_deltas(
+                    target_type,
+                    target_ref,
+                    stat_deltas,
+                    rank,
+                    state.player,
+                )
+                if applied:
+                    if state.spell_mode:
+                        state.spell_target_mode = True
+                        state.spell_target_command = cmd
+                    atk_gain = int(applied.get("atk", 0) or 0)
+                    def_gain = int(applied.get("defense", 0) or 0)
+                    if target_type == "player" and (atk_gain > 0 or def_gain > 0):
+                        start_atk = int(getattr(state.player, "temp_atk_bonus", 0) or 0) - atk_gain
+                        start_def = int(getattr(state.player, "temp_def_bonus", 0) or 0) - def_gain
                         animate_strength_gain(
                             ctx,
                             render_frame,
                             state,
                             generate_frame,
-                            gain,
+                            atk_gain,
+                            def_gain,
+                            start_atk=start_atk,
+                            start_def=start_def,
                         )
-            else:
-                gain_per_cast = max(0, 10 * rank)
-                max_stack = gain_per_cast * 5
-                if spell_id == "life_boost":
-                    current = int(target_ref.get("temp_hp_bonus", 0) or 0)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
-                        animate_follower_life_boost_gain(
-                            ctx,
-                            render_frame,
-                            state,
-                            generate_frame,
-                            target_ref,
-                            gain,
-                        )
-                else:
-                    current_atk = int(target_ref.get("temp_atk_bonus", 0) or 0)
-                    current_def = int(target_ref.get("temp_def_bonus", 0) or 0)
-                    current = min(current_atk, current_def)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
+                    elif isinstance(target_ref, dict) and (atk_gain > 0 or def_gain > 0):
+                        start_atk = int(target_ref.get("temp_atk_bonus", 0) or 0) - atk_gain
+                        start_def = int(target_ref.get("temp_def_bonus", 0) or 0) - def_gain
                         animate_follower_strength_gain(
                             ctx,
                             render_frame,
                             state,
                             generate_frame,
                             target_ref,
-                            gain,
+                            atk_gain,
+                            def_gain,
+                            start_atk=start_atk,
+                            start_def=start_def,
                         )
             target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
-            spell_label = "Life Boost" if spell_id == "life_boost" else "Strength"
-            state.last_message = f"You cast {spell_label} on {target_name}."
+            state.last_message = f"You cast {name} on {target_name}."
+            _append_debug_log(
+                f"spell_support spell={spell_id} rank={rank} target={target_type} "
+                f"temp_atk={getattr(state.player, 'temp_atk_bonus', 0)} "
+                f"temp_def={getattr(state.player, 'temp_def_bonus', 0)}"
+            )
             if hasattr(ctx, "audio"):
                 ctx.audio.play_sfx_once("spell_up", "C4")
+            if hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = emit_quest_events(
+                    state.player,
+                    ctx.quests,
+                    ctx.quest_events,
+                    "cast_spell",
+                    [{"spell_id": spell_id, "count": 1}],
+                    ctx.items,
+                    ctx.spells,
+                    ctx.followers,
+                    ctx.quest_objectives,
+                )
+                if quest_messages:
+                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                    _open_quest_screen(ctx, state)
             return cmd
         mp_cost = base_cost * max(1, rank)
         if state.player.mp < mp_cost and not has_charge:
@@ -2592,9 +3270,9 @@ def resolve_player_action(
         message = cast_spell(
             state.player,
             state.opponents,
-            spell_id,
+            spell,
+            effect_cfg,
             loot=state.loot_bank,
-            spells_data=ctx.spells,
             target_index=state.target_index,
             rank=rank,
         )
@@ -2619,6 +3297,21 @@ def resolve_player_action(
                 effect_override["loops"] = loops
             state.action_effect_override = effect_override
         push_battle_message(state, message)
+        if hasattr(ctx, "quests") and ctx.quests is not None:
+            quest_messages = emit_quest_events(
+                state.player,
+                ctx.quests,
+                ctx.quest_events,
+                "cast_spell",
+                [{"spell_id": spell_id, "count": 1}],
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+            )
+            if quest_messages:
+                state.last_message = " ".join(quest_messages)
+                _open_quest_screen(ctx, state)
         return cmd
 
     message = dispatch_command(
@@ -2630,6 +3323,10 @@ def resolve_player_action(
             loot=state.loot_bank,
             spells_data=ctx.spells,
             items_data=ctx.items,
+            quests_data=getattr(ctx, "quests", None),
+            followers_data=getattr(ctx, "followers", None),
+            quest_objectives=getattr(ctx, "quest_objectives", None),
+            quest_events=getattr(ctx, "quest_events", None),
             target_index=state.target_index,
         ),
     )
@@ -2759,10 +3456,33 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         return False
     if action_cmd == "FLEE":
         return False
+    if getattr(state, "preemptive_turns", 0) > 0:
+        state.preemptive_turns = max(0, int(state.preemptive_turns) - 1)
+        return False
     if state.player.location == "Forest":
         render_battle_pause(ctx, render_frame, state, generate_frame, _status_message(state, None))
     acting = [(i, m) for i, m in enumerate(state.opponents) if m.hp > 0]
     for idx, (opp_index, m) in enumerate(acting):
+        if m.poison_turns > 0 and m.hp > 0:
+            poison_damage = int(m.poison_damage or 0)
+            if poison_damage > 0:
+                damage = max(1, poison_damage)
+                m.hp = max(0, m.hp - damage)
+                push_battle_message(state, f"The {m.name} suffers {damage} poison damage.")
+            m.poison_turns = max(0, int(m.poison_turns) - 1)
+            if m.poison_turns == 0:
+                m.poison_damage = 0
+                if int(getattr(m, "temp_atk_bonus", 0) or 0) < 0:
+                    m.temp_atk_bonus = 0
+                if int(getattr(m, "temp_def_bonus", 0) or 0) < 0:
+                    m.temp_def_bonus = 0
+            if m.hp == 0:
+                xp_gain = random.randint(m.max_hp // 2, m.max_hp)
+                gold_gain = random.randint(m.max_hp // 2, m.max_hp)
+                add_loot(state.loot_bank, xp_gain, gold_gain)
+                m.melted = False
+                push_battle_message(state, f"The {m.name} succumbs to poison.")
+                continue
         if m.stunned_turns > 0:
             m.stunned_turns -= 1
             template = ctx.texts.get("battle", "opponent_stunned", "The {name} is stunned.")
@@ -2794,7 +3514,12 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                             push_battle_message(state, f"The {m.name} uses {label} on the {target.name}, restoring {healed} HP.")
                             continue
             defense_value = state.player.total_defense() + state.defend_bonus
-            damage, crit, miss = roll_damage(m.atk, defense_value)
+            evasion_points = int(getattr(state.player, "temp_evasion_bonus", 0) or 0)
+            evasion_bonus = 0.05 * evasion_points
+            miss_chance = 0.1 + state.defend_evasion + evasion_bonus
+            miss_chance = max(0.0, min(0.95, miss_chance))
+            attack_value = max(1, int(m.atk) + int(getattr(m, "temp_atk_bonus", 0) or 0))
+            damage, crit, miss = roll_damage(attack_value, defense_value, miss_chance=miss_chance)
             if not miss:
                 element = getattr(m, "element", "base")
                 if element and element != "base":
@@ -2852,6 +3577,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         max_hp = state.player.total_max_hp()
         if state.player.hp > max_hp:
             state.player.hp = max_hp
+    if getattr(state.player, "temp_evasion_bonus", 0) > 0:
+        state.player.temp_evasion_bonus = max(0, int(state.player.temp_evasion_bonus) - 1)
     if state.player.followers:
         for follower in state.player.followers:
             if not isinstance(follower, dict):
@@ -2866,6 +3593,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 hp = int(follower.get("hp", max_hp) or max_hp)
                 if hp > max_hp:
                     follower["hp"] = max_hp
+            if int(follower.get("temp_evasion_bonus", 0) or 0) > 0:
+                follower["temp_evasion_bonus"] = max(0, int(follower.get("temp_evasion_bonus", 0) or 0) - 1)
     if state.player.followers:
         for follower in state.player.followers:
             if not isinstance(follower, dict):
@@ -2973,20 +3702,55 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
 def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
-    if not state.battle_active:
-        return
     if state.battle_escaped:
+        if state.player.flags.get("quest_open_pending"):
+            state.player.flags.pop("quest_open_pending", None)
+            _open_quest_screen(ctx, state)
+            _auto_open_next_quest_on_complete(ctx, state)
+            if hasattr(ctx, "save_data") and ctx.save_data:
+                ctx.save_data.save_player(state.player)
+        return
+    if not state.battle_active:
         return
     trial_id = state.battle_trial_id
     open_quest_screen = False
+    if hasattr(ctx, "quests") and ctx.quests is not None:
+        defeated_payloads = []
+        defeated_counts = {}
+        for opponent in state.opponents:
+            opponent_id = str(getattr(opponent, "opponent_id", "") or "")
+            if not opponent_id:
+                continue
+            defeated_counts[opponent_id] = defeated_counts.get(opponent_id, 0) + 1
+        for opponent_id, count in defeated_counts.items():
+            defeated_payloads.append({"opponent_id": opponent_id, "count": count})
+        if defeated_payloads:
+            quest_messages = emit_quest_events(
+                state.player,
+                ctx.quests,
+                ctx.quest_events,
+                "battle_end",
+                defeated_payloads,
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+            )
+            for message in quest_messages:
+                push_battle_message(state, message)
+            if quest_messages:
+                open_quest_screen = True
     if trial_id and hasattr(ctx, "quests") and ctx.quests is not None:
-        quest_messages = handle_event(
+        quest_messages = emit_quest_events(
             state.player,
             ctx.quests,
-            "visit_scene",
-            {"scene_id": trial_id},
+            ctx.quest_events,
+            "battle_end_trial",
+            [{"trial_id": trial_id}],
             ctx.items,
             ctx.spells,
+            ctx.followers,
+            ctx.quest_objectives,
         )
         for message in quest_messages:
             push_battle_message(state, message)
@@ -3011,12 +3775,23 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     state.battle_active = False
     if open_quest_screen:
         _open_quest_screen(ctx, state)
+    if state.player.flags.get("quest_open_pending"):
+        state.player.flags.pop("quest_open_pending", None)
+        _open_quest_screen(ctx, state)
+        _auto_open_next_quest_on_complete(ctx, state)
+        if hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
     if state.loot_bank["xp"] or state.loot_bank["gold"]:
         pre_level = state.player.level
-        levels_gained = state.player.gain_xp(state.loot_bank["xp"])
+        xp_multiplier = int(state.player.flags.get("xp_multiplier", 5) or 5)
+        if xp_multiplier not in (1, 2, 5, 10):
+            xp_multiplier = 5
+            state.player.flags["xp_multiplier"] = xp_multiplier
+        xp_total = int(state.loot_bank["xp"] * xp_multiplier)
+        levels_gained = state.player.gain_xp(xp_total)
         state.player.gold += state.loot_bank["gold"]
-        if state.player.followers and state.loot_bank["xp"] > 0:
-            share = int(state.loot_bank["xp"] * 0.5)
+        if state.player.followers and xp_total > 0:
+            share = int(xp_total * 0.5)
             if share > 0:
                 for follower in state.player.followers:
                     if not isinstance(follower, dict):
@@ -3063,25 +3838,29 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
                         bonus_text = " ".join(stat_parts) if stat_parts else "No stats"
                         push_battle_message(state, f"{name} leveled up to {level}! {bonus_text}")
         push_battle_message(state, (
-            f"You gain {state.loot_bank['xp']} XP and "
+            f"You gain {xp_total} XP and "
             f"{state.loot_bank['gold']} gold."
         ))
         if levels_gained > 0:
-            state.leveling_mode = True
-            spell_notes = spell_level_up_notes(ctx, state.player, pre_level, state.player.level)
-            element_notes = element_unlock_notes(ctx, state.player, pre_level, state.player.level)
-            state.level_up_notes = spell_notes + element_notes
-            if hasattr(ctx, "audio"):
-                ctx.audio.play_song_once("level_up")
+            _handle_level_up_transition(ctx, state, pre_level, state.player.level)
         else:
             if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
                 ctx.audio.play_song_once("battle_victory")
         if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells)
+            quest_messages = evaluate_quests(
+                state.player,
+                ctx.quests,
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+                ctx.quest_events,
+            )
             for message in quest_messages:
                 push_battle_message(state, message)
             if quest_messages:
                 _open_quest_screen(ctx, state)
+                _auto_open_next_quest_on_complete(ctx, state)
         push_battle_message(state, "All is quiet. No enemies in sight.")
     else:
         state.last_message = ""

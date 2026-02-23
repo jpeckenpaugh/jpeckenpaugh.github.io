@@ -5,7 +5,7 @@ import time
 from typing import Any, Optional
 
 from app.shop import shop_commands, shop_inventory, shop_sell_inventory, purchase_item, sell_item
-from app.questing import evaluate_quests, handle_event
+from app.questing import evaluate_quests, emit_quest_events
 from app.ui.ansi import ANSI
 from app.ui.constants import SCREEN_WIDTH
 from app.ui.rendering import render_venue_art, render_venue_objects
@@ -270,7 +270,15 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                     if state.last_message.startswith("Purchased") and hasattr(ctx, "audio"):
                         ctx.audio.play_sfx_once("asc_triads_sfx", "C4")
                     if hasattr(ctx, "quests") and ctx.quests is not None:
-                        quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items)
+                        quest_messages = evaluate_quests(
+                            state.player,
+                            ctx.quests,
+                            ctx.items,
+                            ctx.spells,
+                            ctx.followers,
+                            ctx.quest_objectives,
+                            ctx.quest_events,
+                        )
                         if quest_messages:
                             state.last_message = f"{state.last_message} " + " ".join(quest_messages)
                             state.quest_mode = True
@@ -349,13 +357,16 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                 if hasattr(ctx, "audio"):
                     ctx.audio.play_sfx_once("asc_triads", "C4")
                 if hasattr(ctx, "quests") and ctx.quests is not None:
-                    quest_messages = handle_event(
+                    quest_messages = emit_quest_events(
                         state.player,
                         ctx.quests,
+                        ctx.quest_events,
                         "fuse_gear",
-                        {"item_id": fused.get("item_id", ""), "rank": int(fused.get("fuse_rank", 1) or 1)},
+                        [{"item_id": fused.get("item_id", ""), "rank": int(fused.get("fuse_rank", 1) or 1)}],
                         ctx.items,
                         ctx.spells,
+                        ctx.followers,
+                        ctx.quest_objectives,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
