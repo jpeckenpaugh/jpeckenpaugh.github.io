@@ -983,9 +983,6 @@ class Opponent:
     art_color: str
     color_map: List[str]
     arrival: str
-    recruitable: bool = False
-    recruit_cost: int = 0
-    recruit_chance: float = 0.0
     follower_type: str = ""
     follower_names: List[str] = field(default_factory=list)
     variation: float = 0.0

@@ -847,10 +847,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         cursor = int(getattr(state.player, "title_player_cursor", 0) or 0)
         if cursor < 0 or cursor >= len(player_ids):
             cursor = 0
+        if not getattr(state.player, "title_player_cursor_set", False):
+            cursor = random.randint(0, len(player_ids) - 1)
+            state.player.title_player_cursor_set = True
         state.player.title_player_cursor = cursor
         if action in ("LEFT", "RIGHT"):
             step = -1 if action == "LEFT" else 1
             state.player.title_player_cursor = (cursor + step) % len(player_ids)
+            state.player.title_player_cursor_set = True
             return None, None
         if action == "BACK":
             return "TITLE_PLAYER_BACK", None
@@ -1527,6 +1531,12 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         clamp_action_cursor(state, commands)
         title_data = ctx.title_screen.all() if hasattr(ctx, "title_screen") else {}
         menu_id = _title_menu_id_from_state(title_data, state.player, state.title_menu_stack)
+        if menu_id != "title_fortune":
+            state.player.title_fortune_cursor_set = False
+        elif not getattr(state.player, "title_fortune_cursor_set", False):
+            if commands:
+                state.action_cursor = min(1, len(commands) - 1)
+                state.player.title_fortune_cursor_set = True
         if menu_id == "title_assets_list":
             asset_type = state.asset_explorer_type or ""
             if not asset_type:
@@ -1836,10 +1846,19 @@ def maybe_begin_target_select(ctx, state: GameState, cmd: Optional[str]) -> bool
             if rank >= 2:
                 return False
     if cmd == "SOCIALIZE":
-        for idx, opp in enumerate(state.opponents):
-            if getattr(opp, "recruitable", False) and opp.hp > 0:
-                state.target_index = idx
-                return False
+        recruit_only_types = None
+        if isinstance(getattr(state.player, "flags", None), dict):
+            recruit_only_types = state.player.flags.get("recruit_only_types")
+        if not isinstance(recruit_only_types, list):
+            recruit_only_types = []
+        if recruit_only_types:
+            for idx, opp in enumerate(state.opponents):
+                if opp.hp <= 0:
+                    continue
+                follower_type = getattr(opp, "follower_type", "") or opp.name.lower()
+                if follower_type in recruit_only_types:
+                    state.target_index = idx
+                    return False
         return False
     targeted = cmd in ("ATTACK", "SOCIALIZE") or cmd in ctx.targeted_spell_commands
     if not targeted:
@@ -2597,10 +2616,11 @@ def apply_router_command(
         clamp_action_cursor(state, commands)
     if post_title_player_select and not pre_title_player_select:
         commands = action_commands_for_state(ctx, state)
+        if not getattr(state.player, "title_player_cursor_set", False):
+            state.player.title_player_cursor = random.randint(0, max(0, len(ctx.players.all()) - 1))
+            state.player.title_player_cursor_set = True
         state.action_cursor = 0
         clamp_action_cursor(state, commands)
-    if post_title_fortune and not pre_title_fortune:
-        state.action_cursor = 0
     if post_title_confirm and not pre_title_confirm:
         state.action_cursor = 0
     if post_title_name_select and not pre_title_name_select:
@@ -2653,6 +2673,10 @@ def apply_router_command(
     ):
         commands = action_commands_for_state(ctx, state)
         state.action_cursor = 0
+        clamp_action_cursor(state, commands)
+    if post_title_fortune and not pre_title_fortune:
+        commands = action_commands_for_state(ctx, state)
+        state.action_cursor = 1
         clamp_action_cursor(state, commands)
     if state.spell_mode and not pre_spell_mode:
         state.menu_cursor = state.spell_cursor
@@ -3354,9 +3378,15 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
 def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     if any(opponent.hp > 0 for opponent in state.opponents):
         return
-    if not state.battle_active:
-        return
     if state.battle_escaped:
+        if state.player.flags.get("quest_open_pending"):
+            state.player.flags.pop("quest_open_pending", None)
+            _open_quest_screen(ctx, state)
+            _auto_open_next_quest_on_complete(ctx, state)
+            if hasattr(ctx, "save_data") and ctx.save_data:
+                ctx.save_data.save_player(state.player)
+        return
+    if not state.battle_active:
         return
     trial_id = state.battle_trial_id
     open_quest_screen = False

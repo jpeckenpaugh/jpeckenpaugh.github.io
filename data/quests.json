@@ -36,12 +36,6 @@
         ]
       },
       {
-        "type": "set_recruit_only_types",
-        "types": [
-          "mushroom_baby"
-        ]
-      },
-      {
         "type": "set_follower_cap_extra",
         "value": 2
       },
@@ -150,6 +144,9 @@
         "flags": [
           "island_01_quest_03_complete"
         ]
+      },
+      {
+        "type": "clear_recruit_only_types"
       }
     ]
   },

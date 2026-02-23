@@ -111,6 +111,9 @@ class SaveData:
                 return
 
     def save_player(self, player: Player, slot: Optional[int] = None):
+        if getattr(player, "location", "") == "Title":
+            if not self.exists(slot or self._current_slot):
+                return
         data = self.load(slot)
         meta = data.get("meta", {}) if isinstance(data, dict) else {}
         if not isinstance(meta, dict):

@@ -825,6 +825,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_confirm = False
         state.player.title_player_select = True
         state.player.title_player_cursor = 0
+        state.player.title_player_cursor_set = False
         state.player.title_slot_select = False
         return True
     if command_id == "TITLE_CONFIRM_NO":
@@ -842,6 +843,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_pending_fortune = None
         state.player.title_pending_player_id = None
         state.player.title_player_cursor = 0
+        state.player.title_player_cursor_set = False
         state.player.title_name_shift = True
         next_slot = ctx.save_data.next_empty_slot(max_slots=100)
         if next_slot is None:
@@ -854,6 +856,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         return True
     if command_id == "TITLE_PLAYER_BACK":
         state.player.title_player_select = False
+        state.player.title_player_cursor_set = False
         return True
     if command_id == "TITLE_PLAYER_CONFIRM":
         players = ctx.players.all() if hasattr(ctx, "players") else {}
@@ -865,6 +868,9 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
             state.last_message = "No player art found."
             return True
         cursor = int(getattr(state.player, "title_player_cursor", 0) or 0)
+        if not getattr(state.player, "title_player_cursor_set", False):
+            cursor = random.randint(0, len(player_ids) - 1)
+            state.player.title_player_cursor_set = True
         cursor = max(0, min(cursor, len(player_ids) - 1))
         state.player.title_pending_player_id = player_ids[cursor]
         state.player.title_player_select = False
@@ -874,6 +880,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         player_id = command_id.split(":", 1)[1].strip()
         if player_id:
             state.player.title_pending_player_id = player_id
+            state.player.title_player_cursor_set = True
         state.player.title_player_select = False
         state.player.title_name_select = True
         return True
@@ -883,8 +890,10 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_pending_name = ""
         state.player.title_name_cursor = (0, 0)
         state.player.title_name_shift = True
+        state.player.title_name_auto = False
         return True
     if command_id == "TITLE_NAME_RANDOM":
+        state.player.title_name_auto = True
         name_choices = []
         pending_player_id = str(getattr(state.player, "title_pending_player_id", "") or "")
         if pending_player_id and hasattr(ctx, "players"):
@@ -948,6 +957,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
     if command_id == "TITLE_NAME_BACK":
         state.player.title_name_select = False
         state.player.title_player_select = True
+        state.player.title_name_auto = False
         return True
     if command_id.startswith("TITLE_NAME:"):
         name = command_id.split(":", 1)[1].strip()
@@ -1026,7 +1036,7 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         }
         pending_slot = getattr(state.player, "title_pending_slot", None) or 1
         pending_name = str(getattr(state.player, "title_pending_name", "") or "WARRIOR")
-        pending_fortune = str(getattr(state.player, "title_pending_fortune", "") or "FORTUNE_POOR")
+        pending_fortune = str(getattr(state.player, "title_pending_fortune", "") or "FORTUNE_WELL_OFF")
         pending_avatar = str(getattr(state.player, "title_pending_player_id", "") or "player_01")
         ctx.save_data.set_current_slot(pending_slot)
         state.player = Player.from_dict({
@@ -1049,6 +1059,8 @@ def _handle_title(command_id: str, state: CommandState, ctx: RouterContext, key:
         state.player.title_name_select = False
         state.player.title_name_input = False
         state.player.title_player_select = False
+        state.player.title_player_cursor_set = False
+        state.player.title_name_auto = False
         state.player.has_save = False
         state.opponents = []
         state.loot_bank = {"xp": 0, "gold": 0}
