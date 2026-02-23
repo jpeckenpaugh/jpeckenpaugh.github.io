@@ -83,10 +83,11 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
     total = max(1, len(files))
     results = []
     start = time.time()
-    def _validate_quests_payload(payload: object) -> list[str]:
+    def _validate_quests_payload(payload: object, objectives_payload: object) -> list[str]:
         errors: list[str] = []
         if not isinstance(payload, dict):
             return ["quests.json root must be an object"]
+        objectives = objectives_payload if isinstance(objectives_payload, dict) else {}
         for quest_id, quest in payload.items():
             if not isinstance(quest, dict):
                 errors.append(f"{quest_id}: quest entry must be an object")
@@ -97,8 +98,24 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
                 errors.append(f"{quest_id}: on_start_actions must be a list when present")
             if "on_complete_actions" in quest and not isinstance(quest.get("on_complete_actions"), list):
                 errors.append(f"{quest_id}: on_complete_actions must be a list when present")
+            objectives_list = quest.get("objectives", [])
+            if not isinstance(objectives_list, list):
+                continue
+            for obj in objectives_list:
+                if not isinstance(obj, dict):
+                    continue
+                obj_type = str(obj.get("type", "") or "")
+                if obj_type and obj_type not in objectives:
+                    errors.append(f"{quest_id}: unknown objective type {obj_type}")
         return errors
 
+    objectives_payload = {}
+    if "quest_objectives.json" in files:
+        try:
+            with open(os.path.join(DATA_DIR, "quest_objectives.json"), "r", encoding="utf-8") as f:
+                objectives_payload = json.load(f)
+        except (OSError, JSONDecodeError):
+            objectives_payload = {}
     for idx, name in enumerate(files):
         path = os.path.join(DATA_DIR, name)
         ok = True
@@ -114,7 +131,7 @@ def run_data_preflight(render_frame_fn, read_keypress_fn) -> bool:
             else:
                 count = 1
             if name == "quests.json":
-                validation_errors = _validate_quests_payload(data)
+                validation_errors = _validate_quests_payload(data, objectives_payload)
                 if validation_errors:
                     ok = False
                     error = "; ".join(validation_errors)

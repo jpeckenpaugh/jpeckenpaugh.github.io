@@ -270,7 +270,14 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                     if state.last_message.startswith("Purchased") and hasattr(ctx, "audio"):
                         ctx.audio.play_sfx_once("asc_triads_sfx", "C4")
                     if hasattr(ctx, "quests") and ctx.quests is not None:
-                        quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells, ctx.followers)
+                        quest_messages = evaluate_quests(
+                            state.player,
+                            ctx.quests,
+                            ctx.items,
+                            ctx.spells,
+                            ctx.followers,
+                            ctx.quest_objectives,
+                        )
                         if quest_messages:
                             state.last_message = f"{state.last_message} " + " ".join(quest_messages)
                             state.quest_mode = True
@@ -357,6 +364,7 @@ def handle_venue_command(ctx: Any, state: Any, venue_id: str, command_id: str) -
                         ctx.items,
                         ctx.spells,
                         ctx.followers,
+                        ctx.quest_objectives,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)

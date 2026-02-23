@@ -129,6 +129,7 @@ def _handle_socialize(ctx: CommandContext) -> str:
             ctx.items_data,
             ctx.spells_data,
             ctx.followers_data,
+            ctx.quest_objectives,
         )
         if quest_messages:
             message = f"{message} " + " ".join(quest_messages)

@@ -24,6 +24,7 @@ from app.data_access.objects_data import ObjectsData
 from app.data_access.opponents_data import OpponentsData
 from app.data_access.players_data import PlayersData
 from app.data_access.quests_data import QuestsData
+from app.data_access.quest_objectives_data import QuestObjectivesData
 from app.data_access.scenes_data import ScenesData
 from app.data_access.spells_data import SpellsData
 from app.data_access.stories_data import StoriesData
@@ -80,6 +81,7 @@ class ScreenContext:
     glyphs: GlyphsData
     save_data: object
     quests: QuestsData
+    quest_objectives: QuestObjectivesData
     stories: StoriesData
     players: PlayersData
     title_screen: TitleScreenData
@@ -1125,6 +1127,7 @@ def generate_frame(
             continent=selected_element,
             include_locked_next=True,
             ordered_ids=ordered_ids,
+            objectives_data=ctx.quest_objectives,
         ) if hasattr(ctx, "quests") else []
         commands = []
         detail_quest = None

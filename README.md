@@ -159,6 +159,7 @@ Game data is externalized into JSON:
 - `data/spells_art.json` — reusable spell animation art
 - `data/abilities.json` — follower ability definitions
 - `data/followers.json` — follower templates (base stats + abilities)
+- `data/quest_objectives.json` — quest objective registry (events, progress keys, completion rules)
 
 ---
 
@@ -207,6 +208,15 @@ Quests can define `on_start_actions` and `on_complete_actions` as lists of actio
 - `count_as_recruit` (optional)
 - `overrides` (optional stat overrides)
 Start messages should be defined per quest using `start_message` at the quest root.
+
+### Quest Objective Registry
+Objective behavior is declared in `data/quest_objectives.json`. Each objective type defines:
+
+- `event` (string): event name emitted by the game.
+- `key` (string): progress key template (e.g. `defeat_opponents:{opponent_id}`).
+- `match` (object): payload/object key matching rules.
+- `update` (object): progress update rule (`mode`: `add` or `max`).
+- `completion` (string): special completion logic (currently `equip_slots`).
 
 ---
 

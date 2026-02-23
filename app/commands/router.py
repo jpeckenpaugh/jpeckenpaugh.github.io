@@ -19,6 +19,7 @@ from app.data_access.objects_data import ObjectsData
 from app.data_access.players_data import PlayersData
 from app.data_access.save_data import SaveData
 from app.data_access.quests_data import QuestsData
+from app.data_access.quest_objectives_data import QuestObjectivesData
 from app.data_access.stories_data import StoriesData
 from app.data_access.followers_data import FollowersData
 from app.models import Player, Opponent
@@ -88,6 +89,7 @@ class RouterContext:
     objects: ObjectsData
     players: PlayersData
     quests: QuestsData
+    quest_objectives: QuestObjectivesData
     stories: StoriesData
     followers: FollowersData
     title_screen: object
@@ -261,7 +263,14 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.quest_continent_index = 0
         state.last_message = "Your quests await."
         if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells, ctx.followers)
+            quest_messages = evaluate_quests(
+                state.player,
+                ctx.quests,
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+            )
             if quest_messages:
                 state.last_message = " ".join(quest_messages)
         return True
@@ -385,6 +394,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                 ctx.items,
                 ctx.spells,
                 ctx.followers,
+                ctx.quest_objectives,
             )
             if quest_messages:
                 state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -547,7 +557,14 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                             target = target_ref
                 state.last_message = state.player.use_item(item_id, ctx.items, target=target)
                 if hasattr(ctx, "quests") and ctx.quests is not None:
-                    quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells, ctx.followers)
+                    quest_messages = evaluate_quests(
+                        state.player,
+                        ctx.quests,
+                        ctx.items,
+                        ctx.spells,
+                        ctx.followers,
+                        ctx.quest_objectives,
+                    )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
                         _enter_quest_screen(ctx, state, keep_message=True)
@@ -686,6 +703,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         items_data=ctx.items,
         quests_data=ctx.quests,
         followers_data=ctx.followers,
+        quest_objectives=ctx.quest_objectives,
         target_index=state.target_index,
     )
     if command_id in ("ATTACK", "SPARK", "LIFE_BOOST", "DEFEND", "SOCIALIZE"):

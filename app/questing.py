@@ -6,13 +6,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, TypedDict, Tup
 from app.models import Player
 
 
-class ObjectiveHandler(TypedDict, total=False):
-    key: Callable[[dict], Optional[str]]
-    matches: Callable[[dict, Dict[str, Any]], bool]
-    update: Callable[[int, dict, Dict[str, Any]], int]
-    is_complete: Callable[[Player, dict, dict], bool]
-
-
 class ActionHandler(TypedDict, total=False):
     apply: Callable[[Player, dict, Dict[str, Any], dict], Optional[str]]
 
@@ -37,67 +30,25 @@ def _quest_state(player: Player, quest_id: str) -> dict:
     return entry
 
 
-def _objective_handlers() -> Dict[str, ObjectiveHandler]:
-    return {
-        "recruit_follower": {
-            "key": lambda obj: f"recruit_follower:{str(obj.get('follower_type', ''))}",
-            "matches": lambda obj, payload: (
-                not str(obj.get("follower_type", ""))
-                or str(obj.get("follower_type", "")) == str(payload.get("follower_type", ""))
-            ),
-            "update": lambda current, obj, payload: current + int(payload.get("count", 1) or 1),
-        },
-        "fuse_followers": {
-            "key": lambda obj: f"fuse_followers:{str(obj.get('follower_type', ''))}",
-            "matches": lambda obj, payload: (
-                not str(obj.get("follower_type", ""))
-                or str(obj.get("follower_type", "")) == str(payload.get("follower_type", ""))
-            ),
-            "update": lambda current, obj, payload: current + int(payload.get("count", 1) or 1),
-        },
-        "visit_scene": {
-            "key": lambda obj: f"visit_scene:{str(obj.get('id', ''))}",
-            "matches": lambda obj, payload: (
-                not str(obj.get("id", ""))
-                or str(obj.get("id", "")) == str(payload.get("scene_id", ""))
-            ),
-            "update": lambda current, obj, payload: current + int(payload.get("count", 1) or 1),
-        },
-        "defeat_opponents": {
-            "key": lambda obj: f"defeat_opponents:{str(obj.get('opponent_id', ''))}",
-            "matches": lambda obj, payload: (
-                not str(obj.get("opponent_id", ""))
-                or str(obj.get("opponent_id", "")) == str(payload.get("opponent_id", ""))
-            ),
-            "update": lambda current, obj, payload: current + int(payload.get("count", 1) or 1),
-        },
-        "fuse_gear": {
-            "key": lambda obj: f"fuse_gear:{str(obj.get('item_id', ''))}",
-            "matches": lambda obj, payload: (
-                not str(obj.get("item_id", ""))
-                or str(obj.get("item_id", "")) == str(payload.get("item_id", ""))
-            ),
-            "update": lambda current, obj, payload: max(
-                current, int(payload.get("rank", payload.get("count", 1)) or 1)
-            ),
-        },
-        "equip_slots": {
-            "is_complete": lambda player, _progress, obj: _equip_slots_complete(player, obj),
-        },
-    }
+def _objective_config(objectives_data, obj_type: str) -> dict:
+    if objectives_data is None or not hasattr(objectives_data, "get"):
+        return {}
+    config = objectives_data.get(obj_type, {})
+    return config if isinstance(config, dict) else {}
 
 
-def _objective_handler(obj_type: str) -> Optional[ObjectiveHandler]:
-    handlers = _objective_handlers()
-    return handlers.get(obj_type)
-
-
-def _objective_key(obj: dict) -> Optional[str]:
+def _objective_key(obj: dict, objectives_data) -> Optional[str]:
     obj_type = str(obj.get("type", ""))
-    handler = _objective_handler(obj_type)
-    if handler and "key" in handler:
-        return handler["key"](obj)
-    return None
+    config = _objective_config(objectives_data, obj_type)
+    template = config.get("key")
+    if not isinstance(template, str) or "{" not in template:
+        return None
+    result = template
+    for key, value in obj.items():
+        token = "{" + str(key) + "}"
+        if token in result:
+            result = result.replace(token, str(value))
+    return result if result != template else None
 
 
 def _requirements_met(player: Player, quest: dict) -> bool:
@@ -135,17 +86,18 @@ def requirement_summary(player: Player, quest: dict) -> str:
     return "Requirement not met."
 
 
-def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict]) -> bool:
+def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict], objectives_data) -> bool:
     for obj in objectives:
         if not isinstance(obj, dict):
             continue
         obj_type = str(obj.get("type", ""))
-        handler = _objective_handler(obj_type)
-        if handler and "is_complete" in handler:
-            if not handler["is_complete"](player, progress, obj):
+        config = _objective_config(objectives_data, obj_type)
+        completion = config.get("completion")
+        if completion == "equip_slots":
+            if not _equip_slots_complete(player, obj):
                 return False
             continue
-        key = _objective_key(obj)
+        key = _objective_key(obj, objectives_data)
         if not key:
             continue
         needed = int(obj.get("count", 1) or 1)
@@ -314,6 +266,7 @@ def _apply_grant_follower(player: Player, action: dict, ctx: Dict[str, Any], eff
             ctx.get("items_data"),
             ctx.get("spells_data"),
             ctx.get("followers_data"),
+            ctx.get("objectives_data"),
         )
     return None
 
@@ -385,6 +338,7 @@ def _action_context(
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
 ) -> Dict[str, Any]:
     pending_grants = 0
     for action in actions:
@@ -397,6 +351,7 @@ def _action_context(
         "spells_data": spells_data,
         "followers_data": followers_data,
         "quests_data": quests_data,
+        "objectives_data": objectives_data,
         "pending_grants": pending_grants,
     }
 
@@ -409,6 +364,7 @@ def apply_actions(
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
     dry_run: bool = False,
 ) -> Tuple[bool, Optional[str], dict]:
     if not actions:
@@ -422,6 +378,7 @@ def apply_actions(
         spells_data=spells_data,
         followers_data=followers_data,
         quests_data=quests_data,
+        objectives_data=objectives_data,
     )
     handlers = _action_handlers()
     for action in actions:
@@ -461,6 +418,7 @@ def _apply_rewards(
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
 ) -> tuple[int, int]:
     actions = _complete_actions_for(quest)
     if not actions:
@@ -472,6 +430,7 @@ def _apply_rewards(
         spells_data=spells_data,
         followers_data=followers_data,
         quests_data=quests_data,
+        objectives_data=objectives_data,
     )
     if not ok:
         return 0, 0
@@ -492,6 +451,7 @@ def apply_quest_start_actions(
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
     quests_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
 ) -> Tuple[bool, Optional[str]]:
     actions = _start_actions_for(quest)
     if not actions:
@@ -503,6 +463,7 @@ def apply_quest_start_actions(
         spells_data=spells_data,
         followers_data=followers_data,
         quests_data=quests_data,
+        objectives_data=objectives_data,
         dry_run=True,
     )
     if not ok:
@@ -514,6 +475,7 @@ def apply_quest_start_actions(
         spells_data=spells_data,
         followers_data=followers_data,
         quests_data=quests_data,
+        objectives_data=objectives_data,
     )
     return ok, error
 
@@ -558,12 +520,13 @@ def quest_entries(
     continent: Optional[str] = None,
     include_locked_next: bool = False,
     ordered_ids: Optional[List[str]] = None,
+    objectives_data: Optional[object] = None,
 ) -> List[dict]:
     _ensure_player_quest_state(player)
     entries: List[dict] = []
     if not quests_data:
         return entries
-    evaluate_quests(player, quests_data, items_data)
+    evaluate_quests(player, quests_data, items_data, objectives_data=objectives_data)
     quest_items = []
     if ordered_ids:
         for quest_id in ordered_ids:
@@ -606,6 +569,7 @@ def evaluate_quests(
     items_data: Optional[object] = None,
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
 ) -> List[str]:
     _ensure_player_quest_state(player)
     messages: List[str] = []
@@ -626,25 +590,7 @@ def evaluate_quests(
             if not isinstance(objectives, list):
                 objectives = []
             progress = qstate.get("progress", {})
-            if isinstance(progress, dict):
-                for obj in objectives:
-                    if not isinstance(obj, dict):
-                        continue
-                    if str(obj.get("type", "")) != "recruit_follower":
-                        continue
-                    follower_type = str(obj.get("follower_type", ""))
-                    if not follower_type:
-                        continue
-                    needed = int(obj.get("count", 1) or 1)
-                    current = int(progress.get(_objective_key(obj), 0) or 0)
-                    if current >= needed:
-                        continue
-                    fuse_key = f"fuse_followers:{follower_type}"
-                    fuse_count = int(progress.get(fuse_key, 0) or 0)
-                    if fuse_count >= needed:
-                        progress[_objective_key(obj)] = needed
-                qstate["progress"] = progress
-            if not _objectives_met(player, qstate.get("progress", {}), objectives):
+            if not _objectives_met(player, qstate.get("progress", {}), objectives, objectives_data):
                 continue
             qstate["status"] = "complete"
             xp_gain, _levels_gained = _apply_rewards(
@@ -655,6 +601,7 @@ def evaluate_quests(
                 spells_data,
                 followers_data,
                 quests_data,
+                objectives_data,
             )
             title = quest.get("title", quest_id)
             messages.append(f"Quest complete: {title}.")
@@ -669,6 +616,7 @@ def record_event(
     quests_data,
     event_type: str,
     payload: Optional[Dict[str, Any]] = None,
+    objectives_data: Optional[object] = None,
 ) -> None:
     _ensure_player_quest_state(player)
     payload = payload or {}
@@ -682,25 +630,45 @@ def record_event(
             if not isinstance(obj, dict):
                 continue
             obj_type = str(obj.get("type", ""))
-            if obj_type != event_type:
+            config = _objective_config(objectives_data, obj_type)
+            event_name = str(config.get("event", "") or "")
+            if not event_name or event_name != event_type:
                 continue
             qstate = player.quests.get(quest_id)
             if not isinstance(qstate, dict) or qstate.get("status") != "active":
                 continue
-            handler = _objective_handler(obj_type)
-            if not handler:
-                continue
-            if "matches" in handler and not handler["matches"](obj, payload):
-                continue
-            key = _objective_key(obj)
+            match = config.get("match", {})
+            if not isinstance(match, dict):
+                match = {}
+            object_key = str(match.get("object_key", "") or "")
+            payload_key = str(match.get("payload_key", "") or "")
+            if object_key and payload_key:
+                obj_value = str(obj.get(object_key, "") or "")
+                payload_value = str(payload.get(payload_key, "") or "")
+                if obj_value and obj_value != payload_value:
+                    continue
+            key = _objective_key(obj, objectives_data)
             if not key:
                 continue
             progress = qstate.get("progress", {})
             current = int(progress.get(key, 0) or 0)
-            if "update" in handler:
-                progress[key] = handler["update"](current, obj, payload)
+            update = config.get("update", {})
+            if not isinstance(update, dict):
+                update = {}
+            mode = str(update.get("mode", "add") or "add")
+            count_key = update.get("count_key", "count")
+            count_value = 1
+            if isinstance(count_key, list):
+                for key_name in count_key:
+                    if key_name in payload:
+                        count_value = int(payload.get(key_name, 1) or 1)
+                        break
             else:
-                progress[key] = current + int(payload.get("count", 1) or 1)
+                count_value = int(payload.get(str(count_key), 1) or 1)
+            if mode == "max":
+                progress[key] = max(current, count_value)
+            else:
+                progress[key] = current + count_value
             qstate["progress"] = progress
 
 
@@ -712,6 +680,7 @@ def handle_event(
     items_data: Optional[object] = None,
     spells_data: Optional[object] = None,
     followers_data: Optional[object] = None,
+    objectives_data: Optional[object] = None,
 ) -> List[str]:
-    record_event(player, quests_data, event_type, payload)
-    return evaluate_quests(player, quests_data, items_data, spells_data, followers_data)
+    record_event(player, quests_data, event_type, payload, objectives_data)
+    return evaluate_quests(player, quests_data, items_data, spells_data, followers_data, objectives_data)

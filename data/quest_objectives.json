@@ -1,0 +1,68 @@
+{
+  "recruit_follower": {
+    "event": "recruit_follower",
+    "key": "recruit_follower:{follower_type}",
+    "match": {
+      "object_key": "follower_type",
+      "payload_key": "follower_type"
+    },
+    "update": {
+      "mode": "add",
+      "count_key": "count"
+    }
+  },
+  "fuse_followers": {
+    "event": "fuse_followers",
+    "key": "fuse_followers:{follower_type}",
+    "match": {
+      "object_key": "follower_type",
+      "payload_key": "follower_type"
+    },
+    "update": {
+      "mode": "add",
+      "count_key": "count"
+    }
+  },
+  "visit_scene": {
+    "event": "visit_scene",
+    "key": "visit_scene:{id}",
+    "match": {
+      "object_key": "id",
+      "payload_key": "scene_id"
+    },
+    "update": {
+      "mode": "add",
+      "count_key": "count"
+    }
+  },
+  "fuse_gear": {
+    "event": "fuse_gear",
+    "key": "fuse_gear:{item_id}",
+    "match": {
+      "object_key": "item_id",
+      "payload_key": "item_id"
+    },
+    "update": {
+      "mode": "max",
+      "count_key": [
+        "rank",
+        "count"
+      ]
+    }
+  },
+  "defeat_opponents": {
+    "event": "defeat_opponents",
+    "key": "defeat_opponents:{opponent_id}",
+    "match": {
+      "object_key": "opponent_id",
+      "payload_key": "opponent_id"
+    },
+    "update": {
+      "mode": "add",
+      "count_key": "count"
+    }
+  },
+  "equip_slots": {
+    "completion": "equip_slots"
+  }
+}

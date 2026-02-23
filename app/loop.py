@@ -977,6 +977,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                             spells_data=ctx.spells,
                             followers_data=ctx.followers,
                             quests_data=ctx.quests,
+                            objectives_data=ctx.quest_objectives,
                         )
                         if not ok:
                             state.last_message = error or "Unable to start quest."
@@ -1011,6 +1012,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             continent=elements[state.quest_continent_index],
             include_locked_next=True,
             ordered_ids=ordered_ids,
+            objectives_data=ctx.quest_objectives,
         ) if hasattr(ctx, "quests") else []
         commands = [{"label": "Continent", "_disabled": True}, {"label": "", "_disabled": True}]
         if entries:
@@ -1252,6 +1254,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                         ctx.items,
                         ctx.spells,
                         ctx.followers,
+                        ctx.quest_objectives,
                     )
                     if quest_messages:
                         state.last_message = f"{state.last_message} " + " ".join(quest_messages)
@@ -2287,6 +2290,7 @@ def apply_router_command(
             ctx.quests,
             ctx.items,
             continent=elements[state.quest_continent_index],
+            objectives_data=ctx.quest_objectives,
         ) if hasattr(ctx, "quests") else []
         commands = [{"_disabled": True}]
         if entries:
@@ -2596,6 +2600,7 @@ def resolve_player_action(
             spells_data=ctx.spells,
             items_data=ctx.items,
             followers_data=getattr(ctx, "followers", None),
+            quest_objectives=getattr(ctx, "quest_objectives", None),
             target_index=state.target_index,
         ),
     )
@@ -2962,6 +2967,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
                     ctx.items,
                     ctx.spells,
                     ctx.followers,
+                    ctx.quest_objectives,
                 )
                 for message in quest_messages:
                     push_battle_message(state, message)
@@ -2976,6 +2982,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             ctx.items,
             ctx.spells,
             ctx.followers,
+            ctx.quest_objectives,
         )
         for message in quest_messages:
             push_battle_message(state, message)
@@ -3066,7 +3073,14 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             if hasattr(ctx, "audio") and getattr(state.player, "hp", 0) > 0:
                 ctx.audio.play_song_once("battle_victory")
         if hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = evaluate_quests(state.player, ctx.quests, ctx.items, ctx.spells, ctx.followers)
+            quest_messages = evaluate_quests(
+                state.player,
+                ctx.quests,
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+            )
             for message in quest_messages:
                 push_battle_message(state, message)
             if quest_messages:

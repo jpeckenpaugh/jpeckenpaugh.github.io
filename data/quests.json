@@ -432,41 +432,5 @@
       }
     ],
     "start_message": "Defeat the ogre in the forest to claim the magic orb."
-  },
-  "unlock_continent_01": {
-    "title": "[PLACEHOLDER_TITLE]",
-    "continent": "base",
-    "summary_pre": "[PLACEHOLDER_SUMMARY_PRE]",
-    "summary_active": "[PLACEHOLDER_SUMMARY_ACTIVE]",
-    "summary_complete": "[PLACEHOLDER_SUMMARY_COMPLETE]",
-    "art_opponent": "[PLACEHOLDER_OPPONENT_ID]",
-    "dialog": [
-      "[PLACEHOLDER_DIALOG_LINE_1]",
-      "[PLACEHOLDER_DIALOG_LINE_2]"
-    ],
-    "requirements": {
-      "flags_required": [
-        "[PLACEHOLDER_FLAG_ID]"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "[PLACEHOLDER_OBJECTIVE_TYPE]",
-        "id": "[PLACEHOLDER_OBJECTIVE_ID]",
-        "count": 1
-      }
-    ],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "unlock_continent_[PLACEHOLDER_CONTINENT_ID]"
-        ]
-      },
-      {
-        "type": "grant_xp",
-        "amount": 100
-      }
-    ]
   }
 }
