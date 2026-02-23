@@ -8,7 +8,7 @@ import json
 from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
-from app.combat import battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
+from app.combat import add_loot, battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
 from app.questing import apply_quest_start_actions, evaluate_quests, emit_quest_events, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
@@ -1953,7 +1953,8 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
             if not alive:
                 continue
             opponent = min(alive, key=lambda opp: opp.hp)
-            damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), opponent.defense)
+            defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+            damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), defense_value)
             name = follower.get("name", "Follower")
             if miss:
                 push_battle_message(state, f"{name} misses the {opponent.name}.")
@@ -1970,26 +1971,42 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         spells = follower.get("spells", [])
         if not isinstance(spells, list):
             spells = []
-        # Priority: support spell for max HP, then support spell for ATK/DEF, then elemental
+        # Priority: support/heal spells, then elemental
         support_spells = []
+        heal_spells = []
         for spell_id in spells:
             spell = ctx.spells.get(spell_id, {})
             effect_id = str(spell.get("effect_id", "") or "")
             effect_cfg = ctx.spell_effects.get(effect_id, {}) if hasattr(ctx, "spell_effects") else {}
             if isinstance(effect_cfg, dict) and effect_cfg.get("kind") == "support":
                 support_spells.append((spell_id, spell, effect_cfg))
+            if isinstance(effect_cfg, dict) and effect_cfg.get("kind") == "heal":
+                heal_spells.append((spell_id, spell, effect_cfg))
         support_cast = False
         for spell_id, spell, effect_cfg in support_spells:
-            stats = effect_cfg.get("stats", [])
-            if not isinstance(stats, list):
-                stats = []
+            stat_deltas = effect_cfg.get("stat_deltas", [])
+            if not isinstance(stat_deltas, list):
+                stat_deltas = []
             needs = False
-            if "max_hp" in stats and state.player.hp < state.player.total_max_hp():
-                needs = True
-            if ("atk" in stats or "defense" in stats) and (
-                state.player.temp_atk_bonus <= 0 or state.player.temp_def_bonus <= 0
-            ):
-                needs = True
+            for entry in stat_deltas:
+                if not isinstance(entry, dict):
+                    continue
+                stat = str(entry.get("stat", "") or "")
+                per_rank = entry.get("per_rank", 0)
+                try:
+                    per_rank = float(per_rank)
+                except (TypeError, ValueError):
+                    per_rank = 0
+                if per_rank <= 0:
+                    continue
+                if stat == "max_hp" and state.player.hp < state.player.total_max_hp():
+                    needs = True
+                elif stat in ("atk", "defense") and (
+                    state.player.temp_atk_bonus <= 0 or state.player.temp_def_bonus <= 0
+                ):
+                    needs = True
+                elif stat == "evasion" and state.player.temp_evasion_bonus <= 0:
+                    needs = True
             if not needs:
                 continue
             can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
@@ -1997,16 +2014,48 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
                 continue
             if not use_charge:
                 follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
-            if "max_hp" in stats:
-                animate_life_boost_gain(ctx, render_frame, state, generate_frame, 1)
-            if "atk" in stats or "defense" in stats:
-                animate_strength_gain(ctx, render_frame, state, generate_frame, 1)
+            _apply_support_deltas("player", state.player, stat_deltas, 1, state.player)
             name = follower.get("name", "Follower")
             spell_name = spell.get("name", spell_id.title())
             push_battle_message(state, f"{name} casts {spell_name}.")
             support_cast = True
             break
         if support_cast:
+            continue
+        heal_cast = False
+        for spell_id, spell, effect_cfg in heal_spells:
+            target_type, target_ref = state.player.select_team_target(mode="hp")
+            if target_type == "none":
+                continue
+            can_cast, use_charge = _follower_can_cast(state.player, follower, spell)
+            if not can_cast:
+                continue
+            if not use_charge:
+                follower["mp"] = max(0, int(follower.get("mp", 0) or 0) - int(spell.get("mp_cost", 0) or 0))
+            hp_per_rank = int(effect_cfg.get("hp_per_rank", 0) or 0)
+            mp_per_rank = int(effect_cfg.get("mp_per_rank", 0) or 0)
+            healed_hp, healed_mp = _apply_spell_heal(
+                target_type,
+                target_ref,
+                hp_per_rank,
+                mp_per_rank,
+                state.player,
+            )
+            if healed_hp <= 0 and healed_mp <= 0:
+                continue
+            name = follower.get("name", "Follower")
+            spell_name = spell.get("name", spell_id.title())
+            target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
+            parts = []
+            if healed_hp:
+                parts.append(f"{healed_hp} HP")
+            if healed_mp:
+                parts.append(f"{healed_mp} MP")
+            restored = " and ".join(parts)
+            push_battle_message(state, f"{name} casts {spell_name} on {target_name}, restoring {restored}.")
+            heal_cast = True
+            break
+        if heal_cast:
             continue
         wand = state.player.follower_gear_instance(follower, "wand")
         element = _follower_wand_element(wand)
@@ -2027,7 +2076,8 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
                 if element:
                     atk_bonus += state.player.follower_element_points_total(follower, str(element))
                 damage_mult = float(spell.get("rank3_damage_mult", 1.25)) if spell.get("rank3_damage_mult") else 1.0
-                damage, crit, miss = roll_damage(state.player.follower_total_atk(follower) + atk_bonus, opponent.defense)
+                defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+                damage, crit, miss = roll_damage(state.player.follower_total_atk(follower) + atk_bonus, defense_value)
                 damage = int(damage * damage_mult)
                 name = follower.get("name", "Follower")
                 spell_name = spell.get("name", spell_id.title())
@@ -2053,7 +2103,8 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
         if target is None:
             continue
         opponent = state.opponents[target]
-        damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), opponent.defense)
+        defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+        damage, crit, miss = roll_damage(state.player.follower_total_atk(follower), defense_value)
         name = follower.get("name", "Follower")
         if miss:
             push_battle_message(state, f"{name} misses the {opponent.name}.")
@@ -2117,6 +2168,84 @@ def _apply_item_heal(target, item: dict, player: Player) -> tuple[int, int]:
             healed_mp = min(mp_gain, max(0, max_mp - current_mp))
             target["mp"] = current_mp + healed_mp
     return healed_hp, healed_mp
+
+
+def _apply_spell_heal(
+    target_type: str,
+    target_ref,
+    hp_gain: int,
+    mp_gain: int,
+    player: Player,
+) -> tuple[int, int]:
+    if hp_gain <= 0 and mp_gain <= 0:
+        return 0, 0
+    item = {"hp": hp_gain, "mp": mp_gain}
+    target = target_ref if target_type == "follower" else "player"
+    return _apply_item_heal(target, item, player)
+
+
+def _apply_support_deltas(
+    target_type: str,
+    target_ref,
+    stat_deltas: list,
+    rank: int,
+    player: Player,
+) -> None:
+    for entry in stat_deltas:
+        if not isinstance(entry, dict):
+            continue
+        stat = str(entry.get("stat", "") or "")
+        per_rank = entry.get("per_rank", 0)
+        try:
+            gain_per_cast = float(per_rank) * max(1, int(rank))
+        except (TypeError, ValueError):
+            continue
+        if gain_per_cast == 0:
+            continue
+        if stat == "atk":
+            attr = "temp_atk_bonus"
+        elif stat == "defense":
+            attr = "temp_def_bonus"
+        elif stat == "max_hp":
+            attr = "temp_hp_bonus"
+        elif stat == "evasion":
+            attr = "temp_evasion_bonus"
+        else:
+            continue
+        if target_type == "player":
+            current = float(getattr(player, attr, 0) or 0)
+        elif isinstance(target_ref, dict):
+            current = float(target_ref.get(attr, 0) or 0)
+        else:
+            continue
+        if gain_per_cast > 0:
+            max_stack_mult = int(entry.get("max_stack_mult", 5) or 5)
+            max_stack = gain_per_cast * max_stack_mult
+            new_value = min(max_stack, current + gain_per_cast)
+        else:
+            min_stack_mult = int(entry.get("min_stack_mult", 5) or 5)
+            min_stack = gain_per_cast * min_stack_mult
+            new_value = max(min_stack, current + gain_per_cast)
+        new_value = int(round(new_value))
+        delta = new_value - current
+        if target_type == "player":
+            setattr(player, attr, new_value)
+        else:
+            target_ref[attr] = new_value
+        if stat == "max_hp":
+            if target_type == "player":
+                max_hp = player.total_max_hp()
+                if delta > 0:
+                    player.hp = min(max_hp, player.hp + int(round(delta)))
+                else:
+                    player.hp = min(player.hp, max_hp)
+            else:
+                max_hp = player.follower_total_max_hp(target_ref)
+                current_hp = int(target_ref.get("hp", max_hp) or max_hp)
+                if delta > 0:
+                    target_ref["hp"] = min(max_hp, current_hp + int(round(delta)))
+                else:
+                    target_ref["hp"] = min(current_hp, max_hp)
 
 
 def spell_level_up_notes(ctx, player, prev_level: int, new_level: int) -> list[str]:
@@ -2472,6 +2601,7 @@ def resolve_player_action(
         element = spell.get("element")
         effect_id = str(spell.get("effect_id", "") or "")
         effect_cfg = ctx.spell_effects.get(effect_id, {}) if hasattr(ctx, "spell_effects") else {}
+        effect_kind = str(effect_cfg.get("kind", "") or "")
         if not effect_id or not isinstance(effect_cfg, dict) or not effect_cfg:
             state.last_message = f"{name} fizzles with no effect."
             return None
@@ -2488,7 +2618,7 @@ def resolve_player_action(
         rank = max(1, min(state.spell_cast_rank, max_rank, max_affordable))
         state.spell_cast_rank = rank
         state.last_spell_targets = []
-        if effect_cfg.get("kind") == "damage":
+        if effect_kind in ("damage", "status"):
             target_mode = str(effect_cfg.get("target_mode", "") or "")
             if target_mode == "single_or_all_by_rank":
                 threshold = int(effect_cfg.get("rank_all_threshold", 2) or 2)
@@ -2501,12 +2631,13 @@ def resolve_player_action(
         if spell.get("requires_target") and not any(opponent.hp > 0 for opponent in state.opponents):
             state.last_message = "There is nothing to target."
             return None
-        if effect_cfg.get("kind") == "support":
+        if effect_kind in ("support", "heal"):
             in_battle = state.player.location == "Forest" and any(opp.hp > 0 for opp in state.opponents)
             if state.spell_mode and not in_battle:
                 state.spell_target_mode = True
                 if not state.spell_target_command:
                     state.spell_target_command = cmd
+            target_mode = str(effect_cfg.get("target_missing_mode", "combined") or "combined")
             if state.team_target_index is not None:
                 if state.team_target_index == 0:
                     target_type, target_ref = "player", state.player
@@ -2516,13 +2647,16 @@ def resolve_player_action(
                     if isinstance(followers, list) and 0 <= idx < len(followers):
                         target_type, target_ref = "follower", followers[idx]
                     else:
-                        target_type, target_ref = state.player.select_team_target(mode="combined")
+                        target_type, target_ref = state.player.select_team_target(mode=target_mode)
             else:
-                target_type, target_ref = state.player.select_team_target(mode="combined")
+                target_type, target_ref = state.player.select_team_target(mode=target_mode)
             state.team_target_index = None
             if target_type == "none":
-                state.last_message = "HP and MP are already full."
-                return None
+                if effect_cfg.get("target_allow_full"):
+                    target_type, target_ref = "player", state.player
+                else:
+                    state.last_message = "HP and MP are already full."
+                    return None
             used_charge = False
             if element:
                 used_charge = state.player.consume_wand_charge(str(element))
@@ -2530,78 +2664,53 @@ def resolve_player_action(
                 if state.player.mp < base_cost:
                     state.last_message = f"Not enough MP to cast {name}."
                     return None
-                state.player.mp -= base_cost
+            state.player.mp -= base_cost
             state.last_team_target_player = (target_type == "player")
-            per_rank = int(effect_cfg.get("per_rank_bonus", 0) or 0)
-            max_stack_mult = int(effect_cfg.get("max_stack_mult", 5) or 5)
-            stats = effect_cfg.get("stats", [])
-            if not isinstance(stats, list):
-                stats = []
-            if target_type == "player":
-                gain_per_cast = max(0, per_rank * rank)
-                max_stack = gain_per_cast * max_stack_mult
-                if "max_hp" in stats:
-                    current = int(state.player.temp_hp_bonus or 0)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
-                        animate_life_boost_gain(
-                            ctx,
-                            render_frame,
-                            state,
-                            generate_frame,
-                            gain,
-                        )
-                if "atk" in stats or "defense" in stats:
-                    current = min(
-                        int(state.player.temp_atk_bonus or 0),
-                        int(state.player.temp_def_bonus or 0),
-                    )
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
-                        animate_strength_gain(
-                            ctx,
-                            render_frame,
-                            state,
-                            generate_frame,
-                            gain,
-                        )
+            if effect_kind == "heal":
+                hp_per_rank = int(effect_cfg.get("hp_per_rank", 0) or 0)
+                mp_per_rank = int(effect_cfg.get("mp_per_rank", 0) or 0)
+                hp_gain = max(0, hp_per_rank * rank)
+                mp_gain = max(0, mp_per_rank * rank)
+                healed_hp, healed_mp = _apply_spell_heal(
+                    target_type,
+                    target_ref,
+                    hp_gain,
+                    mp_gain,
+                    state.player,
+                )
+                if healed_hp <= 0 and healed_mp <= 0:
+                    state.last_message = "HP and MP are already full."
+                    return None
             else:
-                gain_per_cast = max(0, per_rank * rank)
-                max_stack = gain_per_cast * max_stack_mult
-                if "max_hp" in stats:
-                    current = int(target_ref.get("temp_hp_bonus", 0) or 0)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
-                        animate_follower_life_boost_gain(
-                            ctx,
-                            render_frame,
-                            state,
-                            generate_frame,
-                            target_ref,
-                            gain,
-                        )
-                if "atk" in stats or "defense" in stats:
-                    current_atk = int(target_ref.get("temp_atk_bonus", 0) or 0)
-                    current_def = int(target_ref.get("temp_def_bonus", 0) or 0)
-                    current = min(current_atk, current_def)
-                    remaining = max(0, max_stack - current)
-                    gain = min(gain_per_cast, remaining)
-                    if gain > 0:
-                        animate_follower_strength_gain(
-                            ctx,
-                            render_frame,
-                            state,
-                            generate_frame,
-                            target_ref,
-                            gain,
-                        )
+                stat_deltas = effect_cfg.get("stat_deltas", [])
+                if not isinstance(stat_deltas, list):
+                    stat_deltas = []
+                _apply_support_deltas(
+                    target_type,
+                    target_ref,
+                    stat_deltas,
+                    rank,
+                    state.player,
+                )
             target_name = "you" if target_type == "player" else target_ref.get("name", "Follower")
             state.last_message = f"You cast {name} on {target_name}."
             if hasattr(ctx, "audio"):
                 ctx.audio.play_sfx_once("spell_up", "C4")
+            if hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = emit_quest_events(
+                    state.player,
+                    ctx.quests,
+                    ctx.quest_events,
+                    "cast_spell",
+                    [{"spell_id": spell_id, "count": 1}],
+                    ctx.items,
+                    ctx.spells,
+                    ctx.followers,
+                    ctx.quest_objectives,
+                )
+                if quest_messages:
+                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                    _open_quest_screen(ctx, state)
             return cmd
         mp_cost = base_cost * max(1, rank)
         if state.player.mp < mp_cost and not has_charge:
@@ -2637,6 +2746,21 @@ def resolve_player_action(
                 effect_override["loops"] = loops
             state.action_effect_override = effect_override
         push_battle_message(state, message)
+        if hasattr(ctx, "quests") and ctx.quests is not None:
+            quest_messages = emit_quest_events(
+                state.player,
+                ctx.quests,
+                ctx.quest_events,
+                "cast_spell",
+                [{"spell_id": spell_id, "count": 1}],
+                ctx.items,
+                ctx.spells,
+                ctx.followers,
+                ctx.quest_objectives,
+            )
+            if quest_messages:
+                state.last_message = " ".join(quest_messages)
+                _open_quest_screen(ctx, state)
         return cmd
 
     message = dispatch_command(
@@ -2784,6 +2908,26 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         render_battle_pause(ctx, render_frame, state, generate_frame, _status_message(state, None))
     acting = [(i, m) for i, m in enumerate(state.opponents) if m.hp > 0]
     for idx, (opp_index, m) in enumerate(acting):
+        if m.poison_turns > 0 and m.hp > 0:
+            poison_damage = int(m.poison_damage or 0)
+            if poison_damage > 0:
+                damage = max(1, poison_damage)
+                m.hp = max(0, m.hp - damage)
+                push_battle_message(state, f"The {m.name} suffers {damage} poison damage.")
+            m.poison_turns = max(0, int(m.poison_turns) - 1)
+            if m.poison_turns == 0:
+                m.poison_damage = 0
+                if int(getattr(m, "temp_atk_bonus", 0) or 0) < 0:
+                    m.temp_atk_bonus = 0
+                if int(getattr(m, "temp_def_bonus", 0) or 0) < 0:
+                    m.temp_def_bonus = 0
+            if m.hp == 0:
+                xp_gain = random.randint(m.max_hp // 2, m.max_hp)
+                gold_gain = random.randint(m.max_hp // 2, m.max_hp)
+                add_loot(state.loot_bank, xp_gain, gold_gain)
+                m.melted = False
+                push_battle_message(state, f"The {m.name} succumbs to poison.")
+                continue
         if m.stunned_turns > 0:
             m.stunned_turns -= 1
             template = ctx.texts.get("battle", "opponent_stunned", "The {name} is stunned.")
@@ -2815,7 +2959,12 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                             push_battle_message(state, f"The {m.name} uses {label} on the {target.name}, restoring {healed} HP.")
                             continue
             defense_value = state.player.total_defense() + state.defend_bonus
-            damage, crit, miss = roll_damage(m.atk, defense_value)
+            evasion_points = int(getattr(state.player, "temp_evasion_bonus", 0) or 0)
+            evasion_bonus = 0.05 * evasion_points
+            miss_chance = 0.1 + state.defend_evasion + evasion_bonus
+            miss_chance = max(0.0, min(0.95, miss_chance))
+            attack_value = max(1, int(m.atk) + int(getattr(m, "temp_atk_bonus", 0) or 0))
+            damage, crit, miss = roll_damage(attack_value, defense_value, miss_chance=miss_chance)
             if not miss:
                 element = getattr(m, "element", "base")
                 if element and element != "base":
@@ -2873,6 +3022,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         max_hp = state.player.total_max_hp()
         if state.player.hp > max_hp:
             state.player.hp = max_hp
+    if getattr(state.player, "temp_evasion_bonus", 0) > 0:
+        state.player.temp_evasion_bonus = max(0, int(state.player.temp_evasion_bonus) - 1)
     if state.player.followers:
         for follower in state.player.followers:
             if not isinstance(follower, dict):
@@ -2887,6 +3038,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 hp = int(follower.get("hp", max_hp) or max_hp)
                 if hp > max_hp:
                     follower["hp"] = max_hp
+            if int(follower.get("temp_evasion_bonus", 0) or 0) > 0:
+                follower["temp_evasion_bonus"] = max(0, int(follower.get("temp_evasion_bonus", 0) or 0) - 1)
     if state.player.followers:
         for follower in state.player.followers:
             if not isinstance(follower, dict):

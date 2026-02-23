@@ -105,7 +105,8 @@ def cast_spell(
         damage_mult = float(spell.get(rank3_mult_key, 1.0)) if rank >= 3 else 1.0
         messages = []
         for opponent in targets:
-            damage, crit, miss = roll_damage(player.total_atk() + atk_bonus, opponent.defense)
+            defense_value = int(opponent.defense) + int(getattr(opponent, "temp_def_bonus", 0) or 0)
+            damage, crit, miss = roll_damage(player.total_atk() + atk_bonus, defense_value)
             damage = int(damage * damage_mult)
             if miss:
                 messages.append(f"Your {name} misses the {opponent.name}.")
@@ -131,6 +132,51 @@ def cast_spell(
             if stunned_turns > 0:
                 message += f" It is stunned for {stunned_turns} turn(s)."
             messages.append(message)
+        return " ".join(messages)
+
+    if effect.get("kind") == "status":
+        targets: List[Opponent] = []
+        threshold = int(effect.get("rank_all_threshold", 2) or 2)
+        if rank >= threshold:
+            targets = [opp for opp in opponents if opp.hp > 0]
+        else:
+            opponent = None
+            if target_index is not None and 0 <= target_index < len(opponents):
+                candidate = opponents[target_index]
+                if candidate.hp > 0:
+                    opponent = candidate
+            if opponent is None:
+                opponent = primary_opponent(opponents)
+            if opponent:
+                targets = [opponent]
+        if not targets:
+            return "There is nothing to target."
+        if not used_charge:
+            player.mp -= mp_cost
+        base_turns = int(effect.get("poison_turns", 0) or 0)
+        per_rank_turns = int(effect.get("poison_turns_per_rank", 0) or 0)
+        base_damage = int(effect.get("poison_damage", 0) or 0)
+        per_rank_damage = int(effect.get("poison_damage_per_rank", 0) or 0)
+        atk_debuff = int(effect.get("atk_debuff", 0) or 0) * max(1, rank)
+        def_debuff = int(effect.get("def_debuff", 0) or 0) * max(1, rank)
+        turns = base_turns + per_rank_turns * max(0, rank - 1)
+        damage = base_damage + per_rank_damage * max(0, rank - 1)
+        messages = []
+        for opponent in targets:
+            if turns > 0:
+                opponent.poison_turns = max(opponent.poison_turns, turns)
+            if damage > 0:
+                opponent.poison_damage = max(opponent.poison_damage, damage)
+            if atk_debuff != 0:
+                current = int(getattr(opponent, "temp_atk_bonus", 0) or 0)
+                opponent.temp_atk_bonus = min(current, atk_debuff) if atk_debuff < 0 else max(current, atk_debuff)
+            if def_debuff != 0:
+                current = int(getattr(opponent, "temp_def_bonus", 0) or 0)
+                opponent.temp_def_bonus = min(current, def_debuff) if def_debuff < 0 else max(current, def_debuff)
+            parts = [f"{opponent.name} is poisoned"]
+            if atk_debuff < 0 or def_debuff < 0:
+                parts.append("and weakened")
+            messages.append(" ".join(parts) + ".")
         return " ".join(messages)
 
     return f"{name} fizzles with no effect."

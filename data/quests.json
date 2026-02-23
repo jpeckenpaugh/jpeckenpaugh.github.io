@@ -2,18 +2,17 @@
   "mushy_01": {
     "title": "Once upon a time...",
     "continent": "base",
-    "summary_pre": "A tiny mushroom offers help but warns the forest is deadly.",
-    "summary_active": "Use the 'Strength' spell to boost your stats temporariy.  Fight opponents in the forest, and recruit three mushroom babies then fuse them at the temple.",
+    "summary_pre": "A crow attacks a tiny mushroom in the clearing.",
+    "summary_active": "Chase off the crow and learn basic magic from Mushy.",
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Hi there! I\u2019m Mushy. Nice to meet you! You and I may be low-level now. If we head into the forest like this, we won\u2019t stand much chance against the monsters we\u2019d find.",
-      "But I have a little secret. I can teach you a couple basic spells to boost our stats. They\u2019ll use MP, and the effects wear off over time.",
-      "Life Boost adds 10 HP to your max life, and Strength adds 10 points to both Attack and Defense.",
-      "Let me break it down: these effects cost MP to cast, and they stack. With a few casts, you\u2019ll be strong enough to trample some monsters.",
-      "Stat boosts won\u2019t carry into the next day, so if you rest at the Inn, the effects reset. Resting also fully restores your HP and MP, so the next day you can recast the spells and power up before heading out again.",
-      "If you take me with you, I\u2019ll teach you these two spells and we can take down some enemies together. They\u2019ll reward us with XP and GP. While battling, we can also recruit two more baby mushrooms using the \u201cSocialize\u201d feature. Once you have three baby mushrooms on the team, the priestess at the temple can merge us into a stronger Mushroom.",
-      "So what do you say? Let me join you, and let\u2019s see how we fare against real monsters."
+      "You hear a commotion. A young mushroom is being attacked by a large crow.",
+      "You rush in and drive the crow away.",
+      "Mushy thanks you and offers a magic mushroom tea to open your mind to basic spells.",
+      "He teaches Strength to raise ATK/DEF and Life Boost to raise max HP.",
+      "Cast Strength, then head into the forest to fight and recruit two more mushroom babies.",
+      "With three mushrooms, the temple can fuse you into a stronger form."
     ],
     "requirements": {
       "flags_required": [],
@@ -79,21 +78,63 @@
     ]
   },
   "mushy_02": {
-    "title": "Wandcraft",
+    "title": "Level Up",
     "continent": "base",
-    "summary_pre": "The alchemist can fuse gear into stronger forms.",
-    "summary_active": "Buy 3 Oak Wands and fuse them into 1 by visiting the Alchemist.",
+    "summary_pre": "Mushy says it is time to grow stronger.",
+    "summary_active": "Reach level 2 and spend 10 stat points.",
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Now that you know a few basic spells, let's talk about wands.  Spells normally consume your Mana Points (MP) to cast.  Mana will refresh each day (after sleeping at the Inn), but it is still limited.",
-      "In addition to increasing the potency of your spells, wands can store charges, letting you cast spells without spending MP. To use a wand in battle, you must equip it so it is ready to use.",
-      "Wands can be bought in the Shop, but the wands they sell here can only hold a single spell charge.  Luckily the Alchemist in town can fuse gear together to combine and increase its power.",
-      "Buy 3 Oak Wands and fuse them into one at the Alchemist.  If you don't have enough GP yet, go hunting in the Forest."
+      "Defeat a few more enemies to reach level 2.",
+      "At level 2 you gain 10 stat points for HP, MP, ATK, or DEF.",
+      "Open the Stats screen and spend all 10 points before moving on."
     ],
     "requirements": {
       "flags_required": [
         "quest_mushy_01_complete"
+      ],
+      "level_min": 2
+    },
+    "objectives": [
+      {
+        "type": "spend_stat_points",
+        "count": 10
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "show_message",
+        "message": "Spend your 10 stat points from the Stats screen."
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_02_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 50
+      }
+    ]
+  },
+  "mushy_03": {
+    "title": "Wandcraft",
+    "continent": "base",
+    "summary_pre": "Mushy explains wands and spell charges.",
+    "summary_active": "Buy 3 Oak Wands and fuse them at the Alchemist.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "mushroom_baby",
+    "dialog": [
+      "Spells normally cost MP, but wands store charges for free casts.",
+      "Buy three Oak Wands in town and fuse them at the Alchemist.",
+      "If you lack GP, hunt in the forest and return."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_02_complete"
       ]
     },
     "objectives": [
@@ -107,7 +148,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "quest_mushy_02_complete"
+          "quest_mushy_03_complete"
         ]
       },
       {
@@ -116,23 +157,21 @@
       }
     ]
   },
-  "mushy_03": {
+  "mushy_04": {
     "title": "Gear up",
     "continent": "base",
-    "summary_pre": "Mushy urges you to gear up before the next trials.",
+    "summary_pre": "You need proper equipment before the next trials.",
     "summary_active": "Buy and equip one of each gear type.",
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_teen",
     "dialog": [
-      "Before we push further, we should gear up. You already have your wand, which gives you extra spell casts and increases your spell power, but there is more to adventuring than just magic.",
-      "There are different kinds of items that you can equip to yourself to help boost different stats.",
-      "Swords are good to raise your Attack power, shields and armor bolster Defense, and rings and bracelets can have different enchantments and bonuses.",
-      "Visit the Shop to buy at leaet one of each different type of gear.  Purchased items will auto-equip to you, or you can browse under Options -> Inventory to change which items are equipped.",
-      "If you don't have enough Gold to buy everything at this point, we can go hunting in the Forest to collect GP."
+      "Magic is not enough. You also need gear.",
+      "Buy and equip a sword, shield, armor, ring, bracelet, and wand.",
+      "If you do not have enough GP, hunt in the forest first."
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_02_complete"
+        "quest_mushy_03_complete"
       ]
     },
     "objectives": [
@@ -153,7 +192,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "quest_mushy_03_complete"
+          "quest_mushy_04_complete"
         ]
       },
       {
@@ -162,24 +201,22 @@
       }
     ]
   },
-  "mushy_04": {
+  "mushy_05": {
     "title": "Beba Hexa",
     "continent": "base",
-    "summary_pre": "Mushy has a fairy friend who might grow into a queen.",
-    "summary_active": "Recruit three fairy babies and fuse them into a fairy teen.",
+    "summary_pre": "A fairy princess needs help building her court.",
+    "summary_active": "Recruit three fairy babies and fuse them at the temple.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "fairy_baby",
+    "art_opponent": "fairy",
     "dialog": [
-      "Mushy has a friend to introduce. Her name is Beba, and she is tiny, sparkly, and very dramatic.",
-      "She is not strong yet, but Beba is a princess. One day she could grow into a full Fairy Queen.",
-      "Beba will cost 100 GP to recruit, but once she joins, other fairies will join for 60 GP each. It is worth it.",
-      "If we help her gather a small court, she will blossom faster. That means recruiting a few fairy babies.",
-      "Once we have three fairy babies, the temple can fuse them into a stronger fairy teen.",
-      "Ready to meet Beba and give her a proper royal escort?"
+      "In the forest you meet Beba, a tiny but dramatic fairy princess.",
+      "She agrees to join if you help her gather two more fairy babies.",
+      "Recruit two more fairies and fuse the three at the temple.",
+      "When Beba grows stronger, she will share her healing magic."
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_03_complete"
+        "quest_mushy_04_complete"
       ]
     },
     "objectives": [
@@ -225,7 +262,8 @@
       {
         "type": "set_flags",
         "flags": [
-          "quest_mushy_04_complete"
+          "quest_mushy_05_complete",
+          "spell_healing_enabled"
         ]
       },
       {
@@ -234,23 +272,196 @@
       }
     ]
   },
-  "mushy_05": {
-    "title": "Chase the Moon",
+  "mushy_06": {
+    "title": "Fight Sprites for Bites",
     "continent": "base",
-    "summary_pre": "A young wolf longs to run beneath the wandering tower\u2019s shadow.",
-    "summary_active": "Recruit three wolf pups and fuse them into a full wolf.",
+    "trial": {
+      "scene_id": "mushy_06_trial",
+      "opponents": [
+        {
+          "opponent_id": "fairy",
+          "count": 4
+        }
+      ]
+    },
+    "summary_pre": "Beba can introduce you to the fairy warriors.",
+    "summary_active": "Defeat the four fairy warriors in the forest.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "wolf_pup",
+    "art_opponent": "fairy_baby",
     "dialog": [
-      "Mushy whispers about a wolf pup named Chase who runs the ridge each night, following the moon\u2019s path.",
-      "Chase is quick but young, still learning to guard the pack. He wants a team that can keep up with him.",
-      "If we help him gather two more wolf pups, the temple can fuse their bond into a full-grown wolf.",
-      "A true wolf will give us the bite and grit to face what waits beyond the forest.",
-      "Ready to run with Chase and learn the rhythm of the moon?"
+      "Beba keeps her promise and leads you to the fairy warriors.",
+      "If you can defeat them in a friendly battle, they will grant the Sprite Bite spell.",
+      "Travel to the forest and win the fight."
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_04_complete"
+        "quest_mushy_05_complete"
+      ],
+      "level_min": 3
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "fairy",
+        "count": 4
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_06_complete",
+          "spell_sprite_bite_enabled"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "show_message",
+        "message": "Defeat the four fairy warriors to earn Sprite's Bite."
+      }
+    ]
+  },
+  "mushy_07": {
+    "title": "Ogre's Orb",
+    "continent": "base",
+    "trial": {
+      "scene_id": "mushy_07_trial",
+      "opponents": [
+        {
+          "opponent_id": "ogre",
+          "count": 1,
+          "overrides": {
+            "name": "Ogre",
+            "level": 10,
+            "hp": 120,
+            "max_hp": 120,
+            "atk": 70,
+            "defense": 45,
+            "action_chance": 1.0,
+            "recruitable": false,
+            "recruit_cost": 0,
+            "recruit_chance": 0.0
+          }
+        }
+      ]
+    },
+    "summary_pre": "A giant ogre has stolen a powerful mana stone.",
+    "summary_active": "Defeat the ogre in the forest.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "ogre",
+    "dialog": [
+      "The fairies warn of a giant ogre who stole their mana stone.",
+      "The relic can deepen your mana pool and strengthen spells.",
+      "Defeat the ogre in the forest and claim the stone."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_06_complete"
+      ],
+      "level_min": 4
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "ogre",
+        "count": 1
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_07_complete"
+        ]
+      },
+      {
+        "type": "grant_items",
+        "items": [
+          "mana_stone"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "show_message",
+        "message": "Defeat the ogre in the forest to claim the mana stone."
+      }
+    ]
+  },
+  "mushy_08": {
+    "title": "Mana Stone",
+    "continent": "base",
+    "summary_pre": "The mana stone pulses with power.",
+    "summary_active": "Use the Mana Stone from your inventory.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "ogre",
+    "dialog": [
+      "Using the mana stone will grant spell rank XP and increase your MP.",
+      "Open your inventory and use the Mana Stone."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_07_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "use_item",
+        "item_id": "mana_stone",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "show_message",
+        "message": "Use the Mana Stone from your inventory."
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_08_complete"
+        ]
+      },
+      {
+        "type": "grant_mp_bonus",
+        "amount": 20
+      },
+      {
+        "type": "grant_spell_rank_up",
+        "amount": 1
+      },
+      {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    ]
+  },
+  "mushy_09": {
+    "title": "Chase the Moon",
+    "continent": "base",
+    "summary_pre": "A wolf pup named Chase wants a stronger pack.",
+    "summary_active": "Recruit three wolf pups and fuse them at the temple.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "wolf_pup",
+    "dialog": [
+      "You find a wolf pup named Chase and free him from a trap.",
+      "Chase joins and asks you to recruit two more wolf pups.",
+      "Fuse the three wolf pups at the temple to form a full wolf."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_08_complete"
       ],
       "level_min": 3
     },
@@ -293,7 +504,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "quest_mushy_05_complete"
+          "quest_mushy_09_complete"
         ]
       },
       {
@@ -302,145 +513,273 @@
       }
     ]
   },
-  "mushy_06": {
-    "title": "Fight Sprites for Bites",
+  "mushy_10": {
+    "title": "Animal Instincts",
     "continent": "base",
-    "trial": {
-      "scene_id": "mushy_06_trial",
-      "opponents": [
-        {
-          "opponent_id": "fairy_baby",
-          "count": 4,
-          "overrides": {
-            "name": "Fairy Mage",
-            "level": 8,
-            "hp": 35,
-            "max_hp": 35,
-            "atk": 18,
-            "defense": 16,
-            "action_chance": 1.2,
-            "recruitable": false,
-            "recruit_cost": 0,
-            "recruit_chance": 0.0
-          }
-        }
-      ]
-    },
-    "summary_pre": "Beba proposes a trial of strength against the forest fairies.",
-    "summary_active": "Defeat the four fairies in the forest.",
+    "summary_pre": "Chase can teach a spell to sense enemies.",
+    "summary_active": "Cast Animal Instincts once.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "fairy_baby",
+    "art_opponent": "wolf_pup",
     "dialog": [
-      "We are really working well as a team so far, but it's time to push your magic skills to the next level.",
-      "Besides the basic stat enhancing spells you currently have, there are powerful attack spells that can do damange directly to enemies.",
-      "There are four fairy warriors nearby in the forrest, and if you are able to prove your strength to them, they will grant you a spell that allows you to call them into battle to inflict damage on your enemies.",
-      "If you feel you are ready for this challenge, we can travel to the forest to do battle with them.  But be warned, these will be the hardest enemies you have faced up to this point."
+      "Chase teaches Animal Instincts to heighten your senses.",
+      "Cast Animal Instincts from your spellbook."
     ],
     "requirements": {
       "flags_required": [
-        "quest_mushy_05_complete"
-      ],
-      "level_min": 3
-    },
-    "objectives": [
-      {
-        "type": "defeat_opponents",
-        "opponent_id": "fairy_baby",
-        "count": 4
-      }
-    ],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "quest_mushy_06_complete",
-          "spell_sprite_bite_enabled"
-        ]
-      },
-      {
-        "type": "grant_xp",
-        "amount": 100
-      }
-    ],
-    "on_start_actions": [
-      {
-        "type": "show_message",
-        "message": "Defeat the four fairy warriors in the forest to earn Sprite's Bite."
-      }
-    ]
-  },
-  "mushy_07": {
-    "title": "Ogre's Orb",
-    "continent": "base",
-    "trial": {
-      "scene_id": "mushy_07_trial",
-      "opponents": [
-        {
-          "opponent_id": "ogre",
-          "count": 1,
-          "overrides": {
-            "name": "Ogre",
-            "level": 10,
-            "hp": 120,
-            "max_hp": 120,
-            "atk": 70,
-            "defense": 45,
-            "action_chance": 1.0,
-            "recruitable": false,
-            "recruit_cost": 0,
-            "recruit_chance": 0.0
-          }
-        }
+        "quest_mushy_09_complete"
       ]
     },
-    "summary_pre": "Beba warns of an ogre terrorizing the fairies and hoarding a magic orb.",
-    "summary_active": "Defeat the ogre in the forest.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "ogre",
-    "dialog": [
-      "We've made new allies among the fairies, but a threat looms nearby.",
-      "An ogre has been terrorizing the forest and stealing treasures from the fairy clans.",
-      "The ogre carries a magic orb said to deepen your mana pool and empower your spells.",
-      "If you can defeat the ogre in the forest, the fairies will let you keep the orb.",
-      "Ranked-up spells strike harder and can also hit multiple targets at once."
-    ],
-    "requirements": {
-      "flags_required": [
-        "quest_mushy_06_complete"
-      ],
-      "level_min": 4
-    },
     "objectives": [
       {
-        "type": "defeat_opponents",
-        "opponent_id": "ogre",
+        "type": "cast_spell",
+        "spell_id": "animal_instincts",
         "count": 1
       }
     ],
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_animal_instincts_enabled"
+        ]
+      },
+      {
+        "type": "show_message",
+        "message": "Cast Animal Instincts from your spellbook."
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "set_flags",
         "flags": [
-          "quest_mushy_07_complete"
+          "quest_mushy_10_complete"
         ]
       },
       {
-        "type": "grant_mp_bonus",
-        "amount": 20
-      },
-      {
-        "type": "grant_spell_rank_up",
-        "amount": 1
-      },
-      {
         "type": "grant_xp",
-        "amount": 100
+        "amount": 80
+      }
+    ]
+  },
+  "mushy_11": {
+    "title": "Poisonous Python",
+    "continent": "base",
+    "summary_pre": "A wolf messenger begs for help against a venomous snake.",
+    "summary_active": "Defeat the Poisonous Python in the forest.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "poisonous_python",
+    "dialog": [
+      "The wolf pack says a Poisonous Python has been stealing pups.",
+      "Track it down in the forest and defeat it.",
+      "The pack will reward you for the rescue."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_10_complete"
+      ]
+    },
+    "trial": {
+      "scene_id": "mushy_11_trial",
+      "opponents": [
+        {
+          "opponent_id": "poisonous_python",
+          "count": 1
+        }
+      ]
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "poisonous_python",
+        "count": 1
       }
     ],
     "on_start_actions": [
       {
         "type": "show_message",
-        "message": "Defeat the ogre in the forest to claim the magic orb."
+        "message": "Defeat the Poisonous Python to protect the wolf pack."
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_11_complete",
+          "spell_snake_bite_enabled"
+        ]
+      },
+      {
+        "type": "grant_items",
+        "items": [
+          "golden_collar"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 120
+      }
+    ]
+  },
+  "mushy_12": {
+    "title": "Ogrito's Challenge",
+    "continent": "base",
+    "summary_pre": "A baby ogre seeks revenge for the fallen giant.",
+    "summary_active": "Defeat the baby ogre in the forest.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_ogre",
+    "dialog": [
+      "A baby ogre named Ogrito challenges you in the forest.",
+      "Defeat him to earn his respect."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_11_complete"
+      ]
+    },
+    "trial": {
+      "scene_id": "mushy_12_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_ogre",
+          "count": 1
+        }
+      ]
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_ogre",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "show_message",
+        "message": "Defeat Ogrito to earn his respect."
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_12_complete"
+        ]
+      },
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "baby_ogre",
+          "name": "Ogrito",
+          "count_as_recruit": true
+        },
+        "required": true
+      },
+      {
+        "type": "grant_xp",
+        "amount": 120
+      }
+    ]
+  },
+  "mushy_13": {
+    "title": "Ogre Fusion",
+    "continent": "base",
+    "summary_pre": "Ogrito wants to grow stronger.",
+    "summary_active": "Recruit three baby ogres and fuse them at the temple.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_ogre",
+    "dialog": [
+      "Ogrito agrees to help if you find two more baby ogres.",
+      "Recruit them and fuse the three at the temple."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_12_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "fuse_followers",
+        "follower_type": "baby_ogre",
+        "count": 3
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_recruit_only_types",
+        "types": [
+          "baby_ogre"
+        ]
+      },
+      {
+        "type": "set_follower_cap_extra",
+        "value": 2
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "clear_recruit_only_types"
+      },
+      {
+        "type": "set_follower_cap",
+        "value": 3
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_13_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 120
+      }
+    ]
+  },
+  "mushy_14": {
+    "title": "Burst of Rage",
+    "continent": "base",
+    "summary_pre": "Ogrito offers a reckless rage spell.",
+    "summary_active": "Cast Burst of Rage once.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_ogre",
+    "dialog": [
+      "Ogrito teaches a spell that boosts ATK but lowers DEF.",
+      "Cast Burst of Rage from your spellbook."
+    ],
+    "requirements": {
+      "flags_required": [
+        "quest_mushy_13_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "cast_spell",
+        "spell_id": "burst_of_rage",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_burst_of_rage_enabled"
+        ]
+      },
+      {
+        "type": "show_message",
+        "message": "Cast Burst of Rage from your spellbook."
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "quest_mushy_14_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 80
       }
     ]
   }

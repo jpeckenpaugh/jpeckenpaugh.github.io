@@ -561,7 +561,25 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
                         target_type, target_ref = state.player.select_team_target(mode="combined")
                         if target_type == "follower":
                             target = target_ref
+                before_count = int(state.player.inventory.get(item_id, 0) or 0)
                 state.last_message = state.player.use_item(item_id, ctx.items, target=target)
+                after_count = int(state.player.inventory.get(item_id, 0) or 0)
+                used_count = max(0, before_count - after_count)
+                if used_count > 0 and hasattr(ctx, "quests") and ctx.quests is not None:
+                    quest_messages = emit_quest_events(
+                        state.player,
+                        ctx.quests,
+                        ctx.quest_events,
+                        "use_item",
+                        [{"item_id": item_id, "count": used_count}],
+                        ctx.items,
+                        ctx.spells,
+                        ctx.followers,
+                        ctx.quest_objectives,
+                    )
+                    if quest_messages:
+                        state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                        _enter_quest_screen(ctx, state, keep_message=True)
                 if hasattr(ctx, "quests") and ctx.quests is not None:
                     quest_messages = evaluate_quests(
                         state.player,
@@ -602,8 +620,24 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             stat = mapping.get(command_id)
             if stat:
                 state.player.spend_stat_point(stat)
+                quest_messages = []
+                if hasattr(ctx, "quests") and ctx.quests is not None:
+                    quest_messages = emit_quest_events(
+                        state.player,
+                        ctx.quests,
+                        ctx.quest_events,
+                        "spend_stat_points",
+                        [{"count": 1}],
+                        ctx.items,
+                        ctx.spells,
+                        ctx.followers,
+                        ctx.quest_objectives,
+                    )
                 ctx.save_data.save_player(state.player)
                 state.last_message = f"{stat} increased by 1."
+                if quest_messages:
+                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                    _enter_quest_screen(ctx, state, keep_message=True)
                 if ctx.audio:
                     ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
@@ -611,9 +645,27 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             if state.player.stat_points <= 0:
                 state.last_message = "No stat points to spend."
                 return True
+            before = int(state.player.stat_points)
             state.player.allocate_balanced()
+            spent = max(0, before - int(state.player.stat_points))
+            quest_messages = []
+            if spent and hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = emit_quest_events(
+                    state.player,
+                    ctx.quests,
+                    ctx.quest_events,
+                    "spend_stat_points",
+                    [{"count": spent}],
+                    ctx.items,
+                    ctx.spells,
+                    ctx.followers,
+                    ctx.quest_objectives,
+                )
             ctx.save_data.save_player(state.player)
             state.last_message = "Balanced allocation complete."
+            if quest_messages:
+                state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                _enter_quest_screen(ctx, state, keep_message=True)
             if ctx.audio:
                 ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
@@ -621,9 +673,27 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             if state.player.stat_points <= 0:
                 state.last_message = "No stat points to spend."
                 return True
+            before = int(state.player.stat_points)
             state.player.allocate_random()
+            spent = max(0, before - int(state.player.stat_points))
+            quest_messages = []
+            if spent and hasattr(ctx, "quests") and ctx.quests is not None:
+                quest_messages = emit_quest_events(
+                    state.player,
+                    ctx.quests,
+                    ctx.quest_events,
+                    "spend_stat_points",
+                    [{"count": spent}],
+                    ctx.items,
+                    ctx.spells,
+                    ctx.followers,
+                    ctx.quest_objectives,
+                )
             ctx.save_data.save_player(state.player)
             state.last_message = "Random allocation complete."
+            if quest_messages:
+                state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                _enter_quest_screen(ctx, state, keep_message=True)
             if ctx.audio:
                 ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
@@ -694,6 +764,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             state.player.temp_atk_bonus = 0
             state.player.temp_def_bonus = 0
             state.player.temp_hp_bonus = 0
+            state.player.temp_evasion_bonus = 0
             state.last_message = service.get("message", "You rest at the inn and feel fully restored.")
         if service_type in ("rest", "meal"):
             state.player.recharge_wands()

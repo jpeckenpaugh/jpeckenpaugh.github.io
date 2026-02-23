@@ -37,5 +37,28 @@
       "item_id": "{item_id}",
       "rank": "{rank}"
     }
+  },
+  "spend_stat_points": {
+    "trigger": "spend_stat_points",
+    "event": "spend_stat_points",
+    "payload": {
+      "count": "{count}"
+    }
+  },
+  "cast_spell": {
+    "trigger": "cast_spell",
+    "event": "cast_spell",
+    "payload": {
+      "spell_id": "{spell_id}",
+      "count": "{count}"
+    }
+  },
+  "use_item": {
+    "trigger": "use_item",
+    "event": "use_item",
+    "payload": {
+      "item_id": "{item_id}",
+      "count": "{count}"
+    }
   }
 }

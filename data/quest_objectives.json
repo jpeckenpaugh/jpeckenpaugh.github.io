@@ -64,5 +64,37 @@
   },
   "equip_slots": {
     "completion": "equip_slots"
+  },
+  "spend_stat_points": {
+    "event": "spend_stat_points",
+    "key": "spend_stat_points",
+    "update": {
+      "mode": "add",
+      "count_key": "count"
+    }
+  },
+  "cast_spell": {
+    "event": "cast_spell",
+    "key": "cast_spell:{spell_id}",
+    "match": {
+      "object_key": "spell_id",
+      "payload_key": "spell_id"
+    },
+    "update": {
+      "mode": "add",
+      "count_key": "count"
+    }
+  },
+  "use_item": {
+    "event": "use_item",
+    "key": "use_item:{item_id}",
+    "match": {
+      "object_key": "item_id",
+      "payload_key": "item_id"
+    },
+    "update": {
+      "mode": "add",
+      "count_key": "count"
+    }
   }
 }

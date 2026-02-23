@@ -76,10 +76,8 @@
         "      --0--",
         " \\_/  .-0-.  \\_/",
         "'-0-'       '-0-'",
-        "--0--  \\_/  --0--",
-        ".-0-. '-0-' .-0-.",
-        "      --0--",
-        "      .-0-."
+        "--0--       --0--",
+        ".-0-.       .-0-."
       ],
       "color_map": [
         "       111",
@@ -87,10 +85,8 @@
         "      11211",
         " 111  11211  111",
         "11211       11211",
-        "11211  111  11211",
-        "11211 11211 11211",
-        "      11211",
-        "      11211"
+        "11211       11211",
+        "11211       11211"
       ],
       "variation": 0.06,
       "jitter_stability": false,
@@ -489,6 +485,49 @@
         "       11111111"
       ]
     },
+    "baby_ogre": {
+      "name": "Baby Ogre",
+      "element": "base",
+      "level": 5,
+      "hp": 42,
+      "atk": 12,
+      "defense": 8,
+      "action_chance": 0.9,
+      "recruitable": true,
+      "recruit_cost": 12,
+      "recruit_chance": 0.5,
+      "follower_type": "baby_ogre",
+      "follower_names": [
+        "Ogrito",
+        "Grum",
+        "Bobo",
+        "Tiny"
+      ],
+      "desc": "A grumpy little brute with more bark than bite.",
+      "arrival": "stomps in",
+      "art": [
+        "   ,_..,",
+        "   ) o.o(",
+        " _.'\\\\  -(",
+        "(|'`     )",
+        " )\\\\     ,(",
+        "(w',.__.;w)",
+        " /'_(   \\\\_'\\\\",
+        "'--'     '--'"
+      ],
+      "color_map": [
+        "   11111",
+        "   1 111",
+        " 1111  1",
+        "111     1",
+        " 11     11",
+        "1111111111",
+        " 1111   111",
+        "1111     111"
+      ],
+      "variation": 0.06,
+      "jitter_stability": false
+    },
     "ogre": {
       "name": "Ogre",
       "element": "base",
@@ -523,6 +562,38 @@
         "11111       1111"
       ],
       "variation": 0.06,
+      "jitter_stability": false
+    },
+    "poisonous_python": {
+      "name": "Poisonous Python",
+      "element": "base",
+      "level": 8,
+      "hp": 65,
+      "atk": 18,
+      "defense": 10,
+      "action_chance": 1.0,
+      "recruitable": false,
+      "desc": "A coiled menace with a venomous strike.",
+      "arrival": "slithers into view",
+      "art": [
+        "            .-.",
+        "           /  aa",
+        "           \\ -,_)",
+        "      _..._| \\  `-<",
+        "    .\" .__.' |",
+        "{} (        /`\\",
+        "{}(`'------'  /",
+        " '-'-.......-'"
+      ],
+      "color_map": [
+        "    1111111",
+        "  11 1  1 11",
+        " 1   1111   1",
+        "1   1    1   1",
+        " 1  1111  1",
+        "  1111111"
+      ],
+      "variation": 0.05,
       "jitter_stability": false
     }
   },

@@ -735,5 +735,22 @@
     "elem_points": {
       "dark": 7
     }
+  },
+  "mana_stone": {
+    "name": "Mana Stone",
+    "type": "quest",
+    "hp": 0,
+    "mp": 0,
+    "use_while_full": true,
+    "price": 0,
+    "desc": "A glowing relic said to deepen your mana reserves."
+  },
+  "golden_collar": {
+    "name": "Golden Collar",
+    "type": "quest",
+    "hp": 0,
+    "mp": 0,
+    "price": 0,
+    "desc": "A symbol of trust from the wolf pack."
   }
 }

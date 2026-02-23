@@ -48,5 +48,35 @@
     "equipment": {},
     "abilities": [],
     "active_ability": ""
+  },
+  "baby_ogre": {
+    "name": "Ogrito",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 6,
+    "defense": 3,
+    "hp": 16,
+    "max_hp": 16,
+    "mp": 4,
+    "max_mp": 4,
+    "equipment": {},
+    "abilities": [],
+    "active_ability": ""
+  },
+  "ogre": {
+    "name": "Ogre",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 10,
+    "defense": 6,
+    "hp": 24,
+    "max_hp": 24,
+    "mp": 4,
+    "max_mp": 4,
+    "equipment": {},
+    "abilities": [],
+    "active_ability": ""
   }
 }

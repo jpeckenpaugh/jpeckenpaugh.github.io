@@ -1957,15 +1957,14 @@ def generate_frame(
         atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))
         def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0))
         temp_hp = int(getattr(player, "temp_hp_bonus", 0))
-        hp_total = player.max_hp + temp_hp
         hp_line = f"HP: {player.hp} / {player.max_hp}"
         if temp_hp:
             hp_line = f"HP: {player.hp} / {player.max_hp} (+{temp_hp})"
         body = [
             hp_line,
             f"MP: {player.mp} / {player.max_mp}",
-            f"ATK: {player.atk} (+{atk_bonus})",
-            f"DEF: {player.defense} (+{def_bonus})",
+            f"ATK: {player.atk} ({atk_bonus:+d})",
+            f"DEF: {player.defense} ({def_bonus:+d})",
             f"Level: {player.level}  XP: {player.xp}  GP: {player.gold}",
             f"Stat points available: {player.stat_points}",
         ]
@@ -2168,10 +2167,10 @@ def generate_frame(
                 mp_text = f"MP: {mp} / {max_mp}"
                 atk_text = f"ATK: {atk_total}"
                 if atk_bonus:
-                    atk_text = f"{atk_text} (+{atk_bonus})"
+                    atk_text = f"{atk_text} ({atk_bonus:+d})"
                 def_text = f"DEF: {def_total}"
                 if def_bonus:
-                    def_text = f"{def_text} (+{def_bonus})"
+                    def_text = f"{def_text} ({def_bonus:+d})"
             else:
                 base_max_hp = int(target.get("max_hp", 0) or 0)
                 temp_hp = int(target.get("temp_hp_bonus", 0) or 0)
@@ -2189,10 +2188,10 @@ def generate_frame(
                 mp_text = f"MP: {mp} / {max_mp}"
                 atk_text = f"ATK: {atk_total}"
                 if atk_bonus:
-                    atk_text = f"{atk_text} (+{atk_bonus})"
+                    atk_text = f"{atk_text} ({atk_bonus:+d})"
                 def_text = f"DEF: {def_total}"
                 if def_bonus:
-                    def_text = f"{def_text} (+{def_bonus})"
+                    def_text = f"{def_text} ({def_bonus:+d})"
             stat_line = (
                 f"{color(hp_text, ANSI.FG_GREEN)}  "
                 f"{color(mp_text, ANSI.FG_MAGENTA)}  "

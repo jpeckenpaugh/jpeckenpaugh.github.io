@@ -45,6 +45,7 @@ class Player:
     temp_atk_bonus: int = 0
     temp_def_bonus: int = 0
     temp_hp_bonus: int = 0
+    temp_evasion_bonus: int = 0
     flags: dict = field(default_factory=dict)
     quests: dict = field(default_factory=dict)
 
@@ -129,6 +130,7 @@ class Player:
             temp_atk_bonus=0,
             temp_def_bonus=0,
             temp_hp_bonus=0,
+            temp_evasion_bonus=0,
             flags=flags,
             quests=quests,
         )
@@ -568,6 +570,8 @@ class Player:
             fused_type = "fairy_teen"
         elif follower_type == "wolf_pup":
             fused_type = "wolf"
+        elif follower_type == "baby_ogre":
+            fused_type = "ogre"
         base_name = fused_type.replace("_", " ").title() or "Follower"
         abilities = []
         active = ""
@@ -589,6 +593,10 @@ class Player:
             fused_name = "Wolf"
             if any(name == "Chase" for name in kept_names):
                 fused_name = "Chase"
+        if follower_type == "baby_ogre":
+            fused_name = "Ogre"
+            if any(name == "Ogrito" for name in kept_names):
+                fused_name = "Ogrito"
         fused = {
             "type": fused_type,
             "name": fused_name,
@@ -727,8 +735,9 @@ class Player:
             return "You do not have that item."
         hp_gain = int(item.get("hp", 0))
         mp_gain = int(item.get("mp", 0))
+        allow_full = bool(item.get("use_while_full")) or str(item.get("type", "") or "") == "quest"
         if target is None:
-            if self.hp == self.max_hp and self.mp == self.max_mp:
+            if not allow_full and self.hp == self.max_hp and self.mp == self.max_mp:
                 return "HP and MP are already full."
             self.hp = min(self.max_hp, self.hp + hp_gain)
             self.mp = min(self.max_mp, self.mp + mp_gain)
@@ -737,7 +746,7 @@ class Player:
             max_mp = int(target.get("max_mp", 0) or 0)
             hp = int(target.get("hp", max_hp) or max_hp)
             mp = int(target.get("mp", max_mp) or max_mp)
-            if hp >= max_hp and mp >= max_mp:
+            if not allow_full and hp >= max_hp and mp >= max_mp:
                 return "That follower is already full."
             target["hp"] = min(max_hp, hp + hp_gain)
             target["mp"] = min(max_mp, mp + mp_gain)
@@ -982,3 +991,7 @@ class Opponent:
     variation: float = 0.0
     jitter_stability: bool = True
     ai: Optional[dict] = None
+    temp_atk_bonus: int = 0
+    temp_def_bonus: int = 0
+    poison_turns: int = 0
+    poison_damage: int = 0

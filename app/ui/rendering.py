@@ -2441,11 +2441,11 @@ def format_player_stats(player: Player) -> List[str]:
     atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))
     def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0))
     if atk_bonus:
-        atk_text = color(f"ATK: {atk_total} (+{atk_bonus})", ANSI.DIM)
+        atk_text = color(f"ATK: {atk_total} ({atk_bonus:+d})", ANSI.DIM)
     else:
         atk_text = color(f"ATK: {atk_total}", ANSI.DIM)
     if def_bonus:
-        def_text = color(f"DEF: {def_total} (+{def_bonus})", ANSI.DIM)
+        def_text = color(f"DEF: {def_total} ({def_bonus:+d})", ANSI.DIM)
     else:
         def_text = color(f"DEF: {def_total}", ANSI.DIM)
     level_text = color(f"Level: {player.level}", ANSI.FG_CYAN)
