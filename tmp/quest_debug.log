@@ -1,0 +1,26 @@
+[03:06:44] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:12:00] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:15:38] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:16:38] pending_level_up trigger cmd=ENTER_SCENE action_cmd=None level=2 stat_points=10
+[03:19:01] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:19:50] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
+[03:23:11] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:24:01] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
+[03:29:02] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:30:10] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
+[03:31:24] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
+[03:31:47] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
+[03:36:03] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:36:37] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
+[03:37:27] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=10
+[03:38:50] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=10
+[03:39:12] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[03:39:42] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=10
+[03:40:14] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=10
+[03:41:16] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=10
+[04:04:12] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[04:05:01] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0
+[04:05:33] quest_start quest_id=island_01_quest_04 pending_level_up=False stat_points=0
+[04:05:54] quest_start quest_id=island_01_quest_05 pending_level_up=False stat_points=0
+[04:12:13] quest_start quest_id=island_01_quest_01 pending_level_up=False stat_points=0
+[04:12:50] quest_start quest_id=island_01_quest_03 pending_level_up=False stat_points=0

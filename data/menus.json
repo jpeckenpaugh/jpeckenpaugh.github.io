@@ -63,6 +63,10 @@
         "command": "TOGGLE_AUDIO"
       },
       {
+        "label": "XP Multiplier",
+        "command": "XP_MULTIPLIER"
+      },
+      {
         "label": "Quit",
         "command": "QUIT"
       }

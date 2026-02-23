@@ -156,6 +156,7 @@
   "island_01_quest_04": {
     "title": "Island 01 Quest 04",
     "continent": "base",
+    "auto_open_on_complete": true,
     "summary_pre": "Mushy: Great!  Now that we have 3 mini mushrooms on our team, you can fuse us.",
     "summary_active": "Player must go to Town, Visit Temple, and Fuse 3 mini mushrooms.",
     "summary_complete": "Quest complete.",
@@ -200,89 +201,18 @@
   "island_01_quest_05": {
     "title": "Island 01 Quest 05",
     "continent": "base",
-    "summary_pre": "Mushy: We are making progress, but we really need to find more friends to join our team.  Let's so hunting in the forrest and see if we can recruit any more team members.",
-    "summary_active": "Player leaves town and goes to the forrest.",
+    "summary_pre": "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
+    "summary_active": "Recruit two more wolf pups to join the team.",
     "summary_complete": "Quest complete.",
     "art_opponent": "wolf_pup",
     "dialog": [
-      "Mushy: We are making progress, but we really need to find more friends to join our team.  Let's so hunting in the forrest and see if we can recruit any more team members."
+      "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
+      "The pup is grateful.  He decides to join us.  We'll call him Chase.",
+      "Now we should find two more wolf pups so they can fight alongside us."
     ],
     "requirements": {
       "flags_required": [
         "island_01_quest_04_complete"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "visit_scene",
-        "id": "forest",
-        "count": 1
-      }
-    ],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_05_complete"
-        ]
-      }
-    ]
-  },
-  "island_01_quest_06": {
-    "title": "Island 01 Quest 06",
-    "continent": "base",
-    "summary_pre": "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
-    "summary_active": "You free Chase from the wolf trap.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "wolf_pup",
-    "dialog": [
-      "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_05_complete"
-      ]
-    },
-    "objectives": [],
-    "on_start_actions": [
-      {
-        "type": "grant_follower",
-        "follower": {
-          "type": "wolf_pup",
-          "name": "Chase",
-          "count_as_recruit": true
-        },
-        "required": true
-      }
-    ],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_06_complete"
-        ]
-      }
-    ]
-  },
-  "island_01_quest_07": {
-    "title": "Island 01 Quest 07",
-    "continent": "base",
-    "summary_pre": "Chase: Woof Woof!",
-    "summary_active": "Player must hunt opponents until finding 2 more wolf pups to join the team.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "wolf_pup",
-    "dialog": [
-      "Chase: Woof Woof!",
-      "Mushy: What's that you say?  Your name is Chase?",
-      "Chase: Woof Woof!",
-      "Mushy: Of course you can join us!",
-      "[ Chase Joins Team ]",
-      "Mushy: Now that we have a Wolf Pup on our team, we should be able to recruit 2 more wolf pups, and then fuse them in Temple."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_06_complete"
       ]
     },
     "objectives": [
@@ -293,6 +223,15 @@
       }
     ],
     "on_start_actions": [
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "wolf_pup",
+          "name": "Chase",
+          "count_as_recruit": false
+        },
+        "required": true
+      },
       {
         "type": "set_recruit_only_types",
         "types": [
@@ -308,24 +247,25 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_07_complete"
+          "island_01_quest_05_complete"
         ]
       }
     ]
   },
-  "island_01_quest_08": {
-    "title": "Island 01 Quest 08",
+  "island_01_quest_06": {
+    "title": "Island 01 Quest 06",
     "continent": "base",
-    "summary_pre": "Mushy: Now that we have 3 wolf pups on our team, let's go to the temple and fuse them.",
-    "summary_active": "Player goes to Temple and Fuses 3 wolf pups.",
+    "summary_pre": "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
+    "summary_active": "Player must go to Town, Visit Temple, and Fuse 3 wolf pups.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "wolf",
+    "art_opponent": "wolf_pup",
     "dialog": [
-      "Mushy: Now that we have 3 wolf pups on our team, let's go to the temple and fuse them."
+      "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
+      "Travel to the town and visit the Temple.  The priestest there will be able to fuse the wolf pups and evolve them to their next level."
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_07_complete"
+        "island_01_quest_05_complete"
       ]
     },
     "objectives": [
@@ -338,60 +278,17 @@
     "on_start_actions": [],
     "on_complete_actions": [
       {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_06_complete"
+        ]
+      },
+      {
         "type": "clear_recruit_only_types"
       },
       {
         "type": "set_follower_cap",
         "value": 3
-      },
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_08_complete"
-        ]
-      },
-      {
-        "type": "grant_xp",
-        "amount": 100
-      }
-    ]
-  },
-  "island_01_quest_09": {
-    "title": "Island 01 Quest 09",
-    "continent": "base",
-    "summary_pre": "Mushy: Our team is really progressing nicely!",
-    "summary_active": "Chase teaches the player the \"Animal Instinct\" spell.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "wolf_pup",
-    "dialog": [
-      "Mushy: Our team is really progressing nicely!",
-      "Chase: Woof.",
-      "Mushy: What is it boy?  Timmy fell down a well?",
-      "Chase: Woof?",
-      "Mushy: No, I'm just kidding. Alright I will tell them...",
-      "So Chase says he can teach you a special magic ability \"Animal Instincts.\"  With this spell you will be able to sense opponents in the forrest before they appear.",
-      "This will let us get the jump on opponents, giving us an pre-emptive attack before the battle actually starts."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_08_complete"
-      ]
-    },
-    "objectives": [],
-    "on_start_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "spell_animal_instincts_enabled"
-        ]
-      }
-    ],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_09_complete"
-        ]
       }
     ]
   },
@@ -407,7 +304,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_09_complete"
+        "island_01_quest_07_complete"
       ]
     },
     "objectives": [
@@ -1089,6 +986,45 @@
         "type": "set_flags",
         "flags": [
           "island_01_quest_25_complete"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_07": {
+    "title": "Island 01 Quest 07",
+    "continent": "base",
+    "summary_pre": "Mushy: Our team is really progressing nicely!",
+    "summary_active": "Chase teaches the player the \"Animal Instinct\" spell.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "wolf_pup",
+    "dialog": [
+      "Mushy: Our team is really progressing nicely!",
+      "Chase: Woof.",
+      "Mushy: What is it boy?  Timmy fell down a well?",
+      "Chase: Woof?",
+      "Mushy: No, I'm just kidding. Alright I will tell them...",
+      "So Chase says he can teach you a special magic ability \"Animal Instincts.\"  With this spell you will be able to sense opponents in the forrest before they appear.",
+      "This will let us get the jump on opponents, giving us an pre-emptive attack before the battle actually starts."
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_06_complete"
+      ]
+    },
+    "objectives": [],
+    "on_start_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_animal_instincts_enabled"
+        ]
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_07_complete"
         ]
       }
     ]

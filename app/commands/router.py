@@ -421,6 +421,18 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         state.last_message = menu.get("open_message", "Select an element.")
         return True
 
+    if command_id == "XP_MULTIPLIER":
+        choices = [1, 2, 5, 10]
+        current = int(state.player.flags.get("xp_multiplier", 5) or 5)
+        if current not in choices:
+            current = 5
+        next_idx = (choices.index(current) + 1) % len(choices)
+        new_value = choices[next_idx]
+        state.player.flags["xp_multiplier"] = new_value
+        ctx.save_data.save_player(state.player)
+        state.last_message = f"XP multiplier set to {new_value}x."
+        return True
+
     if command_id == "OPTIONS":
         menu = ctx.menus.get("options", {})
         if state.options_mode:
@@ -620,24 +632,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             stat = mapping.get(command_id)
             if stat:
                 state.player.spend_stat_point(stat)
-                quest_messages = []
-                if hasattr(ctx, "quests") and ctx.quests is not None:
-                    quest_messages = emit_quest_events(
-                        state.player,
-                        ctx.quests,
-                        ctx.quest_events,
-                        "spend_stat_points",
-                        [{"count": 1}],
-                        ctx.items,
-                        ctx.spells,
-                        ctx.followers,
-                        ctx.quest_objectives,
-                    )
                 ctx.save_data.save_player(state.player)
                 state.last_message = f"{stat} increased by 1."
-                if quest_messages:
-                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
-                    _enter_quest_screen(ctx, state, keep_message=True)
                 if ctx.audio:
                     ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
@@ -648,24 +644,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             before = int(state.player.stat_points)
             state.player.allocate_balanced()
             spent = max(0, before - int(state.player.stat_points))
-            quest_messages = []
-            if spent and hasattr(ctx, "quests") and ctx.quests is not None:
-                quest_messages = emit_quest_events(
-                    state.player,
-                    ctx.quests,
-                    ctx.quest_events,
-                    "spend_stat_points",
-                    [{"count": spent}],
-                    ctx.items,
-                    ctx.spells,
-                    ctx.followers,
-                    ctx.quest_objectives,
-                )
             ctx.save_data.save_player(state.player)
             state.last_message = "Balanced allocation complete."
-            if quest_messages:
-                state.last_message = f"{state.last_message} " + " ".join(quest_messages)
-                _enter_quest_screen(ctx, state, keep_message=True)
             if ctx.audio:
                 ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True
@@ -676,24 +656,8 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             before = int(state.player.stat_points)
             state.player.allocate_random()
             spent = max(0, before - int(state.player.stat_points))
-            quest_messages = []
-            if spent and hasattr(ctx, "quests") and ctx.quests is not None:
-                quest_messages = emit_quest_events(
-                    state.player,
-                    ctx.quests,
-                    ctx.quest_events,
-                    "spend_stat_points",
-                    [{"count": spent}],
-                    ctx.items,
-                    ctx.spells,
-                    ctx.followers,
-                    ctx.quest_objectives,
-                )
             ctx.save_data.save_player(state.player)
             state.last_message = "Random allocation complete."
-            if quest_messages:
-                state.last_message = f"{state.last_message} " + " ".join(quest_messages)
-                _enter_quest_screen(ctx, state, keep_message=True)
             if ctx.audio:
                 ctx.audio.play_sfx_once("point_added_sfx", "C4")
             return True

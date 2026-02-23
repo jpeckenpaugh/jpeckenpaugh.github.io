@@ -2,14 +2,16 @@
 
 import random
 import time
+from datetime import datetime
 from typing import Optional
 import json
+import os
 
 from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import add_loot, battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import apply_quest_start_actions, evaluate_quests, emit_quest_events, ordered_quest_ids, quest_entries, start_quest
+from app.questing import apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -27,6 +29,15 @@ from app.ui.rendering import (
 )
 from app.ui.text import format_text
 from app.venues import venue_actions, venue_id_from_state
+
+
+def _append_debug_log(message: str) -> None:
+    try:
+        os.makedirs("tmp", exist_ok=True)
+        with open("tmp/quest_debug.log", "a", encoding="utf-8") as handle:
+            handle.write(f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
+    except OSError:
+        return
 
 
 def _spell_effect_with_art(ctx, spell: dict) -> Optional[dict]:
@@ -1006,6 +1017,9 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                                 state.last_message = f"Quest started: {title}."
                         if hasattr(ctx, "save_data") and ctx.save_data:
                             ctx.save_data.save_player(state.player)
+                        _append_debug_log(
+                            f"quest_start quest_id={quest_id} pending_level_up={state.pending_level_up} stat_points={state.player.stat_points}"
+                        )
                 if state.pending_level_up:
                     state.pending_level_up = False
                     state.quest_mode = False
@@ -1099,6 +1113,10 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         available_spells = []
         if hasattr(ctx, "spells") and hasattr(ctx, "items"):
             available_spells = ctx.spells.available(state.player, ctx.items)
+        xp_multiplier = int(state.player.flags.get("xp_multiplier", 5) or 5)
+        if xp_multiplier not in (1, 2, 5, 10):
+            xp_multiplier = 5
+            state.player.flags["xp_multiplier"] = xp_multiplier
         for entry in menu.get("actions", []):
             if not entry.get("command"):
                 continue
@@ -1107,6 +1125,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 cmd_entry["_disabled"] = True
             if cmd_entry.get("command") == "SPELLBOOK" and not available_spells:
                 cmd_entry["_disabled"] = True
+            if cmd_entry.get("command") == "XP_MULTIPLIER":
+                cmd_entry["label"] = f"XP Multiplier: {xp_multiplier}x"
             actions.append(cmd_entry)
         if not actions:
             return None, None
@@ -1133,7 +1153,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if actions[state.menu_cursor].get("_disabled"):
                 return None, None
             cmd = actions[state.menu_cursor].get("command")
-            if cmd != "TOGGLE_AUDIO":
+            if cmd not in ("TOGGLE_AUDIO", "XP_MULTIPLIER"):
                 state.options_mode = False
             return cmd, None
         return None, None
@@ -1815,6 +1835,12 @@ def maybe_begin_target_select(ctx, state: GameState, cmd: Optional[str]) -> bool
             rank = ctx.spells.rank_for(spell, state.player, spell_id)
             if rank >= 2:
                 return False
+    if cmd == "SOCIALIZE":
+        for idx, opp in enumerate(state.opponents):
+            if getattr(opp, "recruitable", False) and opp.hp > 0:
+                state.target_index = idx
+                return False
+        return False
     targeted = cmd in ("ATTACK", "SOCIALIZE") or cmd in ctx.targeted_spell_commands
     if not targeted:
         return False
@@ -1908,12 +1934,48 @@ def _open_quest_screen(ctx, state: GameState) -> None:
         state.quest_continent_index = 0
 
 
+def _auto_open_next_quest_on_complete(ctx, state: GameState) -> bool:
+    if not hasattr(ctx, "quests") or ctx.quests is None:
+        return False
+    ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests, state.player.current_element) if hasattr(ctx, "stories") else []
+    entries = quest_entries(
+        state.player,
+        ctx.quests,
+        ctx.items,
+        continent=state.player.current_element,
+        include_locked_next=False,
+        ordered_ids=ordered_ids,
+        objectives_data=ctx.quest_objectives,
+        events_data=ctx.quest_events,
+    )
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        status = entry.get("status")
+        if status not in ("available", "active"):
+            continue
+        quest_def = entry.get("quest", {})
+        if not isinstance(quest_def, dict):
+            continue
+        if not quest_def.get("auto_open_on_complete"):
+            continue
+        quest_id = entry.get("id")
+        if not quest_id:
+            continue
+        _open_quest_screen(ctx, state)
+        state.quest_detail_mode = True
+        state.quest_detail_id = quest_id
+        state.quest_detail_page = 0
+        return True
+    return False
+
+
 def _handle_level_up_transition(ctx, state: GameState, pre_level: int, post_level: int) -> bool:
     spell_notes = spell_level_up_notes(ctx, state.player, pre_level, post_level)
     element_notes = element_unlock_notes(ctx, state.player, pre_level, post_level)
     state.level_up_notes = spell_notes + element_notes
     if hasattr(ctx, "quests") and ctx.quests is not None:
-        evaluate_quests(
+        quest_messages = evaluate_quests(
             state.player,
             ctx.quests,
             ctx.items,
@@ -1922,6 +1984,8 @@ def _handle_level_up_transition(ctx, state: GameState, pre_level: int, post_leve
             ctx.quest_objectives,
             ctx.quest_events,
         )
+        if quest_messages and hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
         ordered_ids = ordered_quest_ids(ctx.stories, ctx.quests, state.player.current_element) if hasattr(ctx, "stories") else []
         entries = quest_entries(
             state.player,
@@ -2381,6 +2445,9 @@ def apply_router_command(
     action_cmd: Optional[str],
 ) -> tuple[bool, Optional[str], Optional[str], bool, Optional[int]]:
     if state.pending_level_up and not state.leveling_mode and not state.quest_mode and not state.quest_detail_mode:
+        _append_debug_log(
+            f"pending_level_up trigger cmd={cmd} action_cmd={action_cmd} level={state.player.level} stat_points={state.player.stat_points}"
+        )
         state.pending_level_up = False
         state.leveling_mode = True
         if hasattr(ctx, "audio"):
@@ -2392,33 +2459,23 @@ def apply_router_command(
         pre_points = int(state.player.stat_points)
         message, done = state.player.handle_level_up_input(cmd)
         state.last_message = message
-        quest_messages = []
         spent = max(0, pre_points - int(state.player.stat_points))
         if spent <= 0 and done and pre_points > 0 and int(state.player.stat_points) == 0:
             spent = pre_points
-        if spent and hasattr(ctx, "quests") and ctx.quests is not None:
-            quest_messages = emit_quest_events(
-                state.player,
-                ctx.quests,
-                ctx.quest_events,
-                "spend_stat_points",
-                [{"count": spent}],
-                ctx.items,
-                ctx.spells,
-                ctx.followers,
-                ctx.quest_objectives,
-            )
-            if quest_messages:
-                state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+        q2 = getattr(state.player, "quests", {}).get("island_01_quest_02", {}) if hasattr(state.player, "quests") else {}
+        _append_debug_log(
+            f"level_up cmd={cmd} pre_points={pre_points} post_points={state.player.stat_points} spent={spent} done={done} q2={q2}"
+        )
         if done:
             state.leveling_mode = False
             state.level_up_notes = []
             if hasattr(ctx, "save_data") and ctx.save_data:
                 ctx.save_data.save_player(state.player)
-            if quest_messages:
-                _open_quest_screen(ctx, state)
+        elif spent and hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
         return True, action_cmd, cmd, True, state.target_index
     pre_level = state.player.level
+    pre_stat_points = int(state.player.stat_points)
     pre_location = state.player.location
     pre_in_forest = state.player.location == "Forest"
     pre_alive = any(m.hp > 0 for m in state.opponents)
@@ -2622,6 +2679,28 @@ def apply_router_command(
     if state.player.location == "Title" and cmd_state.player.location != "Title":
         state.title_mode = False
     state.player = cmd_state.player
+    post_stat_points = int(state.player.stat_points)
+    stat_spent = max(0, pre_stat_points - post_stat_points)
+    if stat_spent > 0 and hasattr(ctx, "quests") and ctx.quests is not None:
+        quest_messages = handle_event(
+            state.player,
+            ctx.quests,
+            "spend_stat_points",
+            {"count": stat_spent},
+            ctx.items,
+            ctx.spells,
+            ctx.followers,
+            ctx.quest_objectives,
+            ctx.quest_events,
+        )
+        if quest_messages:
+            state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+            _open_quest_screen(ctx, state)
+        if hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
+        _append_debug_log(
+            f"stat_spent delta={stat_spent} pre={pre_stat_points} post={post_stat_points} q2={getattr(state.player,'quests',{}).get('island_01_quest_02',{})}"
+        )
     post_level = state.player.level
     post_location = state.player.location
     if pre_location != post_location and hasattr(ctx, "quests") and ctx.quests is not None:
@@ -2899,6 +2978,7 @@ def resolve_player_action(
             loot=state.loot_bank,
             spells_data=ctx.spells,
             items_data=ctx.items,
+            quests_data=getattr(ctx, "quests", None),
             followers_data=getattr(ctx, "followers", None),
             quest_objectives=getattr(ctx, "quest_objectives", None),
             quest_events=getattr(ctx, "quest_events", None),
@@ -3341,12 +3421,23 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
     state.battle_active = False
     if open_quest_screen:
         _open_quest_screen(ctx, state)
+    if state.player.flags.get("quest_open_pending"):
+        state.player.flags.pop("quest_open_pending", None)
+        _open_quest_screen(ctx, state)
+        _auto_open_next_quest_on_complete(ctx, state)
+        if hasattr(ctx, "save_data") and ctx.save_data:
+            ctx.save_data.save_player(state.player)
     if state.loot_bank["xp"] or state.loot_bank["gold"]:
         pre_level = state.player.level
-        levels_gained = state.player.gain_xp(state.loot_bank["xp"])
+        xp_multiplier = int(state.player.flags.get("xp_multiplier", 5) or 5)
+        if xp_multiplier not in (1, 2, 5, 10):
+            xp_multiplier = 5
+            state.player.flags["xp_multiplier"] = xp_multiplier
+        xp_total = int(state.loot_bank["xp"] * xp_multiplier)
+        levels_gained = state.player.gain_xp(xp_total)
         state.player.gold += state.loot_bank["gold"]
-        if state.player.followers and state.loot_bank["xp"] > 0:
-            share = int(state.loot_bank["xp"] * 0.5)
+        if state.player.followers and xp_total > 0:
+            share = int(xp_total * 0.5)
             if share > 0:
                 for follower in state.player.followers:
                     if not isinstance(follower, dict):
@@ -3393,7 +3484,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
                         bonus_text = " ".join(stat_parts) if stat_parts else "No stats"
                         push_battle_message(state, f"{name} leveled up to {level}! {bonus_text}")
         push_battle_message(state, (
-            f"You gain {state.loot_bank['xp']} XP and "
+            f"You gain {xp_total} XP and "
             f"{state.loot_bank['gold']} gold."
         ))
         if levels_gained > 0:
@@ -3415,6 +3506,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
                 push_battle_message(state, message)
             if quest_messages:
                 _open_quest_screen(ctx, state)
+                _auto_open_next_quest_on_complete(ctx, state)
         push_battle_message(state, "All is quiet. No enemies in sight.")
     else:
         state.last_message = ""

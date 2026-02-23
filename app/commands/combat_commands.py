@@ -134,5 +134,7 @@ def _handle_socialize(ctx: CommandContext) -> str:
             ctx.quest_objectives,
         )
         if quest_messages:
+            if any(str(msg).startswith("Quest complete:") for msg in quest_messages):
+                ctx.player.flags["quest_open_pending"] = True
             message = f"{message} " + " ".join(quest_messages)
     return message

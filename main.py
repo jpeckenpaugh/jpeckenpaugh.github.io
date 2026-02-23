@@ -22,12 +22,14 @@ from app.loop import (
     handle_offensive_action,
     map_input_to_command,
     maybe_begin_target_select,
+    _open_quest_screen,
     read_input,
     render_frame_state,
     run_target_select,
     run_opponent_turns,
     resolve_player_action,
 )
+from app.questing import handle_event
 from app.input import read_keypress, read_keypress_timeout
 from app.models import Player, Frame
 from app.player_sync import sync_player_elements
@@ -532,6 +534,24 @@ def main():
             after_points = getattr(state.player, "stat_points", 0)
             if after_points < before_points and hasattr(APP, "audio"):
                 APP.audio.play_sfx_once("point_added_sfx", "C4")
+            spent = max(0, int(before_points) - int(after_points))
+            if spent and hasattr(APP, "quests") and APP.quests is not None:
+                quest_messages = handle_event(
+                    state.player,
+                    APP.quests,
+                    "spend_stat_points",
+                    {"count": spent},
+                    APP.items,
+                    APP.spells,
+                    APP.followers,
+                    APP.quest_objectives,
+                    APP.quest_events,
+                )
+                if quest_messages:
+                    state.last_message = f"{state.last_message} " + " ".join(quest_messages)
+                    _open_quest_screen(APP, state)
+            if spent or leveling_done:
+                SAVE_DATA.save_player(state.player)
             if leveling_done:
                 state.leveling_mode = False
                 state.level_up_notes = []
