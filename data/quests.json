@@ -473,18 +473,27 @@
     "title": "Island 01 Quest 16",
     "continent": "base",
     "summary_pre": "Narration: You have proven yourself, so as promised, here is the \"Sprite Bite\" spell.  And since it was just a friendly fight, we will restore your HP and MP as well.",
-    "summary_active": "Player receives the Sprite Bite spell and full life/magic points.",
+    "summary_active": "Next Opponent player fights in the Forest will be the Giant Ogre.  Player must defeat Giant Ogre in battle.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "fairy",
+    "art_opponent": "ogre",
     "dialog": [
-      "Narration: You have proven yourself, so as promised, here is the \"Sprite Bite\" spell.  And since it was just a friendly fight, we will restore your HP and MP as well."
+      "Narration: You have proven yourself, so as promised, here is the \"Sprite Bite\" spell.  And since it was just a friendly fight, we will restore your HP and MP as well.",
+      "Narration: Now that we have aggreed to help you, there is something you can do for us.",
+      "There is a Giant Ogre who lives in these woods.  He recently stoll our mana stone.  This powerful relic can raise MP and magic power all at the same time.",
+      "His cave is nearby.  With our combined power, we should be able to defeat the Giant Ogre and his minions, and recover the mana stone."
     ],
     "requirements": {
       "flags_required": [
         "island_01_quest_14_complete"
       ]
     },
-    "objectives": [],
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "ogre",
+        "count": 1
+      }
+    ],
     "on_start_actions": [
       {
         "type": "set_flags",
@@ -502,40 +511,6 @@
         "flags": [
           "island_01_quest_16_complete"
         ]
-      }
-    ]
-  },
-  "island_01_quest_17": {
-    "title": "Island 01 Quest 17",
-    "continent": "base",
-    "summary_pre": "Narration: Now that we have aggreed to help you, there is something you can do for us.",
-    "summary_active": "Next Opponent player fights in the Forest will be the Giant Ogre.  Player must defeat Giant Ogre in battle.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "ogre",
-    "dialog": [
-      "Narration: Now that we have aggreed to help you, there is something you can do for us.",
-      "There is a Giant Ogre who lives in these woods.  He recently stoll our mana stone.  This powerful relic can raise MP and magic power all at the same time.",
-      "His cave is nearby.  With our combined power, we should be able to defeat the Giant Ogre and his minions, and recover the mana stone."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_16_complete"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "defeat_opponents",
-        "opponent_id": "ogre",
-        "count": 1
-      }
-    ],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_17_complete"
-        ]
       },
       {
         "type": "grant_items",
@@ -549,7 +524,7 @@
       }
     ],
     "trial": {
-      "scene_id": "island_01_quest_17_trial",
+      "scene_id": "island_01_quest_16_trial",
       "opponents": [
         {
           "opponent_id": "ogre",
@@ -573,7 +548,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_17_complete"
+        "island_01_quest_16_complete"
       ]
     },
     "objectives": [
