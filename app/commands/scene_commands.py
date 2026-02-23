@@ -28,10 +28,20 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
         charges = getattr(player, "wand_charges", lambda: {})()
         has_mp = any(int(v) > 0 for v in charges.values()) if isinstance(charges, dict) else False
     has_elements = len(getattr(player, "elements", []) or []) > 1
-    has_recruitable = any(
-        getattr(opponent, "recruitable", False) and opponent.hp > 0
-        for opponent in opponents
-    )
+    recruit_only_types = None
+    if isinstance(getattr(player, "flags", None), dict):
+        recruit_only_types = player.flags.get("recruit_only_types")
+    if not isinstance(recruit_only_types, list):
+        recruit_only_types = []
+    has_recruitable = False
+    if recruit_only_types:
+        for opponent in opponents:
+            if opponent.hp <= 0:
+                continue
+            follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
+            if follower_type in recruit_only_types:
+                has_recruitable = True
+                break
     has_fusion = False
     followers = getattr(player, "followers", [])
     if isinstance(followers, list):
@@ -48,17 +58,8 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
     in_temple = bool(getattr(player, "location", "") == "Town" and getattr(player, "current_venue_id", "") == "town_temple")
     can_recruit = False
     if has_recruitable:
-        min_cost = None
-        for opponent in opponents:
-            if not getattr(opponent, "recruitable", False) or opponent.hp <= 0:
-                continue
-            cost = int(getattr(opponent, "recruit_cost", 0) or 0)
-            if min_cost is None or cost < min_cost:
-                min_cost = cost
-        if min_cost is None:
-            min_cost = 0
         slots = getattr(player, "follower_slots_remaining", lambda: 0)()
-        can_recruit = slots > 0 and player.gold >= min_cost
+        can_recruit = slots > 0
     for cond in conditions:
         if cond == "has_opponents" and not has_opponents:
             return False

@@ -73,20 +73,13 @@ def _handle_socialize(ctx: CommandContext) -> str:
     recruit_only_types = None
     if isinstance(getattr(ctx.player, "flags", None), dict):
         recruit_only_types = ctx.player.flags.get("recruit_only_types")
-    if isinstance(recruit_only_types, list) and recruit_only_types:
-        if getattr(opponent, "follower_type", "") not in recruit_only_types:
-            return "Why would I want to join your group?"
-    if not getattr(opponent, "recruitable", False):
-        return f"The {opponent.name} shows no interest."
+    if not isinstance(recruit_only_types, list) or not recruit_only_types:
+        return "Recruiting is only possible during quests."
+    follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
+    if follower_type not in recruit_only_types:
+        return "Why would I want to join your group?"
     if getattr(ctx.player, "follower_slots_remaining", lambda: 0)() <= 0:
         return "You cannot lead more followers."
-    cost = int(getattr(opponent, "recruit_cost", 0) or 0)
-    if ctx.player.gold < cost:
-        return "Not enough GP."
-    ctx.player.gold -= cost
-    chance = float(getattr(opponent, "recruit_chance", 0.0) or 0.0)
-    if random.random() > chance:
-        return f"The {opponent.name} refuses your offer."
     follower_type = getattr(opponent, "follower_type", "") or opponent.name.lower()
     names = getattr(opponent, "follower_names", []) or []
     name = random.choice(names) if names else opponent.name

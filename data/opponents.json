@@ -161,9 +161,6 @@
       "atk": 120,
       "defense": 60,
       "action_chance": 1.1,
-      "recruitable": true,
-      "recruit_cost": 1000,
-      "recruit_chance": 0.9,
       "follower_type": "fairy",
       "follower_names": [
         "Aeri",
@@ -220,9 +217,6 @@
       "atk": 8,
       "defense": 8,
       "action_chance": 1.05,
-      "recruitable": true,
-      "recruit_cost": 60,
-      "recruit_chance": 0.9,
       "follower_type": "fairy_baby",
       "follower_names": [
         "Aeri",
@@ -263,7 +257,6 @@
       "atk": 14,
       "defense": 12,
       "action_chance": 1.1,
-      "recruitable": false,
       "desc": "A young fairy with growing confidence.",
       "arrival": "glimmers into view",
       "art": [
@@ -293,9 +286,6 @@
       "atk": 4,
       "defense": 5,
       "action_chance": 1.0,
-      "recruitable": true,
-      "recruit_cost": 40,
-      "recruit_chance": 0.9,
       "follower_type": "mushroom_baby",
       "follower_names": [
         "Sprout",
@@ -334,7 +324,6 @@
       "atk": 12,
       "defense": 9,
       "action_chance": 1.05,
-      "recruitable": false,
       "desc": "A young mushroom with steady resolve.",
       "arrival": "steps from the moss",
       "art": [
@@ -362,9 +351,6 @@
       "atk": 28,
       "defense": 16,
       "action_chance": 1.1,
-      "recruitable": true,
-      "recruit_cost": 140,
-      "recruit_chance": 0.65,
       "follower_type": "wolf",
       "follower_names": [
         "Ash",
@@ -413,9 +399,6 @@
       "atk": 14,
       "defense": 9,
       "action_chance": 1.05,
-      "recruitable": true,
-      "recruit_cost": 100,
-      "recruit_chance": 0.75,
       "follower_type": "wolf_pup",
       "follower_names": [
         "Ash",
@@ -493,7 +476,6 @@
       "atk": 10,
       "defense": 6,
       "action_chance": 0.85,
-      "recruitable": false,
       "desc": "A scrappy troll cub with a mean glare.",
       "arrival": "stomps in",
       "art": [
@@ -521,9 +503,6 @@
       "atk": 12,
       "defense": 8,
       "action_chance": 0.9,
-      "recruitable": true,
-      "recruit_cost": 12,
-      "recruit_chance": 0.5,
       "follower_type": "baby_ogre",
       "follower_names": [
         "Ogrito",
@@ -564,7 +543,6 @@
       "atk": 20,
       "defense": 15,
       "action_chance": 0.95,
-      "recruitable": false,
       "desc": "A hulking brute with a crushing grip.",
       "arrival": "lumbers into view",
       "art": [
@@ -600,7 +578,6 @@
       "atk": 18,
       "defense": 10,
       "action_chance": 1.0,
-      "recruitable": false,
       "desc": "A coiled menace with a venomous strike.",
       "arrival": "slithers into view",
       "art": [
