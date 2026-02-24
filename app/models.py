@@ -138,10 +138,10 @@ class Player:
             stat_points=int(data.get("stat_points", 0)),
             gold=int(data.get("gold", 10)),
             battle_speed=data.get("battle_speed", "normal"),
-            hp=int(data.get("hp", 50)),
-            max_hp=int(data.get("max_hp", 50)),
-            mp=int(data.get("mp", 10)),
-            max_mp=int(data.get("max_mp", 10)),
+            hp=int(data.get("hp", 20)),
+            max_hp=int(data.get("max_hp", 20)),
+            mp=int(data.get("mp", 0)),
+            max_mp=int(data.get("max_mp", 0)),
             atk=int(data.get("atk", 5)),
             defense=int(data.get("defense", 5)),
             location="Town",
@@ -952,22 +952,27 @@ class Player:
         points = self.stat_points
         if points <= 0:
             return
-        per_stat = points // 4
-        remainder = points % 4
+        allow_mp = bool(self.flags.get("enlightened_01", False))
+        stat_order = ["HP", "MP", "ATK", "DEF"] if allow_mp else ["HP", "ATK", "DEF"]
+        per_stat = points // len(stat_order)
+        remainder = points % len(stat_order)
         if per_stat > 0:
             self.max_hp += per_stat
             self.hp += per_stat
-            self.max_mp += per_stat
-            self.mp += per_stat
             self.atk += per_stat
             self.defense += per_stat
-        for stat in ["HP", "MP", "ATK", "DEF"][:remainder]:
+            if allow_mp:
+                self.max_mp += per_stat
+                self.mp += per_stat
+        for stat in stat_order[:remainder]:
             self.apply_stat_point(stat)
         self.stat_points = 0
 
     def allocate_random(self):
         import random
-        stats = ["HP", "MP", "ATK", "DEF"]
+        stats = ["HP", "ATK", "DEF"]
+        if self.flags.get("enlightened_01", False):
+            stats.append("MP")
         while self.stat_points > 0:
             self.apply_stat_point(random.choice(stats))
             self.stat_points -= 1

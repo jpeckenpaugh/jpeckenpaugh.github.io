@@ -9,16 +9,13 @@
     "dialog": [
       "You see a baby crow trying to snatch a tiny mushroom.",
       "Mushy: Hey!  Over here!  Please help me!",
-      "You look around and notice a shiny stone and a sharp stick on the ground.",
-      "Mushy: If you grab the shiny stone, I can fuse it with a branch and make you a magic staff.",
-      "Mushy: If you grab the sharp stick, I can carve it into a sturdy club for you.",
-      "Mushy: Either way, I can also brew a special tea to awaken your power.",
+      "You need to find something fast to scare away the crow...  You look around and notice a shiny stone and a sharp stick on the ground.",
       {
         "type": "choice",
         "prompt": "Which do you choose?",
         "options": [
           {
-            "label": "Shiny stone (Mystic)",
+            "label": "Pick up the shiny stone and throw it at the crow.",
             "actions": [
               {
                 "type": "use_item_actions",
@@ -40,12 +37,20 @@
               },
               {
                 "type": "show_message",
-                "message": "Mushy crafts a Mycostaff and you drink the Tea of Enlightenment."
+                "message": "Wow, with a nice magic crystal like this I can make you a staff."
+              },
+              {
+                "type": "show_message",
+                "message": "If you are brave enough to drink the Tea of Enlightenment, you can awaken your magic."
+              },
+              {
+                "type": "show_message",
+                "message": "Mystic path unlocked.  MP will now increase when you level up."
               }
             ]
           },
           {
-            "label": "Sharp stick (Fighter)",
+            "label": "Pick up a sharp stick and charge at the crow.",
             "actions": [
               {
                 "type": "use_item_actions",
@@ -67,13 +72,21 @@
               },
               {
                 "type": "show_message",
-                "message": "Mushy carves a Mycoclub and you drink the Tea of Empowerment."
+                "message": "That's one nice club you have there.  I can make it even stronger."
+              },
+              {
+                "type": "show_message",
+                "message": "Drink this Tea of Empowerment and your strength will surge."
+              },
+              {
+                "type": "show_message",
+                "message": "Fighter path unlocked.  Heavy gear will be within reach."
               }
             ]
           }
         ]
       },
-      "Mushy: Great!  Let's see what you can do with that new strength."
+      "Mushy: Great!  That stupid crow doesn't stand a chance now!"
     ],
     "requirements": {
       "flags_required": [],

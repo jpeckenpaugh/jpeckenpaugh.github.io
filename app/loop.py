@@ -991,6 +991,21 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             if not isinstance(dialog, list):
                 dialog = []
             dialog_entries = [entry for entry in dialog if entry is not None]
+            flags = getattr(state.player, "flags", {})
+            choice_messages = {}
+            if isinstance(flags, dict):
+                choice_messages = flags.get("choice_messages", {})
+            if not isinstance(choice_messages, dict):
+                choice_messages = {}
+            if choice_messages:
+                expanded = []
+                for idx, entry in enumerate(dialog_entries):
+                    expanded.append(entry)
+                    key = f"choice:{state.quest_detail_id}:{idx}"
+                    extra = choice_messages.get(key)
+                    if isinstance(extra, list) and extra:
+                        expanded.extend([str(line) for line in extra if line is not None])
+                dialog_entries = expanded
             total_pages = max(1, len(dialog_entries))
             state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
             current_entry = dialog_entries[state.quest_detail_page] if dialog_entries else None
@@ -1040,8 +1055,16 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                             state.last_message = error or "Unable to apply choice."
                             return None, None
                         label = str(choice.get("label", "") or "").strip()
-                        if messages:
-                            state.last_message = " ".join(str(m) for m in messages if m)
+                        if isinstance(messages, dict):
+                            msg_lines = messages.get("messages", [])
+                            if isinstance(msg_lines, list) and msg_lines:
+                                choice_messages = flags.get("choice_messages")
+                                if not isinstance(choice_messages, dict):
+                                    choice_messages = {}
+                                    flags["choice_messages"] = choice_messages
+                                choice_messages[choice_key] = [str(m) for m in msg_lines if m]
+                            elif label:
+                                state.last_message = f"You chose: {label}."
                         elif label:
                             state.last_message = f"You chose: {label}."
                         flags[choice_key] = label or str(state.action_cursor)

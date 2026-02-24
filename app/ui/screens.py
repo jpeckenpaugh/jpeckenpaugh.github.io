@@ -1144,6 +1144,21 @@ def generate_frame(
             if not isinstance(dialog, list):
                 dialog = []
             dialog_entries = [entry for entry in dialog if entry is not None]
+            flags = getattr(player, "flags", {})
+            choice_messages = {}
+            if isinstance(flags, dict):
+                choice_messages = flags.get("choice_messages", {})
+            if not isinstance(choice_messages, dict):
+                choice_messages = {}
+            if choice_messages and quest_detail_id:
+                expanded = []
+                for idx, entry in enumerate(dialog_entries):
+                    expanded.append(entry)
+                    key = f"choice:{quest_detail_id}:{idx}"
+                    extra = choice_messages.get(key)
+                    if isinstance(extra, list) and extra:
+                        expanded.extend([str(line) for line in extra if line is not None])
+                dialog_entries = expanded
             dialog_lines = []
             for entry in dialog_entries:
                 if isinstance(entry, dict) and entry.get("type") == "choice":
