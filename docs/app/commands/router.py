@@ -1290,6 +1290,15 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
         total_level = int(getattr(state.player, "level", 1) or 1) + follower_levels
         trial_entry = _active_trial(ctx, state)
         trial = trial_entry.get("trial") if isinstance(trial_entry, dict) else None
+        recruit_only_types = None
+        recruit_weights = None
+        if isinstance(getattr(state.player, "flags", None), dict):
+            recruit_only_types = state.player.flags.get("recruit_only_types")
+            recruit_weights = state.player.flags.get("recruit_spawn_weights")
+        if not isinstance(recruit_only_types, list):
+            recruit_only_types = []
+        if not isinstance(recruit_weights, dict):
+            recruit_weights = {}
         if isinstance(trial, dict):
             state.opponents = _trial_opponents(ctx, trial)
             trial_id = str(trial.get("scene_id", "") or "")
@@ -1298,16 +1307,34 @@ def _enter_scene(scene_id: str, state: CommandState, ctx: RouterContext) -> bool
                 state.opponents = ctx.opponents_data.spawn(
                     total_level,
                     ANSI.FG_WHITE,
-                    element=getattr(state.player, "current_element", "base")
+                    element=getattr(state.player, "current_element", "base"),
+                    recruit_only_types=recruit_only_types,
+                    recruit_spawn_weights=recruit_weights,
                 )
                 state.battle_trial_id = None
         else:
             state.opponents = ctx.opponents_data.spawn(
                 total_level,
                 ANSI.FG_WHITE,
-                element=getattr(state.player, "current_element", "base")
+                element=getattr(state.player, "current_element", "base"),
+                recruit_only_types=recruit_only_types,
+                recruit_spawn_weights=recruit_weights,
             )
             state.battle_trial_id = None
+        if recruit_only_types and state.opponents:
+            seen = set()
+            for opp in state.opponents:
+                follower_type = getattr(opp, "follower_type", "") or opp.name.lower()
+                if follower_type:
+                    seen.add(follower_type)
+            for rtype in recruit_only_types:
+                current = int(recruit_weights.get(rtype, 1) or 1)
+                if rtype in seen:
+                    recruit_weights[rtype] = 1
+                else:
+                    recruit_weights[rtype] = current + 1
+            if isinstance(getattr(state.player, "flags", None), dict):
+                state.player.flags["recruit_spawn_weights"] = recruit_weights
         state.loot_bank = {"xp": 0, "gold": 0}
         if state.opponents:
             state.last_message = f"A {state.opponents[0].name} appears."

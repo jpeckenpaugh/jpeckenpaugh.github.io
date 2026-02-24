@@ -241,12 +241,18 @@ def _apply_set_recruit_only(player: Player, action: dict, ctx: Dict[str, Any], e
     types = action.get("types", [])
     if not isinstance(types, list):
         return None
-    player.flags["recruit_only_types"] = [str(t) for t in types if t]
+    recruit_types = [str(t) for t in types if t]
+    player.flags["recruit_only_types"] = recruit_types
+    weights = {}
+    for t in recruit_types:
+        weights[t] = 1
+    player.flags["recruit_spawn_weights"] = weights
     return None
 
 
 def _apply_clear_recruit_only(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
     player.flags.pop("recruit_only_types", None)
+    player.flags.pop("recruit_spawn_weights", None)
     return None
 
 
