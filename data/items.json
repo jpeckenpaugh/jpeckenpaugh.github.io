@@ -31,6 +31,40 @@
     "price": 5,
     "desc": "A simple mushroom tea, that grants a small bit of vitality."
   },
+  "tea_enlightenment": {
+    "name": "Tea of Enlightenment",
+    "type": "quest",
+    "price": 0,
+    "desc": "A rare mushroom tea that awakens arcane potential.",
+    "use_actions": [
+      {
+        "type": "grant_mp_bonus",
+        "amount": 10
+      },
+      {
+        "type": "grant_stats",
+        "stats": {
+          "defense": 5
+        }
+      }
+    ]
+  },
+  "tea_empowerment": {
+    "name": "Tea of Empowerment",
+    "type": "quest",
+    "price": 0,
+    "desc": "A bold mushroom tea that hardens the body and will.",
+    "use_actions": [
+      {
+        "type": "grant_stats",
+        "stats": {
+          "max_hp": 5,
+          "atk": 10,
+          "defense": 5
+        }
+      }
+    ]
+  },
   "fairy_tea": {
     "name": "Fairy Tea",
     "type": "healing",

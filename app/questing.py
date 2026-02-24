@@ -99,6 +99,13 @@ def _objectives_met(player: Player, progress: dict, objectives: Iterable[dict], 
             if not _equip_slots_complete(player, obj):
                 return False
             continue
+        if completion == "flag_any":
+            flags_any = obj.get("flags_any", [])
+            if not isinstance(flags_any, list) or not flags_any:
+                return False
+            if not any(player.flags.get(str(flag), False) for flag in flags_any):
+                return False
+            continue
         if completion == "reach_level":
             target_level = int(obj.get("level", 0) or 0)
             if int(player.level) < target_level:
@@ -171,6 +178,8 @@ def _action_handlers() -> Dict[str, ActionHandler]:
         "grant_items": {"apply": _apply_grant_items},
         "grant_xp": {"apply": _apply_grant_xp},
         "grant_mp_bonus": {"apply": _apply_grant_mp_bonus},
+        "grant_stats": {"apply": _apply_grant_stats},
+        "use_item_actions": {"apply": _apply_use_item_actions},
         "grant_spell_rank_up": {"apply": _apply_grant_spell_rank_up},
         "grant_followers": {"apply": _apply_grant_followers},
         "restore_full": {"apply": _apply_restore_full},
@@ -352,6 +361,67 @@ def _apply_grant_mp_bonus(player: Player, action: dict, ctx: Dict[str, Any], eff
         return None
     player.max_mp += bonus
     player.mp += bonus
+    return None
+
+
+def _apply_grant_stats(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    stats = action.get("stats", {})
+    if not isinstance(stats, dict):
+        return None
+    atk = int(stats.get("atk", 0) or 0)
+    defense = int(stats.get("defense", 0) or 0)
+    max_hp = int(stats.get("max_hp", 0) or 0)
+    max_mp = int(stats.get("max_mp", 0) or 0)
+    hp = int(stats.get("hp", 0) or 0)
+    mp = int(stats.get("mp", 0) or 0)
+    if atk:
+        player.atk += atk
+    if defense:
+        player.defense += defense
+    if max_hp:
+        player.max_hp += max_hp
+        player.hp += max_hp
+    if max_mp:
+        player.max_mp += max_mp
+        player.mp += max_mp
+    if hp:
+        player.hp = min(player.total_max_hp(), player.hp + hp)
+    if mp:
+        player.mp = min(player.total_max_mp(), player.mp + mp)
+    return None
+
+
+def _apply_use_item_actions(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
+    item_id = str(action.get("item_id", "") or "")
+    if not item_id:
+        return None
+    items_data = ctx.get("items_data")
+    if items_data is None:
+        return None
+    item = items_data.get(item_id, {}) if hasattr(items_data, "get") else {}
+    if not isinstance(item, dict):
+        return None
+    actions = item.get("use_actions", [])
+    if not isinstance(actions, list) or not actions:
+        return None
+    ok, error, sub_effects = apply_actions(
+        player,
+        actions,
+        items_data=ctx.get("items_data"),
+        spells_data=ctx.get("spells_data"),
+        followers_data=ctx.get("followers_data"),
+        quests_data=ctx.get("quests_data"),
+        objectives_data=ctx.get("objectives_data"),
+        events_data=ctx.get("events_data"),
+    )
+    if error:
+        return error
+    if isinstance(sub_effects, dict):
+        effects["xp_gain"] = effects.get("xp_gain", 0) + int(sub_effects.get("xp_gain", 0) or 0)
+        effects["levels_gained"] = effects.get("levels_gained", 0) + int(sub_effects.get("levels_gained", 0) or 0)
+        messages = sub_effects.get("messages", [])
+        if isinstance(messages, list) and messages:
+            effects["messages"] = effects.get("messages", []) + messages
     return None
 
 

@@ -3,6 +3,8 @@
     "title": "First Lessons",
     "intro": "A mushroom companion warns that the forest will shred an unprepared traveler. With basic white magic, a level 1 fighter can stand a chance.",
     "quests": [
+      "island_01_quest_00a",
+      "island_01_quest_00b",
       "island_01_quest_01a",
       "island_01_quest_01b",
       "island_01_quest_01c",

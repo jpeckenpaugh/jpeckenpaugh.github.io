@@ -99,5 +99,8 @@
   },
   "reach_level": {
     "completion": "reach_level"
+  },
+  "flag_any": {
+    "completion": "flag_any"
   }
 }

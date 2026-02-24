@@ -1,47 +1,35 @@
 {
-  "island_01_quest_01a": {
-    "title": "Once upon a time...",
+  "island_01_quest_00a": {
+    "title": "A Crow and a Mushroom",
     "continent": "base",
-    "summary_pre": "What did that mushroom just say again?",
-    "summary_active": "Use the 'Strengthen' spell to overpower your attack, and loot some opponents.",
+    "summary_pre": "A baby crow is about to snatch a tiny mushroom.",
+    "summary_active": "Choose a tool and a tea to define your path.",
     "summary_complete": "Quest complete.",
-    "art_opponent": "mushroom_baby",
+    "art_opponent": "baby_crow",
     "dialog": [
-      "You see a young mushroom and a crow fighting one another.",
+      "You see a baby crow trying to snatch a tiny mushroom.",
+      "Mushy: Hey!  Over here!  Please help me!",
+      "You look around and notice a shiny stone and a sharp stick on the ground.",
+      "Mushy: If you grab the shiny stone, I can fuse it with a branch and make you a magic staff.",
+      "Mushy: If you grab the sharp stick, I can carve it into a sturdy club for you.",
+      "Mushy: Either way, I can also brew a special tea to awaken your power.",
       {
         "type": "choice",
-        "prompt": "How do you step in?",
+        "prompt": "Which do you choose?",
         "options": [
           {
-            "label": "Throw rocks at the crow (Fighter)",
+            "label": "Shiny stone (Mystic)",
             "actions": [
               {
-                "type": "set_flags",
-                "flags": [
-                  "path_fighter"
-                ]
+                "type": "use_item_actions",
+                "item_id": "tea_enlightenment"
               },
               {
-                "type": "grant_items",
-                "items": [
-                  "mycoclub",
-                  "mycoshield"
-                ]
-              },
-              {
-                "type": "show_message",
-                "message": "You chose the Fighter path."
-              }
-            ]
-          },
-          {
-            "label": "Grab a stick and charge (Mystic)",
-            "actions": [
-              {
-                "type": "set_flags",
-                "flags": [
-                  "path_mystic"
-                ]
+                "type": "set_flag_values",
+                "values": {
+                  "enlightened_01": true,
+                  "empowered_01": false
+                }
               },
               {
                 "type": "grant_items",
@@ -52,12 +40,130 @@
               },
               {
                 "type": "show_message",
-                "message": "You chose the Mystic path."
+                "message": "Mushy crafts a Mycostaff and you drink the Tea of Enlightenment."
+              }
+            ]
+          },
+          {
+            "label": "Sharp stick (Fighter)",
+            "actions": [
+              {
+                "type": "use_item_actions",
+                "item_id": "tea_empowerment"
+              },
+              {
+                "type": "set_flag_values",
+                "values": {
+                  "empowered_01": true,
+                  "enlightened_01": false
+                }
+              },
+              {
+                "type": "grant_items",
+                "items": [
+                  "mycoclub",
+                  "mycoshield"
+                ]
+              },
+              {
+                "type": "show_message",
+                "message": "Mushy carves a Mycoclub and you drink the Tea of Empowerment."
               }
             ]
           }
         ]
       },
+      "Mushy: Great!  Let's see what you can do with that new strength."
+    ],
+    "requirements": {
+      "flags_required": [],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "enlightened_01",
+          "empowered_01"
+        ]
+      }
+    ],
+    "on_start_actions": [],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_00a_complete"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_00b": {
+    "title": "Crow Ambush",
+    "continent": "base",
+    "summary_pre": "The baby crow returns with allies.",
+    "summary_active": "Defeat the baby crows threatening Mushy.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "dialog": [
+      "Mushy: Uh oh... I recognize that sound.",
+      "Narration: The baby crow returns with three more crows!",
+      "Mushy: Use your new tool to fend them off!"
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_00a_complete"
+      ]
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 4
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "show_message",
+        "message": "Mushy: You did it!  We scared them off for good."
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_00b_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 40
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00b_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 4
+        }
+      ]
+    }
+  },
+  "island_01_quest_01a": {
+    "title": "Once upon a time...",
+    "continent": "base",
+    "summary_pre": "What did that mushroom just say again?",
+    "summary_active": "Use the 'Strengthen' spell to overpower your attack, and loot some opponents.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "mushroom_baby",
+    "dialog": [
+      "You see a young mushroom and a crow fighting one another.",
       "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
       "On our own, neither of us is strong enough to take on the monsters around here, but I have a little secret.",
       "I have a magic mushroom tea, and it is able to open your mind and allow you to understand basic magic.",
@@ -69,7 +175,9 @@
       "Player will need to kill approximately 10 enemies to gain level 2."
     ],
     "requirements": {
-      "flags_required": [],
+      "flags_required": [
+        "island_01_quest_00b_complete"
+      ],
       "level_min": 1
     },
     "objectives": [

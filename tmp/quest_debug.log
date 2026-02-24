@@ -2314,3 +2314,7 @@
 [23:12:07] temp_set temp_def_bonus from=14 to=13
 [23:12:16] temp_set temp_atk_bonus from=23 to=22
 [23:12:16] temp_set temp_def_bonus from=13 to=12
+[00:04:15] quest_start quest_id=island_01_quest_00a pending_level_up=False stat_points=0
+[00:04:29] quest_start quest_id=island_01_quest_00b pending_level_up=False stat_points=0
+[00:04:29] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[00:04:29] ui_hint done loc=Forest quest_mode=False cursor=0

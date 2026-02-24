@@ -994,6 +994,8 @@ class Player:
                     self.spend_stat_point("HP")
                     message = "HP increased by 1."
                 elif cmd == "NUM2":
+                    if not self.flags.get("enlightened_01", False):
+                        return "MP allocation is locked.", False
                     self.spend_stat_point("MP")
                     message = "MP increased by 1."
                 elif cmd == "NUM3":

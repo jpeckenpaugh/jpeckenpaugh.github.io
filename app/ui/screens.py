@@ -1051,9 +1051,10 @@ def generate_frame(
     art_lines = []
     art_color = ANSI.FG_WHITE
     if leveling_mode:
+        mp_locked = not player.flags.get("enlightened_01", False)
         level_options = [
             "  +HP",
-            "  +MP",
+            "  +MP (Locked)" if mp_locked else "  +MP",
             "  +ATK",
             "  +DEF",
             "  Balanced allocation",
