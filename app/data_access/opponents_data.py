@@ -158,7 +158,9 @@ class OpponentsData:
         self,
         player_level: int,
         art_color: str,
-        element: str = "base"
+        element: str = "base",
+        recruit_only_types: Optional[List[str]] = None,
+        recruit_spawn_weights: Optional[Dict[str, int]] = None,
     ) -> List[Opponent]:
         if not self._opponents:
             return []
@@ -182,7 +184,17 @@ class OpponentsData:
             choices = [c for c in eligible if int(c.get("level", 1)) <= remaining]
             if not choices:
                 break
-            data = random.choice(choices)
+            if recruit_only_types:
+                weights = []
+                for candidate in choices:
+                    follower_type = candidate.get("follower_type") or str(candidate.get("name", "")).lower()
+                    weight = 1
+                    if follower_type in recruit_only_types:
+                        weight = int((recruit_spawn_weights or {}).get(follower_type, 1) or 1)
+                    weights.append(max(1, weight))
+                data = random.choices(choices, weights=weights, k=1)[0]
+            else:
+                data = random.choice(choices)
             spawned.append(self.create(data, art_color))
             total_level += int(data.get("level", 1))
         return spawned

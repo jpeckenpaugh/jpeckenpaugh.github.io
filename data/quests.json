@@ -240,6 +240,11 @@
         "required": true
       },
       {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      },
+      {
         "type": "set_recruit_only_types",
         "types": [
           "wolf_pup"
@@ -278,7 +283,13 @@
         "count": 3
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "town",
+        "action_label": "Temple"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "set_flags",
@@ -319,7 +330,13 @@
         "count": 4
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "set_flags",
@@ -378,6 +395,11 @@
         ]
       },
       {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      },
+      {
         "type": "set_recruit_only_types",
         "types": [
           "fairy_baby"
@@ -424,7 +446,13 @@
         "count": 3
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "town",
+        "action_label": "Temple"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "clear_recruit_only_types"
@@ -468,7 +496,13 @@
         "count": 4
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "set_flags",
@@ -522,6 +556,11 @@
         "flags": [
           "spell_sprite_bite_enabled"
         ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
       },
       {
         "type": "restore_full"
@@ -580,7 +619,13 @@
         "count": 1
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_label": "Items"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "set_flags",
@@ -635,6 +680,11 @@
           "count_as_recruit": true
         },
         "required": true
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
       },
       {
         "type": "set_recruit_only_types",
@@ -718,7 +768,13 @@
         "count": 1
       }
     ],
-    "on_start_actions": [],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
     "on_complete_actions": [
       {
         "type": "set_flags",
@@ -813,6 +869,11 @@
         "flags": [
           "spell_animal_instincts_enabled"
         ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "SPELLBOOK"
       }
     ],
     "on_complete_actions": [
