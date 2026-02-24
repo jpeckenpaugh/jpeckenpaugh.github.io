@@ -1563,11 +1563,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         base_cost = int(spell.get("mp_cost", 0)) if isinstance(spell, dict) else 0
         element = spell.get("element") if isinstance(spell, dict) else None
         has_charge = False
+        has_imbued = False
         if element:
             charges = state.player.wand_charges()
             has_charge = int(charges.get(str(element), 0)) > 0
+        if spell_id:
+            has_imbued = state.player.imbued_spell_charges(spell_id) > 0
         max_affordable = max_rank
-        if not has_charge and base_cost > 0:
+        if not has_charge and not has_imbued and base_cost > 0:
             max_affordable = min(max_rank, state.player.mp // base_cost)
         if max_affordable >= 1 and state.spell_cast_rank > max_affordable:
             state.spell_cast_rank = max_affordable
@@ -1582,11 +1585,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 base_cost = int(spell.get("mp_cost", 0))
                 element = spell.get("element")
                 has_charge = False
+                has_imbued = False
                 if element:
                     charges = state.player.wand_charges()
                     has_charge = int(charges.get(str(element), 0)) > 0
+                if spell_id:
+                    has_imbued = state.player.imbued_spell_charges(spell_id) > 0
                 max_affordable = max_rank
-                if not has_charge and base_cost > 0:
+                if not has_charge and not has_imbued and base_cost > 0:
                     max_affordable = min(max_rank, state.player.mp // base_cost)
                 state.spell_cast_rank = max(1, max_affordable) if max_affordable >= 1 else 1
             return None, None
@@ -3015,11 +3021,14 @@ def apply_router_command(
                 base_cost = int(spell.get("mp_cost", 0))
                 element = spell.get("element")
                 has_charge = False
+                has_imbued = False
                 if element:
                     charges = state.player.wand_charges()
                     has_charge = int(charges.get(str(element), 0)) > 0
+                if spell_id:
+                    has_imbued = state.player.imbued_spell_charges(spell_id) > 0
                 max_affordable = max_rank
-                if not has_charge and base_cost > 0:
+                if not has_charge and not has_imbued and base_cost > 0:
                     max_affordable = min(max_rank, state.player.mp // base_cost)
                 state.spell_cast_rank = max(1, max_affordable) if max_affordable >= 1 else 1
     if cmd == "ENTER_VENUE":
@@ -3167,11 +3176,14 @@ def resolve_player_action(
             state.last_message = f"{name} fizzles with no effect."
             return None
         has_charge = False
+        has_imbued = False
         if element:
             charges = state.player.wand_charges()
             has_charge = int(charges.get(str(element), 0)) > 0
+        if spell_id:
+            has_imbued = state.player.imbued_spell_charges(spell_id) > 0
         max_affordable = max_rank
-        if not has_charge and base_cost > 0:
+        if not has_charge and not has_imbued and base_cost > 0:
             max_affordable = min(max_rank, state.player.mp // base_cost)
         if max_affordable < 1:
             state.last_message = f"Not enough MP to cast {name}."
@@ -3196,14 +3208,17 @@ def resolve_player_action(
             if state.player.flags.get("next_battle_preemptive"):
                 state.last_message = "Your senses are already sharpened for the next battle."
                 return None
+            used_imbued = False
+            if spell_id:
+                used_imbued = state.player.consume_imbued_spell_charge(spell_id)
             used_charge = False
-            if element:
+            if not used_imbued and element:
                 used_charge = state.player.consume_wand_charge(str(element))
-            if not used_charge:
+            if not used_imbued and not used_charge:
                 if state.player.mp < base_cost:
                     state.last_message = f"Not enough MP to cast {name}."
                     return None
-            state.player.mp -= base_cost
+                state.player.mp -= base_cost
             state.player.flags["next_battle_preemptive"] = True
             state.last_message = f"You cast {name}."
             if hasattr(ctx, "audio"):
@@ -3248,14 +3263,17 @@ def resolve_player_action(
                 else:
                     state.last_message = "HP and MP are already full."
                     return None
+            used_imbued = False
+            if spell_id:
+                used_imbued = state.player.consume_imbued_spell_charge(spell_id)
             used_charge = False
-            if element:
+            if not used_imbued and element:
                 used_charge = state.player.consume_wand_charge(str(element))
-            if not used_charge:
+            if not used_imbued and not used_charge:
                 if state.player.mp < base_cost:
                     state.last_message = f"Not enough MP to cast {name}."
                     return None
-            state.player.mp -= base_cost
+                state.player.mp -= base_cost
             state.last_team_target_player = (target_type == "player")
             if effect_kind == "heal":
                 hp_per_rank = int(effect_cfg.get("hp_per_rank", 0) or 0)
@@ -3342,9 +3360,12 @@ def resolve_player_action(
                     _open_quest_screen(ctx, state)
             return cmd
         mp_cost = base_cost * max(1, rank)
-        if state.player.mp < mp_cost and not has_charge:
+        if state.player.mp < mp_cost and not has_charge and not has_imbued:
             state.last_message = f"Not enough MP to cast {name}."
             return None
+        used_imbued = False
+        if spell_id:
+            used_imbued = state.player.consume_imbued_spell_charge(spell_id)
         message = cast_spell(
             state.player,
             state.opponents,
@@ -3353,6 +3374,7 @@ def resolve_player_action(
             loot=state.loot_bank,
             target_index=state.target_index,
             rank=rank,
+            skip_cost=used_imbued,
         )
         if hasattr(ctx, "audio"):
             ctx.audio.play_sfx_once("spell_down", "C4")

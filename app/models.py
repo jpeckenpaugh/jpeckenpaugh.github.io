@@ -248,6 +248,24 @@ class Player:
         }
         if overrides:
             instance.update(overrides)
+        imbued = item.get("imbued_spells", [])
+        if isinstance(imbued, list) and imbued:
+            imbued_entries = []
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                spell_id = str(entry.get("spell_id", "") or "")
+                if not spell_id:
+                    continue
+                charges = int(entry.get("charges", 0) or 0)
+                imbued_entries.append({
+                    "spell_id": spell_id,
+                    "charges": charges,
+                    "max_charges": charges,
+                    "restore": str(entry.get("restore", "inn") or "inn"),
+                })
+            if imbued_entries:
+                instance["imbued_spells"] = imbued_entries
         if instance.get("slot") == "wand":
             charges = self._charges_from_points(instance.get("elem_points", {}))
             instance["charges"] = charges.copy()
@@ -697,6 +715,42 @@ class Player:
                 charges = self._charges_from_points(points)
                 gear["charges"] = charges.copy()
                 gear["max_charges"] = charges.copy()
+        for gear in self.gear_inventory:
+            if not isinstance(gear, dict):
+                continue
+            item_id = gear.get("item_id")
+            if not item_id:
+                continue
+            item = items_data.get(item_id, {})
+            imbued = item.get("imbued_spells", []) if isinstance(item, dict) else []
+            if not isinstance(imbued, list) or not imbued:
+                continue
+            current = gear.get("imbued_spells")
+            if not isinstance(current, list) or not current:
+                imbued_entries = []
+                for entry in imbued:
+                    if not isinstance(entry, dict):
+                        continue
+                    spell_id = str(entry.get("spell_id", "") or "")
+                    if not spell_id:
+                        continue
+                    charges = int(entry.get("charges", 0) or 0)
+                    imbued_entries.append({
+                        "spell_id": spell_id,
+                        "charges": charges,
+                        "max_charges": charges,
+                        "restore": str(entry.get("restore", "inn") or "inn"),
+                    })
+                if imbued_entries:
+                    gear["imbued_spells"] = imbued_entries
+            else:
+                for entry in current:
+                    if not isinstance(entry, dict):
+                        continue
+                    if "max_charges" not in entry:
+                        entry["max_charges"] = int(entry.get("charges", 0) or 0)
+                    if "restore" not in entry:
+                        entry["restore"] = "inn"
         cleaned = {}
         for slot, gear_id in self.equipment.items():
             if isinstance(gear_id, str) and gear_id.startswith("g"):
@@ -844,6 +898,67 @@ class Player:
         charges[element] = current - 1
         gear["charges"] = charges
         return True
+
+    def imbued_spell_charges(self, spell_id: str) -> int:
+        if not spell_id or not isinstance(self.equipment, dict):
+            return 0
+        total = 0
+        for gear_id in self.equipment.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            imbued = gear.get("imbued_spells", [])
+            if not isinstance(imbued, list):
+                continue
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                if str(entry.get("spell_id", "")) != str(spell_id):
+                    continue
+                total += int(entry.get("charges", 0) or 0)
+        return total
+
+    def consume_imbued_spell_charge(self, spell_id: str) -> bool:
+        if not spell_id or not isinstance(self.equipment, dict):
+            return False
+        for gear_id in self.equipment.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            imbued = gear.get("imbued_spells", [])
+            if not isinstance(imbued, list):
+                continue
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                if str(entry.get("spell_id", "")) != str(spell_id):
+                    continue
+                current = int(entry.get("charges", 0) or 0)
+                if current <= 0:
+                    continue
+                entry["charges"] = current - 1
+                return True
+        return False
+
+    def recharge_imbued_spells(self) -> None:
+        if not isinstance(self.equipment, dict):
+            return
+        for gear_id in self.equipment.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            imbued = gear.get("imbued_spells", [])
+            if not isinstance(imbued, list):
+                continue
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                restore = str(entry.get("restore", "inn") or "inn")
+                if restore != "inn":
+                    continue
+                max_charges = int(entry.get("max_charges", entry.get("charges", 0) or 0) or 0)
+                entry["max_charges"] = max_charges
+                entry["charges"] = max_charges
 
     def recharge_wands(self, overcharge: bool = False) -> None:
         gear_id = self.equipment.get("wand")

@@ -134,6 +134,40 @@
     },
     "effect_id": "elemental_damage"
   },
+  "astral_backhand": {
+    "name": "Astral Backhand",
+    "command_id": "ASTRAL_BACKHAND",
+    "anim": "flash_melt",
+    "mp_cost": 2,
+    "requires_target": true,
+    "class": "elemental",
+    "element": "base",
+    "level_required": 1,
+    "atk_bonus": 10,
+    "stun_chance": 0.1,
+    "rank3_damage_mult": 1.1,
+    "rank3_stun_bonus": 0.05,
+    "overlay_color_key_rank2": "w",
+    "overlay_color_key_rank3": "W",
+    "effect_loops_rank2": 3,
+    "effect_loops_rank3": 4,
+    "desc": "This blast of energy feels like a slap to the face, so watch out.",
+    "effect": {
+      "type": "overlay",
+      "color_key": "w",
+      "variation": 0.12,
+      "jitter_stability": false,
+      "loops": 2,
+      "frame_delay": 0.06,
+      "art_id": "energy"
+    },
+    "unlock": {
+      "flags_any": [
+        "spell_astral_backhand_enabled"
+      ]
+    },
+    "effect_id": "elemental_damage"
+  },
   "tornado": {
     "name": "Tornado",
     "command_id": "TORNADO",
@@ -187,6 +221,26 @@
       ]
     },
     "effect_id": "support_boost"
+  },
+  "harden": {
+    "name": "Harden",
+    "command_id": "HARDEN",
+    "anim": "flash_melt",
+    "mp_cost": 2,
+    "requires_target": false,
+    "class": "support",
+    "element": "base",
+    "level_required": 0,
+    "effect_loops_rank2": 3,
+    "effect_loops_rank3": 4,
+    "art_id": "potion",
+    "desc": "Raise DEF (6-8) with a brief surge.",
+    "unlock": {
+      "flags_any": [
+        "spell_harden_enabled"
+      ]
+    },
+    "effect_id": "support_harden"
   },
   "tide": {
     "name": "Tide",

@@ -136,14 +136,16 @@
   "mycoclub": {
     "name": "Mycoclub",
     "type": "gear",
-    "slot": "wand",
-    "element": "base",
+    "slot": "sword",
     "atk": 5,
     "defense": 0,
     "price": 0,
-    "elem_points": {
-      "base": 6
-    },
+    "imbued_spells": [
+      {
+        "spell_id": "strength",
+        "charges": 2
+      }
+    ],
     "desc": "A dense fungal club that hums with earthy power."
   },
   "mycoshield": {
@@ -154,6 +156,12 @@
     "defense": 5,
     "hp_bonus": 5,
     "price": 0,
+    "imbued_spells": [
+      {
+        "spell_id": "healing",
+        "charges": 2
+      }
+    ],
     "desc": "A thick fungal shield that bolsters your vitality."
   },
   "mycostaff": {
@@ -168,6 +176,12 @@
     "elem_points": {
       "base": 12
     },
+    "imbued_spells": [
+      {
+        "spell_id": "astral_backhand",
+        "charges": 5
+      }
+    ],
     "desc": "A mystic staff that deepens your mana reserves."
   },
   "mycocape": {
@@ -180,6 +194,16 @@
     "mp_bonus": 3,
     "mp_regen": 1,
     "price": 0,
+    "imbued_spells": [
+      {
+        "spell_id": "healing",
+        "charges": 2
+      },
+      {
+        "spell_id": "harden",
+        "charges": 2
+      }
+    ],
     "desc": "A cloak of spores that restores mana in battle."
   },
   "lightning_ring": {

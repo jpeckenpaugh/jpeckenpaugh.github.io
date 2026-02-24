@@ -66,16 +66,19 @@ def cast_spell(
     effect: dict,
     loot: dict,
     target_index: Optional[int] = None,
-    rank: int = 1
+    rank: int = 1,
+    *,
+    skip_cost: bool = False
 ) -> str:
     name = spell.get("name", "Spell")
     mp_cost = int(spell.get("mp_cost", 2)) * max(1, rank)
     element = spell.get("element")
     used_charge = False
-    if element:
-        used_charge = player.consume_wand_charge(str(element))
-    if not used_charge and player.mp < mp_cost:
-        return f"Not enough MP to cast {name}."
+    if not skip_cost:
+        if element:
+            used_charge = player.consume_wand_charge(str(element))
+        if not used_charge and player.mp < mp_cost:
+            return f"Not enough MP to cast {name}."
 
     if effect.get("kind") == "damage":
         targets: List[Opponent] = []
@@ -94,7 +97,7 @@ def cast_spell(
                 targets = [opponent]
         if not targets:
             return "There is nothing to target."
-        if not used_charge:
+        if not used_charge and not skip_cost:
             player.mp -= mp_cost
         atk_bonus_key = str(effect.get("atk_bonus_key", "atk_bonus") or "atk_bonus")
         atk_bonus = int(spell.get(atk_bonus_key, 2))

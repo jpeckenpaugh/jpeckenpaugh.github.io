@@ -753,6 +753,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         if service_type in ("rest", "meal"):
             state.player.recharge_wands()
             state.player.recharge_follower_wands()
+            state.player.recharge_imbued_spells()
             state.player.restore_follower_mp()
         ctx.save_data.save_player(state.player)
         return True

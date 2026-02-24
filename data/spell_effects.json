@@ -27,6 +27,19 @@
       }
     ]
   },
+  "support_harden": {
+    "kind": "support",
+    "target_missing_mode": "combined",
+    "target_allow_full": true,
+    "stat_deltas": [
+      {
+        "stat": "defense",
+        "per_rank_min": 6,
+        "per_rank_max": 8,
+        "max_stack_mult": 2
+      }
+    ]
+  },
   "support_life_boost": {
     "kind": "support",
     "target_missing_mode": "combined",
