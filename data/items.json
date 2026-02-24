@@ -44,7 +44,7 @@
       {
         "type": "grant_stats",
         "stats": {
-          "defense": 5
+          "defense": 10
         }
       }
     ]
@@ -58,8 +58,8 @@
       {
         "type": "grant_stats",
         "stats": {
-          "max_hp": 5,
-          "atk": 10,
+          "max_hp": 10,
+          "atk": 5,
           "defense": 5
         }
       }

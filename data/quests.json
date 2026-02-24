@@ -121,6 +121,7 @@
     "dialog": [
       "Mushy: Uh oh... I recognize that sound.",
       "Narration: The baby crow returns with three more crows!",
+      "Mushy: Ready or not, here they come! (Mushy joins the team)",
       "Mushy: Use your new tool to fend them off!"
     ],
     "requirements": {
@@ -136,6 +137,15 @@
       }
     ],
     "on_start_actions": [
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "mushroom_baby",
+          "name": "Mushy",
+          "count_as_recruit": true
+        },
+        "required": true
+      },
       {
         "type": "set_ui_hint",
         "scene": "forest",

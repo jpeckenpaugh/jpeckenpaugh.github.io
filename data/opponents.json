@@ -62,10 +62,10 @@
     "baby_crow": {
       "name": "Baby Crow",
       "level": 1,
-      "hp": 14,
-      "atk": 12,
-      "defense": 10,
-      "action_chance": 0.7,
+      "hp": 10,
+      "atk": 8,
+      "defense": 8,
+      "action_chance": 0.5,
       "arrival": "flutters into view",
       "desc": "A scrappy fledgling with a sharp beak.",
       "art": [
