@@ -2722,7 +2722,7 @@ def apply_router_command(
         spent = max(0, pre_points - int(state.player.stat_points))
         if spent <= 0 and done and pre_points > 0 and int(state.player.stat_points) == 0:
             spent = pre_points
-        q2 = getattr(state.player, "quests", {}).get("island_01_quest_02", {}) if hasattr(state.player, "quests") else {}
+        q2 = getattr(state.player, "quests", {}).get("island_01_quest_01b", {}) if hasattr(state.player, "quests") else {}
         _append_debug_log(
             f"level_up cmd={cmd} pre_points={pre_points} post_points={state.player.stat_points} spent={spent} done={done} q2={q2}"
         )
@@ -2976,7 +2976,7 @@ def apply_router_command(
         if hasattr(ctx, "save_data") and ctx.save_data:
             ctx.save_data.save_player(state.player)
         _append_debug_log(
-            f"stat_spent delta={stat_spent} pre={pre_stat_points} post={post_stat_points} q2={getattr(state.player,'quests',{}).get('island_01_quest_02',{})}"
+            f"stat_spent delta={stat_spent} pre={pre_stat_points} post={post_stat_points} q2={getattr(state.player,'quests',{}).get('island_01_quest_01b',{})}"
         )
     post_level = state.player.level
     post_location = state.player.location

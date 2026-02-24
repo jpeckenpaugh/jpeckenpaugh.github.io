@@ -1795,3 +1795,331 @@
 [21:40:14] temp_set temp_atk_bonus from=5 to=6
 [21:40:14] temp_set temp_atk_bonus from=6 to=7
 [21:40:14] spell_support spell=strength rank=1 target=player temp_atk=7 temp_def=5
+[21:52:55] quest_start quest_id=island_01_quest_01a pending_level_up=False stat_points=0
+[21:52:55] ui_hint start scene=forest cmd=SPELLBOOK label=- loc=Forest
+[21:52:55] ui_hint done loc=Forest quest_mode=False cursor=2
+[21:52:57] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[21:52:57] temp_set temp_atk_bonus from=0 to=8
+[21:52:57] support_apply stat=atk target=player gain=7.537174393596567 new_player_atk=8 new_player_def=0
+[21:52:57] temp_set temp_def_bonus from=0 to=5
+[21:52:57] support_apply stat=defense target=player gain=4.574616944980928 new_player_atk=8 new_player_def=5
+[21:52:57] temp_set temp_atk_bonus from=8 to=1
+[21:52:57] temp_set temp_def_bonus from=5 to=1
+[21:52:57] temp_set temp_atk_bonus from=1 to=2
+[21:52:57] temp_set temp_def_bonus from=1 to=2
+[21:52:57] temp_set temp_atk_bonus from=2 to=3
+[21:52:57] temp_set temp_def_bonus from=2 to=3
+[21:52:57] temp_set temp_atk_bonus from=3 to=4
+[21:52:57] temp_set temp_def_bonus from=3 to=4
+[21:52:58] temp_set temp_atk_bonus from=4 to=5
+[21:52:58] temp_set temp_def_bonus from=4 to=5
+[21:52:58] temp_set temp_atk_bonus from=5 to=6
+[21:52:58] temp_set temp_atk_bonus from=6 to=7
+[21:52:58] temp_set temp_atk_bonus from=7 to=8
+[21:52:58] spell_support spell=strength rank=1 target=player temp_atk=8 temp_def=5
+[21:52:58] support_apply start caller=resolve_player_action target=player player_temp_atk=8 player_temp_def=5
+[21:52:58] temp_set temp_atk_bonus from=8 to=15
+[21:52:58] support_apply stat=atk target=player gain=7.433321553252531 new_player_atk=15 new_player_def=5
+[21:52:58] temp_set temp_def_bonus from=5 to=9
+[21:52:58] support_apply stat=defense target=player gain=4.349016878817423 new_player_atk=15 new_player_def=9
+[21:52:58] temp_set temp_atk_bonus from=15 to=9
+[21:52:58] temp_set temp_def_bonus from=9 to=6
+[21:52:58] temp_set temp_atk_bonus from=9 to=10
+[21:52:58] temp_set temp_def_bonus from=6 to=7
+[21:52:58] temp_set temp_atk_bonus from=10 to=11
+[21:52:58] temp_set temp_def_bonus from=7 to=8
+[21:52:58] temp_set temp_atk_bonus from=11 to=12
+[21:52:58] temp_set temp_def_bonus from=8 to=9
+[21:52:58] temp_set temp_atk_bonus from=12 to=13
+[21:52:59] temp_set temp_atk_bonus from=13 to=14
+[21:52:59] temp_set temp_atk_bonus from=14 to=15
+[21:52:59] spell_support spell=strength rank=1 target=player temp_atk=15 temp_def=9
+[21:52:59] support_apply start caller=resolve_player_action target=player player_temp_atk=15 player_temp_def=9
+[21:52:59] temp_set temp_atk_bonus from=15 to=22
+[21:52:59] support_apply stat=atk target=player gain=7.3230626552003635 new_player_atk=22 new_player_def=9
+[21:52:59] temp_set temp_def_bonus from=9 to=14
+[21:52:59] support_apply stat=defense target=player gain=5.329449272117715 new_player_atk=22 new_player_def=14
+[21:52:59] temp_set temp_atk_bonus from=22 to=16
+[21:52:59] temp_set temp_def_bonus from=14 to=10
+[21:52:59] temp_set temp_atk_bonus from=16 to=17
+[21:52:59] temp_set temp_def_bonus from=10 to=11
+[21:52:59] temp_set temp_atk_bonus from=17 to=18
+[21:52:59] temp_set temp_def_bonus from=11 to=12
+[21:52:59] temp_set temp_atk_bonus from=18 to=19
+[21:52:59] temp_set temp_def_bonus from=12 to=13
+[21:52:59] temp_set temp_atk_bonus from=19 to=20
+[21:52:59] temp_set temp_def_bonus from=13 to=14
+[21:52:59] temp_set temp_atk_bonus from=20 to=21
+[21:52:59] temp_set temp_atk_bonus from=21 to=22
+[21:52:59] spell_support spell=strength rank=1 target=player temp_atk=22 temp_def=14
+[21:53:00] support_apply start caller=resolve_player_action target=player player_temp_atk=22 player_temp_def=14
+[21:53:00] temp_set temp_atk_bonus from=22 to=29
+[21:53:00] support_apply stat=atk target=player gain=7.338012083130667 new_player_atk=29 new_player_def=14
+[21:53:00] temp_set temp_def_bonus from=14 to=18
+[21:53:00] support_apply stat=defense target=player gain=4.101956976255074 new_player_atk=29 new_player_def=18
+[21:53:00] temp_set temp_atk_bonus from=29 to=23
+[21:53:00] temp_set temp_def_bonus from=18 to=15
+[21:53:00] temp_set temp_atk_bonus from=23 to=24
+[21:53:00] temp_set temp_def_bonus from=15 to=16
+[21:53:00] temp_set temp_atk_bonus from=24 to=25
+[21:53:00] temp_set temp_def_bonus from=16 to=17
+[21:53:00] temp_set temp_atk_bonus from=25 to=26
+[21:53:00] temp_set temp_def_bonus from=17 to=18
+[21:53:00] temp_set temp_atk_bonus from=26 to=27
+[21:53:00] temp_set temp_atk_bonus from=27 to=28
+[21:53:00] temp_set temp_atk_bonus from=28 to=29
+[21:53:00] spell_support spell=strength rank=1 target=player temp_atk=29 temp_def=18
+[21:53:00] support_apply start caller=resolve_player_action target=player player_temp_atk=29 player_temp_def=18
+[21:53:00] temp_set temp_atk_bonus from=29 to=36
+[21:53:00] support_apply stat=atk target=player gain=7.235096224525286 new_player_atk=36 new_player_def=18
+[21:53:00] temp_set temp_def_bonus from=18 to=23
+[21:53:00] support_apply stat=defense target=player gain=5.359444901856159 new_player_atk=36 new_player_def=23
+[21:53:00] temp_set temp_atk_bonus from=36 to=30
+[21:53:00] temp_set temp_def_bonus from=23 to=19
+[21:53:00] temp_set temp_atk_bonus from=30 to=31
+[21:53:00] temp_set temp_def_bonus from=19 to=20
+[21:53:00] temp_set temp_atk_bonus from=31 to=32
+[21:53:00] temp_set temp_def_bonus from=20 to=21
+[21:53:00] temp_set temp_atk_bonus from=32 to=33
+[21:53:00] temp_set temp_def_bonus from=21 to=22
+[21:53:01] temp_set temp_atk_bonus from=33 to=34
+[21:53:01] temp_set temp_def_bonus from=22 to=23
+[21:53:01] temp_set temp_atk_bonus from=34 to=35
+[21:53:01] temp_set temp_atk_bonus from=35 to=36
+[21:53:01] spell_support spell=strength rank=1 target=player temp_atk=36 temp_def=23
+[21:53:11] temp_set temp_atk_bonus from=36 to=35
+[21:53:11] temp_set temp_def_bonus from=23 to=22
+[21:53:22] quest_start quest_id=island_01_quest_01c pending_level_up=False stat_points=10
+[21:53:22] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[21:53:22] ui_hint done loc=Forest quest_mode=False cursor=0
+[21:53:28] temp_set temp_atk_bonus from=35 to=34
+[21:53:28] temp_set temp_def_bonus from=22 to=21
+[21:53:34] temp_set temp_atk_bonus from=34 to=33
+[21:53:35] temp_set temp_def_bonus from=21 to=20
+[21:53:39] temp_set temp_atk_bonus from=33 to=32
+[21:53:39] temp_set temp_def_bonus from=20 to=19
+[21:53:49] temp_set temp_atk_bonus from=32 to=31
+[21:53:49] temp_set temp_def_bonus from=19 to=18
+[21:53:52] temp_set temp_atk_bonus from=31 to=30
+[21:53:52] temp_set temp_def_bonus from=18 to=17
+[21:53:55] temp_set temp_atk_bonus from=30 to=29
+[21:53:55] temp_set temp_def_bonus from=17 to=16
+[21:54:01] quest_start quest_id=island_01_quest_01d pending_level_up=False stat_points=0
+[21:54:01] ui_hint start scene=town cmd=- label=Temple loc=Forest
+[21:54:01] ui_hint done loc=Town quest_mode=False cursor=6
+[21:54:09] quest_start quest_id=island_01_quest_02a pending_level_up=False stat_points=0
+[21:54:09] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[21:54:09] ui_hint done loc=Forest quest_mode=False cursor=0
+[21:54:15] temp_set temp_atk_bonus from=29 to=28
+[21:54:15] temp_set temp_def_bonus from=16 to=15
+[21:54:17] temp_set temp_atk_bonus from=28 to=27
+[21:54:17] temp_set temp_def_bonus from=15 to=14
+[21:54:49] temp_set temp_atk_bonus from=27 to=26
+[21:54:49] temp_set temp_def_bonus from=14 to=13
+[21:54:51] temp_set temp_atk_bonus from=26 to=25
+[21:54:51] temp_set temp_def_bonus from=13 to=12
+[21:55:50] quest_list_active quest_id=island_01_quest_02a hint=yes loc=Town
+[21:55:50] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[21:55:50] ui_hint done loc=Forest quest_mode=False cursor=0
+[21:56:02] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[21:56:02] temp_set temp_atk_bonus from=0 to=6
+[21:56:02] support_apply stat=atk target=player gain=6.131819339687115 new_player_atk=6 new_player_def=0
+[21:56:02] temp_set temp_def_bonus from=0 to=5
+[21:56:02] support_apply stat=defense target=player gain=5.003800505857309 new_player_atk=6 new_player_def=5
+[21:56:02] temp_set temp_atk_bonus from=6 to=1
+[21:56:02] temp_set temp_def_bonus from=5 to=1
+[21:56:02] temp_set temp_atk_bonus from=1 to=2
+[21:56:02] temp_set temp_def_bonus from=1 to=2
+[21:56:02] temp_set temp_atk_bonus from=2 to=3
+[21:56:02] temp_set temp_def_bonus from=2 to=3
+[21:56:02] temp_set temp_atk_bonus from=3 to=4
+[21:56:02] temp_set temp_def_bonus from=3 to=4
+[21:56:02] temp_set temp_atk_bonus from=4 to=5
+[21:56:02] temp_set temp_def_bonus from=4 to=5
+[21:56:02] temp_set temp_atk_bonus from=5 to=6
+[21:56:02] spell_support spell=strength rank=1 target=player temp_atk=6 temp_def=5
+[21:56:03] support_apply start caller=resolve_player_action target=player player_temp_atk=6 player_temp_def=5
+[21:56:03] temp_set temp_atk_bonus from=6 to=13
+[21:56:03] support_apply stat=atk target=player gain=7.099019042907819 new_player_atk=13 new_player_def=5
+[21:56:03] temp_set temp_def_bonus from=5 to=10
+[21:56:03] support_apply stat=defense target=player gain=4.6121387101566444 new_player_atk=13 new_player_def=10
+[21:56:03] temp_set temp_atk_bonus from=13 to=7
+[21:56:03] temp_set temp_def_bonus from=10 to=6
+[21:56:03] temp_set temp_atk_bonus from=7 to=8
+[21:56:03] temp_set temp_def_bonus from=6 to=7
+[21:56:03] temp_set temp_atk_bonus from=8 to=9
+[21:56:03] temp_set temp_def_bonus from=7 to=8
+[21:56:03] temp_set temp_atk_bonus from=9 to=10
+[21:56:03] temp_set temp_def_bonus from=8 to=9
+[21:56:03] temp_set temp_atk_bonus from=10 to=11
+[21:56:03] temp_set temp_def_bonus from=9 to=10
+[21:56:03] temp_set temp_atk_bonus from=11 to=12
+[21:56:03] temp_set temp_atk_bonus from=12 to=13
+[21:56:03] spell_support spell=strength rank=1 target=player temp_atk=13 temp_def=10
+[21:56:03] support_apply start caller=resolve_player_action target=player player_temp_atk=13 player_temp_def=10
+[21:56:03] temp_set temp_atk_bonus from=13 to=19
+[21:56:03] support_apply stat=atk target=player gain=6.104565022913322 new_player_atk=19 new_player_def=10
+[21:56:03] temp_set temp_def_bonus from=10 to=14
+[21:56:03] support_apply stat=defense target=player gain=4.44715507508471 new_player_atk=19 new_player_def=14
+[21:56:03] temp_set temp_atk_bonus from=19 to=14
+[21:56:03] temp_set temp_def_bonus from=14 to=11
+[21:56:04] temp_set temp_atk_bonus from=14 to=15
+[21:56:04] temp_set temp_def_bonus from=11 to=12
+[21:56:04] temp_set temp_atk_bonus from=15 to=16
+[21:56:04] temp_set temp_def_bonus from=12 to=13
+[21:56:04] temp_set temp_atk_bonus from=16 to=17
+[21:56:04] temp_set temp_def_bonus from=13 to=14
+[21:56:04] temp_set temp_atk_bonus from=17 to=18
+[21:56:04] temp_set temp_atk_bonus from=18 to=19
+[21:56:04] spell_support spell=strength rank=1 target=player temp_atk=19 temp_def=14
+[21:56:04] support_apply start caller=resolve_player_action target=player player_temp_atk=19 player_temp_def=14
+[21:56:04] temp_set temp_atk_bonus from=19 to=26
+[21:56:04] support_apply stat=atk target=player gain=7.140199543437585 new_player_atk=26 new_player_def=14
+[21:56:04] temp_set temp_def_bonus from=14 to=18
+[21:56:04] support_apply stat=defense target=player gain=4.022641508212441 new_player_atk=26 new_player_def=18
+[21:56:04] temp_set temp_atk_bonus from=26 to=20
+[21:56:04] temp_set temp_def_bonus from=18 to=15
+[21:56:04] temp_set temp_atk_bonus from=20 to=21
+[21:56:04] temp_set temp_def_bonus from=15 to=16
+[21:56:04] temp_set temp_atk_bonus from=21 to=22
+[21:56:04] temp_set temp_def_bonus from=16 to=17
+[21:56:04] temp_set temp_atk_bonus from=22 to=23
+[21:56:04] temp_set temp_def_bonus from=17 to=18
+[21:56:04] temp_set temp_atk_bonus from=23 to=24
+[21:56:05] temp_set temp_atk_bonus from=24 to=25
+[21:56:05] temp_set temp_atk_bonus from=25 to=26
+[21:56:05] spell_support spell=strength rank=1 target=player temp_atk=26 temp_def=18
+[21:56:05] support_apply start caller=resolve_player_action target=player player_temp_atk=26 player_temp_def=18
+[21:56:05] temp_set temp_atk_bonus from=26 to=34
+[21:56:05] support_apply stat=atk target=player gain=7.715313876799281 new_player_atk=34 new_player_def=18
+[21:56:05] temp_set temp_def_bonus from=18 to=24
+[21:56:05] support_apply stat=defense target=player gain=5.641778214894716 new_player_atk=34 new_player_def=24
+[21:56:05] temp_set temp_atk_bonus from=34 to=27
+[21:56:05] temp_set temp_def_bonus from=24 to=19
+[21:56:05] temp_set temp_atk_bonus from=27 to=28
+[21:56:05] temp_set temp_def_bonus from=19 to=20
+[21:56:05] temp_set temp_atk_bonus from=28 to=29
+[21:56:05] temp_set temp_def_bonus from=20 to=21
+[21:56:05] temp_set temp_atk_bonus from=29 to=30
+[21:56:05] temp_set temp_def_bonus from=21 to=22
+[21:56:05] temp_set temp_atk_bonus from=30 to=31
+[21:56:05] temp_set temp_def_bonus from=22 to=23
+[21:56:05] temp_set temp_atk_bonus from=31 to=32
+[21:56:05] temp_set temp_def_bonus from=23 to=24
+[21:56:05] temp_set temp_atk_bonus from=32 to=33
+[21:56:05] temp_set temp_atk_bonus from=33 to=34
+[21:56:05] spell_support spell=strength rank=1 target=player temp_atk=34 temp_def=24
+[21:56:15] support_apply start caller=resolve_player_action target=player player_temp_atk=34 player_temp_def=24
+[21:56:15] temp_set temp_atk_bonus from=34 to=35
+[21:56:15] support_apply stat=atk target=player gain=6.9523758190267 new_player_atk=35 new_player_def=24
+[21:56:15] temp_set temp_def_bonus from=24 to=20
+[21:56:15] support_apply stat=defense target=player gain=4.00490702326124 new_player_atk=35 new_player_def=20
+[21:56:15] spell_support spell=strength rank=1 target=player temp_atk=35 temp_def=20
+[21:56:17] temp_set temp_atk_bonus from=35 to=34
+[21:56:17] temp_set temp_def_bonus from=20 to=19
+[21:56:22] temp_set temp_atk_bonus from=34 to=33
+[21:56:22] temp_set temp_def_bonus from=19 to=18
+[21:56:24] temp_set temp_atk_bonus from=33 to=32
+[21:56:24] temp_set temp_def_bonus from=18 to=17
+[21:56:26] temp_set temp_atk_bonus from=32 to=31
+[21:56:26] temp_set temp_def_bonus from=17 to=16
+[21:56:44] temp_set temp_atk_bonus from=31 to=30
+[21:56:44] temp_set temp_def_bonus from=16 to=15
+[21:56:51] temp_set temp_atk_bonus from=30 to=29
+[21:56:51] temp_set temp_def_bonus from=15 to=14
+[21:57:03] temp_set temp_atk_bonus from=29 to=28
+[21:57:03] temp_set temp_def_bonus from=14 to=13
+[21:57:07] support_apply start caller=resolve_player_action target=player player_temp_atk=28 player_temp_def=13
+[21:57:07] temp_set temp_atk_bonus from=28 to=35
+[21:57:07] support_apply stat=atk target=player gain=7.292518208143884 new_player_atk=35 new_player_def=13
+[21:57:07] temp_set temp_def_bonus from=13 to=17
+[21:57:07] support_apply stat=defense target=player gain=4.221539369158725 new_player_atk=35 new_player_def=17
+[21:57:07] temp_set temp_atk_bonus from=35 to=29
+[21:57:07] temp_set temp_def_bonus from=17 to=14
+[21:57:07] temp_set temp_atk_bonus from=29 to=30
+[21:57:07] temp_set temp_def_bonus from=14 to=15
+[21:57:07] temp_set temp_atk_bonus from=30 to=31
+[21:57:07] temp_set temp_def_bonus from=15 to=16
+[21:57:07] temp_set temp_atk_bonus from=31 to=32
+[21:57:07] temp_set temp_def_bonus from=16 to=17
+[21:57:07] temp_set temp_atk_bonus from=32 to=33
+[21:57:07] temp_set temp_atk_bonus from=33 to=34
+[21:57:07] temp_set temp_atk_bonus from=34 to=35
+[21:57:07] spell_support spell=strength rank=1 target=player temp_atk=35 temp_def=17
+[21:57:10] temp_set temp_atk_bonus from=35 to=34
+[21:57:10] temp_set temp_def_bonus from=17 to=16
+[21:57:14] temp_set temp_atk_bonus from=34 to=33
+[21:57:14] temp_set temp_def_bonus from=16 to=15
+[21:57:18] support_apply start caller=resolve_player_action target=player player_temp_atk=33 player_temp_def=15
+[21:57:18] support_apply stat=atk target=player gain=6.55206993947404 new_player_atk=33 new_player_def=15
+[21:57:18] temp_set temp_def_bonus from=15 to=19
+[21:57:18] support_apply stat=defense target=player gain=4.00478041931108 new_player_atk=33 new_player_def=19
+[21:57:18] temp_set temp_def_bonus from=19 to=16
+[21:57:18] temp_set temp_def_bonus from=16 to=17
+[21:57:18] temp_set temp_def_bonus from=17 to=18
+[21:57:18] temp_set temp_def_bonus from=18 to=19
+[21:57:18] spell_support spell=strength rank=1 target=player temp_atk=33 temp_def=19
+[21:57:19] temp_set temp_atk_bonus from=33 to=32
+[21:57:19] temp_set temp_def_bonus from=19 to=18
+[21:57:23] temp_set temp_atk_bonus from=32 to=31
+[21:57:23] temp_set temp_def_bonus from=18 to=17
+[21:57:30] temp_set temp_atk_bonus from=31 to=30
+[21:57:30] temp_set temp_def_bonus from=17 to=16
+[21:57:34] temp_set temp_atk_bonus from=30 to=29
+[21:57:34] temp_set temp_def_bonus from=16 to=15
+[21:57:37] temp_set temp_atk_bonus from=29 to=28
+[21:57:37] temp_set temp_def_bonus from=15 to=14
+[21:57:41] quest_start quest_id=island_01_quest_02b pending_level_up=False stat_points=0
+[21:57:41] ui_hint start scene=town cmd=- label=Temple loc=Forest
+[21:57:41] ui_hint done loc=Town quest_mode=False cursor=6
+[21:57:55] quest_start quest_id=island_01_quest_02c pending_level_up=False stat_points=0
+[21:57:55] ui_hint start scene=forest cmd=SPELLBOOK label=- loc=Town
+[21:57:55] ui_hint done loc=Forest quest_mode=False cursor=2
+[21:58:16] quest_start quest_id=island_01_quest_03a pending_level_up=False stat_points=0
+[21:58:16] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[21:58:16] ui_hint done loc=Forest quest_mode=False cursor=0
+[21:58:44] temp_set temp_atk_bonus from=28 to=27
+[21:58:44] temp_set temp_def_bonus from=14 to=13
+[21:58:48] temp_set temp_atk_bonus from=27 to=26
+[21:58:48] temp_set temp_def_bonus from=13 to=12
+[21:58:52] temp_set temp_atk_bonus from=26 to=25
+[21:58:52] temp_set temp_def_bonus from=12 to=11
+[21:58:55] temp_set temp_atk_bonus from=25 to=24
+[21:58:55] temp_set temp_def_bonus from=11 to=10
+[21:58:59] temp_set temp_atk_bonus from=24 to=23
+[21:58:59] temp_set temp_def_bonus from=10 to=9
+[21:59:11] quest_start quest_id=island_01_quest_03b pending_level_up=False stat_points=0
+[21:59:11] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[21:59:11] ui_hint done loc=Forest quest_mode=False cursor=0
+[21:59:15] temp_set temp_atk_bonus from=23 to=22
+[21:59:15] temp_set temp_def_bonus from=9 to=8
+[21:59:17] temp_set temp_atk_bonus from=22 to=21
+[21:59:17] temp_set temp_def_bonus from=8 to=7
+[21:59:24] quest_start quest_id=island_01_quest_03c pending_level_up=False stat_points=0
+[21:59:24] ui_hint start scene=town cmd=- label=Temple loc=Forest
+[21:59:24] ui_hint done loc=Town quest_mode=False cursor=6
+[21:59:33] quest_start quest_id=island_01_quest_03d pending_level_up=False stat_points=0
+[21:59:33] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[21:59:33] ui_hint done loc=Forest quest_mode=False cursor=0
+[21:59:42] temp_set temp_atk_bonus from=21 to=20
+[21:59:42] temp_set temp_def_bonus from=7 to=6
+[21:59:45] temp_set temp_atk_bonus from=20 to=19
+[21:59:45] temp_set temp_def_bonus from=6 to=5
+[21:59:48] temp_set temp_atk_bonus from=19 to=18
+[21:59:48] temp_set temp_def_bonus from=5 to=4
+[21:59:52] temp_set temp_atk_bonus from=18 to=17
+[21:59:52] temp_set temp_def_bonus from=4 to=3
+[22:00:10] temp_set temp_atk_bonus from=17 to=0
+[22:00:10] temp_set temp_def_bonus from=3 to=0
+[22:00:10] temp_set temp_atk_bonus from=17 to=0
+[22:00:10] temp_set temp_def_bonus from=3 to=0
+[22:00:10] quest_start quest_id=island_01_quest_03e pending_level_up=False stat_points=0
+[22:00:10] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[22:00:10] ui_hint done loc=Forest quest_mode=False cursor=0
+[22:02:11] quest_start quest_id=island_01_quest_03f pending_level_up=False stat_points=0
+[22:02:11] ui_hint start scene=forest cmd=- label=Items loc=Forest
+[22:02:11] ui_hint done loc=Forest quest_mode=False cursor=1
+[22:02:55] quest_start quest_id=island_01_quest_04a pending_level_up=False stat_points=0
+[22:02:55] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[22:02:55] ui_hint done loc=Forest quest_mode=False cursor=0
+[22:05:22] quest_start quest_id=island_01_quest_04b pending_level_up=False stat_points=0
