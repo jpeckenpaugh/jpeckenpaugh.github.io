@@ -581,14 +581,14 @@
       "desc": "A coiled menace with a venomous strike.",
       "arrival": "slithers into view",
       "art": [
-        "            .-.",
-        "           /  aa",
-        "           \\ -,_)",
-        "      _..._| \\  `-<",
-        "    .\" .__.' |",
-        "{} (        /`\\",
-        "{}(`'------'  /",
-        " '-'-.......-'"
+        "         .-.",
+        "        /  aa",
+        "        \\ -,_)",
+        "    _.._| \\  `-<",
+        "  .\".__.' |",
+        " (        /`\\",
+        "(`'-----'  /",
+        "'--......-'"
       ],
       "color_map": [
         "    1111111",
@@ -597,6 +597,26 @@
         "1   1    1   1",
         " 1  1111  1",
         "  1111111"
+      ],
+      "variation": 0.05,
+      "jitter_stability": false
+    },
+    "lil_komodo": {
+      "name": "Lil Komodo",
+      "element": "base",
+      "level": 7,
+      "hp": 55,
+      "atk": 15,
+      "defense": 9,
+      "action_chance": 0.95,
+      "desc": "A young komodo with a wary hiss.",
+      "arrival": "pads into view",
+      "art": [
+        "        '",
+        "        ;;",
+        ".~.~;;;;;",
+        "\\_/\\|--\\\\",
+        " ' \"\"   \"\""
       ],
       "variation": 0.05,
       "jitter_stability": false

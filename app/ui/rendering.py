@@ -1483,7 +1483,7 @@ def render_scene_art(
         max_right = max((len(strip_ansi(line)) for line in right), default=0)
         if opponent_blocks:
             gap_pad = 2
-            inter_pad = 2
+            inter_pad = 1 if len(opponent_blocks) >= 5 else 2
             content_width = (
                 (gap_pad * 2)
                 + sum(block["width"] for block in opponent_blocks)

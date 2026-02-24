@@ -588,8 +588,20 @@
       "scene_id": "island_01_quest_16_trial",
       "opponents": [
         {
+          "opponent_id": "baby_troll"
+        },
+        {
+          "opponent_id": "baby_ogre"
+        },
+        {
           "opponent_id": "ogre",
           "count": 1
+        },
+        {
+          "opponent_id": "baby_ogre"
+        },
+        {
+          "opponent_id": "baby_troll"
         }
       ]
     }
@@ -798,8 +810,19 @@
       "scene_id": "island_01_quest_23_trial",
       "opponents": [
         {
-          "opponent_id": "poisonous_python",
-          "count": 1
+          "opponent_id": "lil_komodo"
+        },
+        {
+          "opponent_id": "poisonous_python"
+        },
+        {
+          "opponent_id": "poisonous_python"
+        },
+        {
+          "opponent_id": "poisonous_python"
+        },
+        {
+          "opponent_id": "lil_komodo"
         }
       ]
     }
