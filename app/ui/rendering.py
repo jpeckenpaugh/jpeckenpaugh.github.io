@@ -2431,13 +2431,14 @@ def animate_portal_departure(
 
 
 def format_player_stats(player: Player) -> List[str]:
-    base_max_hp = player.max_hp
+    base_max_hp = player.max_hp + int(getattr(player, "gear_hp_bonus", 0) or 0)
     temp_hp = int(getattr(player, "temp_hp_bonus", 0))
     if temp_hp:
         hp_text = color(f"HP: {player.hp} / {base_max_hp} (+{temp_hp})", ANSI.FG_GREEN)
     else:
         hp_text = color(f"HP: {player.hp} / {base_max_hp}", ANSI.FG_GREEN)
-    mp_text = color(f"MP: {player.mp} / {player.max_mp}", ANSI.FG_MAGENTA)
+    base_max_mp = player.max_mp + int(getattr(player, "gear_mp_bonus", 0) or 0)
+    mp_text = color(f"MP: {player.mp} / {base_max_mp}", ANSI.FG_MAGENTA)
     atk_total = player.total_atk()
     def_total = player.total_defense()
     atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))

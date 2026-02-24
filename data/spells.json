@@ -180,7 +180,7 @@
     "effect_loops_rank2": 3,
     "effect_loops_rank3": 4,
     "art_id": "potion",
-    "desc": "Raise ATK and DEF with a brief surge.",
+    "desc": "Raise ATK (6-8) and DEF (4-6) with a brief surge.",
     "unlock": {
       "flags_any": [
         "spell_strength_enabled"

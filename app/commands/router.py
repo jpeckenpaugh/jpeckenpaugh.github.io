@@ -716,7 +716,7 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         if service_type not in ("rest", "meal", "overcharge"):
             return False
         if service_type != "overcharge":
-            if not (state.player.hp < state.player.max_hp or state.player.mp < state.player.max_mp):
+            if not (state.player.hp < state.player.total_max_hp() or state.player.mp < state.player.total_max_mp()):
                 state.last_message = service.get("full_message", "You're already fully rested.")
                 return True
         if state.player.location != "Town":
@@ -738,13 +738,13 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
             item = ctx.items.get(item_id, {}) if item_id else {}
             hp_gain = int(item.get("hp", service.get("hp", 0)))
             mp_gain = int(item.get("mp", service.get("mp", 0)))
-            state.player.hp = min(state.player.max_hp, state.player.hp + hp_gain)
-            state.player.mp = min(state.player.max_mp, state.player.mp + mp_gain)
+            state.player.hp = min(state.player.total_max_hp(), state.player.hp + hp_gain)
+            state.player.mp = min(state.player.total_max_mp(), state.player.mp + mp_gain)
             state.last_message = service.get("message", "You enjoy a hot meal.")
         else:
             if service.get("heal_full", True):
-                state.player.hp = state.player.max_hp
-                state.player.mp = state.player.max_mp
+                state.player.hp = state.player.total_max_hp()
+                state.player.mp = state.player.total_max_mp()
             state.player.temp_atk_bonus = 0
             state.player.temp_def_bonus = 0
             state.player.temp_hp_bonus = 0

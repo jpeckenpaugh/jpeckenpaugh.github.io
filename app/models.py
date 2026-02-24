@@ -39,6 +39,9 @@ class Player:
     equipment: dict
     gear_atk: int
     gear_defense: int
+    gear_hp_bonus: int
+    gear_mp_bonus: int
+    gear_mp_regen: int
     elements: List[str]
     current_element: str
     followers: List[dict] = field(default_factory=list)
@@ -90,6 +93,9 @@ class Player:
             "equipment": self.equipment,
             "gear_atk": self.gear_atk,
             "gear_defense": self.gear_defense,
+            "gear_hp_bonus": self.gear_hp_bonus,
+            "gear_mp_bonus": self.gear_mp_bonus,
+            "gear_mp_regen": self.gear_mp_regen,
             "elements": list(self.elements),
             "current_element": self.current_element,
             "followers": self.followers,
@@ -144,6 +150,9 @@ class Player:
             equipment=equipment,
             gear_atk=int(data.get("gear_atk", 0)),
             gear_defense=int(data.get("gear_defense", 0)),
+            gear_hp_bonus=int(data.get("gear_hp_bonus", 0)),
+            gear_mp_bonus=int(data.get("gear_mp_bonus", 0)),
+            gear_mp_regen=int(data.get("gear_mp_regen", 0)),
             elements=elements,
             current_element=current_element,
             followers=followers,
@@ -271,9 +280,11 @@ class Player:
             return 0
         atk = int(gear.get("atk", 0))
         defense = int(gear.get("defense", 0))
+        hp_bonus = int(gear.get("hp_bonus", 0) or 0)
+        mp_bonus = int(gear.get("mp_bonus", 0) or 0)
         elem_points = self._normalize_elem_points(gear.get("elem_points", {}))
         elem_total = sum(int(value) for value in elem_points.values())
-        return atk + defense + elem_total
+        return atk + defense + hp_bonus + mp_bonus + elem_total
 
     def auto_equip_if_best(self, gear_id: Optional[str]) -> bool:
         if not gear_id:
@@ -303,7 +314,10 @@ class Player:
         return self.defense + int(self.gear_defense) + int(self.temp_def_bonus)
 
     def total_max_hp(self) -> int:
-        return self.max_hp + int(self.temp_hp_bonus)
+        return self.max_hp + int(self.gear_hp_bonus) + int(self.temp_hp_bonus)
+
+    def total_max_mp(self) -> int:
+        return self.max_mp + int(self.gear_mp_bonus)
 
     def add_follower(self, follower: dict) -> bool:
         if not isinstance(self.followers, list):
@@ -455,7 +469,7 @@ class Player:
     def team_missing_total(self, follower: Optional[dict] = None, *, mode: str = "combined") -> int:
         if follower is None:
             max_hp = self.total_max_hp()
-            max_mp = int(self.max_mp)
+            max_mp = self.total_max_mp()
             missing_hp = max_hp - int(self.hp)
             missing_mp = max_mp - int(self.mp)
         else:
@@ -627,6 +641,9 @@ class Player:
     def _recalc_gear(self) -> None:
         atk_bonus = 0
         def_bonus = 0
+        hp_bonus = 0
+        mp_bonus = 0
+        mp_regen = 0
         equipment = self.equipment if isinstance(self.equipment, dict) else {}
         for slot, gear_id in equipment.items():
             gear = self.gear_instance(gear_id)
@@ -636,8 +653,20 @@ class Player:
                 continue
             atk_bonus += int(gear.get("atk", 0))
             def_bonus += int(gear.get("defense", 0))
+            hp_bonus += int(gear.get("hp_bonus", 0) or 0)
+            mp_bonus += int(gear.get("mp_bonus", 0) or 0)
+            mp_regen += int(gear.get("mp_regen", 0) or 0)
         self.gear_atk = atk_bonus
         self.gear_defense = def_bonus
+        self.gear_hp_bonus = hp_bonus
+        self.gear_mp_bonus = mp_bonus
+        self.gear_mp_regen = mp_regen
+        max_hp = self.total_max_hp()
+        if self.hp > max_hp:
+            self.hp = max_hp
+        max_mp = self.total_max_mp()
+        if self.mp > max_mp:
+            self.mp = max_mp
 
     def sync_items(self, items_data) -> None:
         if not isinstance(self.equipment, dict):
@@ -714,6 +743,9 @@ class Player:
             slot = gear.get("slot", "")
             atk = int(gear.get("atk", 0))
             defense = int(gear.get("defense", 0))
+            hp_bonus = int(gear.get("hp_bonus", 0) or 0)
+            mp_bonus = int(gear.get("mp_bonus", 0) or 0)
+            mp_regen = int(gear.get("mp_regen", 0) or 0)
             elem_points = gear.get("elem_points", {})
             elem_total = sum(int(v) for v in elem_points.values()) if isinstance(elem_points, dict) else 0
             bonus = []
@@ -721,6 +753,12 @@ class Player:
                 bonus.append(f"ATK+{atk}")
             if defense:
                 bonus.append(f"DEF+{defense}")
+            if hp_bonus:
+                bonus.append(f"HP+{hp_bonus}")
+            if mp_bonus:
+                bonus.append(f"MP+{mp_bonus}")
+            if mp_regen:
+                bonus.append(f"MP Regen+{mp_regen}")
             if elem_total:
                 bonus.append(f"Elem+{elem_total}")
             detail = ", ".join(bonus) if bonus else "No bonuses"
@@ -744,10 +782,10 @@ class Player:
         mp_gain = int(item.get("mp", 0))
         allow_full = bool(item.get("use_while_full")) or str(item.get("type", "") or "") == "quest"
         if target is None:
-            if not allow_full and self.hp == self.max_hp and self.mp == self.max_mp:
+            if not allow_full and self.hp == self.total_max_hp() and self.mp == self.total_max_mp():
                 return "HP and MP are already full."
-            self.hp = min(self.max_hp, self.hp + hp_gain)
-            self.mp = min(self.max_mp, self.mp + mp_gain)
+            self.hp = min(self.total_max_hp(), self.hp + hp_gain)
+            self.mp = min(self.total_max_mp(), self.mp + mp_gain)
         else:
             max_hp = int(target.get("max_hp", 0) or 0)
             max_mp = int(target.get("max_mp", 0) or 0)

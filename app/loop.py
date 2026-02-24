@@ -11,7 +11,7 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import add_loot, battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
+from app.questing import apply_actions, apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -990,8 +990,12 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 dialog = detail_quest.get("dialog", [])
             if not isinstance(dialog, list):
                 dialog = []
-            total_pages = max(1, len(dialog))
+            dialog_entries = [entry for entry in dialog if entry is not None]
+            total_pages = max(1, len(dialog_entries))
             state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
+            current_entry = dialog_entries[state.quest_detail_page] if dialog_entries else None
+            is_choice = isinstance(current_entry, dict) and current_entry.get("type") == "choice"
+            options = current_entry.get("options", []) if is_choice and isinstance(current_entry, dict) else []
             actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
             detail_ids = actions_cfg.get("detail", ["next", "back"])
             if not isinstance(detail_ids, list) or not detail_ids:
@@ -999,11 +1003,57 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             labels = actions_cfg.get("labels", {})
             if not isinstance(labels, dict):
                 labels = {}
+            if is_choice:
+                if isinstance(options, list) and options:
+                    state.action_cursor = max(0, min(state.action_cursor, len(options) - 1))
             if action in ("UP", "DOWN"):
                 direction = -1 if action == "UP" else 1
-                state.action_cursor = (state.action_cursor + direction) % len(detail_ids)
+                if is_choice and isinstance(options, list) and options:
+                    state.action_cursor = (state.action_cursor + direction) % len(options)
+                else:
+                    state.action_cursor = (state.action_cursor + direction) % len(detail_ids)
                 return None, None
             if action == "CONFIRM":
+                if is_choice and isinstance(options, list) and options:
+                    choice = options[state.action_cursor] if 0 <= state.action_cursor < len(options) else None
+                    if not isinstance(choice, dict):
+                        return None, None
+                    quest_id = state.quest_detail_id
+                    choice_key = f"choice:{quest_id}:{state.quest_detail_page}"
+                    flags = getattr(state.player, "flags", {})
+                    if not isinstance(flags, dict):
+                        flags = {}
+                        state.player.flags = flags
+                    if not flags.get(choice_key):
+                        actions = choice.get("actions", [])
+                        ok, error, messages = apply_actions(
+                            state.player,
+                            actions if isinstance(actions, list) else [],
+                            items_data=ctx.items,
+                            spells_data=ctx.spells,
+                            followers_data=ctx.followers,
+                            quests_data=ctx.quests,
+                            objectives_data=ctx.quest_objectives,
+                            events_data=ctx.quest_events,
+                        )
+                        if not ok:
+                            state.last_message = error or "Unable to apply choice."
+                            return None, None
+                        label = str(choice.get("label", "") or "").strip()
+                        if messages:
+                            state.last_message = " ".join(str(m) for m in messages if m)
+                        elif label:
+                            state.last_message = f"You chose: {label}."
+                        flags[choice_key] = label or str(state.action_cursor)
+                        if hasattr(ctx, "save_data") and ctx.save_data:
+                            ctx.save_data.save_player(state.player)
+                    else:
+                        if not state.last_message:
+                            state.last_message = "Choice already made."
+                    if state.quest_detail_page < total_pages - 1:
+                        state.quest_detail_page += 1
+                        state.action_cursor = 0
+                    return None, None
                 if 0 <= state.action_cursor < len(detail_ids):
                     action_id = str(detail_ids[state.action_cursor])
                 else:
@@ -2513,7 +2563,7 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
 def _team_missing_total(player, follower: Optional[dict] = None, *, mode: str = "combined") -> int:
     if follower is None:
         max_hp = player.total_max_hp()
-        max_mp = int(player.max_mp)
+        max_mp = int(player.total_max_mp())
         missing_hp = max_hp - int(player.hp)
         missing_mp = max_mp - int(player.mp)
         if mode == "hp":
@@ -2543,7 +2593,7 @@ def _apply_item_heal(target, item: dict, player: Player) -> tuple[int, int]:
             healed_hp = min(hp_gain, max_hp - player.hp)
             player.hp += healed_hp
         if mp_gain > 0:
-            max_mp = player.max_mp
+            max_mp = player.total_max_mp()
             healed_mp = min(mp_gain, max_mp - player.mp)
             player.mp += healed_mp
         return healed_hp, healed_mp
@@ -3560,8 +3610,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                     state.player.quests = {}
                 state.battle_trial_id = None
                 state.player.location = "Town"
-                state.player.hp = state.player.max_hp
-                state.player.mp = state.player.max_mp
+                state.player.hp = state.player.total_max_hp()
+                state.player.mp = state.player.total_max_mp()
                 state.opponents = []
                 state.loot_bank = {"xp": 0, "gold": 0}
                 state.battle_active = False
@@ -3582,6 +3632,11 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         max_hp = state.player.total_max_hp()
         if state.player.hp > max_hp:
             state.player.hp = max_hp
+    mp_regen = int(getattr(state.player, "gear_mp_regen", 0) or 0)
+    if mp_regen > 0:
+        max_mp = state.player.total_max_mp()
+        if state.player.mp < max_mp:
+            state.player.mp = min(max_mp, state.player.mp + mp_regen)
     if getattr(state.player, "temp_evasion_bonus", 0) > 0:
         state.player.temp_evasion_bonus = max(0, int(state.player.temp_evasion_bonus) - 1)
     if state.player.followers:
@@ -3656,7 +3711,7 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 state.player.hp += healed
                 suffix = "HP"
             elif ability_type == "mana":
-                max_mp = state.player.max_mp
+                max_mp = state.player.total_max_mp()
                 if state.player.mp >= max_mp:
                     continue
                 healed = min(amount, max_mp - state.player.mp)

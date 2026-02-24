@@ -99,6 +99,55 @@
     "price": 40,
     "desc": "Basic armor that absorbs damage."
   },
+  "mycoclub": {
+    "name": "Mycoclub",
+    "type": "gear",
+    "slot": "wand",
+    "element": "base",
+    "atk": 5,
+    "defense": 0,
+    "price": 0,
+    "elem_points": {
+      "base": 6
+    },
+    "desc": "A dense fungal club that hums with earthy power."
+  },
+  "mycoshield": {
+    "name": "Mycoshield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 5,
+    "hp_bonus": 5,
+    "price": 0,
+    "desc": "A thick fungal shield that bolsters your vitality."
+  },
+  "mycostaff": {
+    "name": "Mycostaff",
+    "type": "gear",
+    "slot": "wand",
+    "element": "base",
+    "atk": 0,
+    "defense": 0,
+    "mp_bonus": 10,
+    "price": 0,
+    "elem_points": {
+      "base": 12
+    },
+    "desc": "A mystic staff that deepens your mana reserves."
+  },
+  "mycocape": {
+    "name": "Mycocape",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 5,
+    "hp_bonus": 2,
+    "mp_bonus": 3,
+    "mp_regen": 1,
+    "price": 0,
+    "desc": "A cloak of spores that restores mana in battle."
+  },
   "lightning_ring": {
     "name": "Spark Ring",
     "type": "gear",

@@ -313,9 +313,16 @@ def _apply_grant_items(player: Player, action: dict, ctx: Dict[str, Any], effect
     items = action.get("items", [])
     if not isinstance(items, list):
         return None
+    items_data = ctx.get("items_data")
     for item_id in items:
-        if item_id:
-            player.add_item(str(item_id), 1)
+        if not item_id:
+            continue
+        item_key = str(item_id)
+        item = items_data.get(item_key, {}) if items_data is not None else {}
+        if isinstance(item, dict) and item.get("type") == "gear":
+            player.add_gear(item_key, items_data, auto_equip=True)
+        else:
+            player.add_item(item_key, 1)
     return None
 
 
@@ -329,8 +336,8 @@ def _apply_grant_xp(player: Player, action: dict, ctx: Dict[str, Any], effects: 
 
 
 def _apply_restore_full(player: Player, action: dict, ctx: Dict[str, Any], effects: dict) -> Optional[str]:
-    player.hp = player.max_hp
-    player.mp = player.max_mp
+    player.hp = player.total_max_hp()
+    player.mp = player.total_max_mp()
     player.temp_atk_bonus = 0
     player.temp_def_bonus = 0
     player.temp_hp_bonus = 0

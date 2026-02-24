@@ -92,7 +92,7 @@ def filter_commands(commands: List[dict], player: Player, opponents: List[Oppone
         if when == "no_opponents" and has_opponents:
             continue
         if when == "needs_rest":
-            if not (player.hp < player.max_hp or player.mp < player.max_mp):
+            if not (player.hp < player.total_max_hp() or player.mp < player.total_max_mp()):
                 continue
         if when == "has_save" and not has_save:
             continue

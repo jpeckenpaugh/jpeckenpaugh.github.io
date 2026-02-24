@@ -7,7 +7,57 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "It started like most days, Quest 01: Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.",
+      "You see a young mushroom and a crow fighting one another.",
+      {
+        "type": "choice",
+        "prompt": "How do you step in?",
+        "options": [
+          {
+            "label": "Throw rocks at the crow (Fighter)",
+            "actions": [
+              {
+                "type": "set_flags",
+                "flags": [
+                  "path_fighter"
+                ]
+              },
+              {
+                "type": "grant_items",
+                "items": [
+                  "mycoclub",
+                  "mycoshield"
+                ]
+              },
+              {
+                "type": "show_message",
+                "message": "You chose the Fighter path."
+              }
+            ]
+          },
+          {
+            "label": "Grab a stick and charge (Mystic)",
+            "actions": [
+              {
+                "type": "set_flags",
+                "flags": [
+                  "path_mystic"
+                ]
+              },
+              {
+                "type": "grant_items",
+                "items": [
+                  "mycostaff",
+                  "mycocape"
+                ]
+              },
+              {
+                "type": "show_message",
+                "message": "You chose the Mystic path."
+              }
+            ]
+          }
+        ]
+      },
       "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
       "On our own, neither of us is strong enough to take on the monsters around here, but I have a little secret.",
       "I have a magic mushroom tea, and it is able to open your mind and allow you to understand basic magic.",
@@ -54,7 +104,8 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_01a_complete"
+          "island_01_quest_01a_complete",
+          "island_01_quest_01a_boss_ready"
         ]
       },
       {

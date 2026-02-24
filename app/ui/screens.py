@@ -1142,9 +1142,18 @@ def generate_frame(
             dialog = detail_quest.get("dialog", [])
             if not isinstance(dialog, list):
                 dialog = []
-            dialog_lines = [str(line) for line in dialog if line is not None]
-            total_pages = max(1, len(dialog_lines))
+            dialog_entries = [entry for entry in dialog if entry is not None]
+            dialog_lines = []
+            for entry in dialog_entries:
+                if isinstance(entry, dict) and entry.get("type") == "choice":
+                    prompt = str(entry.get("prompt", "") or "")
+                    dialog_lines.append(prompt)
+                else:
+                    dialog_lines.append(str(entry))
+            total_pages = max(1, len(dialog_entries))
             quest_detail_page = max(0, min(quest_detail_page, total_pages - 1))
+            current_entry = dialog_entries[quest_detail_page] if dialog_entries else None
+            is_choice = isinstance(current_entry, dict) and current_entry.get("type") == "choice"
             is_last = quest_detail_page >= total_pages - 1
             actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
             detail_ids = actions_cfg.get("detail", ["next", "back"])
@@ -1154,17 +1163,27 @@ def generate_frame(
             if not isinstance(labels, dict):
                 labels = {}
             commands = []
-            for action_id in detail_ids:
-                action_id = str(action_id)
-                if action_id == "back":
-                    commands.append({"label": labels.get("back", "Cancel"), "command": "B_KEY"})
-                elif action_id == "start":
-                    commands.append({"label": labels.get("start", "Start Quest"), "command": "start"})
-                else:
-                    commands.append({
-                        "label": labels.get("start", "Start Quest") if is_last else labels.get("next", "Next"),
-                        "command": "next",
-                    })
+            if is_choice:
+                options = current_entry.get("options", []) if isinstance(current_entry, dict) else []
+                if isinstance(options, list):
+                    for opt in options:
+                        if not isinstance(opt, dict):
+                            continue
+                        label = str(opt.get("label", "") or "").strip()
+                        if label:
+                            commands.append({"label": label, "command": "choice"})
+            else:
+                for action_id in detail_ids:
+                    action_id = str(action_id)
+                    if action_id == "back":
+                        commands.append({"label": labels.get("back", "Cancel"), "command": "B_KEY"})
+                    elif action_id == "start":
+                        commands.append({"label": labels.get("start", "Start Quest"), "command": "start"})
+                    else:
+                        commands.append({
+                            "label": labels.get("start", "Start Quest") if is_last else labels.get("next", "Next"),
+                            "command": "next",
+                        })
         else:
             commands = [
                 {"label": continent_label, "_disabled": True, "_header": True},
@@ -1983,12 +2002,13 @@ def generate_frame(
         atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))
         def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0))
         temp_hp = int(getattr(player, "temp_hp_bonus", 0))
-        hp_line = f"HP: {player.hp} / {player.max_hp}"
+        base_max_hp = int(player.max_hp) + int(getattr(player, "gear_hp_bonus", 0) or 0)
+        hp_line = f"HP: {player.hp} / {base_max_hp}"
         if temp_hp:
-            hp_line = f"HP: {player.hp} / {player.max_hp} (+{temp_hp})"
+            hp_line = f"HP: {player.hp} / {base_max_hp} (+{temp_hp})"
         body = [
             hp_line,
-            f"MP: {player.mp} / {player.max_mp}",
+            f"MP: {player.mp} / {int(player.max_mp) + int(getattr(player, 'gear_mp_bonus', 0) or 0)}",
             f"ATK: {player.atk} ({atk_bonus:+d})",
             f"DEF: {player.defense} ({def_bonus:+d})",
             f"Level: {player.level}  XP: {player.xp}  GP: {player.gold}",
@@ -2178,11 +2198,11 @@ def generate_frame(
                         targets.append(follower)
             target = targets[spell_target_cursor] if 0 <= spell_target_cursor < len(targets) else player
             if target is player:
-                base_max_hp = int(player.max_hp)
+                base_max_hp = int(player.max_hp) + int(getattr(player, "gear_hp_bonus", 0) or 0)
                 temp_hp = int(getattr(player, "temp_hp_bonus", 0) or 0)
                 hp = int(player.hp)
                 mp = int(player.mp)
-                max_mp = int(player.max_mp)
+                max_mp = int(player.max_mp) + int(getattr(player, "gear_mp_bonus", 0) or 0)
                 atk_total = int(player.total_atk())
                 def_total = int(player.total_defense())
                 atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0) or 0)
