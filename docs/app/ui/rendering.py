@@ -1483,7 +1483,7 @@ def render_scene_art(
         max_right = max((len(strip_ansi(line)) for line in right), default=0)
         if opponent_blocks:
             gap_pad = 2
-            inter_pad = 2
+            inter_pad = 1 if len(opponent_blocks) >= 5 else 2
             content_width = (
                 (gap_pad * 2)
                 + sum(block["width"] for block in opponent_blocks)
@@ -1665,7 +1665,7 @@ def render_scene_art(
                             segments.append(art_line)
                     else:
                         segments.append(" " * width)
-                inter_pad = 2
+                inter_pad = 1 if len(opponent_blocks) >= 5 else 2
                 gap_pad = 2
                 content = (" " * inter_pad).join(segments)
                 visible_width = len(strip_ansi(content))
@@ -1690,6 +1690,8 @@ def render_scene_art(
             total_rows = max_rows + len(bottom_objects)
             if total_rows > art_target:
                 keep = max(0, art_target - max_rows)
+                min_keep = min(len(bottom_objects), 2)
+                keep = max(keep, min_keep)
                 bottom_objects = bottom_objects[:keep]
             layout_seed = scene_data.get("layout_seed")
             if not isinstance(layout_seed, int):
@@ -1847,7 +1849,7 @@ def compute_scene_gap_target(scene_data: dict, opponents: List[Opponent]) -> int
         return gap_base
     widest_block = max(OPPONENT_ART_WIDTH, 0)
     blocks_width = widest_block * len(opponent_blocks)
-    inter_pad = 2
+    inter_pad = 1 if len(opponent_blocks) >= 5 else 2
     gap_pad = 2
     total = blocks_width + (inter_pad * max(0, len(opponent_blocks) - 1)) + (gap_pad * 2)
     return max(gap_base, total)

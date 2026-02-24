@@ -1,13 +1,13 @@
 {
-  "island_01_quest_01": {
-    "title": "Island 01 Quest 01",
+  "island_01_quest_01a": {
+    "title": "Once upon a time...",
     "continent": "base",
-    "summary_pre": "Quest 01: Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.",
-    "summary_active": "Player reaches Level 2.",
+    "summary_pre": "What did that mushroom just say again?",
+    "summary_active": "Use the 'Strengthen' spell to overpower your attack, and loot some opponents.",
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Quest 01: Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.",
+      "It started like most days, Quest 01: Player hears a commotion.  There is a young mushroom being attacked by a large crow.  The player will run up and chase off the crow.",
       "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
       "On our own, neither of us is strong enough to take on the monsters around here, but I have a little secret.",
       "I have a magic mushroom tea, and it is able to open your mind and allow you to understand basic magic.",
@@ -54,7 +54,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_01_complete"
+          "island_01_quest_01a_complete"
         ]
       },
       {
@@ -63,7 +63,7 @@
       }
     ]
   },
-  "island_01_quest_02": {
+  "island_01_quest_01b": {
     "title": "Island 01 Quest 02",
     "continent": "base",
     "auto_open_on_level_up": true,
@@ -78,7 +78,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_01_complete"
+        "island_01_quest_01a_complete"
       ],
       "level_min": 2
     },
@@ -99,7 +99,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_02_complete"
+          "island_01_quest_01b_complete"
         ]
       },
       {
@@ -108,7 +108,7 @@
       }
     ]
   },
-  "island_01_quest_03": {
+  "island_01_quest_01c": {
     "title": "Island 01 Quest 03",
     "continent": "base",
     "summary_pre": "Mushy: Now you know the basic of fighting, let's talk a bit about Fusion.",
@@ -123,7 +123,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_02_complete"
+        "island_01_quest_01b_complete"
       ]
     },
     "objectives": [
@@ -150,7 +150,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_03_complete"
+          "island_01_quest_01c_complete"
         ]
       },
       {
@@ -158,7 +158,7 @@
       }
     ]
   },
-  "island_01_quest_04": {
+  "island_01_quest_01d": {
     "title": "Island 01 Quest 04",
     "continent": "base",
     "auto_open_on_complete": true,
@@ -172,7 +172,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_03_complete"
+        "island_01_quest_01c_complete"
       ]
     },
     "objectives": [
@@ -196,7 +196,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_04_complete"
+          "island_01_quest_01d_complete"
         ]
       },
       {
@@ -205,7 +205,7 @@
       }
     ]
   },
-  "island_01_quest_05": {
+  "island_01_quest_02a": {
     "title": "Island 01 Quest 05",
     "continent": "base",
     "summary_pre": "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
@@ -219,7 +219,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_04_complete"
+        "island_01_quest_01d_complete"
       ]
     },
     "objectives": [
@@ -255,12 +255,12 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_05_complete"
+          "island_01_quest_02a_complete"
         ]
       }
     ]
   },
-  "island_01_quest_06": {
+  "island_01_quest_02b": {
     "title": "Island 01 Quest 06",
     "continent": "base",
     "summary_pre": "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
@@ -273,7 +273,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_05_complete"
+        "island_01_quest_02a_complete"
       ]
     },
     "objectives": [
@@ -294,7 +294,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_06_complete"
+          "island_01_quest_02b_complete"
         ]
       },
       {
@@ -302,7 +302,7 @@
       }
     ]
   },
-  "island_01_quest_11": {
+  "island_01_quest_03a": {
     "title": "Island 01 Quest 11",
     "continent": "base",
     "summary_pre": "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follo.",
@@ -320,7 +320,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_07_complete"
+        "island_01_quest_02c_complete"
       ]
     },
     "objectives": [
@@ -341,7 +341,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_11_complete"
+          "island_01_quest_03a_complete"
         ]
       },
       {
@@ -359,7 +359,7 @@
       ]
     }
   },
-  "island_01_quest_12": {
+  "island_01_quest_03b": {
     "title": "Island 01 Quest 12",
     "continent": "base",
     "summary_pre": "Beba: Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist.",
@@ -377,7 +377,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_11_complete"
+        "island_01_quest_03a_complete"
       ]
     },
     "objectives": [
@@ -419,12 +419,12 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_12_complete"
+          "island_01_quest_03b_complete"
         ]
       }
     ]
   },
-  "island_01_quest_13": {
+  "island_01_quest_03c": {
     "title": "Island 01 Quest 13",
     "continent": "base",
     "summary_pre": "Beba: Excellent!  Now let's head to the Temple and have the priestess fuse us faries.",
@@ -436,7 +436,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_12_complete"
+        "island_01_quest_03b_complete"
       ]
     },
     "objectives": [
@@ -460,7 +460,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_13_complete"
+          "island_01_quest_03c_complete"
         ]
       },
       {
@@ -469,7 +469,7 @@
       }
     ]
   },
-  "island_01_quest_14": {
+  "island_01_quest_03d": {
     "title": "Island 01 Quest 14",
     "continent": "base",
     "summary_pre": "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
@@ -486,7 +486,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_13_complete"
+        "island_01_quest_03c_complete"
       ]
     },
     "objectives": [
@@ -507,7 +507,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_14_complete"
+          "island_01_quest_03d_complete"
         ]
       },
       {
@@ -525,7 +525,7 @@
       ]
     }
   },
-  "island_01_quest_16": {
+  "island_01_quest_03e": {
     "title": "Island 01 Quest 16",
     "continent": "base",
     "summary_pre": "Narration: You have proven yourself, so as promised, here is the \"Sprite Bite\" spell.  And since it was just a friendly fight, we will restore your HP and MP as well.",
@@ -540,7 +540,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_14_complete"
+        "island_01_quest_03d_complete"
       ]
     },
     "objectives": [
@@ -570,7 +570,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_16_complete"
+          "island_01_quest_03e_complete"
         ]
       },
       {
@@ -585,16 +585,28 @@
       }
     ],
     "trial": {
-      "scene_id": "island_01_quest_16_trial",
+      "scene_id": "island_01_quest_03e_trial",
       "opponents": [
+        {
+          "opponent_id": "baby_troll"
+        },
+        {
+          "opponent_id": "baby_ogre"
+        },
         {
           "opponent_id": "ogre",
           "count": 1
+        },
+        {
+          "opponent_id": "baby_ogre"
+        },
+        {
+          "opponent_id": "baby_troll"
         }
       ]
     }
   },
-  "island_01_quest_18": {
+  "island_01_quest_03f": {
     "title": "Island 01 Quest 18",
     "continent": "base",
     "summary_pre": "Beba: I have never seen a real Mana Stone before.  With this I should be more powerful than ever!",
@@ -609,7 +621,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_16_complete"
+        "island_01_quest_03e_complete"
       ]
     },
     "objectives": [
@@ -630,7 +642,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_18_complete"
+          "island_01_quest_03f_complete"
         ]
       },
       {
@@ -639,7 +651,7 @@
       }
     ]
   },
-  "island_01_quest_19": {
+  "island_01_quest_04a": {
     "title": "Island 01 Quest 19",
     "continent": "base",
     "summary_pre": "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
@@ -661,7 +673,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_18_complete"
+        "island_01_quest_03f_complete"
       ]
     },
     "objectives": [
@@ -697,7 +709,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_19_complete"
+          "island_01_quest_04a_complete"
         ]
       },
       {
@@ -705,7 +717,7 @@
       }
     ]
   },
-  "island_01_quest_22": {
+  "island_01_quest_04b": {
     "title": "Island 01 Quest 22",
     "continent": "base",
     "summary_pre": "Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!",
@@ -719,7 +731,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_19_complete"
+        "island_01_quest_04a_complete"
       ]
     },
     "objectives": [],
@@ -735,12 +747,12 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_22_complete"
+          "island_01_quest_04b_complete"
         ]
       }
     ]
   },
-  "island_01_quest_23": {
+  "island_01_quest_04c": {
     "title": "Island 01 Quest 23",
     "continent": "base",
     "summary_pre": "Golden Wolf Messenger: Woof!",
@@ -753,12 +765,14 @@
       "Golden Wolf Messenger: Woof, growl, woof woof.",
       "Chase: Woof.",
       "Narration: Chase looks at you, as if he is waiting for a response.",
-      "Mushy: Oops, I forgot for a minute you don't speak Wolf....",
-      "So it seems like there is a Poisonous Python that has been stealing pups from the Wolf Pack.  The Pack leader has asked for our help in rescuing the pups from the terrible snake."
+      "Mushy: Oops, I forgot for a minute you don't speak Wolf.  Fine I can translate I guess.",
+      "Let's see, basically there is a population of Poisonous Pythons pilfering pups per the pack.  Pythons project powerful poison that packs a potent brunch...",
+      "Mushy: Woof!",
+      "Oh, sorry, I mean 'punch'...  Anyway, TL;DR -- puppies bueno, snakes bad, ya know?"
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_22_complete"
+        "island_01_quest_04b_complete"
       ]
     },
     "objectives": [
@@ -779,7 +793,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_23_complete",
+          "island_01_quest_04c_complete",
           "spell_snake_bite_enabled"
         ]
       },
@@ -795,16 +809,27 @@
       }
     ],
     "trial": {
-      "scene_id": "island_01_quest_23_trial",
+      "scene_id": "island_01_quest_04c_trial",
       "opponents": [
         {
-          "opponent_id": "poisonous_python",
-          "count": 1
+          "opponent_id": "lil_komodo"
+        },
+        {
+          "opponent_id": "poisonous_python"
+        },
+        {
+          "opponent_id": "poisonous_python"
+        },
+        {
+          "opponent_id": "poisonous_python"
+        },
+        {
+          "opponent_id": "lil_komodo"
         }
       ]
     }
   },
-  "island_01_quest_25": {
+  "island_01_quest_04d": {
     "title": "Island 01 Quest 25",
     "continent": "base",
     "summary_pre": "Chase: Woof!",
@@ -820,7 +845,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_23_complete"
+        "island_01_quest_04c_complete"
       ]
     },
     "objectives": [],
@@ -829,12 +854,12 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_25_complete"
+          "island_01_quest_04d_complete"
         ]
       }
     ]
   },
-  "island_01_quest_07": {
+  "island_01_quest_02c": {
     "title": "Island 01 Quest 07",
     "continent": "base",
     "summary_pre": "Mushy: Our team is really progressing nicely!",
@@ -853,7 +878,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_06_complete"
+        "island_01_quest_02b_complete"
       ]
     },
     "objectives": [
@@ -880,7 +905,7 @@
       {
         "type": "set_flags",
         "flags": [
-          "island_01_quest_07_complete"
+          "island_01_quest_02c_complete"
         ]
       }
     ]
