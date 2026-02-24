@@ -3034,7 +3034,12 @@ def apply_router_command(
             objects_data=ctx.objects,
             color_map_override=color_override
         )
-    if post_level > pre_level and not state.leveling_mode:
+    skip_level_transition = False
+    if cmd and cmd.startswith("TITLE_SLOT_"):
+        slot_mode = getattr(state.player, "title_slot_mode", None)
+        if slot_mode == "continue":
+            skip_level_transition = True
+    if post_level > pre_level and not state.leveling_mode and not skip_level_transition:
         if _handle_level_up_transition(ctx, state, pre_level, post_level):
             return True, action_cmd, cmd, True, target_index
     if action_cmd not in ctx.combat_actions:
