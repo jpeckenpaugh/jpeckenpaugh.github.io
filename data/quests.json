@@ -37,15 +37,23 @@
               },
               {
                 "type": "show_message",
-                "message": "Wow, with a nice magic crystal like this I can make you a staff."
+                "message": "As you throw the crystal, magic energy suddenly flows out and smacks the crow.  The crow is frightened and flies off."
               },
               {
                 "type": "show_message",
-                "message": "If you are brave enough to drink the Tea of Enlightenment, you can awaken your magic."
+                "message": "Mushy: Wow, with a nice magic crystal like this I can make you a mystic staff.  This item can contain spell charges to use in battle and for stat boosts."
               },
               {
                 "type": "show_message",
-                "message": "Mystic path unlocked.  MP will now increase when you level up."
+                "message": "I have a mystic cape for you as well, which can not only protect you, but also has healing and empowering properties."
+              },
+              {
+                "type": "show_message",
+                "message": "If you are brave enough to drink the Tea of Enlightenment, you can awaken your energy magic and train in the various magical elements.."
+              },
+              {
+                "type": "show_message",
+                "message": "Quick, drink up this tea before the crow comes back with some buddies.  It will give you the advantage to walk away victorious from the fight."
               }
             ]
           },
@@ -72,15 +80,19 @@
               },
               {
                 "type": "show_message",
-                "message": "That's one nice club you have there.  I can make it even stronger."
+                "message": "You charge at the crow swinging your stick in the air and yelling.  It was enough to frighten the bird and scare it off for now."
               },
               {
                 "type": "show_message",
-                "message": "Drink this Tea of Empowerment and your strength will surge."
+                "message": "Mushy: That's one nice club you have there.  I can embue it with some mushroom magic and make it even stronger if you like."
               },
               {
                 "type": "show_message",
-                "message": "Fighter path unlocked.  Heavy gear will be within reach."
+                "message": "I also have a special warriors Tea of Empowerment.  Drink this and it will help your strength to surge."
+              },
+              {
+                "type": "show_message",
+                "message": "Be sure to check the magic enchanchments for your items before those pesky birds come back to bother us."
               }
             ]
           }
@@ -119,10 +131,9 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "baby_crow",
     "dialog": [
-      "Mushy: Uh oh... I recognize that sound.",
-      "Narration: The baby crow returns with three more crows!",
-      "Mushy: Ready or not, here they come! (Mushy joins the team)",
-      "Mushy: Use your new tool to fend them off!"
+      "Mushy: Uh oh... I recognize that sound.  There is a reason they call it a murder of crows, you know.",
+      "Crow Crew: Hey, you are just some kid!  How dare you come scare me off and interupt my mushroom dinner.",
+      "Mushy: Ready or not, here they come!  I sure hope you can figure out how to use these magical items I have given you."
     ],
     "requirements": {
       "flags_required": [
@@ -165,7 +176,7 @@
       },
       {
         "type": "grant_xp",
-        "amount": 40
+        "amount": 10
       }
     ],
     "trial": {
