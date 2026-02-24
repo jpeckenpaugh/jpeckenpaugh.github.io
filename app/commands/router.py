@@ -8,6 +8,7 @@ from app.combat import cast_spell, primary_opponent
 from app.data_access.commands_data import CommandsData
 from app.data_access.continents_data import ContinentsData
 from app.data_access.items_data import ItemsData
+from app.data_access.equipment_slots_data import EquipmentSlotsData
 from app.data_access.glyphs_data import GlyphsData
 from app.data_access.elements_data import ElementsData
 from app.data_access.spells_art_data import SpellsArtData
@@ -76,6 +77,7 @@ class CommandState:
 @dataclass
 class RouterContext:
     items: ItemsData
+    equipment_slots: EquipmentSlotsData
     opponents_data: OpponentsData
     scenes: ScenesData
     commands: CommandsData
@@ -131,6 +133,33 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         }.get(next_mode, "Audio updated.")
         state.last_message = label
         return True
+
+    def _needs_charge_restore(player: Player) -> bool:
+        if not isinstance(getattr(player, "equipment", None), dict):
+            return False
+        for gear_id in player.equipment.values():
+            gear = player.gear_instance(gear_id) if hasattr(player, "gear_instance") else None
+            if not isinstance(gear, dict):
+                continue
+            charges = gear.get("charges")
+            max_charges = gear.get("max_charges")
+            if isinstance(charges, dict) and isinstance(max_charges, dict):
+                for element, max_val in max_charges.items():
+                    if int(charges.get(element, 0) or 0) < int(max_val or 0):
+                        return True
+            imbued = gear.get("imbued_spells", [])
+            if isinstance(imbued, list):
+                for entry in imbued:
+                    if not isinstance(entry, dict):
+                        continue
+                    restore = str(entry.get("restore", "inn") or "inn")
+                    if restore != "inn":
+                        continue
+                    current = int(entry.get("charges", 0) or 0)
+                    max_val = int(entry.get("max_charges", current) or current)
+                    if current < max_val:
+                        return True
+        return False
 
     if command_id == "ENTER_VENUE":
         venue_id = _command_target(ctx.scenes, ctx.commands, state, command_id, key)
@@ -716,7 +745,12 @@ def handle_command(command_id: str, state: CommandState, ctx: RouterContext, key
         if service_type not in ("rest", "meal", "overcharge"):
             return False
         if service_type != "overcharge":
-            if not (state.player.hp < state.player.total_max_hp() or state.player.mp < state.player.total_max_mp()):
+            needs_restore = (
+                state.player.hp < state.player.total_max_hp()
+                or state.player.mp < state.player.total_max_mp()
+                or _needs_charge_restore(state.player)
+            )
+            if not needs_restore:
                 state.last_message = service.get("full_message", "You're already fully rested.")
                 return True
         if state.player.location != "Town":

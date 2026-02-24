@@ -17,6 +17,7 @@ from app.data_access.glyphs_data import GlyphsData
 from app.data_access.elements_data import ElementsData
 from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.items_data import ItemsData
+from app.data_access.equipment_slots_data import EquipmentSlotsData
 from app.data_access.menus_data import MenusData
 from app.data_access.music_data import MusicData
 from app.data_access.npcs_data import NpcsData
@@ -65,6 +66,7 @@ from app.venues import render_venue_body, venue_id_from_state
 @dataclass
 class ScreenContext:
     items: ItemsData
+    equipment_slots: EquipmentSlotsData
     opponents: OpponentsData
     scenes: ScenesData
     npcs: NpcsData
@@ -1051,9 +1053,10 @@ def generate_frame(
     art_lines = []
     art_color = ANSI.FG_WHITE
     if leveling_mode:
+        mp_locked = not player.flags.get("enlightened_01", False)
         level_options = [
             "  +HP",
-            "  +MP",
+            "  +MP (Locked)" if mp_locked else "  +MP",
             "  +ATK",
             "  +DEF",
             "  Balanced allocation",
@@ -1142,9 +1145,33 @@ def generate_frame(
             dialog = detail_quest.get("dialog", [])
             if not isinstance(dialog, list):
                 dialog = []
-            dialog_lines = [str(line) for line in dialog if line is not None]
-            total_pages = max(1, len(dialog_lines))
+            dialog_entries = [entry for entry in dialog if entry is not None]
+            flags = getattr(player, "flags", {})
+            choice_messages = {}
+            if isinstance(flags, dict):
+                choice_messages = flags.get("choice_messages", {})
+            if not isinstance(choice_messages, dict):
+                choice_messages = {}
+            if choice_messages and quest_detail_id:
+                expanded = []
+                for idx, entry in enumerate(dialog_entries):
+                    expanded.append(entry)
+                    key = f"choice:{quest_detail_id}:{idx}"
+                    extra = choice_messages.get(key)
+                    if isinstance(extra, list) and extra:
+                        expanded.extend([str(line) for line in extra if line is not None])
+                dialog_entries = expanded
+            dialog_lines = []
+            for entry in dialog_entries:
+                if isinstance(entry, dict) and entry.get("type") == "choice":
+                    prompt = str(entry.get("prompt", "") or "")
+                    dialog_lines.append(prompt)
+                else:
+                    dialog_lines.append(str(entry))
+            total_pages = max(1, len(dialog_entries))
             quest_detail_page = max(0, min(quest_detail_page, total_pages - 1))
+            current_entry = dialog_entries[quest_detail_page] if dialog_entries else None
+            is_choice = isinstance(current_entry, dict) and current_entry.get("type") == "choice"
             is_last = quest_detail_page >= total_pages - 1
             actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
             detail_ids = actions_cfg.get("detail", ["next", "back"])
@@ -1154,17 +1181,27 @@ def generate_frame(
             if not isinstance(labels, dict):
                 labels = {}
             commands = []
-            for action_id in detail_ids:
-                action_id = str(action_id)
-                if action_id == "back":
-                    commands.append({"label": labels.get("back", "Cancel"), "command": "B_KEY"})
-                elif action_id == "start":
-                    commands.append({"label": labels.get("start", "Start Quest"), "command": "start"})
-                else:
-                    commands.append({
-                        "label": labels.get("start", "Start Quest") if is_last else labels.get("next", "Next"),
-                        "command": "next",
-                    })
+            if is_choice:
+                options = current_entry.get("options", []) if isinstance(current_entry, dict) else []
+                if isinstance(options, list):
+                    for opt in options:
+                        if not isinstance(opt, dict):
+                            continue
+                        label = str(opt.get("label", "") or "").strip()
+                        if label:
+                            commands.append({"label": label, "command": "choice"})
+            else:
+                for action_id in detail_ids:
+                    action_id = str(action_id)
+                    if action_id == "back":
+                        commands.append({"label": labels.get("back", "Cancel"), "command": "B_KEY"})
+                    elif action_id == "start":
+                        commands.append({"label": labels.get("start", "Start Quest"), "command": "start"})
+                    else:
+                        commands.append({
+                            "label": labels.get("start", "Start Quest") if is_last else labels.get("next", "Next"),
+                            "command": "next",
+                        })
         else:
             commands = [
                 {"label": continent_label, "_disabled": True, "_header": True},
@@ -1872,13 +1909,21 @@ def generate_frame(
             equip = selected_follower.get("equipment", {}) if isinstance(selected_follower, dict) else {}
             equip_parts = []
             if isinstance(equip, dict):
-                for slot in ("sword", "shield", "armor", "ring", "bracelet", "wand"):
+                slot_order = []
+                if hasattr(ctx, "equipment_slots"):
+                    slot_order = list(ctx.equipment_slots.order() or [])
+                if not slot_order:
+                    slot_order = ["sword", "shield", "armor", "ring", "bracelet", "wand"]
+                for slot in slot_order:
                     gear_id = equip.get(slot)
                     if not gear_id:
                         continue
                     gear = player.gear_instance(gear_id) if hasattr(player, "gear_instance") else None
                     name_part = gear.get("name", slot.title()) if isinstance(gear, dict) else slot.title()
-                    equip_parts.append(f"{slot[:2].title()}: {name_part}")
+                    label = slot.title()
+                    if hasattr(ctx, "equipment_slots"):
+                        label = ctx.equipment_slots.slot_label(slot)
+                    equip_parts.append(f"{label}: {name_part}")
             equip_line = "Equipment: " + (", ".join(equip_parts) if equip_parts else "None")
             desc_lines.append(equip_line)
 
@@ -1983,12 +2028,13 @@ def generate_frame(
         atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0))
         def_bonus = int(player.gear_defense) + int(getattr(player, "temp_def_bonus", 0))
         temp_hp = int(getattr(player, "temp_hp_bonus", 0))
-        hp_line = f"HP: {player.hp} / {player.max_hp}"
+        base_max_hp = int(player.max_hp) + int(getattr(player, "gear_hp_bonus", 0) or 0)
+        hp_line = f"HP: {player.hp} / {base_max_hp}"
         if temp_hp:
-            hp_line = f"HP: {player.hp} / {player.max_hp} (+{temp_hp})"
+            hp_line = f"HP: {player.hp} / {base_max_hp} (+{temp_hp})"
         body = [
             hp_line,
-            f"MP: {player.mp} / {player.max_mp}",
+            f"MP: {player.mp} / {int(player.max_mp) + int(getattr(player, 'gear_mp_bonus', 0) or 0)}",
             f"ATK: {player.atk} ({atk_bonus:+d})",
             f"DEF: {player.defense} ({def_bonus:+d})",
             f"Level: {player.level}  XP: {player.xp}  GP: {player.gold}",
@@ -2178,11 +2224,11 @@ def generate_frame(
                         targets.append(follower)
             target = targets[spell_target_cursor] if 0 <= spell_target_cursor < len(targets) else player
             if target is player:
-                base_max_hp = int(player.max_hp)
+                base_max_hp = int(player.max_hp) + int(getattr(player, "gear_hp_bonus", 0) or 0)
                 temp_hp = int(getattr(player, "temp_hp_bonus", 0) or 0)
                 hp = int(player.hp)
                 mp = int(player.mp)
-                max_mp = int(player.max_mp)
+                max_mp = int(player.max_mp) + int(getattr(player, "gear_mp_bonus", 0) or 0)
                 atk_total = int(player.total_atk())
                 def_total = int(player.total_defense())
                 atk_bonus = int(player.gear_atk) + int(getattr(player, "temp_atk_bonus", 0) or 0)

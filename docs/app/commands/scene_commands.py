@@ -27,6 +27,13 @@ def command_is_enabled(command: dict, player: Player, opponents: List[Opponent])
     if not has_mp:
         charges = getattr(player, "wand_charges", lambda: {})()
         has_mp = any(int(v) > 0 for v in charges.values()) if isinstance(charges, dict) else False
+    if not has_mp:
+        imbued = getattr(player, "imbued_spell_charges", None)
+        if callable(imbued):
+            has_mp = any(
+                imbued(spell_id) > 0
+                for spell_id, _spell in (available or [])
+            )
     has_elements = len(getattr(player, "elements", []) or []) > 1
     recruit_only_types = None
     if isinstance(getattr(player, "flags", None), dict):
@@ -92,7 +99,7 @@ def filter_commands(commands: List[dict], player: Player, opponents: List[Oppone
         if when == "no_opponents" and has_opponents:
             continue
         if when == "needs_rest":
-            if not (player.hp < player.max_hp or player.mp < player.max_mp):
+            if not (player.hp < player.total_max_hp() or player.mp < player.total_max_mp()):
                 continue
         if when == "has_save" and not has_save:
             continue

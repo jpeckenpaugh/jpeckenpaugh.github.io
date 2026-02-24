@@ -44,6 +44,7 @@ class SpellsData:
             flags = {}
         equipped_ids = set()
         granted_spells = set()
+        imbued_spells = set()
         if not isinstance(player, int) and items_data is not None:
             equipment = getattr(player, "equipment", {}) if hasattr(player, "equipment") else {}
             if isinstance(equipment, dict):
@@ -61,6 +62,15 @@ class SpellsData:
                     grants = gear.get("grants_spells", [])
                     if isinstance(grants, list):
                         granted_spells.update(str(spell_id) for spell_id in grants)
+                    imbued = gear.get("imbued_spells", [])
+                    if isinstance(imbued, list):
+                        for entry in imbued:
+                            if not isinstance(entry, dict):
+                                continue
+                            spell_id = str(entry.get("spell_id", "") or "")
+                            charges = int(entry.get("charges", 0) or 0)
+                            if spell_id and charges > 0:
+                                imbued_spells.add(spell_id)
         for spell_id, spell in self._spells.items():
             unlock = spell.get("unlock")
             if not isinstance(player, int):
@@ -79,6 +89,8 @@ class SpellsData:
                 if items_any and any(str(item_id) in equipped_ids for item_id in items_any):
                     allowed = True
                 if str(spell_id) in granted_spells:
+                    allowed = True
+                if str(spell_id) in imbued_spells:
                     allowed = True
                 if not allowed:
                     continue

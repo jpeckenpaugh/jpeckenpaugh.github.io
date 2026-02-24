@@ -17,6 +17,7 @@ from app.data_access.glyphs_data import GlyphsData
 from app.data_access.elements_data import ElementsData
 from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.items_data import ItemsData
+from app.data_access.equipment_slots_data import EquipmentSlotsData
 from app.data_access.menus_data import MenusData
 from app.data_access.music_data import MusicData
 from app.data_access.npcs_data import NpcsData
@@ -65,6 +66,7 @@ from app.venues import render_venue_body, venue_id_from_state
 @dataclass
 class ScreenContext:
     items: ItemsData
+    equipment_slots: EquipmentSlotsData
     opponents: OpponentsData
     scenes: ScenesData
     npcs: NpcsData
@@ -1907,13 +1909,21 @@ def generate_frame(
             equip = selected_follower.get("equipment", {}) if isinstance(selected_follower, dict) else {}
             equip_parts = []
             if isinstance(equip, dict):
-                for slot in ("sword", "shield", "armor", "ring", "bracelet", "wand"):
+                slot_order = []
+                if hasattr(ctx, "equipment_slots"):
+                    slot_order = list(ctx.equipment_slots.order() or [])
+                if not slot_order:
+                    slot_order = ["sword", "shield", "armor", "ring", "bracelet", "wand"]
+                for slot in slot_order:
                     gear_id = equip.get(slot)
                     if not gear_id:
                         continue
                     gear = player.gear_instance(gear_id) if hasattr(player, "gear_instance") else None
                     name_part = gear.get("name", slot.title()) if isinstance(gear, dict) else slot.title()
-                    equip_parts.append(f"{slot[:2].title()}: {name_part}")
+                    label = slot.title()
+                    if hasattr(ctx, "equipment_slots"):
+                        label = ctx.equipment_slots.slot_label(slot)
+                    equip_parts.append(f"{label}: {name_part}")
             equip_line = "Equipment: " + (", ".join(equip_parts) if equip_parts else "None")
             desc_lines.append(equip_line)
 

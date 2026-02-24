@@ -1,5 +1,4 @@
 {
-  "island_01_quest_00a": {
     "title": "A Crow and a Mushroom",
     "continent": "base",
     "summary_pre": "A baby crow is about to snatch a tiny mushroom.",
@@ -197,16 +196,11 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "You see a young mushroom and a crow fighting one another.",
       "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
-      "On our own, neither of us is strong enough to take on the monsters around here, but I have a little secret.",
-      "I have a magic mushroom tea, and it is able to open your mind and allow you to understand basic magic.",
-      "I can also show you how to cast a \"Strengthen\" that you will be able to use to raise our attack and defense points.",
+      "I can also show you how to cast a \"Strengthen\" that you will be able to use to raise our attack and defense points, assuming you have Magic Points (MP) to cast with.",
       "The spell will use your Magic Points (MP) and will wear off over time.  But for a while, we will be able to fight the monsters in this area and win.",
       "Defeating monsters will grant us gold and experience.  If your life and magic points are getting low, we can visit the Inn in the nearby town, and sleep for the night.",
-      "So what do you say?  Feel like trying my magic tea, and we can test our luck against some monsters?",
-      "Story: Player will need to use the Strengthen spell to increase their attack and defense.",
-      "Player will need to kill approximately 10 enemies to gain level 2."
+      "Oh, and if you want to recharge the magic abilities in your items, you can do that in the Temple, or just sleep for the night and items will recharge on their own."
     ],
     "requirements": {
       "flags_required": [
@@ -231,15 +225,6 @@
         "type": "set_ui_hint",
         "scene": "forest",
         "action_command": "SPELLBOOK"
-      },
-      {
-        "type": "grant_follower",
-        "follower": {
-          "type": "mushroom_baby",
-          "name": "Mushy",
-          "count_as_recruit": true
-        },
-        "required": true
       }
     ],
     "on_complete_actions": [
@@ -252,12 +237,12 @@
       },
       {
         "type": "grant_xp",
-        "amount": 50
+        "amount": 25
       }
     ]
   },
   "island_01_quest_01b": {
-    "title": "Island 01 Quest 02",
+    "title": "First Steps, First Stats",
     "continent": "base",
     "auto_open_on_level_up": true,
     "summary_pre": "Mushy: See, that wasn't that hard!",
@@ -266,8 +251,8 @@
     "art_opponent": "mushroom_baby",
     "dialog": [
       "Mushy: See, that wasn't that hard!",
-      "Now that you have reached level 2, you have 10 \"status\" points that you can use to increase your base stats.",
-      "You can power up your Life Points (HP), Mana Points (MP).  You should also increase your attack points and defense points, so we won't be so reliant on the Strengthen spell."
+      "Now that you have leveled up, you should have 10 \"status\" points that you can use to increase your base stats.",
+      "You can power up your Life Points (HP), and if you picked the mystic path you can increase your Mana Points (MP).  You should also increase your attack points and defense points, so we won't be so reliant on the Strengthen spell."
     ],
     "requirements": {
       "flags_required": [
@@ -302,7 +287,7 @@
     ]
   },
   "island_01_quest_01c": {
-    "title": "Island 01 Quest 03",
+    "title": "Three's a Team",
     "continent": "base",
     "summary_pre": "Mushy: Now you know the basic of fighting, let's talk a bit about Fusion.",
     "summary_active": "Player must fight opponents and convince 2 mini mushrooms to join team.  Once there are 3 mini mushrooms on team....",
@@ -352,7 +337,7 @@
     ]
   },
   "island_01_quest_01d": {
-    "title": "Island 01 Quest 04",
+    "title": "Mushroom Fusion",
     "continent": "base",
     "auto_open_on_complete": true,
     "summary_pre": "Mushy: Great!  Now that we have 3 mini mushrooms on our team, you can fuse us.",
@@ -399,7 +384,7 @@
     ]
   },
   "island_01_quest_02a": {
-    "title": "Island 01 Quest 05",
+    "title": "Chase the Moon",
     "continent": "base",
     "summary_pre": "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
     "summary_active": "Recruit two more wolf pups to join the team.",
@@ -454,7 +439,7 @@
     ]
   },
   "island_01_quest_02b": {
-    "title": "Island 01 Quest 06",
+    "title": "Pack Bond",
     "continent": "base",
     "summary_pre": "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
     "summary_active": "Player must go to Town, Visit Temple, and Fuse 3 wolf pups.",
@@ -496,14 +481,14 @@
     ]
   },
   "island_01_quest_03a": {
-    "title": "Island 01 Quest 11",
+    "title": "Beba Hexa",
     "continent": "base",
-    "summary_pre": "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follo.",
+    "summary_pre": "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follow.",
     "summary_active": "Team must win a battle against 4 baby trolls with Beba on their team.",
     "summary_complete": "Quest complete.",
     "art_opponent": "baby_troll",
     "dialog": [
-      "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follo.",
+      "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follow.",
       "Mushy: It seems like Chase has picked up a scent.  We better follow him!",
       "Beba: Take that you mean trolls!",
       "Narration: You come upon a small fairy who appaers to be fighting 4 small trolls.",
@@ -553,7 +538,7 @@
     }
   },
   "island_01_quest_03b": {
-    "title": "Island 01 Quest 12",
+    "title": "Power of Three",
     "continent": "base",
     "summary_pre": "Beba: Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist.",
     "summary_active": "Player has to battle opponents until finding 2 fairies to join the team.",
@@ -618,7 +603,7 @@
     ]
   },
   "island_01_quest_03c": {
-    "title": "Island 01 Quest 13",
+    "title": "Warrior's Ring",
     "continent": "base",
     "summary_pre": "Beba: Excellent!  Now let's head to the Temple and have the priestess fuse us faries.",
     "summary_active": "Player travels to temple and uses fuse on 3 faries.",
@@ -663,7 +648,7 @@
     ]
   },
   "island_01_quest_03d": {
-    "title": "Island 01 Quest 14",
+    "title": "Ogre's Hoard",
     "continent": "base",
     "summary_pre": "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
     "summary_active": "Player must win the battle against the 4 fairy warriors.",
@@ -719,7 +704,7 @@
     }
   },
   "island_01_quest_03e": {
-    "title": "Island 01 Quest 16",
+    "title": "Stone of Power",
     "continent": "base",
     "summary_pre": "Narration: You have proven yourself, so as promised, here is the \"Sprite Bite\" spell.  And since it was just a friendly fight, we will restore your HP and MP as well.",
     "summary_active": "Next Opponent player fights in the Forest will be the Giant Ogre.  Player must defeat Giant Ogre in battle.",
@@ -800,7 +785,7 @@
     }
   },
   "island_01_quest_03f": {
-    "title": "Island 01 Quest 18",
+    "title": "Instinct Unlocked",
     "continent": "base",
     "summary_pre": "Beba: I have never seen a real Mana Stone before.  With this I should be more powerful than ever!",
     "summary_active": "Player Uses Mana Stone - spells receive 10 Rank XP each, advancing to rank 2.  Player receives 20 MP bonus as well.",
@@ -845,7 +830,7 @@
     ]
   },
   "island_01_quest_04a": {
-    "title": "Island 01 Quest 19",
+    "title": "Pups of the Pack",
     "continent": "base",
     "summary_pre": "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
     "summary_active": "Player must battle until finding 2 more baby ogres to join the team.",
@@ -911,7 +896,7 @@
     ]
   },
   "island_01_quest_04b": {
-    "title": "Island 01 Quest 22",
+    "title": "Pack Fusion",
     "continent": "base",
     "summary_pre": "Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!",
     "summary_active": "Player learns \"Fit of Rage\" spell from Ogrito.",
@@ -946,7 +931,7 @@
     ]
   },
   "island_01_quest_04c": {
-    "title": "Island 01 Quest 23",
+    "title": "Poison Pythons Picked a Pack of Pickled Puppers",
     "continent": "base",
     "summary_pre": "Golden Wolf Messenger: Woof!",
     "summary_active": "Player must defeat the Poisonous Python in battle.",
@@ -961,7 +946,7 @@
       "Mushy: Oops, I forgot for a minute you don't speak Wolf.  Fine I can translate I guess.",
       "Let's see, basically there is a population of Poisonous Pythons pilfering pups per the pack.  Pythons project powerful poison that packs a potent brunch...",
       "Mushy: Woof!",
-      "Oh, sorry, I mean 'punch'...  Anyway, TL;DR -- puppies bueno, snakes bad, ya know?"
+      "Oh, sorry, I mean 'punch'...  Anyway, TL;DR -- puppies buen-o, snakes bad-o, got it?"
     ],
     "requirements": {
       "flags_required": [
@@ -1023,7 +1008,7 @@
     }
   },
   "island_01_quest_04d": {
-    "title": "Island 01 Quest 25",
+    "title": "Golden Trust",
     "continent": "base",
     "summary_pre": "Chase: Woof!",
     "summary_active": "",
@@ -1053,7 +1038,7 @@
     ]
   },
   "island_01_quest_02c": {
-    "title": "Island 01 Quest 07",
+    "title": "Troll Tussle",
     "continent": "base",
     "summary_pre": "Mushy: Our team is really progressing nicely!",
     "summary_active": "Player casts \"Animal Instinct\" spell and goes to the Forrest.",

@@ -15,6 +15,7 @@ from app.data_access.glyphs_data import GlyphsData
 from app.data_access.spells_art_data import SpellsArtData
 from app.data_access.elements_data import ElementsData
 from app.data_access.items_data import ItemsData
+from app.data_access.equipment_slots_data import EquipmentSlotsData
 from app.data_access.menus_data import MenusData
 from app.data_access.music_data import MusicData
 from app.data_access.npcs_data import NpcsData
@@ -73,6 +74,7 @@ class AppContext:
     quests_screen: QuestsScreenData
     followers_screen: FollowersScreenData
     followers: FollowersData
+    equipment_slots: EquipmentSlotsData
     music: MusicData
     audio: AudioManager
     registry: object
@@ -89,6 +91,8 @@ class AppContext:
 def _load_items() -> ItemsData:
     return ItemsData(f"{DATA_DIR}/items.json")
 
+def _load_equipment_slots() -> EquipmentSlotsData:
+    return EquipmentSlotsData(f"{DATA_DIR}/equipment_slots.json")
 
 def _load_opponents() -> OpponentsData:
     return OpponentsData(f"{DATA_DIR}/opponents.json")
@@ -229,6 +233,7 @@ def _spell_command_sets(spells: SpellsData) -> tuple[set, set, set]:
 
 def create_app() -> AppContext:
     items = _load_items()
+    equipment_slots = _load_equipment_slots()
     opponents = _load_opponents()
     scenes = _load_scenes()
     npcs = _load_npcs()
@@ -269,6 +274,7 @@ def create_app() -> AppContext:
     registry = build_registry()
     router_ctx = RouterContext(
         items=items,
+        equipment_slots=equipment_slots,
         opponents_data=opponents,
         scenes=scenes,
         commands=commands_data,
@@ -299,6 +305,7 @@ def create_app() -> AppContext:
     )
     screen_ctx = ScreenContext(
         items=items,
+        equipment_slots=equipment_slots,
         opponents=opponents,
         scenes=scenes,
         npcs=npcs,
@@ -333,6 +340,7 @@ def create_app() -> AppContext:
 
     return AppContext(
         items=items,
+        equipment_slots=equipment_slots,
         opponents=opponents,
         scenes=scenes,
         npcs=npcs,

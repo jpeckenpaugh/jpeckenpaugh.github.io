@@ -285,10 +285,14 @@ class Player:
         slot = gear.get("slot")
         if not slot:
             return "That item cannot be equipped."
+        required_flag = self._item_requires_flag(gear, slot)
+        if required_flag and not self.flags.get(required_flag, False):
+            return "You cannot equip that yet."
         if self.equipment.get(slot) == gear_id:
             self.equipment.pop(slot, None)
             self._recalc_gear()
             return f"Unequipped {gear.get('name', 'gear')}."
+        self._apply_hand_conflicts(self.equipment, slot)
         self.equipment[slot] = gear_id
         self._recalc_gear()
         return f"Equipped {gear.get('name', 'gear')}."
@@ -313,6 +317,9 @@ class Player:
         slot = gear.get("slot")
         if not slot:
             return False
+        required_flag = self._item_requires_flag(gear, slot)
+        if required_flag and not self.flags.get(required_flag, False):
+            return False
         if not isinstance(self.equipment, dict):
             self.equipment = {}
         current_id = self.equipment.get(slot)
@@ -321,6 +328,7 @@ class Player:
         current_score = self._gear_score(current) if current else -1
         if current and new_score < current_score:
             return False
+        self._apply_hand_conflicts(self.equipment, slot)
         self.equipment[slot] = gear.get("id")
         self._recalc_gear()
         return True
@@ -443,6 +451,7 @@ class Player:
                 if eq_id == gear_id:
                     equip.pop(eq_slot, None)
         equip = self.follower_equipment(follower)
+        self._apply_hand_conflicts(equip, slot)
         equip[slot] = gear_id
         return True
 
@@ -764,6 +773,59 @@ class Player:
                 self.gear_inventory.append(gear)
                 cleaned[slot] = gear.get("id")
         self.equipment = cleaned
+
+    def _slot_data(self):
+        return getattr(self, "_equipment_slots", None)
+
+    def _slot_meta(self, slot: str) -> dict:
+        data = self._slot_data()
+        if data and hasattr(data, "slot_meta"):
+            return data.slot_meta(slot)
+        return {}
+
+    def _item_requires_flag(self, gear: dict, slot: str) -> str:
+        item_flag = ""
+        items_data = getattr(self, "_items_data", None)
+        if items_data is not None and isinstance(gear, dict):
+            item_id = gear.get("item_id")
+            if item_id:
+                item = items_data.get(str(item_id), {}) if hasattr(items_data, "get") else {}
+                if isinstance(item, dict):
+                    item_flag = str(item.get("requires_flag", "") or "")
+        if item_flag:
+            return item_flag
+        slot_meta = self._slot_meta(slot)
+        return str(slot_meta.get("requires_flag", "") or "")
+
+    def _slot_label(self, slot: str) -> str:
+        data = self._slot_data()
+        if data and hasattr(data, "slot_label"):
+            return data.slot_label(slot)
+        return slot.title()
+
+    def _slot_hand(self, slot: str) -> str:
+        data = self._slot_data()
+        if data and hasattr(data, "slot_hand"):
+            return data.slot_hand(slot)
+        return ""
+
+    def _apply_hand_conflicts(self, equip: dict, slot: str) -> None:
+        hand = self._slot_hand(slot)
+        if not hand or not isinstance(equip, dict):
+            return
+        conflict_hands = set()
+        if hand == "two":
+            conflict_hands.update(["right", "left", "two"])
+        elif hand in ("right", "left"):
+            conflict_hands.update([hand, "two"])
+        else:
+            return
+        for eq_slot in list(equip.keys()):
+            if eq_slot == slot:
+                continue
+            eq_hand = self._slot_hand(eq_slot)
+            if eq_hand in conflict_hands:
+                equip.pop(eq_slot, None)
         self._recalc_gear()
 
     def format_inventory(self, items_data) -> str:
@@ -816,7 +878,7 @@ class Player:
             if elem_total:
                 bonus.append(f"Elem+{elem_total}")
             detail = ", ".join(bonus) if bonus else "No bonuses"
-            slot_text = slot.title() if slot else "Gear"
+            slot_text = self._slot_label(slot) if slot else "Gear"
             equipped = " (equipped)" if self.equipment.get(slot) == gear_id else ""
             entries.append((f"gear:{gear_id}", f"{name} ({slot_text} {detail}){equipped}"))
         return entries

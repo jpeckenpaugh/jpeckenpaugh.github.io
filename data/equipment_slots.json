@@ -1,0 +1,77 @@
+{
+  "slots": [
+    {
+      "id": "sword",
+      "label": "Sword",
+      "hand": "right",
+      "requires_flag": "empowered_01"
+    },
+    {
+      "id": "club",
+      "label": "Club",
+      "hand": "right",
+      "requires_flag": "empowered_01"
+    },
+    {
+      "id": "staff",
+      "label": "Staff",
+      "hand": "two",
+      "requires_flag": "enlightened_01"
+    },
+    {
+      "id": "shield",
+      "label": "Shield",
+      "hand": "left",
+      "requires_flag": "empowered_01"
+    },
+    {
+      "id": "wand",
+      "label": "Wand",
+      "hand": "holster",
+      "requires_flag": "enlightened_01"
+    },
+    {
+      "id": "armor",
+      "label": "Armor",
+      "requires_flag": "empowered_01"
+    },
+    {
+      "id": "ring",
+      "label": "Ring"
+    },
+    {
+      "id": "bracelet",
+      "label": "Bracelet"
+    },
+    {
+      "id": "necklace",
+      "label": "Necklace"
+    },
+    {
+      "id": "hat",
+      "label": "Hat"
+    },
+    {
+      "id": "cape",
+      "label": "Cape"
+    },
+    {
+      "id": "shoes",
+      "label": "Shoes"
+    }
+  ],
+  "order": [
+    "sword",
+    "club",
+    "staff",
+    "shield",
+    "wand",
+    "armor",
+    "ring",
+    "bracelet",
+    "necklace",
+    "hat",
+    "cape",
+    "shoes"
+  ]
+}

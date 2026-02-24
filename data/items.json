@@ -133,10 +133,21 @@
     "price": 40,
     "desc": "Basic armor that absorbs damage."
   },
+  "cloth_robe": {
+    "name": "Cloth Robe",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 1,
+    "mp_bonus": 2,
+    "price": 15,
+    "requires_flag": "enlightened_01",
+    "desc": "A simple robe favored by mystics."
+  },
   "mycoclub": {
     "name": "Mycoclub",
     "type": "gear",
-    "slot": "sword",
+    "slot": "club",
     "atk": 5,
     "defense": 0,
     "price": 0,
@@ -167,7 +178,7 @@
   "mycostaff": {
     "name": "Mycostaff",
     "type": "gear",
-    "slot": "wand",
+    "slot": "staff",
     "element": "base",
     "atk": 0,
     "defense": 0,
@@ -187,7 +198,7 @@
   "mycocape": {
     "name": "Mycocape",
     "type": "gear",
-    "slot": "armor",
+    "slot": "cape",
     "atk": 0,
     "defense": 5,
     "hp_bonus": 2,

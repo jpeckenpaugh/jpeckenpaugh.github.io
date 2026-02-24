@@ -39,6 +39,9 @@ class Player:
     equipment: dict
     gear_atk: int
     gear_defense: int
+    gear_hp_bonus: int
+    gear_mp_bonus: int
+    gear_mp_regen: int
     elements: List[str]
     current_element: str
     followers: List[dict] = field(default_factory=list)
@@ -90,6 +93,9 @@ class Player:
             "equipment": self.equipment,
             "gear_atk": self.gear_atk,
             "gear_defense": self.gear_defense,
+            "gear_hp_bonus": self.gear_hp_bonus,
+            "gear_mp_bonus": self.gear_mp_bonus,
+            "gear_mp_regen": self.gear_mp_regen,
             "elements": list(self.elements),
             "current_element": self.current_element,
             "followers": self.followers,
@@ -132,10 +138,10 @@ class Player:
             stat_points=int(data.get("stat_points", 0)),
             gold=int(data.get("gold", 10)),
             battle_speed=data.get("battle_speed", "normal"),
-            hp=int(data.get("hp", 50)),
-            max_hp=int(data.get("max_hp", 50)),
-            mp=int(data.get("mp", 10)),
-            max_mp=int(data.get("max_mp", 10)),
+            hp=int(data.get("hp", 20)),
+            max_hp=int(data.get("max_hp", 20)),
+            mp=int(data.get("mp", 0)),
+            max_mp=int(data.get("max_mp", 0)),
             atk=int(data.get("atk", 5)),
             defense=int(data.get("defense", 5)),
             location="Town",
@@ -144,6 +150,9 @@ class Player:
             equipment=equipment,
             gear_atk=int(data.get("gear_atk", 0)),
             gear_defense=int(data.get("gear_defense", 0)),
+            gear_hp_bonus=int(data.get("gear_hp_bonus", 0)),
+            gear_mp_bonus=int(data.get("gear_mp_bonus", 0)),
+            gear_mp_regen=int(data.get("gear_mp_regen", 0)),
             elements=elements,
             current_element=current_element,
             followers=followers,
@@ -239,6 +248,24 @@ class Player:
         }
         if overrides:
             instance.update(overrides)
+        imbued = item.get("imbued_spells", [])
+        if isinstance(imbued, list) and imbued:
+            imbued_entries = []
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                spell_id = str(entry.get("spell_id", "") or "")
+                if not spell_id:
+                    continue
+                charges = int(entry.get("charges", 0) or 0)
+                imbued_entries.append({
+                    "spell_id": spell_id,
+                    "charges": charges,
+                    "max_charges": charges,
+                    "restore": str(entry.get("restore", "inn") or "inn"),
+                })
+            if imbued_entries:
+                instance["imbued_spells"] = imbued_entries
         if instance.get("slot") == "wand":
             charges = self._charges_from_points(instance.get("elem_points", {}))
             instance["charges"] = charges.copy()
@@ -258,10 +285,14 @@ class Player:
         slot = gear.get("slot")
         if not slot:
             return "That item cannot be equipped."
+        required_flag = self._item_requires_flag(gear, slot)
+        if required_flag and not self.flags.get(required_flag, False):
+            return "You cannot equip that yet."
         if self.equipment.get(slot) == gear_id:
             self.equipment.pop(slot, None)
             self._recalc_gear()
             return f"Unequipped {gear.get('name', 'gear')}."
+        self._apply_hand_conflicts(self.equipment, slot)
         self.equipment[slot] = gear_id
         self._recalc_gear()
         return f"Equipped {gear.get('name', 'gear')}."
@@ -271,9 +302,11 @@ class Player:
             return 0
         atk = int(gear.get("atk", 0))
         defense = int(gear.get("defense", 0))
+        hp_bonus = int(gear.get("hp_bonus", 0) or 0)
+        mp_bonus = int(gear.get("mp_bonus", 0) or 0)
         elem_points = self._normalize_elem_points(gear.get("elem_points", {}))
         elem_total = sum(int(value) for value in elem_points.values())
-        return atk + defense + elem_total
+        return atk + defense + hp_bonus + mp_bonus + elem_total
 
     def auto_equip_if_best(self, gear_id: Optional[str]) -> bool:
         if not gear_id:
@@ -284,6 +317,9 @@ class Player:
         slot = gear.get("slot")
         if not slot:
             return False
+        required_flag = self._item_requires_flag(gear, slot)
+        if required_flag and not self.flags.get(required_flag, False):
+            return False
         if not isinstance(self.equipment, dict):
             self.equipment = {}
         current_id = self.equipment.get(slot)
@@ -292,6 +328,7 @@ class Player:
         current_score = self._gear_score(current) if current else -1
         if current and new_score < current_score:
             return False
+        self._apply_hand_conflicts(self.equipment, slot)
         self.equipment[slot] = gear.get("id")
         self._recalc_gear()
         return True
@@ -303,7 +340,10 @@ class Player:
         return self.defense + int(self.gear_defense) + int(self.temp_def_bonus)
 
     def total_max_hp(self) -> int:
-        return self.max_hp + int(self.temp_hp_bonus)
+        return self.max_hp + int(self.gear_hp_bonus) + int(self.temp_hp_bonus)
+
+    def total_max_mp(self) -> int:
+        return self.max_mp + int(self.gear_mp_bonus)
 
     def add_follower(self, follower: dict) -> bool:
         if not isinstance(self.followers, list):
@@ -411,6 +451,7 @@ class Player:
                 if eq_id == gear_id:
                     equip.pop(eq_slot, None)
         equip = self.follower_equipment(follower)
+        self._apply_hand_conflicts(equip, slot)
         equip[slot] = gear_id
         return True
 
@@ -455,7 +496,7 @@ class Player:
     def team_missing_total(self, follower: Optional[dict] = None, *, mode: str = "combined") -> int:
         if follower is None:
             max_hp = self.total_max_hp()
-            max_mp = int(self.max_mp)
+            max_mp = self.total_max_mp()
             missing_hp = max_hp - int(self.hp)
             missing_mp = max_mp - int(self.mp)
         else:
@@ -627,6 +668,9 @@ class Player:
     def _recalc_gear(self) -> None:
         atk_bonus = 0
         def_bonus = 0
+        hp_bonus = 0
+        mp_bonus = 0
+        mp_regen = 0
         equipment = self.equipment if isinstance(self.equipment, dict) else {}
         for slot, gear_id in equipment.items():
             gear = self.gear_instance(gear_id)
@@ -636,8 +680,20 @@ class Player:
                 continue
             atk_bonus += int(gear.get("atk", 0))
             def_bonus += int(gear.get("defense", 0))
+            hp_bonus += int(gear.get("hp_bonus", 0) or 0)
+            mp_bonus += int(gear.get("mp_bonus", 0) or 0)
+            mp_regen += int(gear.get("mp_regen", 0) or 0)
         self.gear_atk = atk_bonus
         self.gear_defense = def_bonus
+        self.gear_hp_bonus = hp_bonus
+        self.gear_mp_bonus = mp_bonus
+        self.gear_mp_regen = mp_regen
+        max_hp = self.total_max_hp()
+        if self.hp > max_hp:
+            self.hp = max_hp
+        max_mp = self.total_max_mp()
+        if self.mp > max_mp:
+            self.mp = max_mp
 
     def sync_items(self, items_data) -> None:
         if not isinstance(self.equipment, dict):
@@ -668,6 +724,42 @@ class Player:
                 charges = self._charges_from_points(points)
                 gear["charges"] = charges.copy()
                 gear["max_charges"] = charges.copy()
+        for gear in self.gear_inventory:
+            if not isinstance(gear, dict):
+                continue
+            item_id = gear.get("item_id")
+            if not item_id:
+                continue
+            item = items_data.get(item_id, {})
+            imbued = item.get("imbued_spells", []) if isinstance(item, dict) else []
+            if not isinstance(imbued, list) or not imbued:
+                continue
+            current = gear.get("imbued_spells")
+            if not isinstance(current, list) or not current:
+                imbued_entries = []
+                for entry in imbued:
+                    if not isinstance(entry, dict):
+                        continue
+                    spell_id = str(entry.get("spell_id", "") or "")
+                    if not spell_id:
+                        continue
+                    charges = int(entry.get("charges", 0) or 0)
+                    imbued_entries.append({
+                        "spell_id": spell_id,
+                        "charges": charges,
+                        "max_charges": charges,
+                        "restore": str(entry.get("restore", "inn") or "inn"),
+                    })
+                if imbued_entries:
+                    gear["imbued_spells"] = imbued_entries
+            else:
+                for entry in current:
+                    if not isinstance(entry, dict):
+                        continue
+                    if "max_charges" not in entry:
+                        entry["max_charges"] = int(entry.get("charges", 0) or 0)
+                    if "restore" not in entry:
+                        entry["restore"] = "inn"
         cleaned = {}
         for slot, gear_id in self.equipment.items():
             if isinstance(gear_id, str) and gear_id.startswith("g"):
@@ -681,6 +773,59 @@ class Player:
                 self.gear_inventory.append(gear)
                 cleaned[slot] = gear.get("id")
         self.equipment = cleaned
+
+    def _slot_data(self):
+        return getattr(self, "_equipment_slots", None)
+
+    def _slot_meta(self, slot: str) -> dict:
+        data = self._slot_data()
+        if data and hasattr(data, "slot_meta"):
+            return data.slot_meta(slot)
+        return {}
+
+    def _item_requires_flag(self, gear: dict, slot: str) -> str:
+        item_flag = ""
+        items_data = getattr(self, "_items_data", None)
+        if items_data is not None and isinstance(gear, dict):
+            item_id = gear.get("item_id")
+            if item_id:
+                item = items_data.get(str(item_id), {}) if hasattr(items_data, "get") else {}
+                if isinstance(item, dict):
+                    item_flag = str(item.get("requires_flag", "") or "")
+        if item_flag:
+            return item_flag
+        slot_meta = self._slot_meta(slot)
+        return str(slot_meta.get("requires_flag", "") or "")
+
+    def _slot_label(self, slot: str) -> str:
+        data = self._slot_data()
+        if data and hasattr(data, "slot_label"):
+            return data.slot_label(slot)
+        return slot.title()
+
+    def _slot_hand(self, slot: str) -> str:
+        data = self._slot_data()
+        if data and hasattr(data, "slot_hand"):
+            return data.slot_hand(slot)
+        return ""
+
+    def _apply_hand_conflicts(self, equip: dict, slot: str) -> None:
+        hand = self._slot_hand(slot)
+        if not hand or not isinstance(equip, dict):
+            return
+        conflict_hands = set()
+        if hand == "two":
+            conflict_hands.update(["right", "left", "two"])
+        elif hand in ("right", "left"):
+            conflict_hands.update([hand, "two"])
+        else:
+            return
+        for eq_slot in list(equip.keys()):
+            if eq_slot == slot:
+                continue
+            eq_hand = self._slot_hand(eq_slot)
+            if eq_hand in conflict_hands:
+                equip.pop(eq_slot, None)
         self._recalc_gear()
 
     def format_inventory(self, items_data) -> str:
@@ -714,6 +859,9 @@ class Player:
             slot = gear.get("slot", "")
             atk = int(gear.get("atk", 0))
             defense = int(gear.get("defense", 0))
+            hp_bonus = int(gear.get("hp_bonus", 0) or 0)
+            mp_bonus = int(gear.get("mp_bonus", 0) or 0)
+            mp_regen = int(gear.get("mp_regen", 0) or 0)
             elem_points = gear.get("elem_points", {})
             elem_total = sum(int(v) for v in elem_points.values()) if isinstance(elem_points, dict) else 0
             bonus = []
@@ -721,10 +869,16 @@ class Player:
                 bonus.append(f"ATK+{atk}")
             if defense:
                 bonus.append(f"DEF+{defense}")
+            if hp_bonus:
+                bonus.append(f"HP+{hp_bonus}")
+            if mp_bonus:
+                bonus.append(f"MP+{mp_bonus}")
+            if mp_regen:
+                bonus.append(f"MP Regen+{mp_regen}")
             if elem_total:
                 bonus.append(f"Elem+{elem_total}")
             detail = ", ".join(bonus) if bonus else "No bonuses"
-            slot_text = slot.title() if slot else "Gear"
+            slot_text = self._slot_label(slot) if slot else "Gear"
             equipped = " (equipped)" if self.equipment.get(slot) == gear_id else ""
             entries.append((f"gear:{gear_id}", f"{name} ({slot_text} {detail}){equipped}"))
         return entries
@@ -744,10 +898,10 @@ class Player:
         mp_gain = int(item.get("mp", 0))
         allow_full = bool(item.get("use_while_full")) or str(item.get("type", "") or "") == "quest"
         if target is None:
-            if not allow_full and self.hp == self.max_hp and self.mp == self.max_mp:
+            if not allow_full and self.hp == self.total_max_hp() and self.mp == self.total_max_mp():
                 return "HP and MP are already full."
-            self.hp = min(self.max_hp, self.hp + hp_gain)
-            self.mp = min(self.max_mp, self.mp + mp_gain)
+            self.hp = min(self.total_max_hp(), self.hp + hp_gain)
+            self.mp = min(self.total_max_mp(), self.mp + mp_gain)
         else:
             max_hp = int(target.get("max_hp", 0) or 0)
             max_mp = int(target.get("max_mp", 0) or 0)
@@ -806,6 +960,67 @@ class Player:
         charges[element] = current - 1
         gear["charges"] = charges
         return True
+
+    def imbued_spell_charges(self, spell_id: str) -> int:
+        if not spell_id or not isinstance(self.equipment, dict):
+            return 0
+        total = 0
+        for gear_id in self.equipment.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            imbued = gear.get("imbued_spells", [])
+            if not isinstance(imbued, list):
+                continue
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                if str(entry.get("spell_id", "")) != str(spell_id):
+                    continue
+                total += int(entry.get("charges", 0) or 0)
+        return total
+
+    def consume_imbued_spell_charge(self, spell_id: str) -> bool:
+        if not spell_id or not isinstance(self.equipment, dict):
+            return False
+        for gear_id in self.equipment.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            imbued = gear.get("imbued_spells", [])
+            if not isinstance(imbued, list):
+                continue
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                if str(entry.get("spell_id", "")) != str(spell_id):
+                    continue
+                current = int(entry.get("charges", 0) or 0)
+                if current <= 0:
+                    continue
+                entry["charges"] = current - 1
+                return True
+        return False
+
+    def recharge_imbued_spells(self) -> None:
+        if not isinstance(self.equipment, dict):
+            return
+        for gear_id in self.equipment.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            imbued = gear.get("imbued_spells", [])
+            if not isinstance(imbued, list):
+                continue
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                restore = str(entry.get("restore", "inn") or "inn")
+                if restore != "inn":
+                    continue
+                max_charges = int(entry.get("max_charges", entry.get("charges", 0) or 0) or 0)
+                entry["max_charges"] = max_charges
+                entry["charges"] = max_charges
 
     def recharge_wands(self, overcharge: bool = False) -> None:
         gear_id = self.equipment.get("wand")
@@ -914,22 +1129,27 @@ class Player:
         points = self.stat_points
         if points <= 0:
             return
-        per_stat = points // 4
-        remainder = points % 4
+        allow_mp = bool(self.flags.get("enlightened_01", False))
+        stat_order = ["HP", "MP", "ATK", "DEF"] if allow_mp else ["HP", "ATK", "DEF"]
+        per_stat = points // len(stat_order)
+        remainder = points % len(stat_order)
         if per_stat > 0:
             self.max_hp += per_stat
             self.hp += per_stat
-            self.max_mp += per_stat
-            self.mp += per_stat
             self.atk += per_stat
             self.defense += per_stat
-        for stat in ["HP", "MP", "ATK", "DEF"][:remainder]:
+            if allow_mp:
+                self.max_mp += per_stat
+                self.mp += per_stat
+        for stat in stat_order[:remainder]:
             self.apply_stat_point(stat)
         self.stat_points = 0
 
     def allocate_random(self):
         import random
-        stats = ["HP", "MP", "ATK", "DEF"]
+        stats = ["HP", "ATK", "DEF"]
+        if self.flags.get("enlightened_01", False):
+            stats.append("MP")
         while self.stat_points > 0:
             self.apply_stat_point(random.choice(stats))
             self.stat_points -= 1
@@ -956,6 +1176,8 @@ class Player:
                     self.spend_stat_point("HP")
                     message = "HP increased by 1."
                 elif cmd == "NUM2":
+                    if not self.flags.get("enlightened_01", False):
+                        return "MP allocation is locked.", False
                     self.spend_stat_point("MP")
                     message = "MP increased by 1."
                 elif cmd == "NUM3":

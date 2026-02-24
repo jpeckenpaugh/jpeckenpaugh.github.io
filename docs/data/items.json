@@ -31,6 +31,40 @@
     "price": 5,
     "desc": "A simple mushroom tea, that grants a small bit of vitality."
   },
+  "tea_enlightenment": {
+    "name": "Tea of Enlightenment",
+    "type": "quest",
+    "price": 0,
+    "desc": "A rare mushroom tea that awakens arcane potential.",
+    "use_actions": [
+      {
+        "type": "grant_mp_bonus",
+        "amount": 10
+      },
+      {
+        "type": "grant_stats",
+        "stats": {
+          "defense": 10
+        }
+      }
+    ]
+  },
+  "tea_empowerment": {
+    "name": "Tea of Empowerment",
+    "type": "quest",
+    "price": 0,
+    "desc": "A bold mushroom tea that hardens the body and will.",
+    "use_actions": [
+      {
+        "type": "grant_stats",
+        "stats": {
+          "max_hp": 10,
+          "atk": 5,
+          "defense": 5
+        }
+      }
+    ]
+  },
   "fairy_tea": {
     "name": "Fairy Tea",
     "type": "healing",
@@ -98,6 +132,90 @@
     "defense": 3,
     "price": 40,
     "desc": "Basic armor that absorbs damage."
+  },
+  "cloth_robe": {
+    "name": "Cloth Robe",
+    "type": "gear",
+    "slot": "armor",
+    "atk": 0,
+    "defense": 1,
+    "mp_bonus": 2,
+    "price": 15,
+    "requires_flag": "enlightened_01",
+    "desc": "A simple robe favored by mystics."
+  },
+  "mycoclub": {
+    "name": "Mycoclub",
+    "type": "gear",
+    "slot": "club",
+    "atk": 5,
+    "defense": 0,
+    "price": 0,
+    "imbued_spells": [
+      {
+        "spell_id": "strength",
+        "charges": 2
+      }
+    ],
+    "desc": "A dense fungal club that hums with earthy power."
+  },
+  "mycoshield": {
+    "name": "Mycoshield",
+    "type": "gear",
+    "slot": "shield",
+    "atk": 0,
+    "defense": 5,
+    "hp_bonus": 5,
+    "price": 0,
+    "imbued_spells": [
+      {
+        "spell_id": "healing",
+        "charges": 2
+      }
+    ],
+    "desc": "A thick fungal shield that bolsters your vitality."
+  },
+  "mycostaff": {
+    "name": "Mycostaff",
+    "type": "gear",
+    "slot": "staff",
+    "element": "base",
+    "atk": 0,
+    "defense": 0,
+    "mp_bonus": 10,
+    "price": 0,
+    "elem_points": {
+      "base": 12
+    },
+    "imbued_spells": [
+      {
+        "spell_id": "astral_backhand",
+        "charges": 5
+      }
+    ],
+    "desc": "A mystic staff that deepens your mana reserves."
+  },
+  "mycocape": {
+    "name": "Mycocape",
+    "type": "gear",
+    "slot": "cape",
+    "atk": 0,
+    "defense": 5,
+    "hp_bonus": 2,
+    "mp_bonus": 3,
+    "mp_regen": 1,
+    "price": 0,
+    "imbued_spells": [
+      {
+        "spell_id": "healing",
+        "charges": 2
+      },
+      {
+        "spell_id": "harden",
+        "charges": 2
+      }
+    ],
+    "desc": "A cloak of spores that restores mana in battle."
   },
   "lightning_ring": {
     "name": "Spark Ring",

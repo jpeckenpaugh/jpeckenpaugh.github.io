@@ -59,6 +59,34 @@
       "element": "base",
       "max_hp": 20
     },
+    "baby_crow": {
+      "name": "Baby Crow",
+      "level": 1,
+      "hp": 10,
+      "atk": 8,
+      "defense": 8,
+      "action_chance": 0.5,
+      "arrival": "flutters into view",
+      "desc": "A scrappy fledgling with a sharp beak.",
+      "art": [
+        "                ,",
+        " ,_     ,     .'<_",
+        "_>.`'-,'(__.-'.__<",
+        ">_.--(.._). =;`",
+        "     `V-'`'\\/``"
+      ],
+      "color_map": [
+        "                1",
+        " 11     1     1111",
+        "111111111111111111",
+        "11111111111 111",
+        "     1111111111"
+      ],
+      "variation": 0.06,
+      "jitter_stability": false,
+      "element": "wind",
+      "max_hp": 14
+    },
     "ant": {
       "name": "Ant",
       "level": 1,

@@ -782,6 +782,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         state.player._spells_data = ctx.spells
     if not hasattr(state.player, "_items_data"):
         state.player._items_data = ctx.items
+    if not hasattr(state.player, "_equipment_slots") and hasattr(ctx, "equipment_slots"):
+        state.player._equipment_slots = ctx.equipment_slots
     action = normalize_input_action(ch)
     if action is None:
         return None, None

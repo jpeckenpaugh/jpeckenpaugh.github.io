@@ -11,7 +11,7 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import add_loot, battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
+from app.questing import apply_actions, apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
 from app.state import GameState
 from app.models import Player
 from app.ui.ansi import ANSI
@@ -782,6 +782,8 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         state.player._spells_data = ctx.spells
     if not hasattr(state.player, "_items_data"):
         state.player._items_data = ctx.items
+    if not hasattr(state.player, "_equipment_slots") and hasattr(ctx, "equipment_slots"):
+        state.player._equipment_slots = ctx.equipment_slots
     action = normalize_input_action(ch)
     if action is None:
         return None, None
@@ -990,8 +992,27 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 dialog = detail_quest.get("dialog", [])
             if not isinstance(dialog, list):
                 dialog = []
-            total_pages = max(1, len(dialog))
+            dialog_entries = [entry for entry in dialog if entry is not None]
+            flags = getattr(state.player, "flags", {})
+            choice_messages = {}
+            if isinstance(flags, dict):
+                choice_messages = flags.get("choice_messages", {})
+            if not isinstance(choice_messages, dict):
+                choice_messages = {}
+            if choice_messages:
+                expanded = []
+                for idx, entry in enumerate(dialog_entries):
+                    expanded.append(entry)
+                    key = f"choice:{state.quest_detail_id}:{idx}"
+                    extra = choice_messages.get(key)
+                    if isinstance(extra, list) and extra:
+                        expanded.extend([str(line) for line in extra if line is not None])
+                dialog_entries = expanded
+            total_pages = max(1, len(dialog_entries))
             state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
+            current_entry = dialog_entries[state.quest_detail_page] if dialog_entries else None
+            is_choice = isinstance(current_entry, dict) and current_entry.get("type") == "choice"
+            options = current_entry.get("options", []) if is_choice and isinstance(current_entry, dict) else []
             actions_cfg = ctx.quests_screen.get("actions", {}) if hasattr(ctx, "quests_screen") else {}
             detail_ids = actions_cfg.get("detail", ["next", "back"])
             if not isinstance(detail_ids, list) or not detail_ids:
@@ -999,11 +1020,65 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
             labels = actions_cfg.get("labels", {})
             if not isinstance(labels, dict):
                 labels = {}
+            if is_choice:
+                if isinstance(options, list) and options:
+                    state.action_cursor = max(0, min(state.action_cursor, len(options) - 1))
             if action in ("UP", "DOWN"):
                 direction = -1 if action == "UP" else 1
-                state.action_cursor = (state.action_cursor + direction) % len(detail_ids)
+                if is_choice and isinstance(options, list) and options:
+                    state.action_cursor = (state.action_cursor + direction) % len(options)
+                else:
+                    state.action_cursor = (state.action_cursor + direction) % len(detail_ids)
                 return None, None
             if action == "CONFIRM":
+                if is_choice and isinstance(options, list) and options:
+                    choice = options[state.action_cursor] if 0 <= state.action_cursor < len(options) else None
+                    if not isinstance(choice, dict):
+                        return None, None
+                    quest_id = state.quest_detail_id
+                    choice_key = f"choice:{quest_id}:{state.quest_detail_page}"
+                    flags = getattr(state.player, "flags", {})
+                    if not isinstance(flags, dict):
+                        flags = {}
+                        state.player.flags = flags
+                    if not flags.get(choice_key):
+                        actions = choice.get("actions", [])
+                        ok, error, messages = apply_actions(
+                            state.player,
+                            actions if isinstance(actions, list) else [],
+                            items_data=ctx.items,
+                            spells_data=ctx.spells,
+                            followers_data=ctx.followers,
+                            quests_data=ctx.quests,
+                            objectives_data=ctx.quest_objectives,
+                            events_data=ctx.quest_events,
+                        )
+                        if not ok:
+                            state.last_message = error or "Unable to apply choice."
+                            return None, None
+                        label = str(choice.get("label", "") or "").strip()
+                        if isinstance(messages, dict):
+                            msg_lines = messages.get("messages", [])
+                            if isinstance(msg_lines, list) and msg_lines:
+                                choice_messages = flags.get("choice_messages")
+                                if not isinstance(choice_messages, dict):
+                                    choice_messages = {}
+                                    flags["choice_messages"] = choice_messages
+                                choice_messages[choice_key] = [str(m) for m in msg_lines if m]
+                            elif label:
+                                state.last_message = f"You chose: {label}."
+                        elif label:
+                            state.last_message = f"You chose: {label}."
+                        flags[choice_key] = label or str(state.action_cursor)
+                        if hasattr(ctx, "save_data") and ctx.save_data:
+                            ctx.save_data.save_player(state.player)
+                    else:
+                        if not state.last_message:
+                            state.last_message = "Choice already made."
+                    if state.quest_detail_page < total_pages - 1:
+                        state.quest_detail_page += 1
+                        state.action_cursor = 0
+                    return None, None
                 if 0 <= state.action_cursor < len(detail_ids):
                     action_id = str(detail_ids[state.action_cursor])
                 else:
@@ -1490,11 +1565,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         base_cost = int(spell.get("mp_cost", 0)) if isinstance(spell, dict) else 0
         element = spell.get("element") if isinstance(spell, dict) else None
         has_charge = False
+        has_imbued = False
         if element:
             charges = state.player.wand_charges()
             has_charge = int(charges.get(str(element), 0)) > 0
+        if spell_id:
+            has_imbued = state.player.imbued_spell_charges(spell_id) > 0
         max_affordable = max_rank
-        if not has_charge and base_cost > 0:
+        if not has_charge and not has_imbued and base_cost > 0:
             max_affordable = min(max_rank, state.player.mp // base_cost)
         if max_affordable >= 1 and state.spell_cast_rank > max_affordable:
             state.spell_cast_rank = max_affordable
@@ -1509,11 +1587,14 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                 base_cost = int(spell.get("mp_cost", 0))
                 element = spell.get("element")
                 has_charge = False
+                has_imbued = False
                 if element:
                     charges = state.player.wand_charges()
                     has_charge = int(charges.get(str(element), 0)) > 0
+                if spell_id:
+                    has_imbued = state.player.imbued_spell_charges(spell_id) > 0
                 max_affordable = max_rank
-                if not has_charge and base_cost > 0:
+                if not has_charge and not has_imbued and base_cost > 0:
                     max_affordable = min(max_rank, state.player.mp // base_cost)
                 state.spell_cast_rank = max(1, max_affordable) if max_affordable >= 1 else 1
             return None, None
@@ -2513,7 +2594,7 @@ def _run_follower_action(ctx, render_frame, state: GameState, generate_frame) ->
 def _team_missing_total(player, follower: Optional[dict] = None, *, mode: str = "combined") -> int:
     if follower is None:
         max_hp = player.total_max_hp()
-        max_mp = int(player.max_mp)
+        max_mp = int(player.total_max_mp())
         missing_hp = max_hp - int(player.hp)
         missing_mp = max_mp - int(player.mp)
         if mode == "hp":
@@ -2543,7 +2624,7 @@ def _apply_item_heal(target, item: dict, player: Player) -> tuple[int, int]:
             healed_hp = min(hp_gain, max_hp - player.hp)
             player.hp += healed_hp
         if mp_gain > 0:
-            max_mp = player.max_mp
+            max_mp = player.total_max_mp()
             healed_mp = min(mp_gain, max_mp - player.mp)
             player.mp += healed_mp
         return healed_hp, healed_mp
@@ -2942,11 +3023,14 @@ def apply_router_command(
                 base_cost = int(spell.get("mp_cost", 0))
                 element = spell.get("element")
                 has_charge = False
+                has_imbued = False
                 if element:
                     charges = state.player.wand_charges()
                     has_charge = int(charges.get(str(element), 0)) > 0
+                if spell_id:
+                    has_imbued = state.player.imbued_spell_charges(spell_id) > 0
                 max_affordable = max_rank
-                if not has_charge and base_cost > 0:
+                if not has_charge and not has_imbued and base_cost > 0:
                     max_affordable = min(max_rank, state.player.mp // base_cost)
                 state.spell_cast_rank = max(1, max_affordable) if max_affordable >= 1 else 1
     if cmd == "ENTER_VENUE":
@@ -3094,11 +3178,14 @@ def resolve_player_action(
             state.last_message = f"{name} fizzles with no effect."
             return None
         has_charge = False
+        has_imbued = False
         if element:
             charges = state.player.wand_charges()
             has_charge = int(charges.get(str(element), 0)) > 0
+        if spell_id:
+            has_imbued = state.player.imbued_spell_charges(spell_id) > 0
         max_affordable = max_rank
-        if not has_charge and base_cost > 0:
+        if not has_charge and not has_imbued and base_cost > 0:
             max_affordable = min(max_rank, state.player.mp // base_cost)
         if max_affordable < 1:
             state.last_message = f"Not enough MP to cast {name}."
@@ -3123,14 +3210,17 @@ def resolve_player_action(
             if state.player.flags.get("next_battle_preemptive"):
                 state.last_message = "Your senses are already sharpened for the next battle."
                 return None
+            used_imbued = False
+            if spell_id:
+                used_imbued = state.player.consume_imbued_spell_charge(spell_id)
             used_charge = False
-            if element:
+            if not used_imbued and element:
                 used_charge = state.player.consume_wand_charge(str(element))
-            if not used_charge:
+            if not used_imbued and not used_charge:
                 if state.player.mp < base_cost:
                     state.last_message = f"Not enough MP to cast {name}."
                     return None
-            state.player.mp -= base_cost
+                state.player.mp -= base_cost
             state.player.flags["next_battle_preemptive"] = True
             state.last_message = f"You cast {name}."
             if hasattr(ctx, "audio"):
@@ -3175,14 +3265,17 @@ def resolve_player_action(
                 else:
                     state.last_message = "HP and MP are already full."
                     return None
+            used_imbued = False
+            if spell_id:
+                used_imbued = state.player.consume_imbued_spell_charge(spell_id)
             used_charge = False
-            if element:
+            if not used_imbued and element:
                 used_charge = state.player.consume_wand_charge(str(element))
-            if not used_charge:
+            if not used_imbued and not used_charge:
                 if state.player.mp < base_cost:
                     state.last_message = f"Not enough MP to cast {name}."
                     return None
-            state.player.mp -= base_cost
+                state.player.mp -= base_cost
             state.last_team_target_player = (target_type == "player")
             if effect_kind == "heal":
                 hp_per_rank = int(effect_cfg.get("hp_per_rank", 0) or 0)
@@ -3269,9 +3362,12 @@ def resolve_player_action(
                     _open_quest_screen(ctx, state)
             return cmd
         mp_cost = base_cost * max(1, rank)
-        if state.player.mp < mp_cost and not has_charge:
+        if state.player.mp < mp_cost and not has_charge and not has_imbued:
             state.last_message = f"Not enough MP to cast {name}."
             return None
+        used_imbued = False
+        if spell_id:
+            used_imbued = state.player.consume_imbued_spell_charge(spell_id)
         message = cast_spell(
             state.player,
             state.opponents,
@@ -3280,6 +3376,7 @@ def resolve_player_action(
             loot=state.loot_bank,
             target_index=state.target_index,
             rank=rank,
+            skip_cost=used_imbued,
         )
         if hasattr(ctx, "audio"):
             ctx.audio.play_sfx_once("spell_down", "C4")
@@ -3560,8 +3657,8 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                     state.player.quests = {}
                 state.battle_trial_id = None
                 state.player.location = "Town"
-                state.player.hp = state.player.max_hp
-                state.player.mp = state.player.max_mp
+                state.player.hp = state.player.total_max_hp()
+                state.player.mp = state.player.total_max_mp()
                 state.opponents = []
                 state.loot_bank = {"xp": 0, "gold": 0}
                 state.battle_active = False
@@ -3582,6 +3679,11 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
         max_hp = state.player.total_max_hp()
         if state.player.hp > max_hp:
             state.player.hp = max_hp
+    mp_regen = int(getattr(state.player, "gear_mp_regen", 0) or 0)
+    if mp_regen > 0:
+        max_mp = state.player.total_max_mp()
+        if state.player.mp < max_mp:
+            state.player.mp = min(max_mp, state.player.mp + mp_regen)
     if getattr(state.player, "temp_evasion_bonus", 0) > 0:
         state.player.temp_evasion_bonus = max(0, int(state.player.temp_evasion_bonus) - 1)
     if state.player.followers:
@@ -3656,7 +3758,7 @@ def run_opponent_turns(ctx, render_frame, state: GameState, generate_frame, acti
                 state.player.hp += healed
                 suffix = "HP"
             elif ability_type == "mana":
-                max_mp = state.player.max_mp
+                max_mp = state.player.total_max_mp()
                 if state.player.mp >= max_mp:
                     continue
                 healed = min(amount, max_mp - state.player.mp)

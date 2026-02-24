@@ -493,13 +493,13 @@
     "leave_message": "You step back into the street.",
     "commands": [
       {
-        "label": "Rest (10 GP)",
+        "label": "Rest (20 GP)",
         "command": "USE_SERVICE",
         "target": "town_inn",
         "service_id": "rest"
       },
       {
-        "label": "Hot meal (3 GP)",
+        "label": "Hot meal (10 GP)",
         "command": "USE_SERVICE",
         "target": "town_inn",
         "service_id": "meal"
@@ -523,7 +523,7 @@
     ],
     "narrative": [
       "Rest by the hearth for the night.",
-      "A bed costs 10 GP. A hot meal is 3 GP."
+      "A bed costs 20 GP. A hot meal is 10 GP."
     ],
     "objects": [
       {
@@ -603,7 +603,7 @@
     "services": {
       "rest": {
         "type": "rest",
-        "cost": 10,
+        "cost": 20,
         "heal_full": true,
         "full_message": "You're already fully rested.",
         "message": "You rest at the inn and feel fully restored.",
@@ -613,7 +613,7 @@
       "meal": {
         "type": "meal",
         "item_id": "hot_meal",
-        "cost": 3,
+        "cost": 10,
         "full_message": "You're already fully rested.",
         "message": "You enjoy a hot meal and feel refreshed.",
         "insufficient_message": "Not enough GP for a hot meal.",
@@ -713,12 +713,6 @@
     "leave_message": "You leave the temple.",
     "commands": [
       {
-        "label": "Charge Your Wand",
-        "command": "USE_SERVICE",
-        "target": "town_temple",
-        "service_id": "overcharge"
-      },
-      {
         "label": "Fuse Followers",
         "command": "FOLLOWER_FUSE_AUTO",
         "cost": 100,
@@ -726,14 +720,19 @@
           "in_temple",
           "has_fusion"
         ]
+      },
+      {
+        "label": "Charge Your Items",
+        "command": "USE_SERVICE",
+        "target": "town_temple",
+        "service_id": "overcharge"
       }
     ],
     "services": {
       "overcharge": {
-        "type": "overcharge",
-        "cost": 20,
-        "message": "Your wand is overcharged with elemental power.",
-        "no_wand_message": "You have no wand to charge.",
+        "type": "rest",
+        "cost": 10,
+        "message": "Your items are restored with sacred energy.",
         "insufficient_message": "Not enough GP."
       }
     },
