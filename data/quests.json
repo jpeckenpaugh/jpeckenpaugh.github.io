@@ -164,7 +164,7 @@
     "art_opponent": "baby_crow",
     "dialog": [
       {
-        "text": "Mushy: Uh oh... I recognize that sound.  There is a reason they call it a murder of crows, you know.",
+        "text": "Mushy: Uh oh... That pesky bird is back, and it looks like he brought a couple of friends.",
         "art": "follower:mushroom_baby"
       },
       {
@@ -172,7 +172,7 @@
         "art": "opponent:baby_crow"
       },
       {
-        "text": "Mushy: Ready or not, here they come!  I sure hope you can figure out how to use these magical items I have given you.",
+        "text": "Mushy: Ready or not, here they come!  I sure hope you can figure out how to use those magical items I just gave you.",
         "art": "follower:mushroom_baby"
       }
     ],
@@ -185,7 +185,7 @@
       {
         "type": "defeat_opponents",
         "opponent_id": "baby_crow",
-        "count": 4
+        "count": 3
       }
     ],
     "on_start_actions": [
