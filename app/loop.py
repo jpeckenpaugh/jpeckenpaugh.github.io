@@ -11,9 +11,20 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import add_loot, battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import apply_actions, apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
+from app.questing import (
+    apply_actions,
+    apply_quest_start_actions,
+    evaluate_quests,
+    emit_quest_events,
+    handle_event,
+    ordered_quest_ids,
+    quest_entries,
+    start_quest,
+    dialog_entries_for,
+    dialog_art_token,
+)
 from app.state import GameState
-from app.models import Player
+from app.models import Player, Frame
 from app.ui.ansi import ANSI
 from app.ui.constants import ACTION_LINES, SCREEN_HEIGHT
 from app.ui.rendering import (
@@ -63,6 +74,39 @@ def _spell_effect_with_art(ctx, spell: dict) -> Optional[dict]:
     return effect_override
 
 
+def _quest_effect_from_spec(ctx, spec: Optional[dict]) -> Optional[dict]:
+    if not isinstance(spec, dict) or not spec:
+        return None
+    effect = None
+    spell_id = spec.get("spell_id")
+    if spell_id and hasattr(ctx, "spells"):
+        spell = ctx.spells.get(str(spell_id), {})
+        if isinstance(spell, dict):
+            effect = _spell_effect_with_art(ctx, spell)
+    if effect is None and spec.get("art_id") and hasattr(ctx, "spells_art"):
+        art = ctx.spells_art.get(str(spec.get("art_id")))
+        if isinstance(art, dict):
+            effect = dict(art)
+    if isinstance(effect, dict) and not effect.get("frames") and spell_id and hasattr(ctx, "spells_art") and hasattr(ctx, "spells"):
+        spell = ctx.spells.get(str(spell_id), {})
+        if isinstance(spell, dict):
+            art_id = spell.get("effect", {}).get("art_id") if isinstance(spell.get("effect"), dict) else None
+            if art_id:
+                art = ctx.spells_art.get(str(art_id))
+                if isinstance(art, dict):
+                    merged = dict(art)
+                    merged.update(effect)
+                    effect = merged
+    if not isinstance(effect, dict):
+        return None
+    merged = dict(effect)
+    for key, value in spec.items():
+        if key in ("spell_id",):
+            continue
+        merged[key] = value
+    return merged
+
+
 def _status_message(state: GameState, message: Optional[str]) -> str:
     if message is not None:
         return message
@@ -100,48 +144,78 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
             state.screen_audio_key = audio_key
         if not audio_key:
             state.screen_audio_key = None
-    frame = generate_frame(
-        ctx.screen_ctx,
-        state.player,
-        state.opponents,
-        _status_message(state, message),
-        state.leveling_mode,
-        state.shop_mode,
-        state.shop_view,
-        state.inventory_mode,
-        state.inventory_items,
-        state.hall_mode,
-        state.hall_view,
-        state.inn_mode,
-        state.stats_mode,
-        state.followers_mode,
-        state.spell_mode,
-        state.element_mode,
-        state.alchemist_mode,
-        state.alchemy_first,
-        state.alchemy_selecting,
-        state.temple_mode,
-        state.smithy_mode,
-        state.portal_mode,
-        state.quest_mode,
-        state.quest_detail_mode,
-        state.title_menu_stack,
-        state.options_mode,
-        state.action_cursor,
-        state.menu_cursor,
-        state.followers_focus,
-        state.followers_action_cursor,
-        state.spell_cast_rank,
-        state.spell_target_mode,
-        state.spell_target_cursor,
-        state.spell_target_command,
-        state.quest_continent_index,
-        state.quest_detail_id,
-        state.quest_detail_page,
-        state.level_cursor,
-        state.level_up_notes,
-        suppress_actions=suppress_actions,
-    )
+    def _build_frame(quest_effect: Optional[dict] = None, effect_frame: int = 0) -> Frame:
+        return generate_frame(
+            ctx.screen_ctx,
+            state.player,
+            state.opponents,
+            _status_message(state, message),
+            state.leveling_mode,
+            state.shop_mode,
+            state.shop_view,
+            state.inventory_mode,
+            state.inventory_items,
+            state.hall_mode,
+            state.hall_view,
+            state.inn_mode,
+            state.stats_mode,
+            state.followers_mode,
+            state.spell_mode,
+            state.element_mode,
+            state.alchemist_mode,
+            state.alchemy_first,
+            state.alchemy_selecting,
+            state.temple_mode,
+            state.smithy_mode,
+            state.portal_mode,
+            state.quest_mode,
+            state.quest_detail_mode,
+            state.title_menu_stack,
+            state.options_mode,
+            state.action_cursor,
+            state.menu_cursor,
+            state.followers_focus,
+            state.followers_action_cursor,
+            state.spell_cast_rank,
+            state.spell_target_mode,
+            state.spell_target_cursor,
+            state.spell_target_command,
+            state.quest_continent_index,
+            state.quest_detail_id,
+            state.quest_detail_page,
+            state.level_cursor,
+            state.level_up_notes,
+            suppress_actions=suppress_actions,
+            quest_art_effect=quest_effect,
+            quest_art_effect_frame=effect_frame,
+        )
+
+    if state.quest_detail_mode and state.quest_detail_id and hasattr(ctx, "quests"):
+        detail_quest = ctx.quests.get(state.quest_detail_id, {})
+        flags = getattr(state.player, "flags", {})
+        dialog_entries = dialog_entries_for(
+            state.quest_detail_id,
+            detail_quest if isinstance(detail_quest, dict) else {},
+            flags,
+        )
+        if dialog_entries and 0 <= state.quest_detail_page < len(dialog_entries):
+            current_entry = dialog_entries[state.quest_detail_page]
+            effect_spec = current_entry.get("art_effect") if isinstance(current_entry, dict) else None
+            effect = _quest_effect_from_spec(ctx, effect_spec)
+            if effect:
+                key = f"{state.quest_detail_id}:{state.quest_detail_page}:{json.dumps(effect_spec, sort_keys=True)}"
+                if key != state.quest_detail_art_key:
+                    frames = effect.get("frames", [])
+                    loops = int(effect.get("loops", 1) or 1)
+                    frame_delay = float(effect.get("frame_delay", 0.06) or 0.06)
+                    if isinstance(frames, list) and frames:
+                        total = max(1, loops) * len(frames)
+                        for i in range(total):
+                            render_frame(_build_frame(effect, i % len(frames)))
+                            time.sleep(frame_delay)
+                    state.quest_detail_art_key = key
+
+    frame = _build_frame()
     render_frame(frame)
 
 
@@ -984,30 +1058,15 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if not elements:
             elements = ["base"]
         if state.quest_detail_mode:
-            dialog = []
             detail_quest = None
             if state.quest_detail_id and hasattr(ctx, "quests"):
                 detail_quest = ctx.quests.get(state.quest_detail_id, {})
-            if isinstance(detail_quest, dict):
-                dialog = detail_quest.get("dialog", [])
-            if not isinstance(dialog, list):
-                dialog = []
-            dialog_entries = [entry for entry in dialog if entry is not None]
             flags = getattr(state.player, "flags", {})
-            choice_messages = {}
-            if isinstance(flags, dict):
-                choice_messages = flags.get("choice_messages", {})
-            if not isinstance(choice_messages, dict):
-                choice_messages = {}
-            if choice_messages:
-                expanded = []
-                for idx, entry in enumerate(dialog_entries):
-                    expanded.append(entry)
-                    key = f"choice:{state.quest_detail_id}:{idx}"
-                    extra = choice_messages.get(key)
-                    if isinstance(extra, list) and extra:
-                        expanded.extend([str(line) for line in extra if line is not None])
-                dialog_entries = expanded
+            dialog_entries = dialog_entries_for(
+                state.quest_detail_id or "",
+                detail_quest if isinstance(detail_quest, dict) else {},
+                flags,
+            )
             total_pages = max(1, len(dialog_entries))
             state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
             current_entry = dialog_entries[state.quest_detail_page] if dialog_entries else None
@@ -1058,14 +1117,27 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                             return None, None
                         label = str(choice.get("label", "") or "").strip()
                         if isinstance(messages, dict):
-                            msg_lines = messages.get("messages", [])
-                            if isinstance(msg_lines, list) and msg_lines:
+                            msg_entries = messages.get("message_entries", [])
+                            if isinstance(msg_entries, list) and msg_entries:
                                 choice_messages = flags.get("choice_messages")
                                 if not isinstance(choice_messages, dict):
                                     choice_messages = {}
                                     flags["choice_messages"] = choice_messages
-                                choice_messages[choice_key] = [str(m) for m in msg_lines if m]
-                            elif label:
+                                choice_messages[choice_key] = [
+                                    entry for entry in msg_entries if isinstance(entry, dict) and entry.get("text")
+                                ]
+                            else:
+                                msg_lines = messages.get("messages", [])
+                                if isinstance(msg_lines, list) and msg_lines:
+                                    choice_messages = flags.get("choice_messages")
+                                    if not isinstance(choice_messages, dict):
+                                        choice_messages = {}
+                                        flags["choice_messages"] = choice_messages
+                                    art_token = dialog_art_token(current_entry if isinstance(current_entry, dict) else None, detail_quest)
+                                    choice_messages[choice_key] = [
+                                        {"text": str(m), "art": art_token} for m in msg_lines if m
+                                    ]
+                            if label and not (msg_entries or (isinstance(messages.get("messages", []), list) and messages.get("messages"))):
                                 state.last_message = f"You chose: {label}."
                         elif label:
                             state.last_message = f"You chose: {label}."
@@ -2997,6 +3069,7 @@ def apply_router_command(
         detail_key = f"{post_quest_detail_id}:{post_quest_detail_page}"
         if detail_key != (state.quest_detail_audio_key or ""):
             state.quest_detail_audio_key = detail_key
+            state.quest_detail_art_key = None
     if (
         (pre_title_fortune and not post_title_fortune)
         or (pre_title_confirm and not post_title_confirm)

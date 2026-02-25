@@ -3742,3 +3742,9 @@
 [04:58:52] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
 [04:58:52] ui_hint done loc=Forest quest_mode=False cursor=0
 [04:59:50] quest_start quest_id=island_01_quest_04b pending_level_up=False stat_points=0
+[16:14:40] quest_start quest_id=island_01_quest_00a pending_level_up=False stat_points=0
+[16:14:54] quest_start quest_id=island_01_quest_00b pending_level_up=False stat_points=0
+[16:14:54] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[16:14:54] ui_hint done loc=Forest quest_mode=False cursor=0
+[16:17:17] quest_start quest_id=island_01_quest_00a pending_level_up=False stat_points=0
+[16:51:57] quest_start quest_id=island_01_quest_00a pending_level_up=False stat_points=0
