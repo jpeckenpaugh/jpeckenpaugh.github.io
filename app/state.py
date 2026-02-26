@@ -70,6 +70,7 @@ class GameState:
     quest_audio_played: bool = False
     quest_detail_audio_key: Optional[str] = None
     quest_detail_art_key: Optional[str] = None
+    quest_detail_sfx_key: Optional[str] = None
     screen_audio_key: Optional[str] = None
     asset_explorer_type: Optional[str] = None
     asset_explorer_show_art: bool = True

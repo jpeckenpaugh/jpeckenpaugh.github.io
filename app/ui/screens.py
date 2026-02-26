@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 import json
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from app.commands.scene_commands import command_is_enabled, format_commands, scene_commands
 from app.data_access.commands_data import CommandsData
@@ -1359,7 +1359,7 @@ def generate_frame(
         atlas_style = str(atlas_cfg.get("frame_style", "round") or "round")
         atlas_lines = []
         has_custom_art = False
-        def _resolve_art(token: Optional[str]) -> tuple[list, list]:
+        def _resolve_art(token: Optional[str], frame_index: int = 0) -> Tuple[list, list]:
             if not token:
                 return [], []
             token = str(token)
@@ -1401,12 +1401,33 @@ def generate_frame(
                 masks = entry.get("color_map") if isinstance(entry.get("color_map"), list) else []
                 return art, masks
 
+            def _from_spells_art(art_key: str) -> tuple[list, list]:
+                if not hasattr(ctx, "spells_art"):
+                    return [], []
+                entry = ctx.spells_art.get(art_key, {})
+                if not isinstance(entry, dict):
+                    return [], []
+                frames = entry.get("frames", [])
+                mask_frames = entry.get("mask_frames", [])
+                if isinstance(frames, list) and frames:
+                    frame = frames[frame_index % len(frames)]
+                    if isinstance(frame, list):
+                        masks = []
+                        if isinstance(mask_frames, list) and mask_frames:
+                            mask = mask_frames[frame_index % len(mask_frames)]
+                            if isinstance(mask, list):
+                                masks = mask
+                        return frame, masks
+                return [], []
+
             if source == "opponent":
                 return _from_opponent(art_id)
             if source == "follower":
                 return _from_follower(art_id)
             if source == "player":
                 return _from_player(art_id)
+            if source in ("spells_art", "art"):
+                return _from_spells_art(art_id)
 
             art, masks = _from_opponent(art_id)
             if art:
@@ -1417,14 +1438,17 @@ def generate_frame(
             return _from_player(art_id)
 
         art_tokens = None
+        art_layout = None
         if quest_detail_mode and detail_quest:
             art_tokens = dialog_art_token(current_entry if quest_detail_mode else None, detail_quest)
+            if isinstance(current_entry, dict):
+                art_layout = current_entry.get("art_layout")
         block_ranges = []
         if art_tokens:
             colored_blocks = []
             max_width = 0
             for token in art_tokens:
-                block_lines, block_masks = _resolve_art(token)
+                block_lines, block_masks = _resolve_art(token, quest_art_effect_frame)
                 if not block_lines:
                     continue
                 if block_masks and hasattr(ctx, "colors"):
@@ -1469,6 +1493,120 @@ def generate_frame(
                     block_ranges.append((start, end, max_width))
                 atlas_lines = stacked
                 has_custom_art = True
+        if art_layout and isinstance(art_layout, dict):
+            row = art_layout.get("row")
+            column = art_layout.get("column")
+            gap = int(art_layout.get("gap", 1) or 1)
+            if isinstance(row, list) and row:
+                blocks = []
+                for token in row:
+                    token_value = token
+                    color_key = "y"
+                    color_map = None
+                    variation = 0.0
+                    jitter_stability = True
+                    if isinstance(token, dict):
+                        token_value = token.get("token") or token.get("art")
+                        color_key = str(token.get("color_key", "y"))[:1] or "y"
+                        if isinstance(token.get("color_map"), dict):
+                            color_map = token.get("color_map")
+                        variation = float(token.get("variation", 0.0) or 0.0)
+                        jitter_stability = bool(token.get("jitter_stability", True))
+                    block_lines, block_masks = _resolve_art(token_value, quest_art_effect_frame)
+                    if not block_lines:
+                        block_lines = [" "]
+                    if block_masks and hasattr(ctx, "colors"):
+                        colors = ctx.colors.all()
+                        if isinstance(colors, dict):
+                            colored = []
+                            seed_base = hash((quest_detail_id, quest_detail_page, "art_layout", str(token_value))) & 0xFFFFFFFF
+                            for line, mask in zip(block_lines, block_masks):
+                                line_str = str(line)
+                                mask_str = str(mask)
+                                padded_mask = mask_str.ljust(len(line_str))
+                                out = []
+                                for idx, ch in enumerate(line_str):
+                                    mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                                    key = mask_ch or color_key
+                                    if color_map and mask_ch in color_map:
+                                        key = color_map.get(mask_ch, color_key)
+                                    seed = seed_base ^ (idx * 0x85EBCA77) ^ (quest_art_effect_frame * 0x9E3779B1)
+                                    if not jitter_stability:
+                                        seed ^= (quest_art_effect_frame * 0xC2B2AE3D)
+                                    code = ""
+                                    if key:
+                                        entry = colors.get(key)
+                                        hex_code = ""
+                                        if isinstance(entry, dict):
+                                            hex_code = entry.get("hex", "") if isinstance(entry.get("hex"), str) else ""
+                                            if not hex_code and isinstance(entry.get("name"), str):
+                                                name = entry.get("name", "").strip()
+                                                hex_start = name.find("#")
+                                                hex_code = name[hex_start:] if hex_start != -1 else ""
+                                        if isinstance(entry, str) and not hex_code:
+                                            name = entry.strip()
+                                            hex_start = name.find("#")
+                                            hex_code = name[hex_start:] if hex_start != -1 else ""
+                                        rgb = _hex_to_rgb(hex_code) if hex_code else None
+                                        if rgb:
+                                            code = _jitter_color_code(rgb, variation, seed) if variation > 0 else f"\033[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m"
+                                        else:
+                                            code = _color_code_for_key(colors, key)
+                                    if code and ch != " ":
+                                        out.append(f"{code}{ch}{ANSI.RESET}")
+                                    else:
+                                        out.append(ch)
+                                colored.append("".join(out))
+                            if len(block_masks) < len(block_lines):
+                                colored.extend(str(line) for line in block_lines[len(block_masks):])
+                            block_lines = colored
+                    width = max((len(strip_ansi(line)) for line in block_lines), default=0)
+                    height = len(block_lines)
+                    blocks.append({"lines": list(block_lines), "width": width, "height": height})
+                max_height = max((b["height"] for b in blocks), default=0)
+                for b in blocks:
+                    if b["height"] < max_height:
+                        pad = [" " * b["width"]] * (max_height - b["height"])
+                        b["lines"] = pad + b["lines"]
+                combined = []
+                for row_idx in range(max_height):
+                    parts = []
+                    for b in blocks:
+                        line = b["lines"][row_idx] if row_idx < len(b["lines"]) else " " * b["width"]
+                        parts.append(pad_ansi(line, b["width"]))
+                    combined.append((" " * gap).join(parts).rstrip())
+                atlas_lines = combined
+                has_custom_art = True
+            elif isinstance(column, list) and column:
+                art_tokens = column
+                block_ranges = []
+                colored_blocks = []
+                max_width = 0
+                for token in art_tokens:
+                    block_lines, block_masks = _resolve_art(token, quest_art_effect_frame)
+                    if not block_lines:
+                        continue
+                    block_width = max((len(strip_ansi(line)) for line in block_lines), default=0)
+                    max_width = max(max_width, block_width)
+                    colored_blocks.append((list(block_lines), block_width))
+                if colored_blocks and max_width > 0:
+                    stacked = []
+                    cursor = 0
+                    for idx, (block, block_width) in enumerate(colored_blocks):
+                        if idx > 0:
+                            stacked.append(" " * max_width)
+                            cursor += 1
+                        start = cursor
+                        for line in block:
+                            left_pad = (max_width - block_width) // 2 if block_width < max_width else 0
+                            right_pad = max_width - block_width - left_pad if block_width < max_width else 0
+                            padded = pad_ansi(line, block_width)
+                            stacked.append((" " * left_pad) + padded + (" " * right_pad))
+                            cursor += 1
+                        end = cursor - 1
+                        block_ranges.append((start, end, max_width))
+                    atlas_lines = stacked
+                    has_custom_art = True
         if not atlas_lines:
             atlas_id = atlas_cfg.get("glyph_id", "atlas")
             atlas = ctx.glyphs.get(atlas_id, {}) if hasattr(ctx, "glyphs") else {}

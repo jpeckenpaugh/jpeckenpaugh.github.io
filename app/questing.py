@@ -227,6 +227,20 @@ def _apply_show_message(player: Player, action: dict, ctx: Dict[str, Any], effec
             entry["art"] = action.get("art") or action.get("speaker")
         if action.get("art_effect"):
             entry["art_effect"] = action.get("art_effect")
+        sfx_id = action.get("sfx")
+        if sfx_id:
+            entry["sfx"] = sfx_id
+            sfx_root = action.get("sfx_root") or action.get("root")
+            if sfx_root:
+                entry["sfx_root"] = sfx_root
+            sfx_wave = action.get("sfx_wave") or action.get("wave")
+            if sfx_wave:
+                entry["sfx_wave"] = sfx_wave
+            effects["sfx"] = effects.get("sfx", []) + [{
+                "sfx": sfx_id,
+                "root": sfx_root or "C4",
+                "wave": sfx_wave,
+            }]
         effects["message_entries"] = effects.get("message_entries", []) + [entry]
     return None
 
@@ -509,7 +523,7 @@ def apply_actions(
         return True, None, {"xp_gain": 0, "levels_gained": 0}
     target = copy.deepcopy(player) if dry_run else player
     _ensure_player_quest_state(target)
-    effects = {"xp_gain": 0, "levels_gained": 0, "messages": [], "message_entries": []}
+    effects = {"xp_gain": 0, "levels_gained": 0, "messages": [], "message_entries": [], "sfx": []}
     ctx = _action_context(
         actions,
         items_data=items_data,
@@ -589,7 +603,11 @@ def dialog_entries_for(quest_id: str, quest: dict, flags: Optional[dict] = None)
                 "prompt": str(entry.get("prompt", "") or ""),
                 "options": options,
                 "art": entry.get("art") or entry.get("speaker"),
+                "art_layout": entry.get("art_layout"),
                 "art_effect": entry.get("art_effect"),
+                "sfx": entry.get("sfx"),
+                "sfx_root": entry.get("sfx_root") or entry.get("root"),
+                "sfx_wave": entry.get("sfx_wave") or entry.get("wave"),
             })
             continue
         if isinstance(entry, dict):
@@ -602,7 +620,11 @@ def dialog_entries_for(quest_id: str, quest: dict, flags: Optional[dict] = None)
                 "type": "line",
                 "text": str(text),
                 "art": entry.get("art") or entry.get("speaker"),
+                "art_layout": entry.get("art_layout"),
                 "art_effect": entry.get("art_effect"),
+                "sfx": entry.get("sfx"),
+                "sfx_root": entry.get("sfx_root") or entry.get("root"),
+                "sfx_wave": entry.get("sfx_wave") or entry.get("wave"),
             })
             continue
         entries.append({"type": "line", "text": str(entry)})
@@ -629,6 +651,7 @@ def dialog_entries_for(quest_id: str, quest: dict, flags: Optional[dict] = None)
                     "type": "line",
                     "text": str(text),
                     "art": item.get("art") or item.get("speaker"),
+                    "art_layout": item.get("art_layout"),
                     "art_effect": item.get("art_effect"),
                 })
             elif item is not None:
@@ -681,10 +704,10 @@ def apply_quest_start_actions(
     quests_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
     events_data: Optional[object] = None,
-) -> Tuple[bool, Optional[str], List[str]]:
+) -> Tuple[bool, Optional[str], dict]:
     actions = _start_actions_for(quest)
     if not actions:
-        return True, None, []
+        return True, None, {}
     ok, error, _effects = apply_actions(
         player,
         actions,
@@ -708,8 +731,7 @@ def apply_quest_start_actions(
         objectives_data=objectives_data,
         events_data=events_data,
     )
-    messages = effects.get("messages", [])
-    return ok, error, messages if isinstance(messages, list) else []
+    return ok, error, effects if isinstance(effects, dict) else {}
 
 
 def start_quest(player: Player, quest_id: str) -> bool:

@@ -3751,3 +3751,108 @@
 [16:53:01] quest_start quest_id=island_01_quest_00b pending_level_up=False stat_points=0
 [16:53:01] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
 [16:53:01] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:15:27] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[18:15:27] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[18:15:27] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:15:51] quest_start quest_id=island_01_quest_00a pending_level_up=False stat_points=0
+[18:15:51] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:15:51] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:17:46] quest_start quest_id=island_01_quest_00b pending_level_up=False stat_points=0
+[18:17:46] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:17:46] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:18:51] quest_start quest_id=island_01_quest_00c pending_level_up=False stat_points=0
+[18:18:51] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:18:51] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:33:08] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[18:33:08] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[18:33:08] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:33:29] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[18:33:29] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:33:29] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:37:23] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[18:37:23] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[18:37:23] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:37:43] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[18:37:43] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:37:43] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:38:12] quest_start quest_id=island_01_quest_000b pending_level_up=False stat_points=0
+[18:38:12] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:38:12] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:39:28] quest_start quest_id=island_01_quest_000c pending_level_up=False stat_points=0
+[18:39:28] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:39:28] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:40:34] quest_start quest_id=island_01_quest_001a pending_level_up=False stat_points=0
+[18:46:50] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[18:46:50] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[18:46:50] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:47:13] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[18:47:13] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:47:13] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:47:59] quest_start quest_id=island_01_quest_000b pending_level_up=False stat_points=0
+[18:47:59] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:47:59] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:56:47] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[18:56:47] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[18:56:47] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:57:19] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[18:57:19] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:57:19] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:57:55] quest_start quest_id=island_01_quest_000b pending_level_up=False stat_points=0
+[18:57:55] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:57:55] ui_hint done loc=Forest quest_mode=False cursor=0
+[18:58:48] quest_start quest_id=island_01_quest_000c pending_level_up=False stat_points=0
+[18:58:48] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[18:58:48] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:02:32] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[19:02:32] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[19:02:32] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:03:49] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[19:03:49] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[19:03:49] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:04:18] quest_start quest_id=island_01_quest_000b pending_level_up=False stat_points=0
+[19:04:18] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[19:04:18] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:08:11] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[19:08:11] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[19:08:11] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:13:01] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[19:13:01] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[19:13:01] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:18:52] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[19:18:52] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[19:18:52] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:19:10] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[19:19:10] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[19:19:10] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:19:51] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[19:19:51] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[19:19:51] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:20:09] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[19:20:09] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[19:20:09] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:26:18] quest_start quest_id=island_01_quest_000b pending_level_up=False stat_points=0
+[19:26:18] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[19:26:18] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:26:26] support_apply start caller=resolve_player_action target=player player_temp_atk=0 player_temp_def=0
+[19:26:26] temp_set temp_def_bonus from=0 to=7
+[19:26:26] support_apply stat=defense target=player gain=6.772976641171136 new_player_atk=0 new_player_def=7
+[19:26:26] temp_set temp_def_bonus from=7 to=1
+[19:26:27] temp_set temp_def_bonus from=1 to=2
+[19:26:27] temp_set temp_def_bonus from=2 to=3
+[19:26:27] temp_set temp_def_bonus from=3 to=4
+[19:26:27] temp_set temp_def_bonus from=4 to=5
+[19:26:27] temp_set temp_def_bonus from=5 to=6
+[19:26:27] temp_set temp_def_bonus from=6 to=7
+[19:26:27] spell_support spell=harden rank=1 target=player temp_atk=0 temp_def=7
+[19:26:29] temp_set temp_def_bonus from=7 to=6
+[19:26:35] temp_set temp_def_bonus from=6 to=5
+[19:26:39] temp_set temp_def_bonus from=5 to=4
+[19:26:43] temp_set temp_def_bonus from=4 to=3
+[19:26:46] temp_set temp_def_bonus from=3 to=2
+[19:27:06] quest_start quest_id=island_01_quest_000c pending_level_up=False stat_points=0
+[19:27:06] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[19:27:06] ui_hint done loc=Forest quest_mode=False cursor=0
+[19:27:15] temp_set temp_def_bonus from=2 to=1
+[19:27:23] temp_set temp_def_bonus from=1 to=0
+[19:28:11] quest_start quest_id=island_01_quest_001a pending_level_up=False stat_points=0
+[19:35:10] quest_list_active quest_id=island_01_quest_001a hint=no loc=Town

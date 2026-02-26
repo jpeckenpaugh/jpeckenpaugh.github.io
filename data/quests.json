@@ -1,236 +1,4 @@
 {
-  "island_01_quest_00a": {
-    "title": "A Crow and a Mushroom",
-    "continent": "base",
-    "summary_pre": "A baby crow is about to snatch a tiny mushroom.",
-    "summary_active": "Choose a tool and a tea to define your path.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "baby_crow",
-    "dialog": [
-      {
-        "text": "You see a baby crow trying to snatch a tiny mushroom.",
-        "art": [
-          "opponent:baby_crow",
-          "follower:mushroom_baby"
-        ]
-      },
-      {
-        "text": "Mushy: Hey!  Over here!  Please help me!",
-        "art": [
-          "opponent:baby_crow",
-          "follower:mushroom_baby"
-        ]
-      },
-      {
-        "text": "You need to find something fast to scare away the crow...  You look around and notice a shiny stone and a sharp stick on the ground.",
-        "art": [
-          "opponent:baby_crow",
-          "follower:mushroom_baby"
-        ]
-      },
-      {
-        "type": "choice",
-        "prompt": "Which do you choose?",
-        "art": "opponent:baby_crow",
-        "options": [
-          {
-            "label": "Pick up the shiny stone and throw it at the crow.",
-            "actions": [
-              {
-                "type": "use_item_actions",
-                "item_id": "tea_enlightenment"
-              },
-              {
-                "type": "set_flag_values",
-                "values": {
-                  "enlightened_01": true,
-                  "empowered_01": false
-                }
-              },
-              {
-                "type": "grant_items",
-                "items": [
-                  "mycostaff",
-                  "mycocape"
-                ]
-              },
-              {
-                "type": "show_message",
-                "message": "As you throw the crystal, magic energy suddenly flows out and smacks the crow.  The crow is frightened and flies off.",
-                "art": [
-                  "opponent:baby_crow",
-                  "follower:mushroom_baby"
-                ],
-                "art_effect": {
-                  "spell_id": "astral_backhand",
-                  "loops": 3
-                }
-              },
-              {
-                "type": "show_message",
-                "message": "Mushy: Wow, with a nice magic crystal like this I can make you a mystic staff.  This item can contain spell charges to use in battle and for stat boosts."
-              },
-              {
-                "type": "show_message",
-                "message": "I have a mystic cape for you as well, which can not only protect you, but also has healing and empowering properties."
-              },
-              {
-                "type": "show_message",
-                "message": "If you are brave enough to drink the Tea of Enlightenment, you can awaken your energy magic and train in the various magical elements.."
-              },
-              {
-                "type": "show_message",
-                "message": "Quick, drink up this tea before the crow comes back with some buddies.  It will give you the advantage to walk away victorious from the fight."
-              }
-            ]
-          },
-          {
-            "label": "Pick up a sharp stick and charge at the crow.",
-            "actions": [
-              {
-                "type": "use_item_actions",
-                "item_id": "tea_empowerment"
-              },
-              {
-                "type": "set_flag_values",
-                "values": {
-                  "empowered_01": true,
-                  "enlightened_01": false
-                }
-              },
-              {
-                "type": "grant_items",
-                "items": [
-                  "mycoclub",
-                  "mycoshield"
-                ]
-              },
-              {
-                "type": "show_message",
-                "message": "You charge at the crow swinging your stick in the air and yelling.  It was enough to frighten the bird and scare it off for now."
-              },
-              {
-                "type": "show_message",
-                "message": "Mushy: That's one nice club you have there.  I can embue it with some mushroom magic and make it even stronger if you like."
-              },
-              {
-                "type": "show_message",
-                "message": "I also have a special warriors Tea of Empowerment.  Drink this and it will help your strength to surge."
-              },
-              {
-                "type": "show_message",
-                "message": "Be sure to check the magic enchanchments for your items before those pesky birds come back to bother us."
-              }
-            ]
-          }
-        ],
-        "art": "follower:mushroom_baby"
-      },
-      {
-        "text": "Mushy: Great!  That stupid crow doesn't stand a chance now!",
-        "art": "follower:mushroom_baby"
-      }
-    ],
-    "requirements": {
-      "flags_required": [],
-      "level_min": 1
-    },
-    "objectives": [
-      {
-        "type": "flag_any",
-        "flags_any": [
-          "enlightened_01",
-          "empowered_01"
-        ]
-      }
-    ],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_00a_complete"
-        ]
-      }
-    ],
-    "default_art": "follower:mushroom_baby"
-  },
-  "island_01_quest_00b": {
-    "title": "Crow Ambush",
-    "continent": "base",
-    "summary_pre": "The baby crow returns with allies.",
-    "summary_active": "Defeat the baby crows threatening Mushy.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "baby_crow",
-    "dialog": [
-      {
-        "text": "Mushy: Uh oh... That pesky bird is back, and it looks like he brought a couple of friends.",
-        "art": "follower:mushroom_baby"
-      },
-      {
-        "text": "Crow Crew: Hey, you are just some kid!  How dare you come scare me off and interupt my mushroom dinner.",
-        "art": "opponent:baby_crow"
-      },
-      {
-        "text": "Mushy: Ready or not, here they come!  I sure hope you can figure out how to use those magical items I just gave you.",
-        "art": "follower:mushroom_baby"
-      }
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_00a_complete"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "defeat_opponents",
-        "opponent_id": "baby_crow",
-        "count": 3
-      }
-    ],
-    "on_start_actions": [
-      {
-        "type": "grant_follower",
-        "follower": {
-          "type": "mushroom_baby",
-          "name": "Mushy",
-          "count_as_recruit": true
-        },
-        "required": true
-      },
-      {
-        "type": "set_ui_hint",
-        "scene": "forest",
-        "action_command": "ENTER_SCENE"
-      }
-    ],
-    "on_complete_actions": [
-      {
-        "type": "show_message",
-        "message": "Mushy: You did it!  We scared them off for good."
-      },
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_00b_complete"
-        ]
-      },
-      {
-        "type": "grant_xp",
-        "amount": 10
-      }
-    ],
-    "trial": {
-      "scene_id": "island_01_quest_00b_trial",
-      "opponents": [
-        {
-          "opponent_id": "baby_crow",
-          "count": 4
-        }
-      ]
-    },
-    "default_art": "follower:mushroom_baby"
-  },
   "island_01_quest_01a": {
     "title": "Once upon a time...",
     "continent": "base",
@@ -250,7 +18,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_00b_complete"
+        "island_01_quest_00_path_complete"
       ],
       "level_min": 1
     },
@@ -1279,5 +1047,476 @@
       }
     ],
     "default_art": "opponent:wolf_pup"
+  },
+  "island_01_quest_00": {
+    "title": "A Crow and a Mushroom",
+    "continent": "base",
+    "summary_pre": "A crow has a mushroom pinned against a tree.",
+    "summary_active": "Choose a weapon and drive off the crow.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "dialog": [
+      {
+        "text": "One day as you are walking through the woods, you come upon an unusual scene.  A small mushroom is pinned against a tree as a crow swoops down from overhead."
+      },
+      {
+        "text": "Mushy: Hey!  Over here!  Please help me!"
+      },
+      {
+        "text": "Mushy: Here, use one of these! - The mushroom stretches out its hand to you, and you see a mage's staff and a warrior's club."
+      },
+      {
+        "type": "choice",
+        "prompt": "Which do you choose?",
+        "options": [
+          {
+            "label": "A mage's staff.",
+            "actions": [
+              {
+                "type": "set_flag_values",
+                "values": {
+                  "enlightened_01": true,
+                  "empowered_01": false,
+                  "warrior_01": false
+                }
+              },
+              {
+                "type": "grant_items",
+                "items": [
+                  "mycostaff"
+                ]
+              },
+              {
+                "type": "show_message",
+                "message": "As you take the staff in your hand, you see lights flashing in your mind.  The words \"Magic Spark\" echo in your ears.",
+                "art": [
+                  "opponent:baby_crow",
+                  "follower:mushroom_baby"
+                ],
+                "art_effect": {
+                  "spell_id": "magic_spark",
+                  "loops": 3
+                }
+              },
+              {
+                "type": "show_message",
+                "message": "Mushy: This staff has the Magic Spark spell embued into it.  You can use this to fend off that nasty crow."
+              }
+            ]
+          },
+          {
+            "label": "A warrior's club.",
+            "actions": [
+              {
+                "type": "set_flag_values",
+                "values": {
+                  "empowered_01": true,
+                  "enlightened_01": false,
+                  "warrior_01": true
+                }
+              },
+              {
+                "type": "grant_items",
+                "items": [
+                  "mycoclub"
+                ]
+              },
+              {
+                "type": "show_message",
+                "message": "You charge forward with the platinum crystal in hand, the crow recoils and scrambles away."
+              },
+              {
+                "type": "show_message",
+                "message": "Mushy: That platinum crystal hums with strength.  I can embue your club with mushroom magic to make it even stronger."
+              },
+              {
+                "type": "show_message",
+                "message": "I also have a warrior's Tea of Empowerment.  Drink this and your strength will surge."
+              },
+              {
+                "type": "show_message",
+                "message": "Be sure to check the magic enchantments on your items before those pesky birds come back."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "Mushy: I sure you hope you know how to use that thing..."
+      }
+    ],
+    "requirements": {
+      "flags_required": [],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "enlightened_01",
+          "empowered_01"
+        ]
+      },
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_00_complete"
+        ]
+      }
+    ],
+    "default_art": [
+      "opponent:baby_crow",
+      "follower:mushroom_baby"
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 1
+        }
+      ]
+    }
+  },
+  "island_01_quest_000a": {
+    "title": "Tea of Enlightenment",
+    "continent": "base",
+    "summary_pre": "Mushy: Drink this tea to awaken your magic.",
+    "summary_active": "Defeat 2 baby crows threatening Mushy.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: That staff is very powerful, but it does have limited charges.  Here, drink this Tea of Enlightenment and it will awake your magic potential.",
+        "art_layout": {
+          "row": [
+            {
+              "token": "spells_art:potion",
+              "color_key": "y",
+              "color_map": {
+                "1": "y",
+                "2": "w",
+                "3": "r"
+              },
+              "variation": 0.12,
+              "jitter_stability": false,
+              "frame_delay": 0.14,
+              "loops": 3
+            },
+            "follower:mushroom_baby"
+          ],
+          "gap": 2
+        }
+      },
+      {
+        "text": "You drink the Tea of Enlightenment.  Your MP increases and your defense surges.",
+        "art": "follower:mushroom_baby",
+        "sfx": "spell_up",
+        "sfx_root": "C4"
+      },
+      {
+        "text": "Mushy: Now if the staff runs out of charges, you can use your Magic Points (MP) to cast the spell as well.  And after each battle, the staff will recharge 5 spell charges.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_00_complete",
+        "enlightened_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 2
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "use_item_actions",
+        "item_id": "tea_enlightenment"
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_magic_spark_enabled"
+        ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_000a_complete"
+        ]
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00a_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 2
+        }
+      ]
+    }
+  },
+  "island_01_quest_000b": {
+    "title": "Mystic Cape",
+    "continent": "base",
+    "summary_pre": "Mushy: This cape will keep you safe.",
+    "summary_active": "Defeat 3 baby crows threatening Mushy.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: I stitched a mystic cape for you.  It will protect you and help your mana.",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Mushy: This cape carries two imbued spells: Healing recovers your Health Points, and Harden will toughen your skin, increasing DEF.  After each battle, the cape will recharge 1 spell charge for each imbued spell.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_000a_complete",
+        "enlightened_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 3
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "grant_items",
+        "items": [
+          "mycocape"
+        ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_000b_complete"
+        ]
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00b_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 3
+        }
+      ]
+    }
+  },
+  "island_01_quest_000c": {
+    "title": "Crow Ambush",
+    "continent": "base",
+    "summary_pre": "The baby crow returns with allies.",
+    "summary_active": "Defeat the baby crows threatening Mushy.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: You seem to be a natural at this.  With me on your team, we can take on a whole bunch of crows!",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Crow Crew: Hey, you are just some kid!  How dare you come scare me off and interupt my mushroom dinner.",
+        "art": "opponent:baby_crow"
+      },
+      {
+        "text": "Mushy: Ready or not, here they come!  I sure hope you can figure out how to use those magical items I gave you.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_000b_complete",
+        "enlightened_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 4
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "mushroom_baby",
+          "name": "Mushy",
+          "count_as_recruit": true
+        },
+        "required": true
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "show_message",
+        "message": "Mushy: You did it!  We scared them off for good."
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_000c_complete",
+          "island_01_quest_00_path_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 10
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00c_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 4
+        }
+      ]
+    }
+  },
+  "island_01_quest_001a": {
+    "title": "Warrior Awakening",
+    "continent": "base",
+    "summary_pre": "Your warrior path is just beginning.",
+    "summary_active": "Warrior path quest (placeholder).",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: The club feels right in your hands.  We will hone your strength next.",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "This warrior path quest is not ready yet.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_00_complete",
+        "warrior_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "island_01_quest_001a_ready"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_001b": {
+    "title": "Warrior Trial",
+    "continent": "base",
+    "summary_pre": "The next trial awaits.",
+    "summary_active": "Warrior path quest (placeholder).",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: We will put your strength to the test soon.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_001a_complete",
+        "warrior_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "island_01_quest_001b_ready"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_001c": {
+    "title": "Warrior Ambush",
+    "continent": "base",
+    "summary_pre": "A final warrior test lies ahead.",
+    "summary_active": "Warrior path quest (placeholder).",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: The final warrior trial will be ready soon.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_001b_complete",
+        "warrior_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "island_01_quest_001c_ready"
+        ]
+      }
+    ]
   }
 }
