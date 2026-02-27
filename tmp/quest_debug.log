@@ -3856,3 +3856,15 @@
 [19:27:23] temp_set temp_def_bonus from=1 to=0
 [19:28:11] quest_start quest_id=island_01_quest_001a pending_level_up=False stat_points=0
 [19:35:10] quest_list_active quest_id=island_01_quest_001a hint=no loc=Town
+[16:04:14] quest_start quest_id=island_01_quest_00 pending_level_up=False stat_points=0
+[16:04:14] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Town
+[16:04:14] ui_hint done loc=Forest quest_mode=False cursor=0
+[16:04:27] quest_start quest_id=island_01_quest_000a pending_level_up=False stat_points=0
+[16:04:27] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[16:04:27] ui_hint done loc=Forest quest_mode=False cursor=0
+[16:04:43] quest_start quest_id=island_01_quest_000b pending_level_up=False stat_points=0
+[16:04:43] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[16:04:43] ui_hint done loc=Forest quest_mode=False cursor=0
+[16:05:03] quest_start quest_id=island_01_quest_000c pending_level_up=False stat_points=0
+[16:05:03] ui_hint start scene=forest cmd=ENTER_SCENE label=- loc=Forest
+[16:05:03] ui_hint done loc=Forest quest_mode=False cursor=0

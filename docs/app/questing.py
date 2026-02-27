@@ -792,6 +792,7 @@ def quest_entries(
         quest_items = list(quests_data.all().items())
 
     shown_next = False
+    locked_entry: Optional[dict] = None
     for quest_id, quest in quest_items:
         if not isinstance(quest, dict):
             continue
@@ -812,9 +813,10 @@ def quest_entries(
             entries.append({"id": quest_id, "quest": quest, "status": "available"})
             shown_next = True
             break
-        if include_locked_next and not shown_next:
-            entries.append({"id": quest_id, "quest": quest, "status": "locked"})
-            break
+        if include_locked_next and not shown_next and locked_entry is None:
+            locked_entry = {"id": quest_id, "quest": quest, "status": "locked"}
+    if include_locked_next and not shown_next and locked_entry is not None:
+        entries.append(locked_entry)
     return entries
 
 
