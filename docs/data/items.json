@@ -189,8 +189,9 @@
     },
     "imbued_spells": [
       {
-        "spell_id": "astral_backhand",
-        "charges": 5
+        "spell_id": "magic_spark",
+        "charges": 5,
+        "auto_recharge": 5
       }
     ],
     "desc": "A mystic staff that deepens your mana reserves."
@@ -203,16 +204,17 @@
     "defense": 5,
     "hp_bonus": 2,
     "mp_bonus": 3,
-    "mp_regen": 1,
     "price": 0,
     "imbued_spells": [
       {
         "spell_id": "healing",
-        "charges": 2
+        "charges": 2,
+        "auto_recharge": 1
       },
       {
         "spell_id": "harden",
-        "charges": 2
+        "charges": 2,
+        "auto_recharge": 1
       }
     ],
     "desc": "A cloak of spores that restores mana in battle."

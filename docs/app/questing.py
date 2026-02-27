@@ -222,6 +222,26 @@ def _apply_show_message(player: Player, action: dict, ctx: Dict[str, Any], effec
     message = str(action.get("message", "") or "").strip()
     if message:
         effects["messages"] = effects.get("messages", []) + [message]
+        entry = {"text": message}
+        if action.get("art") or action.get("speaker"):
+            entry["art"] = action.get("art") or action.get("speaker")
+        if action.get("art_effect"):
+            entry["art_effect"] = action.get("art_effect")
+        sfx_id = action.get("sfx")
+        if sfx_id:
+            entry["sfx"] = sfx_id
+            sfx_root = action.get("sfx_root") or action.get("root")
+            if sfx_root:
+                entry["sfx_root"] = sfx_root
+            sfx_wave = action.get("sfx_wave") or action.get("wave")
+            if sfx_wave:
+                entry["sfx_wave"] = sfx_wave
+            effects["sfx"] = effects.get("sfx", []) + [{
+                "sfx": sfx_id,
+                "root": sfx_root or "C4",
+                "wave": sfx_wave,
+            }]
+        effects["message_entries"] = effects.get("message_entries", []) + [entry]
     return None
 
 
@@ -422,6 +442,9 @@ def _apply_use_item_actions(player: Player, action: dict, ctx: Dict[str, Any], e
         messages = sub_effects.get("messages", [])
         if isinstance(messages, list) and messages:
             effects["messages"] = effects.get("messages", []) + messages
+        msg_entries = sub_effects.get("message_entries", [])
+        if isinstance(msg_entries, list) and msg_entries:
+            effects["message_entries"] = effects.get("message_entries", []) + msg_entries
     return None
 
 
@@ -500,7 +523,7 @@ def apply_actions(
         return True, None, {"xp_gain": 0, "levels_gained": 0}
     target = copy.deepcopy(player) if dry_run else player
     _ensure_player_quest_state(target)
-    effects = {"xp_gain": 0, "levels_gained": 0, "messages": []}
+    effects = {"xp_gain": 0, "levels_gained": 0, "messages": [], "message_entries": [], "sfx": []}
     ctx = _action_context(
         actions,
         items_data=items_data,
@@ -538,6 +561,102 @@ def _complete_actions_for(quest: dict) -> List[dict]:
     if isinstance(complete_actions, list) and complete_actions:
         actions.extend([a for a in complete_actions if isinstance(a, dict)])
     return actions
+
+
+def dialog_art_token(entry: Optional[dict], quest: Optional[dict]) -> Optional[List[str]]:
+    if isinstance(entry, dict):
+        art = entry.get("art") or entry.get("speaker")
+        if isinstance(art, list):
+            tokens = [str(token) for token in art if token]
+            if tokens:
+                return tokens
+        elif art:
+            return [str(art)]
+    if isinstance(quest, dict):
+        art = quest.get("default_art")
+        if isinstance(art, list):
+            tokens = [str(token) for token in art if token]
+            if tokens:
+                return tokens
+        elif art:
+            return [str(art)]
+        art_opponent = quest.get("art_opponent")
+        if art_opponent:
+            return [f"opponent:{art_opponent}"]
+    return None
+
+
+def dialog_entries_for(quest_id: str, quest: dict, flags: Optional[dict] = None) -> List[dict]:
+    dialog = quest.get("dialog", []) if isinstance(quest, dict) else []
+    if not isinstance(dialog, list):
+        dialog = []
+    entries: List[dict] = []
+    for entry in dialog:
+        if entry is None:
+            continue
+        if isinstance(entry, dict) and entry.get("type") == "choice":
+            options = entry.get("options", [])
+            if not isinstance(options, list):
+                options = []
+            entries.append({
+                "type": "choice",
+                "prompt": str(entry.get("prompt", "") or ""),
+                "options": options,
+                "art": entry.get("art") or entry.get("speaker"),
+                "art_layout": entry.get("art_layout"),
+                "art_effect": entry.get("art_effect"),
+                "sfx": entry.get("sfx"),
+                "sfx_root": entry.get("sfx_root") or entry.get("root"),
+                "sfx_wave": entry.get("sfx_wave") or entry.get("wave"),
+            })
+            continue
+        if isinstance(entry, dict):
+            text = entry.get("text")
+            if text is None:
+                text = entry.get("line")
+            if text is None:
+                text = ""
+            entries.append({
+                "type": "line",
+                "text": str(text),
+                "art": entry.get("art") or entry.get("speaker"),
+                "art_layout": entry.get("art_layout"),
+                "art_effect": entry.get("art_effect"),
+                "sfx": entry.get("sfx"),
+                "sfx_root": entry.get("sfx_root") or entry.get("root"),
+                "sfx_wave": entry.get("sfx_wave") or entry.get("wave"),
+            })
+            continue
+        entries.append({"type": "line", "text": str(entry)})
+
+    choice_messages = {}
+    if isinstance(flags, dict):
+        choice_messages = flags.get("choice_messages", {})
+    if not isinstance(choice_messages, dict) or not entries:
+        return entries
+
+    expanded: List[dict] = []
+    for idx, entry in enumerate(entries):
+        expanded.append(entry)
+        key = f"choice:{quest_id}:{idx}"
+        extra = choice_messages.get(key)
+        if not isinstance(extra, list):
+            continue
+        for item in extra:
+            if isinstance(item, dict):
+                text = item.get("text")
+                if text is None:
+                    text = ""
+                expanded.append({
+                    "type": "line",
+                    "text": str(text),
+                    "art": item.get("art") or item.get("speaker"),
+                    "art_layout": item.get("art_layout"),
+                    "art_effect": item.get("art_effect"),
+                })
+            elif item is not None:
+                expanded.append({"type": "line", "text": str(item)})
+    return expanded
 
 
 def _apply_rewards(
@@ -585,10 +704,10 @@ def apply_quest_start_actions(
     quests_data: Optional[object] = None,
     objectives_data: Optional[object] = None,
     events_data: Optional[object] = None,
-) -> Tuple[bool, Optional[str], List[str]]:
+) -> Tuple[bool, Optional[str], dict]:
     actions = _start_actions_for(quest)
     if not actions:
-        return True, None, []
+        return True, None, {}
     ok, error, _effects = apply_actions(
         player,
         actions,
@@ -612,8 +731,7 @@ def apply_quest_start_actions(
         objectives_data=objectives_data,
         events_data=events_data,
     )
-    messages = effects.get("messages", [])
-    return ok, error, messages if isinstance(messages, list) else []
+    return ok, error, effects if isinstance(effects, dict) else {}
 
 
 def start_quest(player: Player, quest_id: str) -> bool:

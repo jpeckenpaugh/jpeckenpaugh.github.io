@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 import json
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from app.commands.scene_commands import command_is_enabled, format_commands, scene_commands
 from app.data_access.commands_data import CommandsData
@@ -40,13 +40,14 @@ from app.data_access.title_screen_data import TitleScreenData
 from app.data_access.venues_data import VenuesData
 from app.data_access.text_data import TextData
 from app.models import Frame, Player, Opponent
-from app.questing import ordered_quest_ids, quest_entries, requirement_summary
+from app.questing import ordered_quest_ids, quest_entries, requirement_summary, dialog_entries_for, dialog_art_token
 from app.ui.ansi import ANSI, color
 from app.ui.layout import (
     center_ansi,
     format_action_lines,
     format_command_lines,
     format_menu_actions,
+    pad_ansi,
     pad_or_trim_ansi,
     strip_ansi,
 )
@@ -55,6 +56,8 @@ from app.ui.rendering import (
     COLOR_BY_NAME,
     element_color_map,
     format_player_stats,
+    _hex_to_rgb,
+    _jitter_color_code,
     render_scene_art,
     render_venue_art,
     render_venue_objects,
@@ -1012,7 +1015,9 @@ def generate_frame(
     quest_detail_page: int = 0,
     level_cursor: int = 0,
     level_up_notes: Optional[List[str]] = None,
-    suppress_actions: bool = False
+    suppress_actions: bool = False,
+    quest_art_effect: Optional[dict] = None,
+    quest_art_effect_frame: int = 0
 ) -> Frame:
     """Build a screen frame from game state and UI data."""
     life_boost = ctx.spells.get("life_boost", {})
@@ -1140,34 +1145,22 @@ def generate_frame(
         commands = []
         detail_quest = None
         dialog_lines = []
+        dialog_entries = []
+        current_entry = None
         if quest_detail_mode and quest_detail_id:
             detail_quest = ctx.quests.get(quest_detail_id, {}) if hasattr(ctx, "quests") else {}
-            dialog = detail_quest.get("dialog", [])
-            if not isinstance(dialog, list):
-                dialog = []
-            dialog_entries = [entry for entry in dialog if entry is not None]
             flags = getattr(player, "flags", {})
-            choice_messages = {}
-            if isinstance(flags, dict):
-                choice_messages = flags.get("choice_messages", {})
-            if not isinstance(choice_messages, dict):
-                choice_messages = {}
-            if choice_messages and quest_detail_id:
-                expanded = []
-                for idx, entry in enumerate(dialog_entries):
-                    expanded.append(entry)
-                    key = f"choice:{quest_detail_id}:{idx}"
-                    extra = choice_messages.get(key)
-                    if isinstance(extra, list) and extra:
-                        expanded.extend([str(line) for line in extra if line is not None])
-                dialog_entries = expanded
+            dialog_entries = dialog_entries_for(
+                quest_detail_id,
+                detail_quest if isinstance(detail_quest, dict) else {},
+                flags,
+            )
             dialog_lines = []
             for entry in dialog_entries:
                 if isinstance(entry, dict) and entry.get("type") == "choice":
-                    prompt = str(entry.get("prompt", "") or "")
-                    dialog_lines.append(prompt)
+                    dialog_lines.append(str(entry.get("prompt", "") or ""))
                 else:
-                    dialog_lines.append(str(entry))
+                    dialog_lines.append(str(entry.get("text", "") or ""))
             total_pages = max(1, len(dialog_entries))
             quest_detail_page = max(0, min(quest_detail_page, total_pages - 1))
             current_entry = dialog_entries[quest_detail_page] if dialog_entries else None
@@ -1365,20 +1358,352 @@ def generate_frame(
         atlas_margin = int(atlas_cfg.get("margin", 1) or 1)
         atlas_style = str(atlas_cfg.get("frame_style", "round") or "round")
         atlas_lines = []
-        opponent_masks = []
-        art_opponent_id = None
+        has_custom_art = False
+        def _resolve_art(token: Optional[str], frame_index: int = 0) -> Tuple[list, list]:
+            if not token:
+                return [], []
+            token = str(token)
+            if token == "player":
+                token = f"player:{getattr(player, 'avatar_id', 'player_01')}"
+            source = None
+            art_id = token
+            if ":" in token:
+                source, art_id = token.split(":", 1)
+            art_id = art_id.strip()
+
+            def _from_opponent(opponent_id: str) -> tuple[list, list]:
+                if not hasattr(ctx, "opponents"):
+                    return [], []
+                entry = ctx.opponents.get(opponent_id, {})
+                if not isinstance(entry, dict):
+                    return [], []
+                art = entry.get("art", []) if isinstance(entry.get("art"), list) else []
+                masks = entry.get("color_map") if isinstance(entry.get("color_map"), list) else []
+                return art, masks
+
+            def _from_follower(follower_id: str) -> tuple[list, list]:
+                if hasattr(ctx, "followers"):
+                    entry = ctx.followers.get(follower_id, {})
+                    if isinstance(entry, dict):
+                        art = entry.get("art", []) if isinstance(entry.get("art"), list) else []
+                        masks = entry.get("color_map") if isinstance(entry.get("color_map"), list) else []
+                        if art:
+                            return art, masks
+                return _from_opponent(follower_id)
+
+            def _from_player(player_id: str) -> tuple[list, list]:
+                if not hasattr(ctx, "players"):
+                    return [], []
+                entry = ctx.players.get(player_id, {})
+                if not isinstance(entry, dict):
+                    return [], []
+                art = entry.get("art", []) if isinstance(entry.get("art"), list) else []
+                masks = entry.get("color_map") if isinstance(entry.get("color_map"), list) else []
+                return art, masks
+
+            def _from_spells_art(art_key: str) -> tuple[list, list]:
+                if not hasattr(ctx, "spells_art"):
+                    return [], []
+                entry = ctx.spells_art.get(art_key, {})
+                if not isinstance(entry, dict):
+                    return [], []
+                frames = entry.get("frames", [])
+                mask_frames = entry.get("mask_frames", [])
+                if isinstance(frames, list) and frames:
+                    frame = frames[frame_index % len(frames)]
+                    if isinstance(frame, list):
+                        masks = []
+                        if isinstance(mask_frames, list) and mask_frames:
+                            mask = mask_frames[frame_index % len(mask_frames)]
+                            if isinstance(mask, list):
+                                masks = mask
+                        return frame, masks
+                return [], []
+
+            if source == "opponent":
+                return _from_opponent(art_id)
+            if source == "follower":
+                return _from_follower(art_id)
+            if source == "player":
+                return _from_player(art_id)
+            if source in ("spells_art", "art"):
+                return _from_spells_art(art_id)
+
+            art, masks = _from_opponent(art_id)
+            if art:
+                return art, masks
+            art, masks = _from_follower(art_id)
+            if art:
+                return art, masks
+            return _from_player(art_id)
+
+        art_tokens = None
+        art_layout = None
         if quest_detail_mode and detail_quest:
-            art_opponent_id = str(detail_quest.get("art_opponent") or "").strip()
-        if art_opponent_id and hasattr(ctx, "opponents"):
-            opponent_entry = ctx.opponents.get(art_opponent_id, {})
-            if isinstance(opponent_entry, dict):
-                atlas_lines = opponent_entry.get("art", []) if isinstance(opponent_entry.get("art"), list) else []
-                if isinstance(opponent_entry.get("color_map"), list):
-                    opponent_masks = opponent_entry.get("color_map")
+            art_tokens = dialog_art_token(current_entry if quest_detail_mode else None, detail_quest)
+            if isinstance(current_entry, dict):
+                art_layout = current_entry.get("art_layout")
+        block_ranges = []
+        if art_tokens:
+            colored_blocks = []
+            max_width = 0
+            for token in art_tokens:
+                block_lines, block_masks = _resolve_art(token, quest_art_effect_frame)
+                if not block_lines:
+                    continue
+                if block_masks and hasattr(ctx, "colors"):
+                    colors = ctx.colors.all()
+                    if isinstance(colors, dict):
+                        colored = []
+                        for line, mask in zip(block_lines, block_masks):
+                            line_str = str(line)
+                            mask_str = str(mask)
+                            padded_mask = mask_str.ljust(len(line_str))
+                            out = []
+                            for idx, ch in enumerate(line_str):
+                                mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                                code = _color_code_for_key(colors, mask_ch) if mask_ch else ""
+                                if code and ch != " ":
+                                    out.append(f"{code}{ch}{ANSI.RESET}")
+                                else:
+                                    out.append(ch)
+                            colored.append("".join(out))
+                        if len(block_masks) < len(block_lines):
+                            colored.extend(str(line) for line in block_lines[len(block_masks):])
+                        block_lines = colored
+                block_width = max((len(strip_ansi(line)) for line in block_lines), default=0)
+                max_width = max(max_width, block_width)
+                colored_blocks.append((list(block_lines), block_width))
+
+            if colored_blocks and max_width > 0:
+                stacked = []
+                cursor = 0
+                for idx, (block, block_width) in enumerate(colored_blocks):
+                    if idx > 0:
+                        stacked.append(" " * max_width)
+                        cursor += 1
+                    start = cursor
+                    for line in block:
+                        left_pad = (max_width - block_width) // 2 if block_width < max_width else 0
+                        right_pad = max_width - block_width - left_pad if block_width < max_width else 0
+                        padded = pad_ansi(line, block_width)
+                        stacked.append((" " * left_pad) + padded + (" " * right_pad))
+                        cursor += 1
+                    end = cursor - 1
+                    block_ranges.append((start, end, max_width))
+                atlas_lines = stacked
+                has_custom_art = True
+        if art_layout and isinstance(art_layout, dict):
+            row = art_layout.get("row")
+            column = art_layout.get("column")
+            gap = int(art_layout.get("gap", 1) or 1)
+            if isinstance(row, list) and row:
+                blocks = []
+                for token in row:
+                    token_value = token
+                    color_key = "y"
+                    color_map = None
+                    variation = 0.0
+                    jitter_stability = True
+                    if isinstance(token, dict):
+                        token_value = token.get("token") or token.get("art")
+                        color_key = str(token.get("color_key", "y"))[:1] or "y"
+                        if isinstance(token.get("color_map"), dict):
+                            color_map = token.get("color_map")
+                        variation = float(token.get("variation", 0.0) or 0.0)
+                        jitter_stability = bool(token.get("jitter_stability", True))
+                    block_lines, block_masks = _resolve_art(token_value, quest_art_effect_frame)
+                    if not block_lines:
+                        block_lines = [" "]
+                    if block_masks and hasattr(ctx, "colors"):
+                        colors = ctx.colors.all()
+                        if isinstance(colors, dict):
+                            colored = []
+                            seed_base = hash((quest_detail_id, quest_detail_page, "art_layout", str(token_value))) & 0xFFFFFFFF
+                            for line, mask in zip(block_lines, block_masks):
+                                line_str = str(line)
+                                mask_str = str(mask)
+                                padded_mask = mask_str.ljust(len(line_str))
+                                out = []
+                                for idx, ch in enumerate(line_str):
+                                    mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
+                                    key = mask_ch or color_key
+                                    if color_map and mask_ch in color_map:
+                                        key = color_map.get(mask_ch, color_key)
+                                    seed = seed_base ^ (idx * 0x85EBCA77) ^ (quest_art_effect_frame * 0x9E3779B1)
+                                    if not jitter_stability:
+                                        seed ^= (quest_art_effect_frame * 0xC2B2AE3D)
+                                    code = ""
+                                    if key:
+                                        entry = colors.get(key)
+                                        hex_code = ""
+                                        if isinstance(entry, dict):
+                                            hex_code = entry.get("hex", "") if isinstance(entry.get("hex"), str) else ""
+                                            if not hex_code and isinstance(entry.get("name"), str):
+                                                name = entry.get("name", "").strip()
+                                                hex_start = name.find("#")
+                                                hex_code = name[hex_start:] if hex_start != -1 else ""
+                                        if isinstance(entry, str) and not hex_code:
+                                            name = entry.strip()
+                                            hex_start = name.find("#")
+                                            hex_code = name[hex_start:] if hex_start != -1 else ""
+                                        rgb = _hex_to_rgb(hex_code) if hex_code else None
+                                        if rgb:
+                                            code = _jitter_color_code(rgb, variation, seed) if variation > 0 else f"\033[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m"
+                                        else:
+                                            code = _color_code_for_key(colors, key)
+                                    if code and ch != " ":
+                                        out.append(f"{code}{ch}{ANSI.RESET}")
+                                    else:
+                                        out.append(ch)
+                                colored.append("".join(out))
+                            if len(block_masks) < len(block_lines):
+                                colored.extend(str(line) for line in block_lines[len(block_masks):])
+                            block_lines = colored
+                    width = max((len(strip_ansi(line)) for line in block_lines), default=0)
+                    height = len(block_lines)
+                    blocks.append({"lines": list(block_lines), "width": width, "height": height})
+                max_height = max((b["height"] for b in blocks), default=0)
+                for b in blocks:
+                    if b["height"] < max_height:
+                        pad = [" " * b["width"]] * (max_height - b["height"])
+                        b["lines"] = pad + b["lines"]
+                combined = []
+                for row_idx in range(max_height):
+                    parts = []
+                    for b in blocks:
+                        line = b["lines"][row_idx] if row_idx < len(b["lines"]) else " " * b["width"]
+                        parts.append(pad_ansi(line, b["width"]))
+                    combined.append((" " * gap).join(parts).rstrip())
+                atlas_lines = combined
+                has_custom_art = True
+            elif isinstance(column, list) and column:
+                art_tokens = column
+                block_ranges = []
+                colored_blocks = []
+                max_width = 0
+                for token in art_tokens:
+                    block_lines, block_masks = _resolve_art(token, quest_art_effect_frame)
+                    if not block_lines:
+                        continue
+                    block_width = max((len(strip_ansi(line)) for line in block_lines), default=0)
+                    max_width = max(max_width, block_width)
+                    colored_blocks.append((list(block_lines), block_width))
+                if colored_blocks and max_width > 0:
+                    stacked = []
+                    cursor = 0
+                    for idx, (block, block_width) in enumerate(colored_blocks):
+                        if idx > 0:
+                            stacked.append(" " * max_width)
+                            cursor += 1
+                        start = cursor
+                        for line in block:
+                            left_pad = (max_width - block_width) // 2 if block_width < max_width else 0
+                            right_pad = max_width - block_width - left_pad if block_width < max_width else 0
+                            padded = pad_ansi(line, block_width)
+                            stacked.append((" " * left_pad) + padded + (" " * right_pad))
+                            cursor += 1
+                        end = cursor - 1
+                        block_ranges.append((start, end, max_width))
+                    atlas_lines = stacked
+                    has_custom_art = True
         if not atlas_lines:
             atlas_id = atlas_cfg.get("glyph_id", "atlas")
             atlas = ctx.glyphs.get(atlas_id, {}) if hasattr(ctx, "glyphs") else {}
             atlas_lines = atlas.get("art", []) if isinstance(atlas, dict) else []
+            has_custom_art = False
+        if quest_art_effect and has_custom_art and atlas_lines and block_ranges:
+            effect = quest_art_effect if isinstance(quest_art_effect, dict) else {}
+            frames = effect.get("frames", [])
+            mask_frames = effect.get("mask_frames", [])
+            if isinstance(frames, list) and frames:
+                frame_index = quest_art_effect_frame % len(frames)
+                frame = frames[frame_index]
+                mask_frame = None
+                if isinstance(mask_frames, list) and mask_frames:
+                    mask_frame = mask_frames[frame_index % len(mask_frames)]
+                if isinstance(frame, list) and frame:
+                    target = effect.get("target", "top")
+                    if target == "bottom" and len(block_ranges) > 1:
+                        target_range = block_ranges[-1]
+                    else:
+                        target_range = block_ranges[0]
+                    start_row, end_row, width = target_range
+                    block_height = end_row - start_row + 1
+                    frame_height = len(frame)
+                    frame_width = max((len(line) for line in frame), default=0)
+                    if block_height > 0 and frame_width > 0:
+                        row_start = start_row + max(0, (block_height - frame_height) // 2)
+                        col_start = max(0, (width - frame_width) // 2)
+                        colors = ctx.colors.all() if hasattr(ctx, "colors") else {}
+                        color_key = str(effect.get("color_key", "y"))[:1] or "y"
+                        color_map = effect.get("color_map") if isinstance(effect.get("color_map"), dict) else None
+                        glyph = effect.get("glyph") if isinstance(effect.get("glyph"), str) else None
+                        variation = float(effect.get("variation", 0.0) or 0.0)
+                        jitter_stability = bool(effect.get("jitter_stability", True))
+
+                        def _overlay_color_code(key: str, seed: int) -> str:
+                            if isinstance(colors, dict):
+                                entry = colors.get(key)
+                                hex_code = ""
+                                if isinstance(entry, dict):
+                                    hex_code = entry.get("hex", "") if isinstance(entry.get("hex"), str) else ""
+                                    if not hex_code and isinstance(entry.get("name"), str):
+                                        name = entry.get("name", "").strip()
+                                        hex_start = name.find("#")
+                                        hex_code = name[hex_start:] if hex_start != -1 else ""
+                                if isinstance(entry, str) and not hex_code:
+                                    name = entry.strip()
+                                    hex_start = name.find("#")
+                                    hex_code = name[hex_start:] if hex_start != -1 else ""
+                                rgb = _hex_to_rgb(hex_code) if hex_code else None
+                                if rgb:
+                                    return _jitter_color_code(rgb, variation, seed) if variation > 0 else f"\033[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m"
+                            return _color_code_for_key(colors, key) if isinstance(colors, dict) else ""
+
+                        overlay_rows = {}
+                        seed_base = hash((quest_detail_id, quest_detail_page, "quest_art")) & 0xFFFFFFFF
+                        for r_idx, row in enumerate(frame):
+                            if not isinstance(row, str):
+                                row = str(row)
+                            target_row = row_start + r_idx
+                            if target_row < start_row or target_row > end_row:
+                                continue
+                            mask_row = None
+                            if isinstance(mask_frame, list) and r_idx < len(mask_frame):
+                                mask_row = mask_frame[r_idx]
+                            for c_idx, ch in enumerate(row):
+                                if ch == " ":
+                                    continue
+                                target_col = col_start + c_idx
+                                if 0 <= target_col < width:
+                                    mask_ch = ""
+                                    if isinstance(mask_row, str) and c_idx < len(mask_row):
+                                        mask_ch = mask_row[c_idx]
+                                    overlay_rows.setdefault(target_row, {})[target_col] = (ch, mask_ch)
+
+                        if overlay_rows:
+                            updated = []
+                            for row_idx, line in enumerate(atlas_lines):
+                                if row_idx not in overlay_rows:
+                                    updated.append(line)
+                                    continue
+                                cells = _ansi_cells(pad_or_trim_ansi(line, width))
+                                row_map = overlay_rows[row_idx]
+                                for col, (ch, mask_ch) in row_map.items():
+                                    key = mask_ch or color_key
+                                    if color_map and mask_ch in color_map:
+                                        key = color_map.get(mask_ch, color_key)
+                                    seed = seed_base ^ (col * 0x85EBCA77) ^ (row_idx * 0xC2B2AE3D)
+                                    if not jitter_stability:
+                                        seed ^= (quest_art_effect_frame * 0x9E3779B1)
+                                    code = _overlay_color_code(key, seed)
+                                    draw = glyph if glyph else ch
+                                    if 0 <= col < len(cells):
+                                        cells[col] = (draw, code or cells[col][1])
+                                rebuilt = "".join(f"{code}{ch}" for ch, code in cells) + ANSI.RESET
+                                updated.append(rebuilt)
+                            atlas_lines = updated
         atlas_inner_width = max((len(strip_ansi(line)) for line in atlas_lines), default=0)
         atlas_width = max(10, atlas_inner_width + 2 + (atlas_margin * 2))
         atlas_height = max(3, len(atlas_lines) + 2 + (atlas_margin * 2))
@@ -1424,31 +1749,8 @@ def generate_frame(
             if selected_element in selected_map:
                 flicker_digit = selected_map[selected_element]
                 flicker_on = int(time.time() / 0.35) % 2 == 0
-        if art_opponent_id and atlas_lines:
-            if opponent_masks and hasattr(ctx, "colors"):
-                colors = ctx.colors.all()
-                if isinstance(colors, dict):
-                    colored = []
-                    for line, mask in zip(atlas_lines, opponent_masks):
-                        line_str = str(line)
-                        mask_str = str(mask)
-                        padded_mask = mask_str.ljust(len(line_str))
-                        out = []
-                        for idx, ch in enumerate(line_str):
-                            mask_ch = padded_mask[idx] if idx < len(padded_mask) else ""
-                            code = _color_code_for_key(colors, mask_ch) if mask_ch else ""
-                            if code and ch != " ":
-                                out.append(f"{code}{ch}{ANSI.RESET}")
-                            else:
-                                out.append(ch)
-                        colored.append("".join(out))
-                    if len(opponent_masks) < len(atlas_lines):
-                        colored.extend(str(line) for line in atlas_lines[len(opponent_masks):])
-                    colored_atlas = colored
-                else:
-                    colored_atlas = list(atlas_lines)
-            else:
-                colored_atlas = list(atlas_lines)
+        if has_custom_art and atlas_lines:
+            colored_atlas = list(atlas_lines)
         else:
             colored_atlas = [
                 _colorize_atlas_line(

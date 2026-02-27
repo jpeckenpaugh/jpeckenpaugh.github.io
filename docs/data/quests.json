@@ -1,194 +1,4 @@
 {
-  "island_01_quest_00a": {
-    "title": "A Crow and a Mushroom",
-    "continent": "base",
-    "summary_pre": "A baby crow is about to snatch a tiny mushroom.",
-    "summary_active": "Choose a tool and a tea to define your path.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "baby_crow",
-    "dialog": [
-      "You see a baby crow trying to snatch a tiny mushroom.",
-      "Mushy: Hey!  Over here!  Please help me!",
-      "You need to find something fast to scare away the crow...  You look around and notice a shiny stone and a sharp stick on the ground.",
-      {
-        "type": "choice",
-        "prompt": "Which do you choose?",
-        "options": [
-          {
-            "label": "Pick up the shiny stone and throw it at the crow.",
-            "actions": [
-              {
-                "type": "use_item_actions",
-                "item_id": "tea_enlightenment"
-              },
-              {
-                "type": "set_flag_values",
-                "values": {
-                  "enlightened_01": true,
-                  "empowered_01": false
-                }
-              },
-              {
-                "type": "grant_items",
-                "items": [
-                  "mycostaff",
-                  "mycocape"
-                ]
-              },
-              {
-                "type": "show_message",
-                "message": "As you throw the crystal, magic energy suddenly flows out and smacks the crow.  The crow is frightened and flies off."
-              },
-              {
-                "type": "show_message",
-                "message": "Mushy: Wow, with a nice magic crystal like this I can make you a mystic staff.  This item can contain spell charges to use in battle and for stat boosts."
-              },
-              {
-                "type": "show_message",
-                "message": "I have a mystic cape for you as well, which can not only protect you, but also has healing and empowering properties."
-              },
-              {
-                "type": "show_message",
-                "message": "If you are brave enough to drink the Tea of Enlightenment, you can awaken your energy magic and train in the various magical elements.."
-              },
-              {
-                "type": "show_message",
-                "message": "Quick, drink up this tea before the crow comes back with some buddies.  It will give you the advantage to walk away victorious from the fight."
-              }
-            ]
-          },
-          {
-            "label": "Pick up a sharp stick and charge at the crow.",
-            "actions": [
-              {
-                "type": "use_item_actions",
-                "item_id": "tea_empowerment"
-              },
-              {
-                "type": "set_flag_values",
-                "values": {
-                  "empowered_01": true,
-                  "enlightened_01": false
-                }
-              },
-              {
-                "type": "grant_items",
-                "items": [
-                  "mycoclub",
-                  "mycoshield"
-                ]
-              },
-              {
-                "type": "show_message",
-                "message": "You charge at the crow swinging your stick in the air and yelling.  It was enough to frighten the bird and scare it off for now."
-              },
-              {
-                "type": "show_message",
-                "message": "Mushy: That's one nice club you have there.  I can embue it with some mushroom magic and make it even stronger if you like."
-              },
-              {
-                "type": "show_message",
-                "message": "I also have a special warriors Tea of Empowerment.  Drink this and it will help your strength to surge."
-              },
-              {
-                "type": "show_message",
-                "message": "Be sure to check the magic enchanchments for your items before those pesky birds come back to bother us."
-              }
-            ]
-          }
-        ]
-      },
-      "Mushy: Great!  That stupid crow doesn't stand a chance now!"
-    ],
-    "requirements": {
-      "flags_required": [],
-      "level_min": 1
-    },
-    "objectives": [
-      {
-        "type": "flag_any",
-        "flags_any": [
-          "enlightened_01",
-          "empowered_01"
-        ]
-      }
-    ],
-    "on_start_actions": [],
-    "on_complete_actions": [
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_00a_complete"
-        ]
-      }
-    ]
-  },
-  "island_01_quest_00b": {
-    "title": "Crow Ambush",
-    "continent": "base",
-    "summary_pre": "The baby crow returns with allies.",
-    "summary_active": "Defeat the baby crows threatening Mushy.",
-    "summary_complete": "Quest complete.",
-    "art_opponent": "baby_crow",
-    "dialog": [
-      "Mushy: Uh oh... I recognize that sound.  There is a reason they call it a murder of crows, you know.",
-      "Crow Crew: Hey, you are just some kid!  How dare you come scare me off and interupt my mushroom dinner.",
-      "Mushy: Ready or not, here they come!  I sure hope you can figure out how to use these magical items I have given you."
-    ],
-    "requirements": {
-      "flags_required": [
-        "island_01_quest_00a_complete"
-      ]
-    },
-    "objectives": [
-      {
-        "type": "defeat_opponents",
-        "opponent_id": "baby_crow",
-        "count": 4
-      }
-    ],
-    "on_start_actions": [
-      {
-        "type": "grant_follower",
-        "follower": {
-          "type": "mushroom_baby",
-          "name": "Mushy",
-          "count_as_recruit": true
-        },
-        "required": true
-      },
-      {
-        "type": "set_ui_hint",
-        "scene": "forest",
-        "action_command": "ENTER_SCENE"
-      }
-    ],
-    "on_complete_actions": [
-      {
-        "type": "show_message",
-        "message": "Mushy: You did it!  We scared them off for good."
-      },
-      {
-        "type": "set_flags",
-        "flags": [
-          "island_01_quest_00b_complete"
-        ]
-      },
-      {
-        "type": "grant_xp",
-        "amount": 10
-      }
-    ],
-    "trial": {
-      "scene_id": "island_01_quest_00b_trial",
-      "opponents": [
-        {
-          "opponent_id": "baby_crow",
-          "count": 4
-        }
-      ]
-    }
-  },
   "island_01_quest_01a": {
     "title": "Once upon a time...",
     "continent": "base",
@@ -197,7 +7,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
+      {
+        "text": "Mushy: Wow, you are a real hero!  Thank you for saving me from that awful crow!",
+        "art": "follower:mushroom_baby"
+      },
       "I can also show you how to cast a \"Strengthen\" that you will be able to use to raise our attack and defense points, assuming you have Magic Points (MP) to cast with.",
       "The spell will use your Magic Points (MP) and will wear off over time.  But for a while, we will be able to fight the monsters in this area and win.",
       "Defeating monsters will grant us gold and experience.  If your life and magic points are getting low, we can visit the Inn in the nearby town, and sleep for the night.",
@@ -205,7 +18,7 @@
     ],
     "requirements": {
       "flags_required": [
-        "island_01_quest_00b_complete"
+        "island_01_quest_00_path_complete"
       ],
       "level_min": 1
     },
@@ -240,7 +53,8 @@
         "type": "grant_xp",
         "amount": 25
       }
-    ]
+    ],
+    "default_art": "follower:mushroom_baby"
   },
   "island_01_quest_01b": {
     "title": "First Steps, First Stats",
@@ -251,7 +65,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Mushy: See, that wasn't that hard!",
+      {
+        "text": "Mushy: See, that wasn't that hard!",
+        "art": "follower:mushroom_baby"
+      },
       "Now that you have leveled up, you should have 10 \"status\" points that you can use to increase your base stats.",
       "You can power up your Life Points (HP), and if you picked the mystic path you can increase your Mana Points (MP).  You should also increase your attack points and defense points, so we won't be so reliant on the Strengthen spell."
     ],
@@ -285,7 +102,8 @@
         "type": "grant_xp",
         "amount": 50
       }
-    ]
+    ],
+    "default_art": "follower:mushroom_baby"
   },
   "island_01_quest_01c": {
     "title": "Three's a Team",
@@ -295,7 +113,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_baby",
     "dialog": [
-      "Mushy: Now you know the basic of fighting, let's talk a bit about Fusion.",
+      {
+        "text": "Mushy: Now you know the basic of fighting, let's talk a bit about Fusion.",
+        "art": "follower:mushroom_baby"
+      },
       "I am just a small little mushroom, but if we can find 2 more mini mushrooms to join our team, then we will be able to fuse our powers to evolve into a stronger form.",
       "Don't worry, fushion doesn't hurt.  It is just another way to power up and combine our talents.",
       "If we fight a few more monsters, we are bound to come upon a few more mini mushrooms like me.  If I can convince 2 mushrooms to join us, then we will be able to fuse our powers together."
@@ -335,7 +156,8 @@
       {
         "type": "clear_recruit_only_types"
       }
-    ]
+    ],
+    "default_art": "follower:mushroom_baby"
   },
   "island_01_quest_01d": {
     "title": "Mushroom Fusion",
@@ -346,7 +168,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "mushroom_teen",
     "dialog": [
-      "Mushy: Great!  Now that we have 3 mini mushrooms on our team, you can fuse us.",
+      {
+        "text": "Mushy: Great!  Now that we have 3 mini mushrooms on our team, you can fuse us.",
+        "art": "follower:mushroom_baby"
+      },
       "Travel to the town and visit the Temple.  The priestest there will be able to fuse us and evolve us to our next level."
     ],
     "requirements": {
@@ -382,7 +207,8 @@
         "type": "grant_xp",
         "amount": 80
       }
-    ]
+    ],
+    "default_art": "follower:mushroom_baby"
   },
   "island_01_quest_02a": {
     "title": "Chase the Moon",
@@ -392,7 +218,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "wolf_pup",
     "dialog": [
-      "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
+      {
+        "text": "Mushy: Oh no!  It looks like there is a Golden Wolf pup with his foot caught in a trap.  Maybe if we can free him, we can convince him to join our cause.",
+        "art": "follower:mushroom_baby"
+      },
       "The pup is grateful.  He decides to join us.  We'll call him Chase.",
       "Now we should find two more wolf pups so they can fight alongside us."
     ],
@@ -437,7 +266,8 @@
           "island_01_quest_02a_complete"
         ]
       }
-    ]
+    ],
+    "default_art": "opponent:wolf_pup"
   },
   "island_01_quest_02b": {
     "title": "Pack Bond",
@@ -447,7 +277,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "wolf_pup",
     "dialog": [
-      "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
+      {
+        "text": "Mushy: Great!  Now that we have 3 wolf pups on our team, we can fuse them.",
+        "art": "follower:mushroom_baby"
+      },
       "Travel to the town and visit the Temple.  The priestest there will be able to fuse the wolf pups and evolve them to their next level."
     ],
     "requirements": {
@@ -479,7 +312,8 @@
       {
         "type": "clear_recruit_only_types"
       }
-    ]
+    ],
+    "default_art": "opponent:wolf_pup"
   },
   "island_01_quest_03a": {
     "title": "Beba Hexa",
@@ -490,11 +324,23 @@
     "art_opponent": "baby_troll",
     "dialog": [
       "Narration: Chase's ears perk up and his tail starts wagging.  Chase runs towards the forest, looking back to signal for you to follow.",
-      "Mushy: It seems like Chase has picked up a scent.  We better follow him!",
-      "Beba: Take that you mean trolls!",
+      {
+        "text": "Mushy: It seems like Chase has picked up a scent.  We better follow him!",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Beba: Take that you mean trolls!",
+        "art": "follower:fairy_baby"
+      },
       "Narration: You come upon a small fairy who appaers to be fighting 4 small trolls.",
-      "Mushy: Hey Beba!  What kind of trouble have you gotten into today?",
-      "Beba: A fairy princess like me is never in trouble, Mushy.  You know that.",
+      {
+        "text": "Mushy: Hey Beba!  What kind of trouble have you gotten into today?",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Beba: A fairy princess like me is never in trouble, Mushy.  You know that.",
+        "art": "follower:fairy_baby"
+      },
       "But I suppose if you want to give me a hand in punishing these nasty trolls, I won't stop you."
     ],
     "requirements": {
@@ -536,7 +382,8 @@
           "count": 4
         }
       ]
-    }
+    },
+    "default_art": "opponent:baby_troll"
   },
   "island_01_quest_03b": {
     "title": "Power of Three",
@@ -546,11 +393,20 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "fairy_baby",
     "dialog": [
-      "Beba: Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist.",
+      {
+        "text": "Beba: Well, I guess having you all around is kind of helpful.  I suppose you can join my royal court and become my servants if you insist.",
+        "art": "follower:fairy_baby"
+      },
       "Narration: Beba joins the team.",
-      "Beba: It's only fair I share a bit of my magic knowledge with you.  Here, take this:",
+      {
+        "text": "Beba: It's only fair I share a bit of my magic knowledge with you.  Here, take this:",
+        "art": "follower:fairy_baby"
+      },
       "Narration: Beba teaches the player the \"Healing\" spell.",
-      "Beba: We fairies are particuarly good at healing, so when your life is getting low, you can use that spell to restore some hit points.",
+      {
+        "text": "Beba: We fairies are particuarly good at healing, so when your life is getting low, you can use that spell to restore some hit points.",
+        "art": "follower:fairy_baby"
+      },
       "Besides healers, fairies are also known as powerful warriors.  What, I'm not kidding!",
       "Tell you what, if we can find 2 more small faries to join our team, and we can evolve me to my next level, then I will introduce you to the 4 fairy warriors who live in these woods."
     ],
@@ -601,7 +457,8 @@
           "island_01_quest_03b_complete"
         ]
       }
-    ]
+    ],
+    "default_art": "follower:fairy_baby"
   },
   "island_01_quest_03c": {
     "title": "Warrior's Ring",
@@ -611,7 +468,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "fairy_teen",
     "dialog": [
-      "Beba: Excellent!  Now let's head to the Temple and have the priestess fuse us faries."
+      {
+        "text": "Beba: Excellent!  Now let's head to the Temple and have the priestess fuse us faries.",
+        "art": "follower:fairy_baby"
+      }
     ],
     "requirements": {
       "flags_required": [
@@ -646,7 +506,8 @@
         "type": "grant_xp",
         "amount": 100
       }
-    ]
+    ],
+    "default_art": "follower:fairy_baby"
   },
   "island_01_quest_03d": {
     "title": "Ogre's Hoard",
@@ -656,12 +517,21 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "fairy_teen",
     "dialog": [
-      "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
+      {
+        "text": "Beba: Alright, well a promise is a promise.  Follow me to the woods, and I will introduce you to the great fairy warriors: Eenie, Meenie, Miney & Mo.",
+        "art": "follower:fairy_baby"
+      },
       "If we can best them in a battle, they will grant us the \"Sprite Bite\" spell, so we can call them to help us attack in battle.",
       "Narration: Eenie, Meenie, Miney, Mo. Who here dares to be our foe!?",
-      "Beba: Oh, heya!  It's just me Beba, and my royal court.  Would you be so kind as to lend us your power?",
+      {
+        "text": "Beba: Oh, heya!  It's just me Beba, and my royal court.  Would you be so kind as to lend us your power?",
+        "art": "follower:fairy_baby"
+      },
       "Narration: Hi Beba.  You know the rules.  If you can best us in a friendly battle, we will grant you the Sprite Bite spell so you can call us in battle to help vanquish your enemies.",
-      "Beba: Ready or not, here we come!"
+      {
+        "text": "Beba: Ready or not, here we come!",
+        "art": "follower:fairy_baby"
+      }
     ],
     "requirements": {
       "flags_required": [
@@ -702,7 +572,8 @@
           "count": 4
         }
       ]
-    }
+    },
+    "default_art": "follower:fairy_baby"
   },
   "island_01_quest_03e": {
     "title": "Stone of Power",
@@ -783,7 +654,8 @@
           "opponent_id": "baby_troll"
         }
       ]
-    }
+    },
+    "default_art": "opponent:ogre"
   },
   "island_01_quest_03f": {
     "title": "Instinct Unlocked",
@@ -793,7 +665,10 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "ogre",
     "dialog": [
-      "Beba: I have never seen a real Mana Stone before.  With this I should be more powerful than ever!",
+      {
+        "text": "Beba: I have never seen a real Mana Stone before.  With this I should be more powerful than ever!",
+        "art": "follower:fairy_baby"
+      },
       "Okay fine, you can use the mana stone if you really want to.  It will grant you Spell XP, which will go a long way towards ranking up your spells.",
       "When spells increase in rank, they grow in power.  Attack spells of Rank 2 and 3 typically attack multiple enemies at once as well.",
       "And as an added bonus, this will grant you an additional 20 Mana Points.  This will really expand your magic capabilities, and let you cast more spells in a single day, before having to rest at the Inn to recoup your Mana."
@@ -828,7 +703,8 @@
         "type": "grant_xp",
         "amount": 100
       }
-    ]
+    ],
+    "default_art": "follower:fairy_baby"
   },
   "island_01_quest_04a": {
     "title": "Pups of the Pack",
@@ -838,15 +714,39 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "ogre",
     "dialog": [
-      "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
+      {
+        "text": "Beba: When casting spells now, you can select Rank 1 or Rank 2.  Keep in mind Rank 2 uses more MP, but also increases the power of your spells.",
+        "art": "follower:fairy_baby"
+      },
       "And don't forget, we can always rest at the Inn to recover our HP and MP.  Nothing quite like a good nights rest, you know.",
-      "Ogrito: Hello.  My name is Ogrito Pequeno.  You killed my father.  Prepare to die...",
-      "Beba: Aww, what a cute little baby ogre.  Are you lost kid?",
-      "Ogrito: What?  No, didn't you hear me.  I am here to exact revenge against you fiends!",
-      "Chase: Ruff!  (Chase bats his Puppy Eyes at Ogrito)",
-      "Ogrito: No, that won't work on me.  I don't care how cute and cuddly you are!",
-      "Chase: Hmph... (Puppy Eyes just don't quit).",
-      "Ogrito: Ohh, you are just too cute.  I can't stay mad at you.",
+      {
+        "text": "Ogrito: Hello.  My name is Ogrito Pequeno.  You killed my father.  Prepare to die...",
+        "art": "follower:baby_ogre"
+      },
+      {
+        "text": "Beba: Aww, what a cute little baby ogre.  Are you lost kid?",
+        "art": "follower:fairy_baby"
+      },
+      {
+        "text": "Ogrito: What?  No, didn't you hear me.  I am here to exact revenge against you fiends!",
+        "art": "follower:baby_ogre"
+      },
+      {
+        "text": "Chase: Ruff!  (Chase bats his Puppy Eyes at Ogrito)",
+        "art": "follower:wolf_pup"
+      },
+      {
+        "text": "Ogrito: No, that won't work on me.  I don't care how cute and cuddly you are!",
+        "art": "follower:baby_ogre"
+      },
+      {
+        "text": "Chase: Hmph... (Puppy Eyes just don't quit).",
+        "art": "follower:wolf_pup"
+      },
+      {
+        "text": "Ogrito: Ohh, you are just too cute.  I can't stay mad at you.",
+        "art": "follower:baby_ogre"
+      },
       "To be honest, my dad was kind of a jerk.  He was always stealing magic relics anyway.",
       "Fine, I will hang out with you for a little while.  But just so you know, I will most likely kill you in the morning."
     ],
@@ -894,7 +794,8 @@
       {
         "type": "clear_recruit_only_types"
       }
-    ]
+    ],
+    "default_art": "follower:fairy_baby"
   },
   "island_01_quest_04b": {
     "title": "Pack Fusion",
@@ -904,9 +805,15 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "baby_ogre",
     "dialog": [
-      "Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!",
+      {
+        "text": "Ogrito: Oh I see.  Just because you leveled me up, you want me to share my Fit of Rage spell with you?  Inconceiveable!",
+        "art": "follower:baby_ogre"
+      },
       "Ok, fine.  Just this one time though.",
-      "Ogrito: Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem."
+      {
+        "text": "Ogrito: Ogre's have a powerful ability to rage up our attack points.  Yeah, so this will lower our defense points at the same time, but as long as we finish off our enemies quick like, it's not a problem.",
+        "art": "follower:baby_ogre"
+      }
     ],
     "requirements": {
       "flags_required": [
@@ -929,7 +836,8 @@
           "island_01_quest_04b_complete"
         ]
       }
-    ]
+    ],
+    "default_art": "follower:baby_ogre"
   },
   "island_01_quest_04c": {
     "title": "Poison Pythons",
@@ -939,14 +847,32 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "poisonous_python",
     "dialog": [
-      "Golden Wolf Messenger: Woof!",
-      "Chase: Woof woof....",
-      "Golden Wolf Messenger: Woof, growl, woof woof.",
-      "Chase: Woof.",
+      {
+        "text": "Golden Wolf Messenger: Woof!",
+        "art": "opponent:wolf_pup"
+      },
+      {
+        "text": "Chase: Woof woof....",
+        "art": "follower:wolf_pup"
+      },
+      {
+        "text": "Golden Wolf Messenger: Woof, growl, woof woof.",
+        "art": "opponent:wolf_pup"
+      },
+      {
+        "text": "Chase: Woof.",
+        "art": "follower:wolf_pup"
+      },
       "Narration: Chase looks at you, as if he is waiting for a response.",
-      "Mushy: Oops, I forgot for a minute you don't speak Wolf.  Fine I can translate I guess.",
+      {
+        "text": "Mushy: Oops, I forgot for a minute you don't speak Wolf.  Fine I can translate I guess.",
+        "art": "follower:mushroom_baby"
+      },
       "Let's see, basically there is a population of Poisonous Pythons pilfering pups per the pack.  Pythons project powerful poison that packs a potent brunch...",
-      "Mushy: Woof!",
+      {
+        "text": "Mushy: Woof!",
+        "art": "follower:mushroom_baby"
+      },
       "Oh, sorry, I mean 'punch'...  Anyway, TL;DR -- puppies buen-o, snakes bad-o, got it?"
     ],
     "requirements": {
@@ -1006,7 +932,8 @@
           "opponent_id": "lil_komodo"
         }
       ]
-    }
+    },
+    "default_art": "opponent:poisonous_python"
   },
   "island_01_quest_04d": {
     "title": "Golden Trust",
@@ -1016,11 +943,23 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "wolf",
     "dialog": [
-      "Chase: Woof!",
-      "Pups: Woof woof woof!",
-      "Pack Leader: Bark.  Woof, woof. Howl!",
+      {
+        "text": "Chase: Woof!",
+        "art": "follower:wolf_pup"
+      },
+      {
+        "text": "Pups: Woof woof woof!",
+        "art": "opponent:wolf_pup"
+      },
+      {
+        "text": "Pack Leader: Bark.  Woof, woof. Howl!",
+        "art": "opponent:wolf"
+      },
       "Narration: The Pack Leader give you the Golden Collar",
-      "Mushy: Wow, a Golden Collar from the Pack Leader himself.  As long as you wear this necklace on you, no Golden Wolf will dare to attack you in battle."
+      {
+        "text": "Mushy: Wow, a Golden Collar from the Pack Leader himself.  As long as you wear this necklace on you, no Golden Wolf will dare to attack you in battle.",
+        "art": "follower:mushroom_baby"
+      }
     ],
     "requirements": {
       "flags_required": [
@@ -1036,7 +975,8 @@
           "island_01_quest_04d_complete"
         ]
       }
-    ]
+    ],
+    "default_art": "opponent:wolf"
   },
   "island_01_quest_02c": {
     "title": "Troll Tussle",
@@ -1046,14 +986,32 @@
     "summary_complete": "Quest complete.",
     "art_opponent": "wolf_pup",
     "dialog": [
-      "Mushy: Our team is really progressing nicely!",
-      "Chase: Woof.",
-      "Mushy: What is it boy?  Timmy fell down a well?",
-      "Chase: Woof?",
-      "Mushy: No, I'm just kidding. Alright I will tell them...",
+      {
+        "text": "Mushy: Our team is really progressing nicely!",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Chase: Woof.",
+        "art": "follower:wolf_pup"
+      },
+      {
+        "text": "Mushy: What is it boy?  Timmy fell down a well?",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Chase: Woof?",
+        "art": "follower:wolf_pup"
+      },
+      {
+        "text": "Mushy: No, I'm just kidding. Alright I will tell them...",
+        "art": "follower:mushroom_baby"
+      },
       "So Chase says he can teach you a special magic ability \"Animal Instincts.\"  With this spell you will be able to sense opponents in the forrest before they appear.",
       "This will let us get the jump on opponents, giving us an pre-emptive attack before the battle actually starts.",
-      "Mushy: Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out."
+      {
+        "text": "Mushy: Great!  Now that you have the Animal Instinct spell, let's go the forrest and see what kind of enemies we can sniff out.",
+        "art": "follower:mushroom_baby"
+      }
     ],
     "requirements": {
       "flags_required": [
@@ -1085,6 +1043,478 @@
         "type": "set_flags",
         "flags": [
           "island_01_quest_02c_complete"
+        ]
+      }
+    ],
+    "default_art": "opponent:wolf_pup"
+  },
+  "island_01_quest_00": {
+    "title": "A Crow and a Mushroom",
+    "continent": "base",
+    "summary_pre": "A crow has a mushroom pinned against a tree.",
+    "summary_active": "Choose a weapon and drive off the crow.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "dialog": [
+      {
+        "text": "One day as you are walking through the woods, you come upon an unusual scene.  A small mushroom is pinned against a tree as a crow swoops down from overhead."
+      },
+      {
+        "text": "Mushy: Hey!  Over here!  Please help me!"
+      },
+      {
+        "text": "Mushy: Here, use one of these! - The mushroom stretches out its hand to you, and you see a mage's staff and a warrior's club."
+      },
+      {
+        "type": "choice",
+        "prompt": "Which do you choose?",
+        "options": [
+          {
+            "label": "A mage's staff.",
+            "actions": [
+              {
+                "type": "set_flag_values",
+                "values": {
+                  "enlightened_01": true,
+                  "empowered_01": false,
+                  "warrior_01": false
+                }
+              },
+              {
+                "type": "grant_items",
+                "items": [
+                  "mycostaff"
+                ]
+              },
+              {
+                "type": "show_message",
+                "message": "As you take the staff in your hand, you see lights flashing in your mind.  The words \"Magic Spark\" echo in your ears.",
+                "art": [
+                  "opponent:baby_crow",
+                  "follower:mushroom_baby"
+                ],
+                "art_effect": {
+                  "spell_id": "magic_spark",
+                  "loops": 3
+                }
+              },
+              {
+                "type": "show_message",
+                "message": "Mushy: This staff has the Magic Spark spell embued into it.  You can use this to fend off that nasty crow."
+              }
+            ]
+          },
+          {
+            "label": "A warrior's club.",
+            "actions": [
+              {
+                "type": "set_flag_values",
+                "values": {
+                  "empowered_01": true,
+                  "enlightened_01": false,
+                  "warrior_01": true
+                }
+              },
+              {
+                "type": "grant_items",
+                "items": [
+                  "mycoclub"
+                ]
+              },
+              {
+                "type": "show_message",
+                "message": "You charge forward with the platinum crystal in hand, the crow recoils and scrambles away."
+              },
+              {
+                "type": "show_message",
+                "message": "Mushy: That platinum crystal hums with strength.  I can embue your club with mushroom magic to make it even stronger."
+              },
+              {
+                "type": "show_message",
+                "message": "I also have a warrior's Tea of Empowerment.  Drink this and your strength will surge."
+              },
+              {
+                "type": "show_message",
+                "message": "Be sure to check the magic enchantments on your items before those pesky birds come back."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "Mushy: I sure you hope you know how to use that thing..."
+      }
+    ],
+    "requirements": {
+      "flags_required": [],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "enlightened_01",
+          "empowered_01"
+        ]
+      },
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 1
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_00_complete"
+        ]
+      }
+    ],
+    "default_art": [
+      "opponent:baby_crow",
+      "follower:mushroom_baby"
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 1
+        }
+      ]
+    }
+  },
+  "island_01_quest_000a": {
+    "title": "Tea of Enlightenment",
+    "continent": "base",
+    "summary_pre": "Mushy: Drink this tea to awaken your magic.",
+    "summary_active": "Defeat 2 baby crows threatening Mushy.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: That staff is very powerful, but it does have limited charges.  Here, drink this Tea of Enlightenment and it will awake your magic potential.",
+        "art_layout": {
+          "row": [
+            {
+              "token": "spells_art:potion",
+              "color_key": "y",
+              "color_map": {
+                "1": "y",
+                "2": "w",
+                "3": "r"
+              },
+              "variation": 0.12,
+              "jitter_stability": false,
+              "frame_delay": 0.14,
+              "loops": 3
+            },
+            "follower:mushroom_baby"
+          ],
+          "gap": 2
+        }
+      },
+      {
+        "text": "You drink the Tea of Enlightenment.  Your MP increases and your defense surges.",
+        "art": "follower:mushroom_baby",
+        "sfx": "spell_up",
+        "sfx_root": "C4"
+      },
+      {
+        "text": "Mushy: Now if the staff runs out of charges, you can use your Magic Points (MP) to cast the spell as well.  And after each battle, the staff will recharge 5 spell charges.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_00_complete",
+        "enlightened_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 2
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "use_item_actions",
+        "item_id": "tea_enlightenment"
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "spell_magic_spark_enabled"
+        ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_000a_complete"
+        ]
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00a_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 2
+        }
+      ]
+    }
+  },
+  "island_01_quest_000b": {
+    "title": "Mystic Cape",
+    "continent": "base",
+    "summary_pre": "Mushy: This cape will keep you safe.",
+    "summary_active": "Defeat 3 baby crows threatening Mushy.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: I stitched a mystic cape for you.  It will protect you and help your mana.",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Mushy: This cape carries two imbued spells: Healing recovers your Health Points, and Harden will toughen your skin, increasing DEF.  After each battle, the cape will recharge 1 spell charge for each imbued spell.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_000a_complete",
+        "enlightened_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 3
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "grant_items",
+        "items": [
+          "mycocape"
+        ]
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_000b_complete"
+        ]
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00b_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 3
+        }
+      ]
+    }
+  },
+  "island_01_quest_000c": {
+    "title": "Crow Ambush",
+    "continent": "base",
+    "summary_pre": "The baby crow returns with allies.",
+    "summary_active": "Defeat the baby crows threatening Mushy.",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: You seem to be a natural at this.  With me on your team, we can take on a whole bunch of crows!",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "Crow Crew: Hey, you are just some kid!  How dare you come scare me off and interupt my mushroom dinner.",
+        "art": "opponent:baby_crow"
+      },
+      {
+        "text": "Mushy: Ready or not, here they come!  I sure hope you can figure out how to use those magical items I gave you.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_000b_complete",
+        "enlightened_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "defeat_opponents",
+        "opponent_id": "baby_crow",
+        "count": 4
+      }
+    ],
+    "on_start_actions": [
+      {
+        "type": "grant_follower",
+        "follower": {
+          "type": "mushroom_baby",
+          "name": "Mushy",
+          "count_as_recruit": true
+        },
+        "required": true
+      },
+      {
+        "type": "set_ui_hint",
+        "scene": "forest",
+        "action_command": "ENTER_SCENE"
+      }
+    ],
+    "on_complete_actions": [
+      {
+        "type": "show_message",
+        "message": "Mushy: You did it!  We scared them off for good."
+      },
+      {
+        "type": "set_flags",
+        "flags": [
+          "island_01_quest_000c_complete",
+          "island_01_quest_00_path_complete"
+        ]
+      },
+      {
+        "type": "grant_xp",
+        "amount": 10
+      }
+    ],
+    "trial": {
+      "scene_id": "island_01_quest_00c_trial",
+      "opponents": [
+        {
+          "opponent_id": "baby_crow",
+          "count": 4
+        }
+      ]
+    }
+  },
+  "island_01_quest_001a": {
+    "title": "Warrior Awakening",
+    "continent": "base",
+    "summary_pre": "Your warrior path is just beginning.",
+    "summary_active": "Warrior path quest (placeholder).",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: The club feels right in your hands.  We will hone your strength next.",
+        "art": "follower:mushroom_baby"
+      },
+      {
+        "text": "This warrior path quest is not ready yet.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_00_complete",
+        "warrior_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "island_01_quest_001a_ready"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_001b": {
+    "title": "Warrior Trial",
+    "continent": "base",
+    "summary_pre": "The next trial awaits.",
+    "summary_active": "Warrior path quest (placeholder).",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: We will put your strength to the test soon.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_001a_complete",
+        "warrior_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "island_01_quest_001b_ready"
+        ]
+      }
+    ]
+  },
+  "island_01_quest_001c": {
+    "title": "Warrior Ambush",
+    "continent": "base",
+    "summary_pre": "A final warrior test lies ahead.",
+    "summary_active": "Warrior path quest (placeholder).",
+    "summary_complete": "Quest complete.",
+    "art_opponent": "baby_crow",
+    "default_art": "follower:mushroom_baby",
+    "dialog": [
+      {
+        "text": "Mushy: The final warrior trial will be ready soon.",
+        "art": "follower:mushroom_baby"
+      }
+    ],
+    "requirements": {
+      "flags_required": [
+        "island_01_quest_001b_complete",
+        "warrior_01"
+      ],
+      "level_min": 1
+    },
+    "objectives": [
+      {
+        "type": "flag_any",
+        "flags_any": [
+          "island_01_quest_001c_ready"
         ]
       }
     ]

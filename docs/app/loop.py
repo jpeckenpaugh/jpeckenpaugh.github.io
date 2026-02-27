@@ -11,9 +11,20 @@ from app.commands.registry import CommandContext, dispatch_command
 from app.commands.router import CommandState, handle_command
 from app.commands.scene_commands import command_is_enabled, scene_commands
 from app.combat import add_loot, battle_action_delay, cast_spell, primary_opponent_index, roll_damage, try_stun
-from app.questing import apply_actions, apply_quest_start_actions, evaluate_quests, emit_quest_events, handle_event, ordered_quest_ids, quest_entries, start_quest
+from app.questing import (
+    apply_actions,
+    apply_quest_start_actions,
+    evaluate_quests,
+    emit_quest_events,
+    handle_event,
+    ordered_quest_ids,
+    quest_entries,
+    start_quest,
+    dialog_entries_for,
+    dialog_art_token,
+)
 from app.state import GameState
-from app.models import Player
+from app.models import Player, Frame
 from app.ui.ansi import ANSI
 from app.ui.constants import ACTION_LINES, SCREEN_HEIGHT
 from app.ui.rendering import (
@@ -63,6 +74,39 @@ def _spell_effect_with_art(ctx, spell: dict) -> Optional[dict]:
     return effect_override
 
 
+def _quest_effect_from_spec(ctx, spec: Optional[dict]) -> Optional[dict]:
+    if not isinstance(spec, dict) or not spec:
+        return None
+    effect = None
+    spell_id = spec.get("spell_id")
+    if spell_id and hasattr(ctx, "spells"):
+        spell = ctx.spells.get(str(spell_id), {})
+        if isinstance(spell, dict):
+            effect = _spell_effect_with_art(ctx, spell)
+    if effect is None and spec.get("art_id") and hasattr(ctx, "spells_art"):
+        art = ctx.spells_art.get(str(spec.get("art_id")))
+        if isinstance(art, dict):
+            effect = dict(art)
+    if isinstance(effect, dict) and not effect.get("frames") and spell_id and hasattr(ctx, "spells_art") and hasattr(ctx, "spells"):
+        spell = ctx.spells.get(str(spell_id), {})
+        if isinstance(spell, dict):
+            art_id = spell.get("effect", {}).get("art_id") if isinstance(spell.get("effect"), dict) else None
+            if art_id:
+                art = ctx.spells_art.get(str(art_id))
+                if isinstance(art, dict):
+                    merged = dict(art)
+                    merged.update(effect)
+                    effect = merged
+    if not isinstance(effect, dict):
+        return None
+    merged = dict(effect)
+    for key, value in spec.items():
+        if key in ("spell_id",):
+            continue
+        merged[key] = value
+    return merged
+
+
 def _status_message(state: GameState, message: Optional[str]) -> str:
     if message is not None:
         return message
@@ -100,48 +144,118 @@ def render_frame_state(ctx, render_frame, state: GameState, generate_frame, mess
             state.screen_audio_key = audio_key
         if not audio_key:
             state.screen_audio_key = None
-    frame = generate_frame(
-        ctx.screen_ctx,
-        state.player,
-        state.opponents,
-        _status_message(state, message),
-        state.leveling_mode,
-        state.shop_mode,
-        state.shop_view,
-        state.inventory_mode,
-        state.inventory_items,
-        state.hall_mode,
-        state.hall_view,
-        state.inn_mode,
-        state.stats_mode,
-        state.followers_mode,
-        state.spell_mode,
-        state.element_mode,
-        state.alchemist_mode,
-        state.alchemy_first,
-        state.alchemy_selecting,
-        state.temple_mode,
-        state.smithy_mode,
-        state.portal_mode,
-        state.quest_mode,
-        state.quest_detail_mode,
-        state.title_menu_stack,
-        state.options_mode,
-        state.action_cursor,
-        state.menu_cursor,
-        state.followers_focus,
-        state.followers_action_cursor,
-        state.spell_cast_rank,
-        state.spell_target_mode,
-        state.spell_target_cursor,
-        state.spell_target_command,
-        state.quest_continent_index,
-        state.quest_detail_id,
-        state.quest_detail_page,
-        state.level_cursor,
-        state.level_up_notes,
-        suppress_actions=suppress_actions,
-    )
+    def _build_frame(quest_effect: Optional[dict] = None, effect_frame: int = 0) -> Frame:
+        return generate_frame(
+            ctx.screen_ctx,
+            state.player,
+            state.opponents,
+            _status_message(state, message),
+            state.leveling_mode,
+            state.shop_mode,
+            state.shop_view,
+            state.inventory_mode,
+            state.inventory_items,
+            state.hall_mode,
+            state.hall_view,
+            state.inn_mode,
+            state.stats_mode,
+            state.followers_mode,
+            state.spell_mode,
+            state.element_mode,
+            state.alchemist_mode,
+            state.alchemy_first,
+            state.alchemy_selecting,
+            state.temple_mode,
+            state.smithy_mode,
+            state.portal_mode,
+            state.quest_mode,
+            state.quest_detail_mode,
+            state.title_menu_stack,
+            state.options_mode,
+            state.action_cursor,
+            state.menu_cursor,
+            state.followers_focus,
+            state.followers_action_cursor,
+            state.spell_cast_rank,
+            state.spell_target_mode,
+            state.spell_target_cursor,
+            state.spell_target_command,
+            state.quest_continent_index,
+            state.quest_detail_id,
+            state.quest_detail_page,
+            state.level_cursor,
+            state.level_up_notes,
+            suppress_actions=suppress_actions,
+            quest_art_effect=quest_effect,
+            quest_art_effect_frame=effect_frame,
+        )
+
+    if state.quest_detail_mode and state.quest_detail_id and hasattr(ctx, "quests"):
+        detail_quest = ctx.quests.get(state.quest_detail_id, {})
+        flags = getattr(state.player, "flags", {})
+        dialog_entries = dialog_entries_for(
+            state.quest_detail_id,
+            detail_quest if isinstance(detail_quest, dict) else {},
+            flags,
+        )
+        if dialog_entries and 0 <= state.quest_detail_page < len(dialog_entries):
+            current_entry = dialog_entries[state.quest_detail_page]
+            effect_spec = current_entry.get("art_effect") if isinstance(current_entry, dict) else None
+            art_layout = current_entry.get("art_layout") if isinstance(current_entry, dict) else None
+            effect = _quest_effect_from_spec(ctx, effect_spec)
+            animated_art = None
+            if isinstance(art_layout, dict):
+                tokens = art_layout.get("row") or art_layout.get("column")
+                if isinstance(tokens, list):
+                    for token in tokens:
+                        token_value = token
+                        if isinstance(token, dict):
+                            token_value = token.get("token") or token.get("art")
+                        if isinstance(token_value, str) and token_value.startswith(("spells_art:", "art:")):
+                            art_id = token_value.split(":", 1)[1]
+                            animated_art = ctx.spells_art.get(art_id, {}) if hasattr(ctx, "spells_art") else None
+                            break
+            if effect or animated_art:
+                art_key = json.dumps(art_layout, sort_keys=True) if art_layout else ""
+                key = f"{state.quest_detail_id}:{state.quest_detail_page}:{json.dumps(effect_spec, sort_keys=True)}:{art_key}"
+                if key != state.quest_detail_art_key:
+                    frames = []
+                    loops = 1
+                    frame_delay = 0.06
+                    if effect:
+                        frames = effect.get("frames", [])
+                        loops = int(effect.get("loops", 1) or 1)
+                        frame_delay = float(effect.get("frame_delay", 0.06) or 0.06)
+                    elif isinstance(animated_art, dict):
+                        frames = animated_art.get("frames", [])
+                        loops = int(animated_art.get("loops", 1) or 1)
+                        frame_delay = float(animated_art.get("frame_delay", 0.06) or 0.06)
+                        if isinstance(art_layout, dict):
+                            tokens = art_layout.get("row") or art_layout.get("column")
+                            if isinstance(tokens, list):
+                                for token in tokens:
+                                    if isinstance(token, dict):
+                                        token_value = token.get("token") or token.get("art")
+                                        if isinstance(token_value, str) and token_value.startswith(("spells_art:", "art:")):
+                                            loops = int(token.get("loops", loops) or loops)
+                                            frame_delay = float(token.get("frame_delay", frame_delay) or frame_delay)
+                                            break
+                    if isinstance(frames, list) and frames:
+                        total = max(1, loops) * len(frames)
+                        for i in range(total):
+                            render_frame(_build_frame(effect, i % len(frames)))
+                            time.sleep(frame_delay)
+                    state.quest_detail_art_key = key
+            sfx_id = current_entry.get("sfx") if isinstance(current_entry, dict) else None
+            if sfx_id and hasattr(ctx, "audio"):
+                sfx_root = current_entry.get("sfx_root") or "C4"
+                sfx_wave = current_entry.get("sfx_wave")
+                sfx_key = f"{state.quest_detail_id}:{state.quest_detail_page}:{sfx_id}:{sfx_root}:{sfx_wave}"
+                if sfx_key != state.quest_detail_sfx_key:
+                    ctx.audio.play_sfx_once(str(sfx_id), str(sfx_root), wave=sfx_wave)
+                    state.quest_detail_sfx_key = sfx_key
+
+    frame = _build_frame()
     render_frame(frame)
 
 
@@ -984,30 +1098,15 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
         if not elements:
             elements = ["base"]
         if state.quest_detail_mode:
-            dialog = []
             detail_quest = None
             if state.quest_detail_id and hasattr(ctx, "quests"):
                 detail_quest = ctx.quests.get(state.quest_detail_id, {})
-            if isinstance(detail_quest, dict):
-                dialog = detail_quest.get("dialog", [])
-            if not isinstance(dialog, list):
-                dialog = []
-            dialog_entries = [entry for entry in dialog if entry is not None]
             flags = getattr(state.player, "flags", {})
-            choice_messages = {}
-            if isinstance(flags, dict):
-                choice_messages = flags.get("choice_messages", {})
-            if not isinstance(choice_messages, dict):
-                choice_messages = {}
-            if choice_messages:
-                expanded = []
-                for idx, entry in enumerate(dialog_entries):
-                    expanded.append(entry)
-                    key = f"choice:{state.quest_detail_id}:{idx}"
-                    extra = choice_messages.get(key)
-                    if isinstance(extra, list) and extra:
-                        expanded.extend([str(line) for line in extra if line is not None])
-                dialog_entries = expanded
+            dialog_entries = dialog_entries_for(
+                state.quest_detail_id or "",
+                detail_quest if isinstance(detail_quest, dict) else {},
+                flags,
+            )
             total_pages = max(1, len(dialog_entries))
             state.quest_detail_page = max(0, min(state.quest_detail_page, total_pages - 1))
             current_entry = dialog_entries[state.quest_detail_page] if dialog_entries else None
@@ -1058,14 +1157,27 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                             return None, None
                         label = str(choice.get("label", "") or "").strip()
                         if isinstance(messages, dict):
-                            msg_lines = messages.get("messages", [])
-                            if isinstance(msg_lines, list) and msg_lines:
+                            msg_entries = messages.get("message_entries", [])
+                            if isinstance(msg_entries, list) and msg_entries:
                                 choice_messages = flags.get("choice_messages")
                                 if not isinstance(choice_messages, dict):
                                     choice_messages = {}
                                     flags["choice_messages"] = choice_messages
-                                choice_messages[choice_key] = [str(m) for m in msg_lines if m]
-                            elif label:
+                                choice_messages[choice_key] = [
+                                    entry for entry in msg_entries if isinstance(entry, dict) and entry.get("text")
+                                ]
+                            else:
+                                msg_lines = messages.get("messages", [])
+                                if isinstance(msg_lines, list) and msg_lines:
+                                    choice_messages = flags.get("choice_messages")
+                                    if not isinstance(choice_messages, dict):
+                                        choice_messages = {}
+                                        flags["choice_messages"] = choice_messages
+                                    art_token = dialog_art_token(current_entry if isinstance(current_entry, dict) else None, detail_quest)
+                                    choice_messages[choice_key] = [
+                                        {"text": str(m), "art": art_token} for m in msg_lines if m
+                                    ]
+                            if label and not (msg_entries or (isinstance(messages.get("messages", []), list) and messages.get("messages"))):
                                 state.last_message = f"You chose: {label}."
                         elif label:
                             state.last_message = f"You chose: {label}."
@@ -1099,7 +1211,7 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                     qstate = getattr(state.player, "quests", {}).get(quest_id, {}) if hasattr(state.player, "quests") else {}
                     if not isinstance(qstate, dict) or qstate.get("status") != "active":
                         quest_def = detail_quest if isinstance(detail_quest, dict) else {}
-                        ok, error, start_messages = apply_quest_start_actions(
+                        ok, error, start_effects = apply_quest_start_actions(
                             state.player,
                             quest_def,
                             items_data=ctx.items,
@@ -1112,8 +1224,22 @@ def map_input_to_command(ctx, state: GameState, ch: str) -> tuple[Optional[str],
                         if not ok:
                             state.last_message = error or "Unable to start quest."
                             return None, None
+                        start_messages = start_effects.get("messages", []) if isinstance(start_effects, dict) else []
                         if start_messages:
                             state.last_message = " ".join(str(m) for m in start_messages if m)
+                        start_sfx = start_effects.get("sfx", []) if isinstance(start_effects, dict) else []
+                        if start_sfx and hasattr(ctx, "audio"):
+                            for entry in start_sfx:
+                                if isinstance(entry, dict):
+                                    sfx_id = entry.get("sfx")
+                                    root = entry.get("root") or entry.get("sfx_root") or "C4"
+                                    wave = entry.get("wave") or entry.get("sfx_wave")
+                                else:
+                                    sfx_id = str(entry)
+                                    root = "C4"
+                                    wave = None
+                                if sfx_id:
+                                    ctx.audio.play_sfx_once(str(sfx_id), str(root), wave=wave)
                         if start_quest(state.player, quest_id):
                             title = quest_def.get("title", quest_id)
                             if not state.last_message:
@@ -2334,7 +2460,7 @@ def _handle_level_up_transition(ctx, state: GameState, pre_level: int, post_leve
                 status = entry.get("status")
                 if quest_id and isinstance(quest_def, dict):
                     if status == "available":
-                        ok, error, start_messages = apply_quest_start_actions(
+                        ok, error, start_effects = apply_quest_start_actions(
                             state.player,
                             quest_def,
                             items_data=ctx.items,
@@ -2349,8 +2475,22 @@ def _handle_level_up_transition(ctx, state: GameState, pre_level: int, post_leve
                             state.quest_detail_mode = True
                             state.quest_detail_id = quest_id
                             state.quest_detail_page = 0
+                            start_messages = start_effects.get("messages", []) if isinstance(start_effects, dict) else []
                             if start_messages:
                                 state.last_message = " ".join(str(m) for m in start_messages if m)
+                            start_sfx = start_effects.get("sfx", []) if isinstance(start_effects, dict) else []
+                            if start_sfx and hasattr(ctx, "audio"):
+                                for entry in start_sfx:
+                                    if isinstance(entry, dict):
+                                        sfx_id = entry.get("sfx")
+                                        root = entry.get("root") or entry.get("sfx_root") or "C4"
+                                        wave = entry.get("wave") or entry.get("sfx_wave")
+                                    else:
+                                        sfx_id = str(entry)
+                                        root = "C4"
+                                        wave = None
+                                    if sfx_id:
+                                        ctx.audio.play_sfx_once(str(sfx_id), str(root), wave=wave)
                             state.pending_level_up = True
                             return True
                         if error:
@@ -2997,6 +3137,8 @@ def apply_router_command(
         detail_key = f"{post_quest_detail_id}:{post_quest_detail_page}"
         if detail_key != (state.quest_detail_audio_key or ""):
             state.quest_detail_audio_key = detail_key
+            state.quest_detail_art_key = None
+            state.quest_detail_sfx_key = None
     if (
         (pre_title_fortune and not post_title_fortune)
         or (pre_title_confirm and not post_title_confirm)
@@ -3863,6 +4005,7 @@ def handle_battle_end(ctx, state: GameState, action_cmd: Optional[str]) -> None:
             push_battle_message(state, message)
         if quest_messages:
             open_quest_screen = True
+    state.player.recharge_imbued_spells_auto()
     state.battle_trial_id = None
     if ctx.battle_end_commands:
         color_override = element_color_map(ctx.colors.all(), state.player.current_element)

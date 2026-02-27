@@ -263,6 +263,7 @@ class Player:
                     "charges": charges,
                     "max_charges": charges,
                     "restore": str(entry.get("restore", "inn") or "inn"),
+                    "auto_recharge": int(entry.get("auto_recharge", 0) or 0),
                 })
             if imbued_entries:
                 instance["imbued_spells"] = imbued_entries
@@ -749,6 +750,7 @@ class Player:
                         "charges": charges,
                         "max_charges": charges,
                         "restore": str(entry.get("restore", "inn") or "inn"),
+                        "auto_recharge": int(entry.get("auto_recharge", 0) or 0),
                     })
                 if imbued_entries:
                     gear["imbued_spells"] = imbued_entries
@@ -760,6 +762,8 @@ class Player:
                         entry["max_charges"] = int(entry.get("charges", 0) or 0)
                     if "restore" not in entry:
                         entry["restore"] = "inn"
+                    if "auto_recharge" not in entry:
+                        entry["auto_recharge"] = int(entry.get("auto_recharge", 0) or 0)
         cleaned = {}
         for slot, gear_id in self.equipment.items():
             if isinstance(gear_id, str) and gear_id.startswith("g"):
@@ -1021,6 +1025,30 @@ class Player:
                 max_charges = int(entry.get("max_charges", entry.get("charges", 0) or 0) or 0)
                 entry["max_charges"] = max_charges
                 entry["charges"] = max_charges
+
+    def recharge_imbued_spells_auto(self) -> None:
+        if not isinstance(self.equipment, dict):
+            return
+        for gear_id in self.equipment.values():
+            gear = self.gear_instance(gear_id)
+            if not isinstance(gear, dict):
+                continue
+            imbued = gear.get("imbued_spells", [])
+            if not isinstance(imbued, list):
+                continue
+            for entry in imbued:
+                if not isinstance(entry, dict):
+                    continue
+                auto_recharge = int(entry.get("auto_recharge", 0) or 0)
+                if auto_recharge <= 0:
+                    continue
+                max_charges = int(entry.get("max_charges", entry.get("charges", 0) or 0) or 0)
+                if max_charges <= 0:
+                    continue
+                target = min(max_charges, auto_recharge)
+                current = int(entry.get("charges", 0) or 0)
+                if current < target:
+                    entry["charges"] = target
 
     def recharge_wands(self, overcharge: bool = False) -> None:
         gear_id = self.equipment.get("wand")
