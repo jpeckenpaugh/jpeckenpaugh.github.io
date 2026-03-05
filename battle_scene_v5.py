@@ -38,6 +38,8 @@ def _expand_ground_rows(forest_lines: List[str], ground_count: int = 14) -> List
     rows = list(forest_lines[:SKY_H])
     while len(rows) < SKY_H:
         rows.append(" " * SCREEN_W)
+    ground_count = max(0, min(SCREEN_H, int(ground_count)))
+    upper_count = max(0, SCREEN_H - ground_count)
     ground_start = len(rows)
     while ground_start > 0 and _is_ground_row(rows[ground_start - 1]):
         ground_start -= 1
@@ -45,11 +47,14 @@ def _expand_ground_rows(forest_lines: List[str], ground_count: int = 14) -> List
     ground_pool = rows[ground_start:] if ground_start < len(rows) else [rows[-1]]
     if not ground_pool:
         ground_pool = [rows[-1]]
-    # Keep full tree/canopy stack so crowns can rise into the sky when bottom-anchored.
-    expanded = list(top_rows)
-    for i in range(max(0, ground_count)):
-        expanded.append(ground_pool[i % len(ground_pool)])
-    return expanded[:SCREEN_H]
+    if len(top_rows) >= upper_count:
+        upper_rows = top_rows[-upper_count:] if upper_count > 0 else []
+    else:
+        upper_rows = ([" " * SCREEN_W] * (upper_count - len(top_rows))) + list(top_rows)
+    lower_rows: List[str] = []
+    for i in range(ground_count):
+        lower_rows.append(ground_pool[i % len(ground_pool)])
+    return upper_rows + lower_rows
 
 
 def _hex_to_rgb(hex_value: str) -> tuple[int, int, int]:
@@ -88,10 +93,7 @@ def _colorized_rows(art: object, mask: object, color_codes: Dict[str, str]) -> L
         for x, ch in enumerate(line):
             key = mask_line[x] if x < len(mask_line) else ""
             if ch == " ":
-                if key == "!":
-                    out.append("\x1b[48;2;0;0;0m \x1b[0m")
-                else:
-                    out.append(" ")
+                out.append(" ")
                 continue
             if key == "!":
                 out.append(ch)
@@ -114,17 +116,19 @@ def _sprite_bounds(rows: List[List[str]]) -> tuple[int, int]:
     return (min_y, max_y)
 
 
-def _overlay_sprite(canvas: List[List[str]], rows: List[List[str]], x0: int, y0: int) -> None:
-    for dy, row in enumerate(rows):
+def _clear_rect_on_forest(forest_lines: List[str], x0: int, y0: int, width: int, height: int) -> None:
+    if width <= 0 or height <= 0:
+        return
+    for dy in range(height):
         y = y0 + dy
-        if y < 0 or y >= SCREEN_H:
+        if y < 0 or y >= len(forest_lines):
             continue
-        for dx, cell in enumerate(row):
+        cells = ansi_line_to_cells(forest_lines[y], SCREEN_W)
+        for dx in range(width):
             x = x0 + dx
-            if x < 0 or x >= SCREEN_W:
-                continue
-            if cell != " ":
-                canvas[y][x] = cell
+            if 0 <= x < SCREEN_W:
+                cells[x] = " "
+        forest_lines[y] = "".join(cells)
 
 
 def _overlay_sprite_on_forest(forest_lines: List[str], rows: List[List[str]], x0: int, y0: int) -> None:
@@ -142,44 +146,23 @@ def _overlay_sprite_on_forest(forest_lines: List[str], rows: List[List[str]], x0
         forest_lines[y] = "".join(cells)
 
 
-def _clear_sprite_rect_on_forest(forest_lines: List[str], x0: int, y0: int, width: int, height: int) -> None:
-    for dy in range(height):
-        y = y0 + dy
-        if y < 0 or y >= len(forest_lines):
+def _clear_center_lane_non_ground(forest_lines: List[str], center_x: int, lane_width: int) -> None:
+    if lane_width <= 0:
+        return
+    left = max(0, center_x - (lane_width // 2))
+    right = min(SCREEN_W - 1, left + lane_width - 1)
+    if right - left + 1 < lane_width:
+        left = max(0, right - lane_width + 1)
+    for y, raw in enumerate(forest_lines):
+        if _is_ground_row(raw):
             continue
-        cells = ansi_line_to_cells(forest_lines[y], SCREEN_W)
-        for dx in range(width):
-            x = x0 + dx
-            if 0 <= x < SCREEN_W:
-                cells[x] = " "
+        cells = ansi_line_to_cells(raw, SCREEN_W)
+        for x in range(left, right + 1):
+            cells[x] = " "
         forest_lines[y] = "".join(cells)
 
 
-def _ensure_center_gap_on_row(forest_lines: List[str], row_idx: int, center_x: int, gap_width: int) -> None:
-    if row_idx < 0 or row_idx >= len(forest_lines):
-        return
-    width = max(0, gap_width)
-    if width <= 0:
-        return
-    left = max(0, center_x - (width // 2))
-    right = min(SCREEN_W - 1, left + width - 1)
-    # Re-center if we clipped on the right edge.
-    if right - left + 1 < width:
-        left = max(0, right - width + 1)
-    cells = ansi_line_to_cells(forest_lines[row_idx], SCREEN_W)
-    for x in range(left, right + 1):
-        cells[x] = " "
-    forest_lines[row_idx] = "".join(cells)
-
-
-def render(
-    clouds: List[dict],
-    forest_lines: List[str],
-    player_rows: List[List[str]],
-    mushy_rows: List[List[str]],
-    ground_rows: int = 9,
-    wipe_progress: float = 1.0,
-) -> str:
+def render(clouds: List[dict], forest_lines: List[str], ground_rows: int = 15, wipe_progress: float = 1.0) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
     # Sky clouds.
@@ -207,18 +190,6 @@ def render(
                 if cell != " ":
                     canvas[y][x] = cell
 
-    # Bottom-left party anchors: feet on last viewport row.
-    player_h = len(player_rows)
-    player_w = max((len(r) for r in player_rows), default=0)
-    mushy_h = len(mushy_rows)
-    mushy_w = max((len(r) for r in mushy_rows), default=0)
-    gap = 1
-    x_start = 2
-    player_y = max(0, SCREEN_H - player_h)
-    mushy_y = max(0, SCREEN_H - mushy_h)
-    _overlay_sprite(canvas, player_rows, x_start, player_y)
-    _overlay_sprite(canvas, mushy_rows, x_start + player_w + gap, mushy_y)
-
     # Vertical wipe-in from bottom: visible area grows upward.
     progress = max(0.0, min(1.0, wipe_progress))
     if progress < 1.0:
@@ -237,13 +208,11 @@ def main() -> None:
     colors_path = os.path.join(base, "legecay", "data", "colors.json")
     scenes_path = os.path.join(base, "legecay", "data", "scenes.json")
     opponents_path = os.path.join(base, "legecay", "data", "opponents.json")
-    players_path = os.path.join(base, "legecay", "data", "players.json")
 
     objects = load_json(objects_path)
     colors = load_json(colors_path)
     scenes = load_json(scenes_path)
     opponents = load_json(opponents_path)
-    players = load_json(players_path)
 
     if not isinstance(objects, dict):
         raise RuntimeError("objects.json is not a JSON object")
@@ -253,56 +222,61 @@ def main() -> None:
         raise RuntimeError("scenes.json is not a JSON object")
     if not isinstance(opponents, dict):
         raise RuntimeError("opponents.json is not a JSON object")
-    if not isinstance(players, dict):
-        raise RuntimeError("players.json is not a JSON object")
 
     templates = cloud_templates(objects)
     if not templates:
         raise RuntimeError("No cloud_* objects found in objects.json")
 
     clouds = spawn_clouds(templates, count=10)
-    ground_rows = 12
-    forest_lines, _crow_meta, actor_meta = build_forest_band(scenes, objects, colors, opponents)
+    ground_rows = 15
+    forest_lines, _crow_meta, _actor_meta = build_forest_band(scenes, objects, colors, opponents)
     forest_lines = _expand_ground_rows(forest_lines, ground_count=ground_rows)
     color_codes = _build_color_map(colors)
     base_opponents = opponents.get("base_opponents", {}) if isinstance(opponents, dict) else {}
     mushy_data = base_opponents.get("mushroom_baby", {}) if isinstance(base_opponents, dict) else {}
-    crow_data = base_opponents.get("baby_crow", {}) if isinstance(base_opponents, dict) else {}
-    player_data = players.get("player_01", {}) if isinstance(players, dict) else {}
-
+    beba_data = base_opponents.get("fairy_baby", {}) if isinstance(base_opponents, dict) else {}
     mushy_rows = _colorized_rows(
         mushy_data.get("art", []) if isinstance(mushy_data, dict) else [],
         mushy_data.get("color_map", []) if isinstance(mushy_data, dict) else [],
         color_codes,
     )
-    crow_rows = _colorized_rows(
-        crow_data.get("art", []) if isinstance(crow_data, dict) else [],
-        crow_data.get("color_map", []) if isinstance(crow_data, dict) else [],
-        color_codes,
-    )
-    player_rows = _colorized_rows(
-        player_data.get("art", []) if isinstance(player_data, dict) else [],
-        player_data.get("color_map", []) if isinstance(player_data, dict) else [],
+    beba_rows = _colorized_rows(
+        beba_data.get("art", []) if isinstance(beba_data, dict) else [],
+        beba_data.get("color_map", []) if isinstance(beba_data, dict) else [],
         color_codes,
     )
 
-    # Swap center Mushy in scenery with Baby Crow at the same anchor.
-    mushy_center_x = int(actor_meta.get("mushy", {}).get("x", SCREEN_W // 2)) if isinstance(actor_meta, dict) else SCREEN_W // 2
-    mushy_local_y = int(actor_meta.get("mushy", {}).get("y", SKY_H + 6)) - SKY_H if isinstance(actor_meta, dict) else 6
-    mushy_w = max((len(r) for r in mushy_rows), default=0)
-    mushy_h = len(mushy_rows)
-    crow_w = max((len(r) for r in crow_rows), default=0)
-    crow_h = len(crow_rows)
-    mushy_x0 = max(0, mushy_center_x - (mushy_w // 2))
-    crow_x0 = max(0, mushy_center_x - (crow_w // 2))
-    mushy_top, mushy_bottom = _sprite_bounds(mushy_rows)
-    crow_top, crow_bottom = _sprite_bounds(crow_rows)
-    mushy_foot_local = mushy_local_y + mushy_bottom
-    crow_y0 = mushy_foot_local - crow_bottom
+    if mushy_rows and beba_rows:
+        mushy_top, mushy_bottom = _sprite_bounds(mushy_rows)
+        beba_top, beba_bottom = _sprite_bounds(beba_rows)
+        mushy_h = len(mushy_rows)
+        beba_h = len(beba_rows)
+        mushy_w = max((len(r) for r in mushy_rows), default=0)
+        beba_w = max((len(r) for r in beba_rows), default=0)
 
-    _clear_sprite_rect_on_forest(forest_lines, mushy_x0, mushy_local_y + mushy_top, mushy_w, max(0, mushy_h - mushy_top))
-    _ensure_center_gap_on_row(forest_lines, mushy_foot_local, mushy_center_x, gap_width=20)
-    _overlay_sprite_on_forest(forest_lines, crow_rows, crow_x0, crow_y0)
+        # Keep both followers at the tree/ground boundary so full ground depth remains below.
+        ground_top_local = max(0, len(forest_lines) - ground_rows)
+        mushy_foot = max(0, ground_top_local - 1)
+        mushy_y0 = mushy_foot - mushy_bottom
+
+        pair_gap = 3
+        center_x = SCREEN_W // 2
+        total_w = mushy_w + pair_gap + beba_w
+        mushy_x0 = center_x - (total_w // 2)
+        mushy_x0 = max(0, min(SCREEN_W - total_w, mushy_x0))
+        beba_x0 = mushy_x0 + mushy_w + pair_gap
+        beba_y0 = mushy_foot - beba_bottom
+
+        # Clear a broad center lane so trees are pushed away from both followers.
+        center_lane_w = min(SCREEN_W, total_w + 24)
+        lane_left = max(0, center_x - (center_lane_w // 2))
+        lane_top = max(0, min(mushy_y0 + mushy_top, beba_y0 + beba_top) - 1)
+        lane_bottom = min(len(forest_lines) - 1, max(mushy_y0 + mushy_h - 1, beba_y0 + beba_h - 1))
+        _clear_center_lane_non_ground(forest_lines, center_x=center_x, lane_width=center_lane_w)
+        _clear_rect_on_forest(forest_lines, lane_left, lane_top, center_lane_w, max(0, lane_bottom - lane_top + 1))
+        _overlay_sprite_on_forest(forest_lines, mushy_rows, mushy_x0, mushy_y0)
+        _overlay_sprite_on_forest(forest_lines, beba_rows, beba_x0, beba_y0)
+
     wipe_duration = 1.0
     wipe_started_at = time.monotonic()
 
@@ -328,8 +302,6 @@ def main() -> None:
             frame = render(
                 clouds=clouds,
                 forest_lines=forest_lines,
-                player_rows=player_rows,
-                mushy_rows=mushy_rows,
                 ground_rows=ground_rows,
                 wipe_progress=wipe_progress,
             )

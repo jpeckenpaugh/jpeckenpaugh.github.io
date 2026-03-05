@@ -142,6 +142,64 @@ def _overlay_sprite_on_forest(forest_lines: List[str], rows: List[List[str]], x0
         forest_lines[y] = "".join(cells)
 
 
+def _clear_sprite_shape_on_forest(forest_lines: List[str], rows: List[List[str]], x0: int, y0: int) -> None:
+    for dy, row in enumerate(rows):
+        y = y0 + dy
+        if y < 0 or y >= len(forest_lines):
+            continue
+        cells = ansi_line_to_cells(forest_lines[y], SCREEN_W)
+        for dx, cell in enumerate(row):
+            x = x0 + dx
+            if x < 0 or x >= SCREEN_W:
+                continue
+            if cell != " ":
+                cells[x] = " "
+        forest_lines[y] = "".join(cells)
+
+
+def _clear_sprite_side_buffer_on_forest(
+    forest_lines: List[str], rows: List[List[str]], x0: int, y0: int, side_pad: int = 2
+) -> None:
+    pad = max(0, side_pad)
+    for dy, row in enumerate(rows):
+        y = y0 + dy
+        if y < 0 or y >= len(forest_lines):
+            continue
+        # Preserve grass/pebble rows below the opponent.
+        if _is_ground_row(forest_lines[y]):
+            continue
+        occupied = [idx for idx, cell in enumerate(row) if cell != " "]
+        if not occupied:
+            continue
+        left = max(0, x0 + min(occupied) - pad)
+        right = min(SCREEN_W - 1, x0 + max(occupied) + pad)
+        cells = ansi_line_to_cells(forest_lines[y], SCREEN_W)
+        for x in range(left, right + 1):
+            cells[x] = " "
+        forest_lines[y] = "".join(cells)
+
+
+def _widen_forest_center_gap(forest_lines: List[str], center_x: int, shift: int) -> None:
+    move = max(0, shift)
+    if move <= 0:
+        return
+    split = max(0, min(SCREEN_W, center_x))
+    for y, raw in enumerate(forest_lines):
+        if _is_ground_row(raw):
+            continue
+        cells = ansi_line_to_cells(raw, SCREEN_W)
+        widened = [" " for _ in range(SCREEN_W)]
+        for x in range(split):
+            nx = x - move
+            if 0 <= nx < SCREEN_W and cells[x] != " ":
+                widened[nx] = cells[x]
+        for x in range(split, SCREEN_W):
+            nx = x + move
+            if 0 <= nx < SCREEN_W and cells[x] != " ":
+                widened[nx] = cells[x]
+        forest_lines[y] = "".join(widened)
+
+
 def _clear_sprite_rect_on_forest(forest_lines: List[str], x0: int, y0: int, width: int, height: int) -> None:
     for dy in range(height):
         y = y0 + dy
@@ -153,23 +211,6 @@ def _clear_sprite_rect_on_forest(forest_lines: List[str], x0: int, y0: int, widt
             if 0 <= x < SCREEN_W:
                 cells[x] = " "
         forest_lines[y] = "".join(cells)
-
-
-def _ensure_center_gap_on_row(forest_lines: List[str], row_idx: int, center_x: int, gap_width: int) -> None:
-    if row_idx < 0 or row_idx >= len(forest_lines):
-        return
-    width = max(0, gap_width)
-    if width <= 0:
-        return
-    left = max(0, center_x - (width // 2))
-    right = min(SCREEN_W - 1, left + width - 1)
-    # Re-center if we clipped on the right edge.
-    if right - left + 1 < width:
-        left = max(0, right - width + 1)
-    cells = ansi_line_to_cells(forest_lines[row_idx], SCREEN_W)
-    for x in range(left, right + 1):
-        cells[x] = " "
-    forest_lines[row_idx] = "".join(cells)
 
 
 def render(
@@ -212,7 +253,7 @@ def render(
     player_w = max((len(r) for r in player_rows), default=0)
     mushy_h = len(mushy_rows)
     mushy_w = max((len(r) for r in mushy_rows), default=0)
-    gap = 1
+    gap = 2
     x_start = 2
     player_y = max(0, SCREEN_H - player_h)
     mushy_y = max(0, SCREEN_H - mushy_h)
@@ -300,8 +341,13 @@ def main() -> None:
     mushy_foot_local = mushy_local_y + mushy_bottom
     crow_y0 = mushy_foot_local - crow_bottom
 
-    _clear_sprite_rect_on_forest(forest_lines, mushy_x0, mushy_local_y + mushy_top, mushy_w, max(0, mushy_h - mushy_top))
-    _ensure_center_gap_on_row(forest_lines, mushy_foot_local, mushy_center_x, gap_width=20)
+    # Crow is wider than Mushy; push tree rows away from center so the crow sits in a true gap.
+    extra_width = max(0, crow_w - mushy_w)
+    center_shift = (extra_width + 1) // 2 + (2 if extra_width > 0 else 0)
+    _widen_forest_center_gap(forest_lines, mushy_center_x, center_shift)
+
+    _clear_sprite_shape_on_forest(forest_lines, mushy_rows, mushy_x0, mushy_local_y)
+    _clear_sprite_side_buffer_on_forest(forest_lines, crow_rows, crow_x0, crow_y0, side_pad=2)
     _overlay_sprite_on_forest(forest_lines, crow_rows, crow_x0, crow_y0)
     wipe_duration = 1.0
     wipe_started_at = time.monotonic()
