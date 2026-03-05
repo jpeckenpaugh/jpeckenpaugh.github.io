@@ -172,8 +172,15 @@ def load_quest_dialog(quests_data: Dict[str, object], quest_id: str) -> List[dic
                             if label:
                                 labels.append(label)
                 text = prompt
-                if labels:
-                    text = (text + " " if text else "") + " / ".join(labels)
+                entries.append(
+                    {
+                        "speaker": "narration",
+                        "type": "choice",
+                        "text": text,
+                        "options": labels,
+                    }
+                )
+                continue
             else:
                 text = str(entry.get("text", "")).strip()
                 art = str(entry.get("art", "")).lower()
@@ -190,30 +197,48 @@ def load_quest_dialog(quests_data: Dict[str, object], quest_id: str) -> List[dic
             speaker = "crow"
         elif low.startswith("narration:"):
             speaker = "narration"
-        entries.append({"speaker": speaker, "text": text})
+        entries.append({"speaker": speaker, "type": "text", "text": text})
     return entries
 
 
-def dialog_box_lines(text: str, max_inner_width: int = 44) -> List[str]:
+def _dialog_bottom_line(inner: int, button: str) -> str:
+    if len(button) + 5 <= inner:
+        right = 5
+        left = max(0, inner - len(button) - right)
+        return "o" + ("-" * left) + button + ("-" * right) + "o"
+    return "o" + ("-" * inner) + "o"
+
+
+def dialog_box_lines(entry: dict, choice_cursor: int, max_inner_width: int = 44) -> List[str]:
+    text = str(entry.get("text", "")).strip()
+    entry_type = str(entry.get("type", "text"))
+    options = entry.get("options", []) if isinstance(entry, dict) else []
     width = max(24, min(max_inner_width, SCREEN_W - 6))
     wrapped = textwrap.wrap(text, width=max(10, width - 2), break_long_words=False, break_on_hyphens=False)
     if not wrapped:
         wrapped = [""]
-    wrapped = wrapped[:3]
-    inner = max(width, max(len(line) for line in wrapped))
+    body_lines: List[str] = list(wrapped)
+    if entry_type == "choice" and isinstance(options, list):
+        opts = [str(opt) for opt in options if str(opt).strip()]
+        if body_lines:
+            body_lines.append("")
+        for idx, opt in enumerate(opts[:2]):
+            if idx == choice_cursor:
+                line = f"[ {opt} ]"
+            else:
+                line = f"  {opt}  "
+            body_lines.append(line)
+    inner = max(width, max(len(line) for line in body_lines))
     lines: List[str] = []
     lines.append("o" + ("-" * inner) + "o")
     lines.append("|" + (" " * inner) + "|")
-    for line in wrapped:
+    for line in body_lines:
         lines.append("|" + line.ljust(inner) + "|")
     lines.append("|" + (" " * inner) + "|")
-    button = "[ Continue ]"
-    if len(button) + 2 <= inner:
-        left = max(0, (inner - len(button)) // 2)
-        right = max(0, inner - len(button) - left)
-        bottom = "o" + ("-" * left) + button + ("-" * right) + "o"
+    if entry_type == "choice":
+        bottom = _dialog_bottom_line(inner, "[ Select ]")
     else:
-        bottom = "o" + ("-" * inner) + "o"
+        bottom = _dialog_bottom_line(inner, "[ Continue ]")
     lines.append(bottom)
     return lines
 
@@ -226,7 +251,11 @@ def read_key_nonblocking() -> str | None:
             return None
         ch = msvcrt.getch()
         if ch in (b"\x00", b"\xe0"):
-            _ = msvcrt.getch()
+            ext = msvcrt.getch()
+            if ext == b"H":
+                return "up"
+            if ext == b"P":
+                return "down"
             return None
         try:
             return ch.decode("utf-8").lower()
@@ -242,16 +271,13 @@ def read_key_nonblocking() -> str | None:
     return ch.lower() if ch else None
 
 
-def overlay_dialog_box(canvas: List[List[str]], lines: List[str], anchor_x: int, anchor_y: int) -> None:
+def overlay_dialog_box(canvas: List[List[str]], lines: List[str], x0: int, y0: int) -> None:
     if not lines:
         return
     box_w = len(lines[0])
     box_h = len(lines)
-    if anchor_x < SCREEN_W // 2:
-        x0 = min(SCREEN_W - box_w, anchor_x + 6)
-    else:
-        x0 = max(0, anchor_x - box_w - 2)
-    y0 = max(0, min(SCREEN_H - box_h, anchor_y - box_h // 2))
+    x0 = max(0, min(SCREEN_W - box_w, x0))
+    y0 = max(0, min(SCREEN_H - box_h, y0))
     for dy, raw in enumerate(lines):
         y = y0 + dy
         if y < 0 or y >= SCREEN_H:
@@ -525,6 +551,7 @@ def render(
     crow_y: float,
     dialog_entry: dict,
     actor_meta: dict,
+    choice_cursor: int,
 ) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
@@ -582,7 +609,28 @@ def render(
             else:
                 anchor_x = SCREEN_W // 2
                 anchor_y = SKY_H // 2
-            overlay_dialog_box(canvas, dialog_box_lines(dialog_text), anchor_x, anchor_y)
+            gap = 6
+            avail_right = max(12, SCREEN_W - (anchor_x + gap) - 2)
+            avail_left = max(12, anchor_x - gap - 2)
+            prefer_right = anchor_x < (SCREEN_W // 2)
+            if prefer_right:
+                side = "right" if avail_right >= 18 or avail_right >= avail_left else "left"
+            else:
+                side = "left" if avail_left >= 18 or avail_left >= avail_right else "right"
+            max_inner = min(44, avail_right if side == "right" else avail_left)
+            max_inner = max(12, max_inner)
+            lines = dialog_box_lines(dialog_entry, choice_cursor, max_inner_width=max_inner)
+            box_w = len(lines[0]) if lines else 0
+            if side == "right":
+                x0 = anchor_x + gap
+                if x0 + box_w > SCREEN_W:
+                    x0 = SCREEN_W - box_w
+            else:
+                x0 = anchor_x - gap - box_w
+                if x0 < 0:
+                    x0 = 0
+            y0 = anchor_y - (len(lines) // 2)
+            overlay_dialog_box(canvas, lines, x0, y0)
 
     return "\n".join("".join(row) for row in canvas)
 
@@ -620,6 +668,7 @@ def main() -> None:
     forest_lines, crow_meta, actor_meta = build_forest_band(scenes, objects, colors, opponents)
     dialog_entries = load_quest_dialog(quests, "island_01_quest_00")
     dialog_idx = 0
+    choice_cursor = 0
     crow_y = float(crow_meta.get("start_y", -1)) if isinstance(crow_meta, dict) else -1.0
     crow_x = float(crow_meta.get("x", 0.0)) if isinstance(crow_meta, dict) else 0.0
 
@@ -654,13 +703,24 @@ def main() -> None:
                 else:
                     crow_x = base_x
             key = read_key_nonblocking()
-            if key == "a" and dialog_entries:
-                dialog_idx = min(len(dialog_entries) - 1, dialog_idx + 1)
             if dialog_entries:
+                current = dialog_entries[dialog_idx]
+                if str(current.get("type", "text")) == "choice":
+                    opts = current.get("options", [])
+                    opt_count = len(opts) if isinstance(opts, list) else 0
+                    if key in ("up", "w") and opt_count > 0:
+                        choice_cursor = (choice_cursor - 1) % opt_count
+                    elif key in ("down", "s") and opt_count > 0:
+                        choice_cursor = (choice_cursor + 1) % opt_count
+                    elif key == "a":
+                        dialog_idx = min(len(dialog_entries) - 1, dialog_idx + 1)
+                        choice_cursor = 0
+                elif key == "a":
+                    dialog_idx = min(len(dialog_entries) - 1, dialog_idx + 1)
                 dialog_entry = dialog_entries[dialog_idx]
             else:
                 dialog_entry = {}
-            frame = render(clouds, forest_lines, crow_meta, crow_x, crow_y, dialog_entry, actor_meta)
+            frame = render(clouds, forest_lines, crow_meta, crow_x, crow_y, dialog_entry, actor_meta, choice_cursor)
             print(ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)
     except KeyboardInterrupt:
