@@ -54,7 +54,7 @@ class TitleScene(Scene):
         self._panorama = TitlePanorama(
             viewport_width=100,
             height=15,
-            speed=1.0,
+            speed=2.0,
             forest_width_scale=0.5,
             scenes_data=scenes_data,
             objects_data=objects_data,
@@ -120,9 +120,8 @@ class TitleScene(Scene):
         return f"\x1b[38;2;{r};{g};{b}m"
 
     def _seed_initial_clouds(self) -> None:
-        total = 10
-        for slot in range(total):
-            self._spawn_cloud(initial=True, slot=slot, total_slots=total)
+        for _ in range(10):
+            self._spawn_cloud(initial=True)
 
     def _cloud_phase(self) -> int:
         return int(time.time() * 10.0)
@@ -131,7 +130,7 @@ class TitleScene(Scene):
         size_weight = {"large": 0.72, "medium": 1.0, "small": 1.28}.get(size, 1.0)
         height_norm = max(0.0, min(1.0, y / max(1, (self._screen_height // 2) - 1)))
         height_weight = 0.72 + (0.62 * height_norm)
-        variance = 0.9 + (self._cloud_rng.random() * 0.2)
+        variance = 1.0 + (self._cloud_rng.random() * 3.0)
         return 1.0 * size_weight * height_weight * variance
 
     def _pick_cloud_size(self) -> str:
@@ -145,7 +144,7 @@ class TitleScene(Scene):
                 return size
         return "medium"
 
-    def _spawn_cloud(self, initial: bool = False, slot: int = 0, total_slots: int = 1) -> None:
+    def _spawn_cloud(self, initial: bool = False) -> None:
         size = self._pick_cloud_size()
         candidates = self._cloud_templates.get(size, [])
         if not candidates:
@@ -170,13 +169,7 @@ class TitleScene(Scene):
         speed = self._cloud_speed(size, y)
         width = int(template.get("width", 1))
         if initial:
-            segments = max(1, total_slots)
-            seg_w = max(1, self._screen_width // segments)
-            seg_start = slot * seg_w
-            seg_end = self._screen_width - 1 if slot == segments - 1 else ((slot + 1) * seg_w - 1)
-            min_x = seg_start - max(1, width // 2)
-            max_x = max(min_x, seg_end)
-            start_x = self._cloud_rng.randint(min_x, max_x)
+            start_x = self._cloud_rng.randint(-max(1, width // 2), self._screen_width - 1)
         else:
             start_x = self._screen_width + self._cloud_rng.randint(2, 28)
         self._clouds.append(
@@ -200,7 +193,6 @@ class TitleScene(Scene):
 
     def _overlay_clouds(self, lines: list[str]) -> None:
         sky_height = self._screen_height // 2
-        composed_rows: dict[int, list[str]] = {}
         for cloud in self._clouds:
             template = cloud.get("template", {})
             rows = template.get("rows", [])
@@ -217,17 +209,13 @@ class TitleScene(Scene):
                     continue
                 if not isinstance(row_cells, list):
                     continue
-                if y not in composed_rows:
-                    composed_rows[y] = list(lines[y])
-                base = composed_rows[y]
+                base = lines[y]
                 for col_idx, cell in enumerate(row_cells):
                     x = x0 + col_idx
                     if x < 0 or x >= self._screen_width:
                         continue
                     if cell != " ":
                         base[x] = cell
-        for y, cells in composed_rows.items():
-            lines[y] = "".join(cells)
 
     def input_timeout_seconds(self) -> float:
         return 0.1
@@ -323,6 +311,34 @@ class TitleScene(Scene):
             i += 1
         return "".join(out)
 
+    def _ansi_cells(self, text: str, width: int) -> list[str]:
+        cells: list[str] = []
+        i = 0
+        active = ""
+        while i < len(text):
+            ch = text[i]
+            if ch == "\x1b" and i + 1 < len(text) and text[i + 1] == "[":
+                j = i + 2
+                while j < len(text) and text[j] != "m":
+                    j += 1
+                if j < len(text):
+                    seq = text[i : j + 1]
+                    active = "" if seq == "\x1b[0m" else seq
+                    i = j + 1
+                    continue
+            if ch == " ":
+                cells.append(" ")
+            elif active:
+                cells.append(f"{active}{ch}\x1b[0m")
+            else:
+                cells.append(ch)
+            i += 1
+            if len(cells) >= width:
+                break
+        while len(cells) < width:
+            cells.append(" ")
+        return cells
+
     def _button_row(self, inner: int) -> str:
         accept = "\x1b[30;42m[ A / Accept ]\x1b[0m"
         cancel = "\x1b[90m[ S / Cancel ]\x1b[0m"
@@ -395,12 +411,8 @@ class TitleScene(Scene):
                 text = f"   {label}{suffix}"
             lines.append("|" + text.ljust(inner)[:inner] + "|")
         lines.append("|" + (" " * inner) + "|")
-        lines.append("|" + f" Slot: {app.session.selected_slot}".ljust(inner)[:inner] + "|")
-        if app.session.last_message:
-            lines.append("|" + f" {app.session.last_message}".ljust(inner)[:inner] + "|")
-        else:
-            lines.append("|" + (" " * inner) + "|")
         lines.append("|" + self._button_row(inner) + "|")
+        lines.append("|" + (" " * inner) + "|")
         lines.append("o" + ("-" * inner) + "o")
         return lines
 
@@ -435,15 +447,13 @@ class TitleScene(Scene):
         self._update_clouds(time.time())
         self._last_drawn_offset = offset
         self._last_signature = self._signature(app)
-        lines = [" " * self._screen_width for _ in range(self._screen_height)]
-        self._overlay_clouds(lines)
+        canvas = [[" " for _ in range(self._screen_width)] for _ in range(self._screen_height)]
+        self._overlay_clouds(canvas)
 
         pano_lines = self._panorama.viewport()
-        pano_start_y = self._screen_height - len(pano_lines)
-        for idx, line in enumerate(pano_lines):
-            y = pano_start_y + idx
-            if 0 <= y < self._screen_height:
-                lines[y] = line
+        for y in range(self._screen_height // 2):
+            src = pano_lines[y] if y < len(pano_lines) else ""
+            canvas[(self._screen_height // 2) + y] = self._ansi_cells(src, self._screen_width)
 
         logo_lines, blocking_char = self._logo_lines()
         logo_start_y = 1
@@ -453,39 +463,47 @@ class TitleScene(Scene):
             y = logo_start_y + idx
             if 0 <= y < self._screen_height:
                 start_x = max(0, (self._screen_width - logo_width) // 2)
-                rendered: list[str] = []
                 for col in range(logo_width):
                     ch = line[col] if col < len(line) else " "
+                    x = start_x + col
+                    if x < 0 or x >= self._screen_width:
+                        continue
                     if ch == blocking_char:
-                        rendered.append(" ")
+                        canvas[y][x] = "\x1b[0m "
                     elif ch == " ":
-                        rendered.append(" ")
+                        continue
                     else:
                         code = self._logo_gradient_code(col, idx, logo_width, logo_height)
-                        rendered.append(f"{code}{ch}\x1b[0m")
-                row = "".join(rendered)
-                lines[y] = (" " * start_x) + row + (" " * max(0, self._screen_width - start_x - logo_width))
+                        canvas[y][x] = f"{code}{ch}\x1b[0m"
 
         subtitle_y = logo_start_y + logo_height + 1
         if 0 <= subtitle_y < self._screen_height:
             subtitle_width = len("*-----<{([  AI World Engine  ])}>-----*")
             start_x = max(0, (self._screen_width - subtitle_width) // 2)
             subtitle = self._title_subheading(subtitle_y, start_x)
-            lines[subtitle_y] = (" " * start_x) + subtitle + (" " * max(0, self._screen_width - start_x - subtitle_width))
+            sub_cells = self._ansi_cells(subtitle, subtitle_width)
+            for i, cell in enumerate(sub_cells):
+                x = start_x + i
+                if 0 <= x < self._screen_width and cell != " ":
+                    canvas[subtitle_y][x] = cell
 
         menu_lines = self._menu_box_lines(app, blink_on=blink_on)
-        menu_start_y = 8
+        menu_start_y = 9
         for idx, line in enumerate(menu_lines):
             y = menu_start_y + idx
             if 0 <= y < self._screen_height:
                 visible_len = len(self._strip_ansi(line))
                 start_x = max(0, (self._screen_width - visible_len) // 2)
                 colored = self._colorize_menu_line(line, y, start_x)
-                lines[y] = (" " * start_x) + colored + (" " * max(0, self._screen_width - start_x - visible_len))
+                cells = self._ansi_cells(colored, visible_len)
+                for i, cell in enumerate(cells):
+                    x = start_x + i
+                    if 0 <= x < self._screen_width:
+                        canvas[y][x] = cell
 
         if not continue_enabled and self._cursor == 0:
             self._move(app, 1)
-        return "\n".join(lines)
+        return "\n".join("".join(row) for row in canvas)
 
     def handle_input(self, app: "GameApp", key: str) -> SceneResult:
         if key == "up":
