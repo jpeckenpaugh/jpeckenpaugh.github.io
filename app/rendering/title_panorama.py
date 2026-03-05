@@ -128,7 +128,9 @@ class TitlePanorama:
         return rows
 
     def viewport(self, now: float | None = None) -> List[str]:
-        moment = time.time() if now is None else now
-        start_x = int(moment * self.speed)
+        start_x = self.offset(now)
         return self._map.slice_wrap(start_x=start_x, width=self.viewport_width)
 
+    def offset(self, now: float | None = None) -> int:
+        moment = time.time() if now is None else now
+        return int(moment * self.speed)

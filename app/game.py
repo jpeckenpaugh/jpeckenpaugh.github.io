@@ -36,11 +36,14 @@ class GameApp:
             self.running = False
 
     def run(self) -> None:
+        force_render = True
         while self.running:
             scene = self.active_scene()
-            frame = scene.render(self)
-            self.renderer.render_text(frame)
             timeout = scene.input_timeout_seconds()
+            if force_render or scene.needs_redraw(self):
+                frame = scene.render(self)
+                self.renderer.render_text(frame)
+                force_render = False
             if timeout is None:
                 key = self.input.read_key()
             else:
@@ -48,6 +51,10 @@ class GameApp:
                 if key is None:
                     continue
             result = scene.handle_input(self, key)
+            previous_scene_id = self.session.current_scene_id
             self.apply_result(result)
+            force_render = True
+            if self.session.current_scene_id != previous_scene_id:
+                force_render = True
         self.renderer.clear()
         print("Exited game.")

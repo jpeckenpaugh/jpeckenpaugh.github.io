@@ -18,5 +18,8 @@ class Scene:
     def input_timeout_seconds(self) -> Optional[float]:
         return None
 
+    def needs_redraw(self, app: "GameApp") -> bool:
+        return False
+
     def handle_input(self, app: "GameApp", key: str) -> SceneResult:
         raise NotImplementedError
