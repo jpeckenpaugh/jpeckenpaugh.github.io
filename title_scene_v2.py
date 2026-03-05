@@ -43,6 +43,129 @@ def logo_gradient_code(x: int, y: int, width: int, height: int) -> str:
     return f"\x1b[38;2;{r};{g};{b}m"
 
 
+def frame_gradient_code(x: int, y: int) -> str:
+    return logo_gradient_code(x, y, SCREEN_W, SCREEN_H)
+
+
+def subtitle_text() -> str:
+    return "*-----<{([  AI World Engine  ])}>-----*"
+
+
+def subtitle_cells(y: int, start_x: int) -> List[str]:
+    text = subtitle_text()
+    left = "*-----<{([  "
+    mid = "AI World Engine"
+    out: List[str] = []
+    for i, ch in enumerate(text):
+        if ch == " ":
+            out.append(" ")
+        elif len(left) <= i < len(left) + len(mid):
+            out.append(f"\x1b[38;2;255;255;255m{ch}{ANSI_RESET}")
+        else:
+            out.append(f"{frame_gradient_code(start_x + i, y)}{ch}{ANSI_RESET}")
+    return out
+
+
+def strip_ansi(text: str) -> str:
+    out: List[str] = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\x1b" and i + 1 < len(text) and text[i + 1] == "[":
+            j = i + 2
+            while j < len(text) and text[j] != "m":
+                j += 1
+            if j < len(text):
+                i = j + 1
+                continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def colorize_menu_line(text: str, y: int, start_x: int) -> str:
+    visible_text = strip_ansi(text)
+    width = len(visible_text)
+    is_top_bottom = width >= 2 and visible_text[0] == "o" and visible_text[-1] == "o"
+    out: List[str] = []
+    i = 0
+    visible_idx = 0
+    style_active = False
+    while i < len(text):
+        ch = text[i]
+        if ch == "\x1b" and i + 1 < len(text) and text[i + 1] == "[":
+            j = i + 2
+            while j < len(text) and text[j] != "m":
+                j += 1
+            if j < len(text):
+                seq = text[i : j + 1]
+                out.append(seq)
+                style_active = seq != ANSI_RESET
+                i = j + 1
+                continue
+        if ch == " ":
+            out.append(" ")
+        else:
+            is_side_border = visible_idx == 0 or visible_idx == width - 1
+            is_top_bottom_border = is_top_bottom and ch in ("o", "-")
+            is_frame = is_side_border or is_top_bottom_border
+            if style_active and not is_frame:
+                out.append(ch)
+            else:
+                code = frame_gradient_code(start_x + visible_idx, y) if is_frame else "\x1b[38;2;255;255;255m"
+                out.append(f"{code}{ch}{ANSI_RESET}")
+        visible_idx += 1
+        i += 1
+    return "".join(out)
+
+
+def menu_button_row(inner: int) -> str:
+    accept = "\x1b[30;42m[ A / Accept ]\x1b[0m"
+    cancel = "\x1b[90m[ S / Cancel ]\x1b[0m"
+    spacer = " " * 5
+    body = accept + spacer + cancel
+    visible = len(strip_ansi(body))
+    pad_left = max(0, (inner - visible) // 2)
+    pad_right = max(0, inner - visible - pad_left)
+    return (" " * pad_left) + body + (" " * pad_right)
+
+
+def menu_box_lines() -> List[str]:
+    width = 46
+    inner = width - 2
+    options = ["Continue", "New Game", "Asset Explorer", "Quit"]
+    lines: List[str] = []
+    lines.append("o" + ("-" * inner) + "o")
+    lines.append("|" + (" " * inner) + "|")
+    for idx, label in enumerate(options):
+        if idx == 0:
+            text = f" [ {label} ]"
+        else:
+            text = f"   {label}"
+        lines.append("|" + text.ljust(inner)[:inner] + "|")
+    lines.append("|" + (" " * inner) + "|")
+    lines.append("|" + menu_button_row(inner) + "|")
+    lines.append("|" + (" " * inner) + "|")  # blank line after A/S button row
+    lines.append("o" + ("-" * inner) + "o")
+    return lines
+
+
+def overlay_menu(canvas: List[List[str]], start_y: int) -> None:
+    lines = menu_box_lines()
+    for idx, line in enumerate(lines):
+        y = start_y + idx
+        if y < 0 or y >= SCREEN_H:
+            continue
+        visible_len = len(strip_ansi(line))
+        start_x = max(0, (SCREEN_W - visible_len) // 2)
+        styled = colorize_menu_line(line, y, start_x)
+        cells = ansi_line_to_cells(styled, visible_len)
+        for x, cell in enumerate(cells):
+            px = start_x + x
+            if 0 <= px < SCREEN_W:
+                canvas[y][px] = cell
+
+
 def load_json(path: str) -> object:
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle)
@@ -226,12 +349,25 @@ def render(clouds: List[dict], panorama_lines: List[str], logo: dict) -> str:
                     continue
                 if cell != " ":
                     canvas[y][x] = cell
+        # Subtitle directly below logo.
+        sub_y = y0 + logo_h + 1
+        sub = subtitle_text()
+        sub_x = max(0, (SCREEN_W - len(sub)) // 2)
+        if 0 <= sub_y < SKY_H:
+            cells = subtitle_cells(sub_y, sub_x)
+            for i, cell in enumerate(cells):
+                x = sub_x + i
+                if 0 <= x < SCREEN_W and cell != " ":
+                    canvas[sub_y][x] = cell
 
     # Bottom half panorama (latest title panorama output).
     for y in range(SKY_H):
         src = panorama_lines[y] if y < len(panorama_lines) else ""
         cells = ansi_line_to_cells(src, SCREEN_W)
         canvas[SKY_H + y] = cells
+
+    # Title menu/UI over logo + panorama (opaque frame/text).
+    overlay_menu(canvas, start_y=9)
 
     return "\n".join("".join(row) for row in canvas)
 
