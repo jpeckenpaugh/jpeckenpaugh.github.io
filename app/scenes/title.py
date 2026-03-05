@@ -1,5 +1,6 @@
 from app.scenes.base import Scene, SceneResult
 from app.rendering.title_panorama import TitlePanorama
+import time
 
 
 class TitleScene(Scene):
@@ -15,6 +16,7 @@ class TitleScene(Scene):
         self._colors_data = {}
         self._screen_width = 100
         self._screen_height = 30
+        self._last_blink_phase = -1
 
     def _ensure_panorama(self, app: "GameApp") -> None:
         if self._panorama is not None:
@@ -150,6 +152,9 @@ class TitleScene(Scene):
         pad_right = max(0, inner - visible - pad_left)
         return (" " * pad_left) + body + (" " * pad_right)
 
+    def _blink_phase(self) -> int:
+        return int(time.time() * 2.0)
+
     def _title_subheading(self, y: int, start_x: int) -> str:
         left = "*-----<{([  "
         mid = "AI World Engine"
@@ -192,7 +197,7 @@ class TitleScene(Scene):
             return [], "#"
         return [str(line) for line in art], (blocking if len(blocking) == 1 else "#")
 
-    def _menu_box_lines(self, app: "GameApp") -> list[str]:
+    def _menu_box_lines(self, app: "GameApp", blink_on: bool) -> list[str]:
         width = 46
         inner = width - 2
         lines: list[str] = []
@@ -202,7 +207,9 @@ class TitleScene(Scene):
             enabled = self._option_enabled(app, idx)
             suffix = "" if enabled else " (no save)"
             if idx == self._cursor:
-                text = f" [ {label}{suffix} ]"
+                left_bracket = "[" if blink_on else " "
+                right_bracket = "]" if blink_on else " "
+                text = f" {left_bracket} {label}{suffix} {right_bracket}"
             else:
                 text = f"   {label}{suffix}"
             lines.append("|" + text.ljust(inner)[:inner] + "|")
@@ -228,6 +235,8 @@ class TitleScene(Scene):
 
     def needs_redraw(self, app: "GameApp") -> bool:
         self._ensure_panorama(app)
+        if self._blink_phase() != self._last_blink_phase:
+            return True
         if self._signature(app) != self._last_signature:
             return True
         return self._panorama.offset() != self._last_drawn_offset
@@ -236,6 +245,9 @@ class TitleScene(Scene):
         self._ensure_panorama(app)
         continue_enabled = app.save_service.has_slot(app.session.selected_slot)
         offset = self._panorama.offset()
+        blink_phase = self._blink_phase()
+        blink_on = (blink_phase % 2) == 0
+        self._last_blink_phase = blink_phase
         self._last_drawn_offset = offset
         self._last_signature = self._signature(app)
         lines = [" " * self._screen_width for _ in range(self._screen_height)]
@@ -275,7 +287,7 @@ class TitleScene(Scene):
             subtitle = self._title_subheading(subtitle_y, start_x)
             lines[subtitle_y] = (" " * start_x) + subtitle + (" " * max(0, self._screen_width - start_x - subtitle_width))
 
-        menu_lines = self._menu_box_lines(app)
+        menu_lines = self._menu_box_lines(app, blink_on=blink_on)
         menu_start_y = 8
         for idx, line in enumerate(menu_lines):
             y = menu_start_y + idx
