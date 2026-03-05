@@ -155,6 +155,23 @@ def load_quest_dialog(quests_data: Dict[str, object], quest_id: str) -> List[dic
     if not isinstance(dialog, list):
         return []
     entries: List[dict] = []
+
+    def infer_speaker(text_value: str, art_value: object) -> str:
+        speaker_value = "narration"
+        art_text = str(art_value).lower()
+        if "mushroom_baby" in art_text:
+            speaker_value = "mushy"
+        elif "baby_crow" in art_text:
+            speaker_value = "crow"
+        low_text = text_value.lower()
+        if low_text.startswith("mushy:"):
+            speaker_value = "mushy"
+        elif low_text.startswith("crow"):
+            speaker_value = "crow"
+        elif low_text.startswith("narration:"):
+            speaker_value = "narration"
+        return speaker_value
+
     for entry in dialog:
         text = ""
         speaker = "narration"
@@ -165,12 +182,32 @@ def load_quest_dialog(quests_data: Dict[str, object], quest_id: str) -> List[dic
                 prompt = str(entry.get("prompt", "")).strip()
                 options = entry.get("options", [])
                 labels: List[str] = []
+                option_branches: List[List[dict]] = []
                 if isinstance(options, list):
                     for opt in options:
+                        branch_lines: List[dict] = []
                         if isinstance(opt, dict):
                             label = str(opt.get("label", "")).strip()
                             if label:
                                 labels.append(label)
+                            actions = opt.get("actions", [])
+                            if isinstance(actions, list):
+                                for action in actions:
+                                    if not isinstance(action, dict):
+                                        continue
+                                    if str(action.get("type", "")).lower() != "show_message":
+                                        continue
+                                    message = str(action.get("message", "")).strip()
+                                    if not message:
+                                        continue
+                                    branch_lines.append(
+                                        {
+                                            "speaker": infer_speaker(message, action.get("art", "")),
+                                            "type": "text",
+                                            "text": message,
+                                        }
+                                    )
+                        option_branches.append(branch_lines)
                 text = prompt
                 entries.append(
                     {
@@ -178,25 +215,15 @@ def load_quest_dialog(quests_data: Dict[str, object], quest_id: str) -> List[dic
                         "type": "choice",
                         "text": text,
                         "options": labels,
+                        "option_branches": option_branches,
                     }
                 )
                 continue
             else:
                 text = str(entry.get("text", "")).strip()
-                art = str(entry.get("art", "")).lower()
-                if "mushroom_baby" in art:
-                    speaker = "mushy"
-                elif "baby_crow" in art:
-                    speaker = "crow"
+                speaker = infer_speaker(text, entry.get("art", ""))
         if not text:
             continue
-        low = text.lower()
-        if low.startswith("mushy:"):
-            speaker = "mushy"
-        elif low.startswith("crow"):
-            speaker = "crow"
-        elif low.startswith("narration:"):
-            speaker = "narration"
         entries.append({"speaker": speaker, "type": "text", "text": text})
     return entries
 
@@ -209,12 +236,33 @@ def _dialog_bottom_line(inner: int, button: str) -> str:
     return "o" + ("-" * inner) + "o"
 
 
+def dialog_border_gradient_code(x: int, y: int, width: int, height: int) -> str:
+    # Match title logo/frame white -> blue -> grey diagonal gradient.
+    if width <= 1 and height <= 1:
+        r, g, b = (192, 192, 192)
+        return ansi_rgb(r, g, b)
+    t = ((x / max(1, width - 1)) + (y / max(1, height - 1))) / 2.0
+    if t <= 0.5:
+        tt = t / 0.5
+        start = (192, 192, 192)
+        end = (77, 77, 255)
+    else:
+        tt = (t - 0.5) / 0.5
+        start = (77, 77, 255)
+        end = (96, 96, 96)
+    r = int(start[0] + (end[0] - start[0]) * tt)
+    g = int(start[1] + (end[1] - start[1]) * tt)
+    b = int(start[2] + (end[2] - start[2]) * tt)
+    return ansi_rgb(r, g, b)
+
+
 def dialog_box_lines(entry: dict, choice_cursor: int, max_inner_width: int = 44) -> List[str]:
     text = str(entry.get("text", "")).strip()
     entry_type = str(entry.get("type", "text"))
     options = entry.get("options", []) if isinstance(entry, dict) else []
-    width = max(24, min(max_inner_width, SCREEN_W - 6))
-    wrapped = textwrap.wrap(text, width=max(10, width - 2), break_long_words=False, break_on_hyphens=False)
+    width = max(24, min(max_inner_width, SCREEN_W - 8))
+    content_width = max(10, width - 2)
+    wrapped = textwrap.wrap(text, width=content_width, break_long_words=False, break_on_hyphens=False)
     if not wrapped:
         wrapped = [""]
     body_lines: List[str] = list(wrapped)
@@ -228,12 +276,14 @@ def dialog_box_lines(entry: dict, choice_cursor: int, max_inner_width: int = 44)
             else:
                 line = f"  {opt}  "
             body_lines.append(line)
-    inner = max(width, max(len(line) for line in body_lines))
+    inner_content = max(width, max(len(line) for line in body_lines))
+    inner = inner_content + 2
     lines: List[str] = []
     lines.append("o" + ("-" * inner) + "o")
     lines.append("|" + (" " * inner) + "|")
     for line in body_lines:
-        lines.append("|" + line.ljust(inner) + "|")
+        centered = line.center(inner_content)
+        lines.append("| " + centered + " |")
     lines.append("|" + (" " * inner) + "|")
     if entry_type == "choice":
         bottom = _dialog_bottom_line(inner, "[ Select ]")
@@ -286,7 +336,12 @@ def overlay_dialog_box(canvas: List[List[str]], lines: List[str], x0: int, y0: i
         for dx, cell in enumerate(cells):
             x = x0 + dx
             if 0 <= x < SCREEN_W:
-                canvas[y][x] = cell
+                is_border = dy == 0 or dy == box_h - 1 or dx == 0 or dx == box_w - 1
+                if is_border and cell != " " and not str(cell).startswith("\x1b["):
+                    code = dialog_border_gradient_code(dx, dy, box_w, box_h)
+                    canvas[y][x] = f"{code}{cell}{ANSI_RESET}"
+                else:
+                    canvas[y][x] = cell
 
 
 def build_forest_band(
@@ -713,6 +768,12 @@ def main() -> None:
                     elif key in ("down", "s") and opt_count > 0:
                         choice_cursor = (choice_cursor + 1) % opt_count
                     elif key == "a":
+                        branches = current.get("option_branches", [])
+                        if isinstance(branches, list) and 0 <= choice_cursor < len(branches):
+                            selected_branch = branches[choice_cursor]
+                            if isinstance(selected_branch, list) and selected_branch:
+                                insert_at = dialog_idx + 1
+                                dialog_entries[insert_at:insert_at] = selected_branch
                         dialog_idx = min(len(dialog_entries) - 1, dialog_idx + 1)
                         choice_cursor = 0
                 elif key == "a":
