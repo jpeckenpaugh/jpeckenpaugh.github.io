@@ -3,6 +3,7 @@ import os
 import random
 import time
 import math
+import textwrap
 from typing import Dict, List
 
 from app.rendering.title_panorama import TitlePanorama
@@ -146,12 +147,95 @@ def ansi_line_to_cells(text: str, width: int) -> List[str]:
     return cells
 
 
+def load_quest_dialog(quests_data: Dict[str, object], quest_id: str) -> List[dict]:
+    quest = quests_data.get(quest_id, {}) if isinstance(quests_data, dict) else {}
+    dialog = quest.get("dialog", []) if isinstance(quest, dict) else []
+    if not isinstance(dialog, list):
+        return []
+    entries: List[dict] = []
+    for entry in dialog:
+        text = ""
+        speaker = "narration"
+        if isinstance(entry, str):
+            text = entry.strip()
+        elif isinstance(entry, dict):
+            if str(entry.get("type", "")).lower() == "choice":
+                prompt = str(entry.get("prompt", "")).strip()
+                options = entry.get("options", [])
+                labels: List[str] = []
+                if isinstance(options, list):
+                    for opt in options:
+                        if isinstance(opt, dict):
+                            label = str(opt.get("label", "")).strip()
+                            if label:
+                                labels.append(label)
+                text = prompt
+                if labels:
+                    text = (text + " " if text else "") + " / ".join(labels)
+            else:
+                text = str(entry.get("text", "")).strip()
+                art = str(entry.get("art", "")).lower()
+                if "mushroom_baby" in art:
+                    speaker = "mushy"
+                elif "baby_crow" in art:
+                    speaker = "crow"
+        if not text:
+            continue
+        low = text.lower()
+        if low.startswith("mushy:"):
+            speaker = "mushy"
+        elif low.startswith("crow"):
+            speaker = "crow"
+        elif low.startswith("narration:"):
+            speaker = "narration"
+        entries.append({"speaker": speaker, "text": text})
+    return entries
+
+
+def dialog_box_lines(text: str, max_inner_width: int = 44) -> List[str]:
+    width = max(24, min(max_inner_width, SCREEN_W - 6))
+    wrapped = textwrap.wrap(text, width=max(10, width - 2), break_long_words=False, break_on_hyphens=False)
+    if not wrapped:
+        wrapped = [""]
+    wrapped = wrapped[:3]
+    inner = max(width, max(len(line) for line in wrapped))
+    lines: List[str] = []
+    lines.append("o" + ("-" * inner) + "o")
+    lines.append("|" + (" " * inner) + "|")
+    for line in wrapped:
+        lines.append("|" + line.ljust(inner) + "|")
+    lines.append("|" + (" " * inner) + "|")
+    lines.append("o" + ("-" * inner) + "o")
+    return lines
+
+
+def overlay_dialog_box(canvas: List[List[str]], lines: List[str], anchor_x: int, anchor_y: int) -> None:
+    if not lines:
+        return
+    box_w = len(lines[0])
+    box_h = len(lines)
+    if anchor_x < SCREEN_W // 2:
+        x0 = min(SCREEN_W - box_w, anchor_x + 6)
+    else:
+        x0 = max(0, anchor_x - box_w - 2)
+    y0 = max(0, min(SCREEN_H - box_h, anchor_y - box_h // 2))
+    for dy, raw in enumerate(lines):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        cells = ansi_line_to_cells(raw, box_w)
+        for dx, cell in enumerate(cells):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W:
+                canvas[y][x] = cell
+
+
 def build_forest_band(
     scenes_data: Dict[str, object],
     objects_data: Dict[str, object],
     colors_data: Dict[str, object],
     opponents_data: Dict[str, object],
-) -> tuple[List[str], dict]:
+) -> tuple[List[str], dict, dict]:
     pano = TitlePanorama(
         viewport_width=SCREEN_W,
         height=15,
@@ -214,10 +298,17 @@ def build_forest_band(
     mush_start_x = len(rows[0]) if rows else 0
     mush_art = pano._opponent_art("mushroom_baby")
     mush_mask = pano._opponent_mask("mushroom_baby")
+    mush_top_raw = 0
+    mush_height = 0
     if mush_art:
         art_rows, mask_rows = pano._normalize_layers(mush_art, mush_mask)
         append_piece_with_drop(art_rows, mask_rows, 0)
         mush_width = max((len(line) for line in mush_art), default=0)
+        mush_height = len(art_rows)
+        for iy, line in enumerate(art_rows):
+            if any(ch != " " for ch in line):
+                mush_top_raw = iy
+                break
     else:
         mush_width = 0
     append_piece_with_drop(["    "], ["    "], 0)
@@ -375,6 +466,7 @@ def build_forest_band(
         lines.append("".join(row[:SCREEN_W]).ljust(SCREEN_W))
     while len(lines) < 15:
         lines.append(" " * SCREEN_W)
+    actor_meta: dict = {}
     if crow_meta:
         target_band_y = int(crow_meta.get("raw_target_y", 0))
         target_band_y = max(0, min(14, target_band_y))
@@ -385,10 +477,22 @@ def build_forest_band(
             "start_y": -max(1, int(crow_meta.get("height", 1))),
             "speed": 8.0,
         }
-    return lines, crow_meta
+    actor_meta["mushy"] = {
+        "x": int(mush_start_x + (mush_width // 2) - start_x) if total_width > SCREEN_W else int(max(0, (SCREEN_W - total_width) // 2) + mush_start_x + (mush_width // 2)),
+        "y": SKY_H + max(0, min(14, mush_top_raw)),
+    }
+    return lines, crow_meta, actor_meta
 
 
-def render(clouds: List[dict], forest_lines: List[str], crow_meta: dict, crow_x: float, crow_y: float) -> str:
+def render(
+    clouds: List[dict],
+    forest_lines: List[str],
+    crow_meta: dict,
+    crow_x: float,
+    crow_y: float,
+    dialog_entry: dict,
+    actor_meta: dict,
+) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
     # Top half sky clouds.
@@ -431,6 +535,22 @@ def render(clouds: List[dict], forest_lines: List[str], crow_meta: dict, crow_x:
                 if cell != " ":
                     canvas[y][x] = cell
 
+    # Dialogue overlay.
+    if isinstance(dialog_entry, dict):
+        dialog_text = str(dialog_entry.get("text", "")).strip()
+        speaker = str(dialog_entry.get("speaker", "narration"))
+        if dialog_text:
+            if speaker == "mushy":
+                anchor_x = int(actor_meta.get("mushy", {}).get("x", SCREEN_W // 2))
+                anchor_y = int(actor_meta.get("mushy", {}).get("y", SKY_H + 6))
+            elif speaker == "crow":
+                anchor_x = int(round(crow_x))
+                anchor_y = int(round(crow_y))
+            else:
+                anchor_x = SCREEN_W // 2
+                anchor_y = SKY_H // 2
+            overlay_dialog_box(canvas, dialog_box_lines(dialog_text), anchor_x, anchor_y)
+
     return "\n".join("".join(row) for row in canvas)
 
 
@@ -440,11 +560,13 @@ def main() -> None:
     colors_path = os.path.join(base, "legecay", "data", "colors.json")
     scenes_path = os.path.join(base, "legecay", "data", "scenes.json")
     opponents_path = os.path.join(base, "legecay", "data", "opponents.json")
+    quests_path = os.path.join(base, "legecay", "data", "quests.json")
 
     objects = load_json(objects_path)
     colors = load_json(colors_path)
     scenes = load_json(scenes_path)
     opponents = load_json(opponents_path)
+    quests = load_json(quests_path)
 
     if not isinstance(objects, dict):
         raise RuntimeError("objects.json is not a JSON object")
@@ -454,13 +576,19 @@ def main() -> None:
         raise RuntimeError("scenes.json is not a JSON object")
     if not isinstance(opponents, dict):
         raise RuntimeError("opponents.json is not a JSON object")
+    if not isinstance(quests, dict):
+        raise RuntimeError("quests.json is not a JSON object")
 
     templates = cloud_templates(objects)
     if not templates:
         raise RuntimeError("No cloud_* objects found in objects.json")
 
     clouds = spawn_clouds(templates, count=10)
-    forest_lines, crow_meta = build_forest_band(scenes, objects, colors, opponents)
+    forest_lines, crow_meta, actor_meta = build_forest_band(scenes, objects, colors, opponents)
+    dialog_entries = load_quest_dialog(quests, "island_01_quest_00")
+    dialog_idx = 0
+    dialog_t = 0.0
+    dialog_step_seconds = 5.0
     crow_y = float(crow_meta.get("start_y", -1)) if isinstance(crow_meta, dict) else -1.0
     crow_x = float(crow_meta.get("x", 0.0)) if isinstance(crow_meta, dict) else 0.0
 
@@ -494,7 +622,15 @@ def main() -> None:
                     crow_x = base_x + sway
                 else:
                     crow_x = base_x
-            frame = render(clouds, forest_lines, crow_meta, crow_x, crow_y)
+            if dialog_entries:
+                dialog_t += dt
+                if dialog_t >= dialog_step_seconds:
+                    dialog_t = 0.0
+                    dialog_idx = (dialog_idx + 1) % len(dialog_entries)
+                dialog_entry = dialog_entries[dialog_idx]
+            else:
+                dialog_entry = {}
+            frame = render(clouds, forest_lines, crow_meta, crow_x, crow_y, dialog_entry, actor_meta)
             print(ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)
     except KeyboardInterrupt:
