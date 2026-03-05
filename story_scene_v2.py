@@ -2,6 +2,7 @@ import json
 import os
 import random
 import time
+import math
 from typing import Dict, List
 
 from app.rendering.title_panorama import TitlePanorama
@@ -382,12 +383,12 @@ def build_forest_band(
             "x": crow_x,
             "target_y": SKY_H + target_band_y,
             "start_y": -max(1, int(crow_meta.get("height", 1))),
-            "speed": 16.0,
+            "speed": 8.0,
         }
     return lines, crow_meta
 
 
-def render(clouds: List[dict], forest_lines: List[str], crow_meta: dict, crow_y: float) -> str:
+def render(clouds: List[dict], forest_lines: List[str], crow_meta: dict, crow_x: float, crow_y: float) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
     # Top half sky clouds.
@@ -414,7 +415,7 @@ def render(clouds: List[dict], forest_lines: List[str], crow_meta: dict, crow_y:
 
     # Animated crow overlay.
     crow_rows = crow_meta.get("rows", []) if isinstance(crow_meta, dict) else []
-    crow_x = int(crow_meta.get("x", 0)) if isinstance(crow_meta, dict) else 0
+    crow_xi = int(round(crow_x))
     crow_yi = int(crow_y)
     if isinstance(crow_rows, list):
         for dy, row in enumerate(crow_rows):
@@ -424,7 +425,7 @@ def render(clouds: List[dict], forest_lines: List[str], crow_meta: dict, crow_y:
             if not isinstance(row, list):
                 continue
             for dx, cell in enumerate(row):
-                x = crow_x + dx
+                x = crow_xi + dx
                 if x < 0 or x >= SCREEN_W:
                     continue
                 if cell != " ":
@@ -461,6 +462,7 @@ def main() -> None:
     clouds = spawn_clouds(templates, count=10)
     forest_lines, crow_meta = build_forest_band(scenes, objects, colors, opponents)
     crow_y = float(crow_meta.get("start_y", -1)) if isinstance(crow_meta, dict) else -1.0
+    crow_x = float(crow_meta.get("x", 0.0)) if isinstance(crow_meta, dict) else 0.0
 
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
@@ -477,9 +479,22 @@ def main() -> None:
                     cloud["x"] = SCREEN_W + (cloud["x"] + w)
             if isinstance(crow_meta, dict) and crow_meta:
                 target = float(crow_meta.get("target_y", 0.0))
-                speed = float(crow_meta.get("speed", 16.0))
+                speed = float(crow_meta.get("speed", 8.0))
+                start = float(crow_meta.get("start_y", -1.0))
+                base_x = float(crow_meta.get("x", 0.0))
                 crow_y = min(target, crow_y + (speed * dt))
-            frame = render(clouds, forest_lines, crow_meta, crow_y)
+                if crow_y < target:
+                    span = max(1.0, target - start)
+                    progress = max(0.0, min(1.0, (crow_y - start) / span))
+                    # Winding descent path that eases toward center before hover.
+                    cycles = 1.25
+                    amplitude = (1.0 - progress) * 11.0
+                    sway = math.sin(progress * math.pi * 2.0 * cycles) * amplitude
+                    flutter = math.sin(now * 9.0) * 0.35
+                    crow_x = base_x + sway + flutter
+                else:
+                    crow_x = base_x
+            frame = render(clouds, forest_lines, crow_meta, crow_x, crow_y)
             print(ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)
     except KeyboardInterrupt:
