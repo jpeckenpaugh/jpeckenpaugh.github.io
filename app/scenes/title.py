@@ -327,7 +327,10 @@ class TitleScene(Scene):
                     i = j + 1
                     continue
             if ch == " ":
-                cells.append(" ")
+                if active:
+                    cells.append(f"{active} \x1b[0m")
+                else:
+                    cells.append(" ")
             elif active:
                 cells.append(f"{active}{ch}\x1b[0m")
             else:
@@ -340,7 +343,7 @@ class TitleScene(Scene):
         return cells
 
     def _button_row(self, inner: int) -> str:
-        accept = "\x1b[30;42m[ A / Accept ]\x1b[0m"
+        accept = "\x1b[30;42m[ A / Select ]\x1b[0m"
         cancel = "\x1b[90m[ S / Cancel ]\x1b[0m"
         spacer = " " * 5
         body = accept + spacer + cancel
