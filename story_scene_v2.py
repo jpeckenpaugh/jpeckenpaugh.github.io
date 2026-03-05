@@ -150,7 +150,7 @@ def build_forest_band(
     objects_data: Dict[str, object],
     colors_data: Dict[str, object],
     opponents_data: Dict[str, object],
-) -> List[str]:
+) -> tuple[List[str], dict]:
     pano = TitlePanorama(
         viewport_width=SCREEN_W,
         height=15,
@@ -225,6 +225,52 @@ def build_forest_band(
         tree_id = tree_options[rng.randrange(len(tree_options))]
         append_tree_with_drop(tree_id, rng.randrange(3))
 
+    crow_meta: dict = {}
+    # Build crow sprite meta for animated overlay (not baked into forest rows).
+    crow_art = pano._opponent_art("baby_crow")
+    crow_mask = pano._opponent_mask("baby_crow")
+    if crow_art and mush_width > 0:
+        crow_w = max((len(line) for line in crow_art), default=0)
+        if crow_w > 0:
+            mush_rows, _ = pano._normalize_layers(mush_art, mush_mask) if mush_art else ([], [])
+
+            def non_space_bounds(lines: List[str]) -> tuple[int, int]:
+                min_y = len(lines)
+                max_y = -1
+                for iy, line in enumerate(lines):
+                    if any(ch != " " for ch in line):
+                        min_y = min(min_y, iy)
+                        max_y = max(max_y, iy)
+                if max_y < 0:
+                    return (0, 0)
+                return (min_y, max_y)
+
+            mush_top, _mush_bottom = non_space_bounds(mush_rows)
+            crow_h = len(crow_art)
+
+            mush_center_x = mush_start_x + (mush_width // 2)
+            crow_x0 = max(0, mush_center_x - (crow_w // 2))
+            crow_y0 = max(0, mush_top - crow_h - 1)
+            crow_rows: List[List[str]] = []
+            for y in range(len(crow_art)):
+                art_line = str(crow_art[y]).ljust(crow_w)
+                mask_line = str(crow_mask[y]) if y < len(crow_mask) else ""
+                crow_row: List[str] = []
+                for x, ch in enumerate(art_line):
+                    if ch == " ":
+                        crow_row.append(" ")
+                    else:
+                        key = mask_line[x] if x < len(mask_line) else " "
+                        crow_row.append(pano._colorize(ch, key))
+                crow_rows.append(crow_row)
+            crow_meta = {
+                "rows": crow_rows,
+                "raw_x": crow_x0,
+                "raw_target_y": crow_y0,
+                "width": crow_w,
+                "height": crow_h,
+            }
+
     # Center viewport on Mushy instead of left-aligning the strip.
     total_width = len(rows[0]) if rows else 0
     mush_center = mush_start_x + (mush_width // 2)
@@ -235,13 +281,18 @@ def build_forest_band(
         start_x = 0
 
     forest_cells: List[List[str]] = []
+    crow_x = int(crow_meta.get("raw_x", 0)) if crow_meta else 0
     for row in rows:
         if total_width <= SCREEN_W:
             left_pad = max(0, (SCREEN_W - total_width) // 2)
             padded = ([" "] * left_pad) + row + ([" "] * (SCREEN_W - left_pad - total_width))
             forest_cells.append(padded[:SCREEN_W])
+            if crow_meta:
+                crow_x = left_pad + int(crow_meta.get("raw_x", 0))
         else:
             forest_cells.append(row[start_x : start_x + SCREEN_W])
+            if crow_meta:
+                crow_x = int(crow_meta.get("raw_x", 0)) - start_x
 
     forest_with_padding = pano._add_vertical_padding(forest_cells)
     base_rows: List[List[str]] = []
@@ -323,10 +374,20 @@ def build_forest_band(
         lines.append("".join(row[:SCREEN_W]).ljust(SCREEN_W))
     while len(lines) < 15:
         lines.append(" " * SCREEN_W)
-    return lines
+    if crow_meta:
+        target_band_y = int(crow_meta.get("raw_target_y", 0))
+        target_band_y = max(0, min(14, target_band_y))
+        crow_meta = {
+            "rows": crow_meta.get("rows", []),
+            "x": crow_x,
+            "target_y": SKY_H + target_band_y,
+            "start_y": -max(1, int(crow_meta.get("height", 1))),
+            "speed": 16.0,
+        }
+    return lines, crow_meta
 
 
-def render(clouds: List[dict], forest_lines: List[str]) -> str:
+def render(clouds: List[dict], forest_lines: List[str], crow_meta: dict, crow_y: float) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
     # Top half sky clouds.
@@ -350,6 +411,24 @@ def render(clouds: List[dict], forest_lines: List[str]) -> str:
     for y in range(SKY_H):
         src = forest_lines[y] if y < len(forest_lines) else ""
         canvas[SKY_H + y] = ansi_line_to_cells(src, SCREEN_W)
+
+    # Animated crow overlay.
+    crow_rows = crow_meta.get("rows", []) if isinstance(crow_meta, dict) else []
+    crow_x = int(crow_meta.get("x", 0)) if isinstance(crow_meta, dict) else 0
+    crow_yi = int(crow_y)
+    if isinstance(crow_rows, list):
+        for dy, row in enumerate(crow_rows):
+            y = crow_yi + dy
+            if y < 0 or y >= SCREEN_H:
+                continue
+            if not isinstance(row, list):
+                continue
+            for dx, cell in enumerate(row):
+                x = crow_x + dx
+                if x < 0 or x >= SCREEN_W:
+                    continue
+                if cell != " ":
+                    canvas[y][x] = cell
 
     return "\n".join("".join(row) for row in canvas)
 
@@ -380,7 +459,8 @@ def main() -> None:
         raise RuntimeError("No cloud_* objects found in objects.json")
 
     clouds = spawn_clouds(templates, count=10)
-    forest_lines = build_forest_band(scenes, objects, colors, opponents)
+    forest_lines, crow_meta = build_forest_band(scenes, objects, colors, opponents)
+    crow_y = float(crow_meta.get("start_y", -1)) if isinstance(crow_meta, dict) else -1.0
 
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
@@ -395,7 +475,11 @@ def main() -> None:
                 w = int(cloud["template"]["width"])
                 if cloud["x"] + w < 0:
                     cloud["x"] = SCREEN_W + (cloud["x"] + w)
-            frame = render(clouds, forest_lines)
+            if isinstance(crow_meta, dict) and crow_meta:
+                target = float(crow_meta.get("target_y", 0.0))
+                speed = float(crow_meta.get("speed", 16.0))
+                crow_y = min(target, crow_y + (speed * dt))
+            frame = render(clouds, forest_lines, crow_meta, crow_y)
             print(ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)
     except KeyboardInterrupt:
