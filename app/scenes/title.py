@@ -17,19 +17,27 @@ class TitleScene(Scene):
             return
         scenes_data = {}
         objects_data = {}
+        colors_data = {}
+        opponents_data = {}
         try:
             scenes_data = app.asset_repository.load("scenes.json")
             objects_data = app.asset_repository.load("objects.json")
+            colors_data = app.asset_repository.load("colors.json")
+            opponents_data = app.asset_repository.load("opponents.json")
         except Exception:
             scenes_data = {}
             objects_data = {}
+            colors_data = {}
+            opponents_data = {}
         self._panorama = TitlePanorama(
             viewport_width=100,
-            height=10,
+            height=15,
             speed=1.0,
             forest_width_scale=0.5,
             scenes_data=scenes_data,
             objects_data=objects_data,
+            colors_data=colors_data,
+            opponents_data=opponents_data,
         )
 
     def input_timeout_seconds(self) -> float:
