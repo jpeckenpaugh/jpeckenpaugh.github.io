@@ -16,7 +16,9 @@ class TitleScene(Scene):
     ]
 
     def __init__(self) -> None:
-        self._root_options = ["Continue", "New Game", "Asset Explorer", "Quit"]
+        self._root_options = ["New Game", "Saved Game", "Asset Explorer"]
+        self._default_accept_label = "Confirm"
+        self._default_cancel_label = "Back"
         self._cursor = 0
         self._new_game = NewGameWorkflow()
         self._last_drawn_offset = -1
@@ -27,6 +29,7 @@ class TitleScene(Scene):
         self._screen_width = 100
         self._screen_height = 30
         self._last_blink_phase = -1
+        self._last_art_blink_phase = -1
         self._last_cloud_phase = -1
         self._cloud_rng = random.Random(int(time.time() * 1000) & 0xFFFFFFFF)
         self._clouds: list[dict] = []
@@ -224,7 +227,7 @@ class TitleScene(Scene):
 
     def _option_enabled(self, app: "GameApp", index: int) -> bool:
         label = self._root_options[index]
-        if label == "Continue":
+        if label == "Saved Game":
             return app.save_service.has_slot(app.session.selected_slot)
         return True
 
@@ -347,9 +350,12 @@ class TitleScene(Scene):
             cells.append(" ")
         return cells
 
-    def _button_row(self, inner: int, accept_label: str = "Select", cancel_label: str = "Cancel") -> str:
-        accept = f"\x1b[30;42m[ A / {accept_label} ]\x1b[0m"
-        cancel = f"\x1b[90m[ S / {cancel_label} ]\x1b[0m"
+    def _button_row(self, inner: int, accept_label: str, cancel_label: str) -> str:
+        silver = "\x1b[38;2;192;192;192m"
+        green = "\x1b[38;2;90;200;120m"
+        red = "\x1b[38;2;220;90;90m"
+        accept = f"{silver}[ {green}A{silver} / {accept_label} ]\x1b[0m"
+        cancel = f"{silver}[ {red}S{silver} / {cancel_label} ]\x1b[0m"
         spacer = " " * 5
         body = accept + spacer + cancel
         visible = len(self._strip_ansi(body))
@@ -438,7 +444,7 @@ class TitleScene(Scene):
             rows.append(row)
         return rows
 
-    def _player_select_art_lines(self, app: "GameApp", inner_width: int, blink_on: bool) -> list[str]:
+    def _player_select_art_lines(self, app: "GameApp", inner_width: int, art_blink_on: bool) -> list[str]:
         try:
             players_data = app.asset_repository.load("players.json")
         except Exception:
@@ -448,10 +454,10 @@ class TitleScene(Scene):
         choices = self._new_game.player_choices()[:2]
         if not choices:
             return []
-        rendered: list[tuple[list[list[str]], str, bool]] = []
+        rendered: list[tuple[list[list[str]], bool]] = []
         total_width = 0
         max_h = 0
-        for player_id, label, selected in choices:
+        for player_id, _label, selected in choices:
             entry = players_data.get(player_id, {})
             if not isinstance(entry, dict):
                 entry = {}
@@ -462,69 +468,100 @@ class TitleScene(Scene):
             h = len(rows)
             total_width += w
             max_h = max(max_h, h)
-            rendered.append((rows, label, selected))
+            rendered.append((rows, selected))
         if not rendered:
             return []
         gap = 8 if len(rendered) > 1 else 0
         total_width += gap * (len(rendered) - 1)
         start_x = max(0, (inner_width - total_width) // 2)
-        grid_h = max_h + 1
+        grid_h = max_h
         grid = [[" " for _ in range(inner_width)] for _ in range(grid_h)]
         cursor_x = start_x
-        for rows, label, selected in rendered:
+        for rows, selected in rendered:
             h = len(rows)
             w = len(rows[0]) if rows else 0
             y_offset = max(0, (max_h - h) // 2)
+            show = (not selected) or art_blink_on
             for row_idx, row in enumerate(rows):
-                y = y_offset + row_idx                
+                y = y_offset + row_idx
                 for col_idx, cell in enumerate(row):
                     x = cursor_x + col_idx
-                    if 0 <= x < inner_width and 0 <= y < grid_h and cell != " ":
+                    if show and 0 <= x < inner_width and 0 <= y < grid_h and cell != " ":
                         grid[y][x] = cell
-            label_text = f"[ {label} ]" if (selected and blink_on) else f"  {label}  "
-            label_cells = self._ansi_cells(f"{self._white_code()}{label_text}\x1b[0m", len(label_text))
-            label_y = max_h
-            label_x = cursor_x + max(0, (w - len(label_text)) // 2)
-            if 0 <= label_y < grid_h:
-                for i, cell in enumerate(label_cells):
-                    x = label_x + i
-                    if 0 <= x < inner_width and cell != " ":
-                        grid[label_y][x] = cell
             cursor_x += w + gap
         return ["".join(row) for row in grid]
 
-    def _menu_box_lines(self, app: "GameApp", blink_on: bool) -> list[str]:
+    def _name_input_lines(self, inner_width: int, blink_on: bool, app: "GameApp") -> list[str]:
+        _ = app
+        name_value, key_rows, cursor = self._new_game.name_input_state()
+        cur_row, cur_col = cursor
+        lines: list[str] = []
+        lines.append(f"Name: {name_value[:16]}_".ljust(inner_width)[:inner_width])
+        lines.append("")
+        for row_idx, row in enumerate(key_rows):
+            parts: list[str] = []
+            for col_idx, token in enumerate(row):
+                selected = (row_idx == cur_row and col_idx == cur_col)
+                if selected:
+                    left = "[" if blink_on else " "
+                    right = "]" if blink_on else " "
+                else:
+                    left = " "
+                    right = " "
+                parts.append(f"{left}{token}{right}")
+            line = " ".join(parts)
+            lines.append(line[:inner_width].ljust(inner_width))
+        return lines
+
+    def _menu_box_lines(self, app: "GameApp", blink_on: bool, art_blink_on: bool) -> list[str]:
         width = 46
         inner = width - 2
         heading, detail, options, cursor = self._menu_view(app)
         visible_options = options[:4]
         while len(visible_options) < 4:
             visible_options.append("")
-        accept_label = "Select"
-        cancel_label = "Cancel"
+        accept_label = self._default_accept_label
+        cancel_label = self._default_cancel_label
         is_player_select = self._new_game.is_active() and self._new_game.step() == "player_select"
+        is_name_select = self._new_game.is_active() and self._new_game.step() == "name_select"
+        is_name_input = self._new_game.is_active() and self._new_game.step() == "name_input"
+        is_fortune = self._new_game.is_active() and self._new_game.step() == "fortune"
+        is_start_confirm = self._new_game.is_active() and self._new_game.step() == "start_confirm"
+        is_root_panel = not self._new_game.is_active()
+        if is_root_panel:
+            cancel_label = "Quit"
         if is_player_select:
             accept_label = "Confirm"
             cancel_label = "Back"
         lines: list[str] = []
-        lines.append("o" + ("-" * inner) + "o")
-        lines.append("|" + heading.center(inner)[:inner] + "|")
+        content_rows: list[str] = []
         if is_player_select:
-            art_lines = self._player_select_art_lines(app, inner, blink_on=blink_on)
-            for row in art_lines:
-                padded = "".join(self._ansi_cells(row, inner))
-                lines.append("|" + padded + "|")
-            lines.append("|" + (" " * inner) + "|")
+            content_rows.extend(self._player_select_art_lines(app, inner, art_blink_on=art_blink_on))
+        elif is_name_input:
+            content_rows.append(heading.center(inner)[:inner])
+            content_rows.extend(self._name_input_lines(inner, blink_on=blink_on, app=app))
+        elif is_start_confirm:
+            content_rows.append(heading.center(inner)[:inner])
+            content_rows.append("")
         else:
-            lines.append("|" + detail.ljust(inner)[:inner] + "|")
+            if not is_root_panel:
+                content_rows.append(heading.center(inner)[:inner])
+            if not is_root_panel:
+                content_rows.append(detail.ljust(inner)[:inner])
             for idx, label in enumerate(visible_options):
                 if idx == cursor:
                     left_bracket = "[" if blink_on else " "
                     right_bracket = "]" if blink_on else " "
-                    text = f" {left_bracket} {label} {right_bracket}"
+                    text = f"{left_bracket} {label} {right_bracket}"
                 else:
-                    text = f"   {label}"
-                lines.append("|" + text.ljust(inner)[:inner] + "|")
+                    text = f"  {label}  "
+                content_rows.append(text.center(inner)[:inner])
+
+        lines.append("o" + ("-" * inner) + "o")
+        lines.append("|" + (" " * inner) + "|")
+        for row in content_rows:
+            padded = "".join(self._ansi_cells(row, inner))
+            lines.append("|" + padded + "|")
         lines.append("|" + self._button_row(inner, accept_label=accept_label, cancel_label=cancel_label) + "|")
         lines.append("|" + (" " * inner) + "|")
         lines.append("o" + ("-" * inner) + "o")
@@ -546,10 +583,16 @@ class TitleScene(Scene):
             ]
         )
 
+    def _art_blink_phase(self) -> int:
+        return int(time.time() * 4.0)
+
     def needs_redraw(self, app: "GameApp") -> bool:
         self._ensure_panorama(app)
         if self._blink_phase() != self._last_blink_phase:
             return True
+        if self._new_game.is_active() and self._new_game.step() == "player_select":
+            if self._art_blink_phase() != self._last_art_blink_phase:
+                return True
         if self._cloud_phase() != self._last_cloud_phase:
             return True
         if self._signature(app) != self._last_signature:
@@ -561,8 +604,11 @@ class TitleScene(Scene):
         continue_enabled = app.save_service.has_slot(app.session.selected_slot)
         offset = self._panorama.offset()
         blink_phase = self._blink_phase()
+        art_blink_phase = self._art_blink_phase()
         blink_on = (blink_phase % 2) == 0
+        art_blink_on = (art_blink_phase % 2) == 0
         self._last_blink_phase = blink_phase
+        self._last_art_blink_phase = art_blink_phase
         self._last_cloud_phase = self._cloud_phase()
         self._update_clouds(time.time())
         self._last_drawn_offset = offset
@@ -607,8 +653,8 @@ class TitleScene(Scene):
                 if 0 <= x < self._screen_width and cell != " ":
                     canvas[subtitle_y][x] = cell
 
-        menu_lines = self._menu_box_lines(app, blink_on=blink_on)
-        menu_start_y = 5 if (self._new_game.is_active() and self._new_game.step() == "player_select") else 9
+        menu_lines = self._menu_box_lines(app, blink_on=blink_on, art_blink_on=art_blink_on)
+        menu_start_y = max(0, (self._screen_height - len(menu_lines)) // 2)
         for idx, line in enumerate(menu_lines):
             y = menu_start_y + idx
             if 0 <= y < self._screen_height:
@@ -630,12 +676,6 @@ class TitleScene(Scene):
             if key == "options":
                 app.options_return_scene_id = "title"
                 return SceneResult(next_scene_id="options")
-            if key == "up":
-                self._move(app, -1)
-                return SceneResult()
-            if key == "down":
-                self._move(app, 1)
-                return SceneResult()
             outcome = self._new_game.handle_key(app, key)
             return SceneResult(save_now=outcome.save_now)
 
@@ -654,7 +694,7 @@ class TitleScene(Scene):
             return SceneResult()
 
         choice = self._root_options[self._cursor]
-        if choice == "Continue":
+        if choice == "Saved Game":
             loaded = app.save_service.load(app.session.selected_slot)
             if loaded is None:
                 app.session.with_message("No save found in slot 1.")

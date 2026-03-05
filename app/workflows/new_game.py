@@ -23,6 +23,13 @@ class NewGameOutcome:
 
 
 class NewGameWorkflow:
+    _NAME_KEYBOARD = [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"],
+        ["K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"],
+        ["U", "V", "W", "X", "Y", "Z", "-", "'", "SPACE", "DEL"],
+        ["SHIFT", "DONE", "CANCEL"],
+    ]
     _FORTUNE_VALUES = {
         "Poor (10 GP)": 10,
         "Well-Off (100 GP)": 100,
@@ -42,6 +49,11 @@ class NewGameWorkflow:
         self._player_ids: list[str] = []
         self._player_labels: list[str] = []
         self._player_cursor = 0
+        self._name_choices: list[str] = []
+        self._name_cursor = 0
+        self._name_key_row = 0
+        self._name_key_col = 0
+        self._name_shift = True
 
     def is_active(self) -> bool:
         return self._active
@@ -84,20 +96,17 @@ class NewGameWorkflow:
             label = self._current_player_label()
             detail = f"Slot {self._pending_slot}  Avatar: {label}"
         elif self._step == "name_select":
-            heading = "Choose Name"
-            detail = f"Avatar: {self._pending_avatar_label or self._current_player_label()}"
+            heading = "Say Your Name"
+            detail = ""
         elif self._step == "name_input":
             heading = "Custom Name"
             detail = f"Name: {(self._pending_name or '')[:16]}_"
         elif self._step == "fortune":
             heading = "Choose Fortune"
-            detail = f"Name: {self._pending_name or 'WARRIOR'}"
+            detail = ""
         elif self._step == "start_confirm":
-            heading = "Start New Game"
-            detail = (
-                f"S{self._pending_slot}  {self._pending_name or 'WARRIOR'}"
-                f"  {self._pending_fortune}"
-            )
+            heading = "Being Your Adventure"
+            detail = ""
         return NewGameView(step=self._step, heading=heading, detail=detail, options=options, cursor=self._cursor)
 
     def step(self) -> str:
@@ -109,6 +118,10 @@ class NewGameWorkflow:
             label = self._player_labels[idx] if idx < len(self._player_labels) else player_id
             out.append((player_id, label, idx == self._player_cursor))
         return out
+
+    def name_input_state(self) -> tuple[str, list[list[str]], tuple[int, int]]:
+        rows = self._display_keyboard_rows()
+        return ((self._pending_name or "")[:16], rows, (self._name_key_row, self._name_key_col))
 
     def handle_key(self, app: "GameApp", key: str) -> NewGameOutcome:
         if not self._active:
@@ -127,21 +140,30 @@ class NewGameWorkflow:
             if key == "confirm":
                 self._pending_avatar_id = self._current_player_id()
                 self._pending_avatar_label = self._current_player_label()
+                self._prepare_name_choices(app)
                 self._step = "name_select"
                 self._cursor = 0
                 return NewGameOutcome()
             return NewGameOutcome()
 
+        if self._step == "name_select":
+            if key == "left":
+                self._cycle_name(-1)
+                return NewGameOutcome()
+            if key == "right":
+                self._cycle_name(1)
+                return NewGameOutcome()
+
         if self._step == "name_input":
+            if key in ("up", "down", "left", "right"):
+                self._move_name_key_cursor(key)
+                return NewGameOutcome()
             if key == "back":
                 self._step = "name_select"
                 self._cursor = 1
                 return NewGameOutcome()
             if key == "confirm":
-                if self._pending_name.strip():
-                    self._pending_name = self._pending_name.strip()[:16]
-                    self._step = "fortune"
-                    self._cursor = 1
+                self._press_name_key()
                 return NewGameOutcome()
             if key in ("\x08", "\x7f"):
                 self._pending_name = self._pending_name[:-1]
@@ -149,6 +171,24 @@ class NewGameWorkflow:
             if len(key) == 1 and key.isprintable() and key not in ("\r", "\n"):
                 if len(self._pending_name) < 16:
                     self._pending_name += key
+            return NewGameOutcome()
+
+        if self._step == "start_confirm":
+            if key == "back":
+                self._step = "fortune"
+                self._cursor = 1
+                return NewGameOutcome()
+            if key == "confirm":
+                self._create_session(app)
+                self.cancel()
+                return NewGameOutcome(save_now=True)
+            return NewGameOutcome()
+
+        if key == "up":
+            self.move_cursor(-1)
+            return NewGameOutcome()
+        if key == "down":
+            self.move_cursor(1)
             return NewGameOutcome()
 
         if key == "back":
@@ -191,35 +231,22 @@ class NewGameWorkflow:
             return NewGameOutcome()
 
         if self._step == "name_select":
-            if choice == "Auto":
-                self._pending_name = self._random_name(app)
+            if self._cursor == 0:
+                self._pending_name = self._current_name_choice()
                 self._step = "fortune"
                 self._cursor = 1
             elif choice == "Custom...":
                 self._step = "name_input"
-                self._cursor = 0
-            else:
-                self._step = "player_select"
+                self._name_key_row = 0
+                self._name_key_col = 0
+                self._name_shift = True
                 self._cursor = 0
             return NewGameOutcome()
 
         if self._step == "fortune":
-            if choice == "Back":
-                self._step = "name_select"
-                self._cursor = 0
-            else:
-                self._pending_fortune = choice
-                self._step = "start_confirm"
-                self._cursor = 0
-            return NewGameOutcome()
-
-        if self._step == "start_confirm":
-            if choice.startswith("Begin"):
-                self._create_session(app)
-                self.cancel()
-                return NewGameOutcome(save_now=True)
-            self._step = "fortune"
-            self._cursor = 1
+            self._pending_fortune = choice
+            self._step = "start_confirm"
+            self._cursor = 0
             return NewGameOutcome()
 
         return NewGameOutcome()
@@ -250,13 +277,13 @@ class NewGameWorkflow:
         if self._step == "player_select":
             return ["Confirm Avatar", "Back"]
         if self._step == "name_select":
-            return ["Auto", "Custom...", "Back"]
+            return [f"< {self._current_name_choice()} >", "Custom..."]
         if self._step == "name_input":
             return ["Type then press A", "S to cancel"]
         if self._step == "fortune":
-            return ["Poor (10 GP)", "Well-Off (100 GP)", "Royalty (1000 GP)", "Back"]
+            return ["Poor (10 GP)", "Well-Off (100 GP)", "Royalty (1000 GP)"]
         if self._step == "start_confirm":
-            return ["Begin adventure", "Back"]
+            return []
         return []
 
     def _load_players(self, app: "GameApp") -> None:
@@ -332,3 +359,98 @@ class NewGameWorkflow:
             if candidate.lower() not in existing:
                 return candidate
             suffix += 1
+
+    def _prepare_name_choices(self, app: "GameApp") -> None:
+        try:
+            players = app.asset_repository.load("players.json")
+        except Exception:
+            players = {}
+        choices: list[str] = []
+        entry = players.get(self._pending_avatar_id, {}) if isinstance(players, dict) else {}
+        if isinstance(entry, dict):
+            raw_names = entry.get("names", [])
+            if isinstance(raw_names, list):
+                seen: set[str] = set()
+                for raw in raw_names:
+                    name = str(raw).strip()[:16]
+                    if not name:
+                        continue
+                    low = name.lower()
+                    if low in seen:
+                        continue
+                    seen.add(low)
+                    choices.append(name)
+        if not choices:
+            choices = ["WARRIOR"]
+        self._rng.shuffle(choices)
+        self._name_choices = choices
+        self._name_cursor = 0
+
+    def _current_name_choice(self) -> str:
+        if not self._name_choices:
+            return "WARRIOR"
+        idx = max(0, min(self._name_cursor, len(self._name_choices) - 1))
+        return self._name_choices[idx]
+
+    def _cycle_name(self, delta: int) -> None:
+        if not self._name_choices:
+            return
+        self._name_cursor = (self._name_cursor + delta) % len(self._name_choices)
+
+    def _display_keyboard_rows(self) -> list[list[str]]:
+        rows: list[list[str]] = []
+        for row in self._NAME_KEYBOARD:
+            display_row: list[str] = []
+            for key in row:
+                if len(key) == 1 and key.isalpha():
+                    display_row.append(key.upper() if self._name_shift else key.lower())
+                else:
+                    display_row.append(key)
+            rows.append(display_row)
+        return rows
+
+    def _move_name_key_cursor(self, direction: str) -> None:
+        row = self._name_key_row
+        col = self._name_key_col
+        if direction == "up":
+            row = (row - 1) % len(self._NAME_KEYBOARD)
+            col = min(col, len(self._NAME_KEYBOARD[row]) - 1)
+        elif direction == "down":
+            row = (row + 1) % len(self._NAME_KEYBOARD)
+            col = min(col, len(self._NAME_KEYBOARD[row]) - 1)
+        elif direction == "left":
+            col = (col - 1) % len(self._NAME_KEYBOARD[row])
+        elif direction == "right":
+            col = (col + 1) % len(self._NAME_KEYBOARD[row])
+        self._name_key_row = row
+        self._name_key_col = col
+
+    def _press_name_key(self) -> None:
+        row = max(0, min(self._name_key_row, len(self._NAME_KEYBOARD) - 1))
+        col = max(0, min(self._name_key_col, len(self._NAME_KEYBOARD[row]) - 1))
+        key = self._NAME_KEYBOARD[row][col]
+        if key == "SHIFT":
+            self._name_shift = not self._name_shift
+            return
+        if key == "DEL":
+            self._pending_name = self._pending_name[:-1]
+            return
+        if key == "CANCEL":
+            self._step = "name_select"
+            self._cursor = 1
+            return
+        if key == "DONE":
+            if self._pending_name.strip():
+                self._pending_name = self._pending_name.strip()[:16]
+                self._step = "fortune"
+                self._cursor = 1
+            return
+        if len(self._pending_name) >= 16:
+            return
+        if key == "SPACE":
+            self._pending_name += " "
+            return
+        if len(key) == 1 and key.isalpha():
+            self._pending_name += key.upper() if self._name_shift else key.lower()
+            return
+        self._pending_name += key[:1]
