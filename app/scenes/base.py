@@ -15,5 +15,8 @@ class Scene:
     def render(self, app: "GameApp") -> str:
         raise NotImplementedError
 
+    def input_timeout_seconds(self) -> Optional[float]:
+        return None
+
     def handle_input(self, app: "GameApp", key: str) -> SceneResult:
         raise NotImplementedError

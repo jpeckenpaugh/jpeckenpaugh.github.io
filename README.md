@@ -13,6 +13,7 @@ python main.py
 - `GameApp` bootstraps runtime dependencies and runs the loop.
 - `GameSession` is the saveable root state object.
 - `TitleScene` includes `Continue`, `New Game`, `Asset Explorer`, and `Quit`.
+- `TitleScene` now includes a legacy-style top panorama tilemap (`forest + town + forest`) that scrolls over a 100x10 viewport.
 - `AssetExplorerScene` browses JSON assets from `legecay/data`.
 - `SaveGameService` handles JSON save/load (`saves/slot1.json`).
 - `Renderer` and `InputAdapter` isolate terminal IO.

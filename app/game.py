@@ -40,7 +40,13 @@ class GameApp:
             scene = self.active_scene()
             frame = scene.render(self)
             self.renderer.render_text(frame)
-            key = self.input.read_key()
+            timeout = scene.input_timeout_seconds()
+            if timeout is None:
+                key = self.input.read_key()
+            else:
+                key = self.input.read_key_timeout(timeout)
+                if key is None:
+                    continue
             result = scene.handle_input(self, key)
             self.apply_result(result)
         self.renderer.clear()

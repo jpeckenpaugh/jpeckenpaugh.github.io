@@ -1,8 +1,31 @@
 import os
 import sys
+import time
+from typing import Optional
 
 
 class InputAdapter:
+    def read_key_timeout(self, timeout_seconds: Optional[float]) -> Optional[str]:
+        if timeout_seconds is None:
+            return self.read_key()
+        timeout_seconds = max(0.0, float(timeout_seconds))
+        if os.name == "nt":
+            import msvcrt
+
+            end = time.monotonic() + timeout_seconds
+            while time.monotonic() < end:
+                if msvcrt.kbhit():
+                    return self.read_key()
+                time.sleep(0.01)
+            return None
+
+        import select
+
+        ready, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if ready:
+            return self.read_key()
+        return None
+
     def read_key(self) -> str:
         if os.name == "nt":
             import msvcrt
