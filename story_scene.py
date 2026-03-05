@@ -226,6 +226,33 @@ def build_forest_band(
     grass_mask = pano._object_mask("grass")
     pattern = grass_art[0] if grass_art else "~"
     pattern_mask = grass_mask[0] if grass_mask else "g"
+    scatter_obj = {}
+    if isinstance(objects_data.get("battle_ground", {}), dict):
+        scatter_obj = objects_data.get("battle_ground", {})
+    elif isinstance(objects_data.get("pebble", {}), dict):
+        scatter_obj = objects_data.get("pebble", {})
+    dynamic = scatter_obj.get("dynamic", {}) if isinstance(scatter_obj, dict) else {}
+    scatter_glyphs = dynamic.get("glyphs", []) if isinstance(dynamic, dict) else []
+    scatter_keys = dynamic.get("color_keys", []) if isinstance(dynamic, dict) else []
+    scatter_chance = float(dynamic.get("scatter_chance", 0.0) or 0.0) if isinstance(dynamic, dict) else 0.0
+    scatter_chance *= 0.5
+    scatter_enabled = bool(scatter_glyphs and scatter_keys and scatter_chance > 0.0)
+    scatter_rng = random.Random(90517)
+
+    def apply_scatter(row: List[str]) -> List[str]:
+        if not scatter_enabled:
+            return row
+        out = list(row)
+        for x, cell in enumerate(out):
+            glyph = pano._strip_ansi(cell)
+            if glyph != "~":
+                continue
+            if scatter_rng.random() >= scatter_chance:
+                continue
+            glyph = str(scatter_glyphs[scatter_rng.randrange(len(scatter_glyphs))])[:1] or "o"
+            key = str(scatter_keys[scatter_rng.randrange(len(scatter_keys))])[:1] or "Z"
+            out[x] = pano._colorize(glyph, key)
+        return out
 
     # Fill transparent gaps with grass on rows that are already ground-heavy.
     for y, row in enumerate(shifted):
@@ -240,6 +267,7 @@ def build_forest_band(
             ch = pattern[x % max(1, len(pattern))]
             key = pattern_mask[x % max(1, len(pattern_mask))] if pattern_mask else "g"
             shifted[y][x] = pano._colorize(ch, key)
+        shifted[y] = apply_scatter(shifted[y])
 
     for _ in range(3):
         row: List[str] = []
@@ -247,7 +275,7 @@ def build_forest_band(
             ch = pattern[x % max(1, len(pattern))]
             key = pattern_mask[x % max(1, len(pattern_mask))] if pattern_mask else "g"
             row.append(pano._colorize(ch, key))
-        shifted.append(row)
+        shifted.append(apply_scatter(row))
 
     lines: List[str] = []
     for row in shifted[:15]:
