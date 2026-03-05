@@ -1,0 +1,1 @@
+"""Minimal OO scaffold for the RPG rebuild."""

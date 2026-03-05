@@ -1,0 +1,56 @@
+import os
+import sys
+
+
+class InputAdapter:
+    def read_key(self) -> str:
+        if os.name == "nt":
+            import msvcrt
+
+            ch = msvcrt.getch()
+            if ch in (b"\x00", b"\xe0"):
+                ext = msvcrt.getch()
+                if ext == b"H":
+                    return "up"
+                if ext == b"P":
+                    return "down"
+                if ext == b"K":
+                    return "left"
+                if ext == b"M":
+                    return "right"
+                return "unknown"
+            if ch == b"\r":
+                return "enter"
+            if ch == b"\x1b":
+                return "q"
+            try:
+                return ch.decode("utf-8").lower()
+            except UnicodeDecodeError:
+                return "unknown"
+
+        import termios
+        import tty
+
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+            if ch == "\x1b":
+                n1 = sys.stdin.read(1)
+                if n1 == "[":
+                    n2 = sys.stdin.read(1)
+                    if n2 == "A":
+                        return "up"
+                    if n2 == "B":
+                        return "down"
+                    if n2 == "D":
+                        return "left"
+                    if n2 == "C":
+                        return "right"
+                return "q"
+            if ch in ("\r", "\n"):
+                return "enter"
+            return ch.lower()
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
