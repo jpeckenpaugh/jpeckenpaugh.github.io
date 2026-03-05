@@ -1,5 +1,6 @@
 from app.scenes.base import Scene, SceneResult
 from app.rendering.title_panorama import TitlePanorama
+from app.workflows.new_game import NewGameWorkflow
 import time
 import random
 
@@ -15,8 +16,9 @@ class TitleScene(Scene):
     ]
 
     def __init__(self) -> None:
-        self._options = ["Continue", "New Game", "Asset Explorer", "Quit"]
+        self._root_options = ["Continue", "New Game", "Asset Explorer", "Quit"]
         self._cursor = 0
+        self._new_game = NewGameWorkflow()
         self._last_drawn_offset = -1
         self._last_signature = ""
         self._panorama = None
@@ -221,13 +223,16 @@ class TitleScene(Scene):
         return 0.1
 
     def _option_enabled(self, app: "GameApp", index: int) -> bool:
-        label = self._options[index]
+        label = self._root_options[index]
         if label == "Continue":
             return app.save_service.has_slot(app.session.selected_slot)
         return True
 
     def _move(self, app: "GameApp", delta: int) -> None:
-        total = len(self._options)
+        if self._new_game.is_active():
+            self._new_game.move_cursor(delta)
+            return
+        total = len(self._root_options)
         for _ in range(total):
             self._cursor = (self._cursor + delta) % total
             if self._option_enabled(app, self._cursor):
@@ -342,9 +347,9 @@ class TitleScene(Scene):
             cells.append(" ")
         return cells
 
-    def _button_row(self, inner: int) -> str:
-        accept = "\x1b[30;42m[ A / Select ]\x1b[0m"
-        cancel = "\x1b[90m[ S / Cancel ]\x1b[0m"
+    def _button_row(self, inner: int, accept_label: str = "Select", cancel_label: str = "Cancel") -> str:
+        accept = f"\x1b[30;42m[ A / {accept_label} ]\x1b[0m"
+        cancel = f"\x1b[90m[ S / {cancel_label} ]\x1b[0m"
         spacer = " " * 5
         body = accept + spacer + cancel
         visible = len(self._strip_ansi(body))
@@ -397,35 +402,147 @@ class TitleScene(Scene):
             return [], "#"
         return [str(line) for line in art], (blocking if len(blocking) == 1 else "#")
 
+    def _menu_view(self, app: "GameApp") -> tuple[str, str, list[str], int]:
+        if self._new_game.is_active():
+            view = self._new_game.view()
+            return view.heading, view.detail, view.options, view.cursor
+        options: list[str] = []
+        for idx, label in enumerate(self._root_options):
+            suffix = "" if self._option_enabled(app, idx) else " (no save)"
+            options.append(label + suffix)
+        return "", "", options, self._cursor
+
+    def _player_art_cells(self, player_entry: dict) -> list[list[str]]:
+        art = player_entry.get("art", []) if isinstance(player_entry, dict) else []
+        mask = player_entry.get("color_map", []) if isinstance(player_entry, dict) else []
+        if not isinstance(art, list):
+            return []
+        if not isinstance(mask, list):
+            mask = []
+        width = max((len(str(line)) for line in art), default=0)
+        rows: list[list[str]] = []
+        for y, raw_line in enumerate(art):
+            line = str(raw_line).ljust(width)
+            mask_line = str(mask[y]) if y < len(mask) else ""
+            row: list[str] = []
+            for x, ch in enumerate(line):
+                if ch == " ":
+                    row.append(" ")
+                    continue
+                color_key = mask_line[x] if x < len(mask_line) else ""
+                color = self._color_code_for_key(color_key)
+                if color:
+                    row.append(f"{color}{ch}\x1b[0m")
+                else:
+                    row.append(ch)
+            rows.append(row)
+        return rows
+
+    def _player_select_art_lines(self, app: "GameApp", inner_width: int, blink_on: bool) -> list[str]:
+        try:
+            players_data = app.asset_repository.load("players.json")
+        except Exception:
+            players_data = {}
+        if not isinstance(players_data, dict):
+            return []
+        choices = self._new_game.player_choices()[:2]
+        if not choices:
+            return []
+        rendered: list[tuple[list[list[str]], str, bool]] = []
+        total_width = 0
+        max_h = 0
+        for player_id, label, selected in choices:
+            entry = players_data.get(player_id, {})
+            if not isinstance(entry, dict):
+                entry = {}
+            rows = self._player_art_cells(entry)
+            if not rows:
+                continue
+            w = len(rows[0]) if rows else 0
+            h = len(rows)
+            total_width += w
+            max_h = max(max_h, h)
+            rendered.append((rows, label, selected))
+        if not rendered:
+            return []
+        gap = 8 if len(rendered) > 1 else 0
+        total_width += gap * (len(rendered) - 1)
+        start_x = max(0, (inner_width - total_width) // 2)
+        grid_h = max_h + 1
+        grid = [[" " for _ in range(inner_width)] for _ in range(grid_h)]
+        cursor_x = start_x
+        for rows, label, selected in rendered:
+            h = len(rows)
+            w = len(rows[0]) if rows else 0
+            y_offset = max(0, (max_h - h) // 2)
+            for row_idx, row in enumerate(rows):
+                y = y_offset + row_idx                
+                for col_idx, cell in enumerate(row):
+                    x = cursor_x + col_idx
+                    if 0 <= x < inner_width and 0 <= y < grid_h and cell != " ":
+                        grid[y][x] = cell
+            label_text = f"[ {label} ]" if (selected and blink_on) else f"  {label}  "
+            label_cells = self._ansi_cells(f"{self._white_code()}{label_text}\x1b[0m", len(label_text))
+            label_y = max_h
+            label_x = cursor_x + max(0, (w - len(label_text)) // 2)
+            if 0 <= label_y < grid_h:
+                for i, cell in enumerate(label_cells):
+                    x = label_x + i
+                    if 0 <= x < inner_width and cell != " ":
+                        grid[label_y][x] = cell
+            cursor_x += w + gap
+        return ["".join(row) for row in grid]
+
     def _menu_box_lines(self, app: "GameApp", blink_on: bool) -> list[str]:
         width = 46
         inner = width - 2
+        heading, detail, options, cursor = self._menu_view(app)
+        visible_options = options[:4]
+        while len(visible_options) < 4:
+            visible_options.append("")
+        accept_label = "Select"
+        cancel_label = "Cancel"
+        is_player_select = self._new_game.is_active() and self._new_game.step() == "player_select"
+        if is_player_select:
+            accept_label = "Confirm"
+            cancel_label = "Back"
         lines: list[str] = []
         lines.append("o" + ("-" * inner) + "o")
-        lines.append("|" + (" " * inner) + "|")
-        for idx, label in enumerate(self._options):
-            enabled = self._option_enabled(app, idx)
-            suffix = "" if enabled else " (no save)"
-            if idx == self._cursor:
-                left_bracket = "[" if blink_on else " "
-                right_bracket = "]" if blink_on else " "
-                text = f" {left_bracket} {label}{suffix} {right_bracket}"
-            else:
-                text = f"   {label}{suffix}"
-            lines.append("|" + text.ljust(inner)[:inner] + "|")
-        lines.append("|" + (" " * inner) + "|")
-        lines.append("|" + self._button_row(inner) + "|")
+        lines.append("|" + heading.center(inner)[:inner] + "|")
+        if is_player_select:
+            art_lines = self._player_select_art_lines(app, inner, blink_on=blink_on)
+            for row in art_lines:
+                padded = "".join(self._ansi_cells(row, inner))
+                lines.append("|" + padded + "|")
+            lines.append("|" + (" " * inner) + "|")
+        else:
+            lines.append("|" + detail.ljust(inner)[:inner] + "|")
+            for idx, label in enumerate(visible_options):
+                if idx == cursor:
+                    left_bracket = "[" if blink_on else " "
+                    right_bracket = "]" if blink_on else " "
+                    text = f" {left_bracket} {label} {right_bracket}"
+                else:
+                    text = f"   {label}"
+                lines.append("|" + text.ljust(inner)[:inner] + "|")
+        lines.append("|" + self._button_row(inner, accept_label=accept_label, cancel_label=cancel_label) + "|")
         lines.append("|" + (" " * inner) + "|")
         lines.append("o" + ("-" * inner) + "o")
         return lines
 
     def _signature(self, app: "GameApp") -> str:
+        menu_heading, menu_detail, menu_options, menu_cursor = self._menu_view(app)
         return "|".join(
             [
                 str(self._cursor),
                 str(app.session.selected_slot),
                 str(app.session.last_message),
                 str(app.save_service.has_slot(app.session.selected_slot)),
+                str(self._new_game.is_active()),
+                menu_heading,
+                menu_detail,
+                ",".join(menu_options),
+                str(menu_cursor),
             ]
         )
 
@@ -491,7 +608,7 @@ class TitleScene(Scene):
                     canvas[subtitle_y][x] = cell
 
         menu_lines = self._menu_box_lines(app, blink_on=blink_on)
-        menu_start_y = 9
+        menu_start_y = 5 if (self._new_game.is_active() and self._new_game.step() == "player_select") else 9
         for idx, line in enumerate(menu_lines):
             y = menu_start_y + idx
             if 0 <= y < self._screen_height:
@@ -504,11 +621,24 @@ class TitleScene(Scene):
                     if 0 <= x < self._screen_width:
                         canvas[y][x] = cell
 
-        if not continue_enabled and self._cursor == 0:
+        if (not self._new_game.is_active()) and (not continue_enabled) and self._cursor == 0:
             self._move(app, 1)
         return "\n".join("".join(row) for row in canvas)
 
     def handle_input(self, app: "GameApp", key: str) -> SceneResult:
+        if self._new_game.is_active():
+            if key == "options":
+                app.options_return_scene_id = "title"
+                return SceneResult(next_scene_id="options")
+            if key == "up":
+                self._move(app, -1)
+                return SceneResult()
+            if key == "down":
+                self._move(app, 1)
+                return SceneResult()
+            outcome = self._new_game.handle_key(app, key)
+            return SceneResult(save_now=outcome.save_now)
+
         if key == "up":
             self._move(app, -1)
             return SceneResult()
@@ -523,7 +653,7 @@ class TitleScene(Scene):
         if key != "confirm":
             return SceneResult()
 
-        choice = self._options[self._cursor]
+        choice = self._root_options[self._cursor]
         if choice == "Continue":
             loaded = app.save_service.load(app.session.selected_slot)
             if loaded is None:
@@ -534,9 +664,9 @@ class TitleScene(Scene):
             return SceneResult(save_now=False)
 
         if choice == "New Game":
-            app.session = app.new_session()
-            app.session.with_message("New game created. Gameplay scene not wired yet.")
-            return SceneResult(save_now=True)
+            self._new_game.start(app)
+            app.session.with_message("")
+            return SceneResult()
 
         if choice == "Asset Explorer":
             app.session.with_message("")

@@ -8,6 +8,9 @@ class Player:
     level: int = 1
     hp: int = 20
     max_hp: int = 20
+    gold: int = 0
+    avatar_id: str = "player_01"
+    location: str = "Town"
 
 
 @dataclass

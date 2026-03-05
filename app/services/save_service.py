@@ -17,6 +17,33 @@ class SaveGameService:
     def has_slot(self, slot: int) -> bool:
         return os.path.isfile(self._slot_path(slot))
 
+    def delete(self, slot: int) -> None:
+        path = self._slot_path(slot)
+        if os.path.isfile(path):
+            os.remove(path)
+
+    def next_empty_slot(self, max_slots: int = 100) -> Optional[int]:
+        for slot in range(1, max(1, int(max_slots)) + 1):
+            if not self.has_slot(slot):
+                return slot
+        return None
+
+    def last_played_slot(self, max_slots: int = 100) -> Optional[int]:
+        latest_mtime = -1.0
+        latest_slot: Optional[int] = None
+        for slot in range(1, max(1, int(max_slots)) + 1):
+            path = self._slot_path(slot)
+            if not os.path.isfile(path):
+                continue
+            try:
+                mtime = os.path.getmtime(path)
+            except OSError:
+                continue
+            if mtime > latest_mtime:
+                latest_mtime = mtime
+                latest_slot = slot
+        return latest_slot
+
     def save(self, session: GameSession, slot: int) -> None:
         payload = {
             "player": asdict(session.player),
@@ -39,6 +66,9 @@ class SaveGameService:
             level=int(player_payload.get("level", 1)),
             hp=int(player_payload.get("hp", 20)),
             max_hp=int(player_payload.get("max_hp", 20)),
+            gold=int(player_payload.get("gold", 0)),
+            avatar_id=str(player_payload.get("avatar_id", "player_01")),
+            location=str(player_payload.get("location", "Town")),
         )
         return GameSession(
             player=player,
