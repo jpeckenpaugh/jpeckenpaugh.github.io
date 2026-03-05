@@ -10,11 +10,26 @@ class TitleScene(Scene):
         self._cursor = 0
         self._last_drawn_offset = -1
         self._last_signature = ""
+        self._panorama = None
+
+    def _ensure_panorama(self, app: "GameApp") -> None:
+        if self._panorama is not None:
+            return
+        scenes_data = {}
+        objects_data = {}
+        try:
+            scenes_data = app.asset_repository.load("scenes.json")
+            objects_data = app.asset_repository.load("objects.json")
+        except Exception:
+            scenes_data = {}
+            objects_data = {}
         self._panorama = TitlePanorama(
             viewport_width=100,
             height=10,
             speed=1.0,
             forest_width_scale=0.5,
+            scenes_data=scenes_data,
+            objects_data=objects_data,
         )
 
     def input_timeout_seconds(self) -> float:
@@ -38,17 +53,19 @@ class TitleScene(Scene):
             [
                 str(self._cursor),
                 str(app.session.selected_slot),
-                str(bool(app.session.last_message)),
+                str(app.session.last_message),
                 str(app.save_service.has_slot(app.session.selected_slot)),
             ]
         )
 
     def needs_redraw(self, app: "GameApp") -> bool:
+        self._ensure_panorama(app)
         if self._signature(app) != self._last_signature:
             return True
         return self._panorama.offset() != self._last_drawn_offset
 
     def render(self, app: "GameApp") -> str:
+        self._ensure_panorama(app)
         continue_enabled = app.save_service.has_slot(app.session.selected_slot)
         offset = self._panorama.offset()
         self._last_drawn_offset = offset

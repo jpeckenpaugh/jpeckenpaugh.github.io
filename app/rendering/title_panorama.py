@@ -1,6 +1,7 @@
 import time
+import random
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -40,19 +41,106 @@ class TitlePanorama:
         height: int = 10,
         speed: float = 1.0,
         forest_width_scale: float = 0.5,
+        scenes_data: Optional[dict] = None,
+        objects_data: Optional[dict] = None,
     ) -> None:
         self.viewport_width = viewport_width
         self.height = height
         self.speed = speed
+        self.scenes_data = scenes_data if isinstance(scenes_data, dict) else {}
+        self.objects_data = objects_data if isinstance(objects_data, dict) else {}
         base_forest_width = max(1, viewport_width // 2)
         self.forest_width = max(1, int(base_forest_width * max(0.1, min(1.0, forest_width_scale))))
         self.town_width = viewport_width
         self._map = self._build_map()
 
+    def _object_art(self, object_id: str) -> List[str]:
+        obj = self.objects_data.get(object_id, {})
+        art = obj.get("art", []) if isinstance(obj, dict) else []
+        if not isinstance(art, list):
+            return []
+        return [str(line) for line in art]
+
+    def _normalize_art(self, art: List[str]) -> List[str]:
+        if not art:
+            return [" "]
+        width = max((len(line) for line in art), default=1)
+        rows = [line.ljust(width) for line in art]
+        if len(rows) > self.height:
+            return rows[-self.height :]
+        if len(rows) < self.height:
+            padding = [" " * width for _ in range(self.height - len(rows))]
+            return padding + rows
+        return rows
+
+    def _compose_strip(self, object_ids: List[str], target_width: int) -> List[str]:
+        rows = [""] * self.height
+        for object_id in object_ids:
+            art = self._normalize_art(self._object_art(object_id))
+            for y in range(self.height):
+                rows[y] += art[y]
+        if target_width <= 0:
+            return rows
+        return [row[:target_width].ljust(target_width) for row in rows]
+
+    def _town_from_assets(self, width: int) -> List[str]:
+        scene = self.scenes_data.get("town", {})
+        objects = scene.get("objects", []) if isinstance(scene, dict) else []
+        sequence: List[str] = []
+        if isinstance(objects, list):
+            for token in objects:
+                if not isinstance(token, dict):
+                    continue
+                object_id = str(token.get("id", "") or "")
+                if not object_id:
+                    continue
+                repeat = int(token.get("repeat", 1) or 1)
+                repeat = max(1, min(repeat, 12))
+                for _ in range(repeat):
+                    sequence.append(object_id)
+        if not sequence:
+            sequence = ["water", "town_wall", "grass", "house", "grass", "sign_small", "grass", "town_wall", "water"]
+        return self._compose_strip(sequence, width)
+
+    def _forest_from_assets(self, width: int, seed: int) -> List[str]:
+        options = [
+            "tree_large",
+            "tree_large_2",
+            "tree_large_3",
+            "bush_large",
+            "bush_large_2",
+            "bush_large_3",
+        ]
+        options = [obj_id for obj_id in options if self._object_art(obj_id)]
+        if not options:
+            options = ["tree_large", "bush_large", "grass_1"]
+        separator = "grass_1" if self._object_art("grass_1") else ""
+        rng = random.Random(seed)
+        sequence: List[str] = []
+        current_width = 0
+        while current_width < width and options:
+            object_id = options[rng.randrange(len(options))]
+            art = self._normalize_art(self._object_art(object_id))
+            piece_width = len(art[0]) if art else 0
+            sequence.append(object_id)
+            current_width += piece_width
+            if separator and current_width < width:
+                sep_art = self._normalize_art(self._object_art(separator))
+                current_width += len(sep_art[0]) if sep_art else 0
+                sequence.append(separator)
+            if piece_width <= 0:
+                break
+        return self._compose_strip(sequence, width)
+
     def _build_map(self) -> TileMap:
-        forest_a = self._forest_rows(self.forest_width, phase=0)
-        town = self._town_rows(self.town_width)
-        forest_b = self._forest_rows(self.forest_width, phase=7)
+        if self.scenes_data and self.objects_data:
+            forest_a = self._forest_from_assets(self.forest_width, seed=4242)
+            town = self._town_from_assets(self.town_width)
+            forest_b = self._forest_from_assets(self.forest_width, seed=6262)
+        else:
+            forest_a = self._forest_rows(self.forest_width, phase=0)
+            town = self._town_rows(self.town_width)
+            forest_b = self._forest_rows(self.forest_width, phase=7)
         rows = [
             forest_a[y] + town[y] + forest_b[y]
             for y in range(self.height)
