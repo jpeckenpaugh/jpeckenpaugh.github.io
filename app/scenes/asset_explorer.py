@@ -157,6 +157,9 @@ class AssetExplorerScene(Scene):
                     out.append(" ")
                     continue
                 key = mask_line[col_idx] if col_idx < len(mask_line) else ""
+                if key == "!":
+                    out.append(ch)
+                    continue
                 code = code_by_key.get(key, "")
                 if code:
                     out.append(f"{code}{ch}{self._ansi_reset}")

@@ -88,6 +88,9 @@ class TitlePanorama:
     def _color_code_for_key(self, key: str) -> str:
         if not key:
             return ""
+        # Reserved: opaque/no-tint mask key.
+        if key == "!":
+            return ""
         if key in self._color_code_cache:
             return self._color_code_cache[key]
         entry = self.colors_data.get(key, {})

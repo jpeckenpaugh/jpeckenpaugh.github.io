@@ -254,6 +254,9 @@ class TitleScene(Scene):
         return f"\x1b[38;2;{r};{g};{b}m"
 
     def _color_code_for_key(self, key: str) -> str:
+        # Reserved: opaque/no-tint mask key.
+        if key == "!":
+            return ""
         entry = self._colors_data.get(key, {})
         if not isinstance(entry, dict):
             return ""
