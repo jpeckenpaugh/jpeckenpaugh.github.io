@@ -1,42 +1,11 @@
 {
-  "version": 1,
   "player": {
-    "name": "Cora",
-    "avatar_id": "player_02",
+    "name": "Hero",
     "level": 1,
-    "xp": 0,
-    "stat_points": 0,
-    "gold": 58,
-    "battle_speed": "normal",
     "hp": 20,
-    "max_hp": 20,
-    "mp": 0,
-    "max_mp": 0,
-    "atk": 5,
-    "defense": 5,
-    "location": "Town",
-    "inventory": {
-      "rations": 7
-    },
-    "gear_inventory": [],
-    "equipment": {},
-    "gear_atk": 0,
-    "gear_defense": 0,
-    "gear_hp_bonus": 0,
-    "gear_mp_bonus": 0,
-    "gear_mp_regen": 0,
-    "elements": [
-      "base"
-    ],
-    "current_element": "base",
-    "followers": [],
-    "flags": {},
-    "quests": {}
+    "max_hp": 20
   },
-  "quests": {},
-  "flags": {},
-  "meta": {
-    "created_at": "2026-03-04 22:12",
-    "last_played": "2026-03-04 22:12"
-  }
+  "current_scene_id": "title",
+  "selected_slot": 1,
+  "last_message": "New game created. Gameplay scene not wired yet."
 }

@@ -81,29 +81,86 @@ class TitleScene(Scene):
         return self._hex_to_ansi(entry.get("hex", ""))
 
     def _gradient_code(self, x: int, y: int) -> str:
-        width = max(1, self._screen_width - 1)
-        height = max(1, self._screen_height - 1)
-        t = (x / width + y / height) / 2.0
-        start = (180, 180, 210)
-        mid = (95, 140, 235)
-        end = (80, 90, 120)
-        if t <= 0.5:
-            tt = t / 0.5
-            r = int(start[0] + (mid[0] - start[0]) * tt)
-            g = int(start[1] + (mid[1] - start[1]) * tt)
-            b = int(start[2] + (mid[2] - start[2]) * tt)
-        else:
-            tt = (t - 0.5) / 0.5
-            r = int(mid[0] + (end[0] - mid[0]) * tt)
-            g = int(mid[1] + (end[1] - mid[1]) * tt)
-            b = int(mid[2] + (end[2] - mid[2]) * tt)
-        return f"\x1b[38;2;{r};{g};{b}m"
+        return self._logo_gradient_code(x, y, self._screen_width, self._screen_height)
 
-    def _colorize_text_line(self, text: str, y: int, start_x: int) -> str:
+    def _white_code(self) -> str:
+        return "\x1b[38;2;255;255;255m"
+
+    def _colorize_menu_line(self, text: str, y: int, start_x: int) -> str:
+        visible_text = self._strip_ansi(text)
+        width = len(visible_text)
+        is_top_bottom = width >= 2 and visible_text[0] == "o" and visible_text[-1] == "o"
         out: list[str] = []
-        for i, ch in enumerate(text):
+        i = 0
+        style_active = False
+        visible_idx = 0
+        while i < len(text):
+            ch = text[i]
+            if ch == "\x1b" and i + 1 < len(text) and text[i + 1] == "[":
+                j = i + 2
+                while j < len(text) and text[j] != "m":
+                    j += 1
+                if j < len(text):
+                    seq = text[i : j + 1]
+                    out.append(seq)
+                    if seq == "\x1b[0m":
+                        style_active = False
+                    else:
+                        style_active = True
+                    i = j + 1
+                    continue
             if ch == " ":
                 out.append(" ")
+            else:
+                is_side_border = visible_idx == 0 or visible_idx == width - 1
+                is_top_bottom_border = is_top_bottom and ch in ("o", "-")
+                is_frame = is_side_border or is_top_bottom_border
+                if style_active and not is_frame:
+                    out.append(ch)
+                else:
+                    code = self._gradient_code(start_x + visible_idx, y) if is_frame else self._white_code()
+                    out.append(f"{code}{ch}\x1b[0m")
+            visible_idx += 1
+            i += 1
+        return "".join(out)
+
+    def _strip_ansi(self, text: str) -> str:
+        out: list[str] = []
+        i = 0
+        while i < len(text):
+            ch = text[i]
+            if ch == "\x1b" and i + 1 < len(text) and text[i + 1] == "[":
+                j = i + 2
+                while j < len(text) and text[j] != "m":
+                    j += 1
+                if j < len(text):
+                    i = j + 1
+                    continue
+            out.append(ch)
+            i += 1
+        return "".join(out)
+
+    def _button_row(self, inner: int) -> str:
+        accept = "\x1b[30;42m[ A / Accept ]\x1b[0m"
+        cancel = "\x1b[90m[ S / Cancel ]\x1b[0m"
+        spacer = " " * 5
+        body = accept + spacer + cancel
+        visible = len(self._strip_ansi(body))
+        pad_left = max(0, (inner - visible) // 2)
+        pad_right = max(0, inner - visible - pad_left)
+        return (" " * pad_left) + body + (" " * pad_right)
+
+    def _title_subheading(self, y: int, start_x: int) -> str:
+        left = "*-----<{([  "
+        mid = "AI World Engine"
+        right = "  ])}>-----*"
+        full = left + mid + right
+        out: list[str] = []
+        for i, ch in enumerate(full):
+            if ch == " ":
+                out.append(" ")
+            elif len(left) <= i < len(left) + len(mid):
+                out.append(f"{self._white_code()}{ch}\x1b[0m")
             else:
                 code = self._gradient_code(start_x + i, y)
                 out.append(f"{code}{ch}\x1b[0m")
@@ -139,14 +196,15 @@ class TitleScene(Scene):
         width = 46
         inner = width - 2
         lines: list[str] = []
-        lines.append("+" + ("-" * inner) + "+")
-        lines.append("|" + " Main Menu ".center(inner, " ") + "|")
+        lines.append("o" + ("-" * inner) + "o")
         lines.append("|" + (" " * inner) + "|")
         for idx, label in enumerate(self._options):
             enabled = self._option_enabled(app, idx)
-            cursor = ">" if idx == self._cursor else " "
             suffix = "" if enabled else " (no save)"
-            text = f" {cursor} {label}{suffix}"
+            if idx == self._cursor:
+                text = f" [ {label}{suffix} ]"
+            else:
+                text = f"   {label}{suffix}"
             lines.append("|" + text.ljust(inner)[:inner] + "|")
         lines.append("|" + (" " * inner) + "|")
         lines.append("|" + f" Slot: {app.session.selected_slot}".ljust(inner)[:inner] + "|")
@@ -154,8 +212,8 @@ class TitleScene(Scene):
             lines.append("|" + f" {app.session.last_message}".ljust(inner)[:inner] + "|")
         else:
             lines.append("|" + (" " * inner) + "|")
-        lines.append("|" + " W/S move  Enter confirm  Q quit ".ljust(inner)[:inner] + "|")
-        lines.append("+" + ("-" * inner) + "+")
+        lines.append("|" + self._button_row(inner) + "|")
+        lines.append("o" + ("-" * inner) + "o")
         return lines
 
     def _signature(self, app: "GameApp") -> str:
@@ -210,30 +268,40 @@ class TitleScene(Scene):
                 row = "".join(rendered)
                 lines[y] = (" " * start_x) + row + (" " * max(0, self._screen_width - start_x - logo_width))
 
+        subtitle_y = logo_start_y + logo_height + 1
+        if 0 <= subtitle_y < self._screen_height:
+            subtitle_width = len("*-----<{([  AI World Engine  ])}>-----*")
+            start_x = max(0, (self._screen_width - subtitle_width) // 2)
+            subtitle = self._title_subheading(subtitle_y, start_x)
+            lines[subtitle_y] = (" " * start_x) + subtitle + (" " * max(0, self._screen_width - start_x - subtitle_width))
+
         menu_lines = self._menu_box_lines(app)
         menu_start_y = 8
         for idx, line in enumerate(menu_lines):
             y = menu_start_y + idx
             if 0 <= y < self._screen_height:
-                plain_len = len(line)
-                start_x = max(0, (self._screen_width - plain_len) // 2)
-                colored = self._colorize_text_line(line, y, start_x)
-                lines[y] = (" " * start_x) + colored + (" " * max(0, self._screen_width - start_x - plain_len))
+                visible_len = len(self._strip_ansi(line))
+                start_x = max(0, (self._screen_width - visible_len) // 2)
+                colored = self._colorize_menu_line(line, y, start_x)
+                lines[y] = (" " * start_x) + colored + (" " * max(0, self._screen_width - start_x - visible_len))
 
         if not continue_enabled and self._cursor == 0:
             self._move(app, 1)
         return "\n".join(lines)
 
     def handle_input(self, app: "GameApp", key: str) -> SceneResult:
-        if key in ("up", "w"):
+        if key == "up":
             self._move(app, -1)
             return SceneResult()
-        if key in ("down", "s"):
+        if key == "down":
             self._move(app, 1)
             return SceneResult()
-        if key == "q":
+        if key == "back":
             return SceneResult(quit_game=True)
-        if key != "enter":
+        if key == "options":
+            app.options_return_scene_id = "title"
+            return SceneResult(next_scene_id="options")
+        if key != "confirm":
             return SceneResult()
 
         choice = self._options[self._cursor]

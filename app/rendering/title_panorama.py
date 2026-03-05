@@ -20,6 +20,14 @@ def _hex_to_ansi_fg(hex_code: str) -> str:
     return f"\x1b[38;2;{r};{g};{b}m"
 
 
+def _unit_hash(value: int) -> float:
+    x = int(value) & 0xFFFFFFFF
+    x ^= (x << 13) & 0xFFFFFFFF
+    x ^= (x >> 17)
+    x ^= (x << 5) & 0xFFFFFFFF
+    return (x & 0xFFFFFFFF) / 4294967295.0
+
+
 @dataclass
 class TileMap:
     cells: List[List[str]]
@@ -109,6 +117,15 @@ class TitlePanorama:
         if not isinstance(mask, list):
             return []
         return [str(line) for line in mask]
+
+    def _object_variation(self, object_id: str) -> float:
+        obj = self.objects_data.get(object_id, {})
+        if not isinstance(obj, dict):
+            return 0.0
+        try:
+            return max(0.0, min(1.0, float(obj.get("variation", 0.0) or 0.0)))
+        except (TypeError, ValueError):
+            return 0.0
 
     def _opponent_entry(self, opponent_id: str) -> dict:
         base = self.opponents_data.get("base_opponents", {})
@@ -263,6 +280,16 @@ class TitlePanorama:
         bottom_rows: List[List[str]] = []
         if bottom_count:
             source_row = cells[-1]
+            water_art = self._object_art("water")
+            water_mask = self._object_mask("water")
+            grass_art = self._object_art("grass")
+            grass_mask = self._object_mask("grass")
+            water_pattern = water_art[0] if water_art else "~"
+            water_pattern_mask = water_mask[0] if water_mask else "b"
+            grass_pattern = grass_art[0] if grass_art else "~"
+            grass_pattern_mask = grass_mask[0] if grass_mask else "g"
+            water_variation = self._object_variation("water")
+            grass_variation = self._object_variation("grass")
             bottom: List[str] = []
             blue_codes = {
                 self._color_code_for_key("b"),
@@ -271,10 +298,17 @@ class TitlePanorama:
             for cell in source_row:
                 glyph = self._strip_ansi(cell)
                 is_blue_water = glyph == "~" and any(code and code in cell for code in blue_codes)
-                if is_blue_water:
-                    bottom.append(self._colorize("~", "b"))
-                else:
-                    bottom.append(self._colorize("~", "g"))
+                pattern = water_pattern if is_blue_water else grass_pattern
+                pattern_mask = water_pattern_mask if is_blue_water else grass_pattern_mask
+                variation = water_variation if is_blue_water else grass_variation
+                x = len(bottom)
+                ch = pattern[x % max(1, len(pattern))] if pattern else "~"
+                mask_char = pattern_mask[x % max(1, len(pattern_mask))] if pattern_mask else ("b" if is_blue_water else "g")
+                if mask_char.isalpha() and variation > 0.0:
+                    unit = _unit_hash((x + 1) * 1315423911)
+                    if unit < variation:
+                        mask_char = mask_char.swapcase()
+                bottom.append(self._colorize(ch, mask_char))
             bottom_rows.append(bottom)
         trailing_rows = [[" " for _ in range(width)] for _ in range(trailing_blank_count)]
         return top_rows + cells + bottom_rows + trailing_rows

@@ -2,6 +2,7 @@ from app.io.input_adapter import InputAdapter
 from app.io.renderer import Renderer
 from app.scenes.asset_explorer import AssetExplorerScene
 from app.scenes.base import SceneResult
+from app.scenes.options import OptionsScene
 from app.scenes.title import TitleScene
 from app.services.asset_repository import AssetRepository
 from app.services.save_service import SaveGameService
@@ -15,9 +16,11 @@ class GameApp:
         self.save_service = SaveGameService()
         self.asset_repository = AssetRepository()
         self.session = self.new_session()
+        self.options_return_scene_id = "title"
         self.scenes = {
             "title": TitleScene(),
             "asset_explorer": AssetExplorerScene(),
+            "options": OptionsScene(),
         }
         self.running = True
 

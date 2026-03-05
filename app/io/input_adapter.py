@@ -1,4 +1,5 @@
 import os
+import select
 import sys
 import time
 from typing import Optional
@@ -43,9 +44,13 @@ class InputAdapter:
                     return "right"
                 return "unknown"
             if ch == b"\r":
-                return "enter"
+                return "options"
             if ch == b"\x1b":
-                return "q"
+                return "back"
+            if ch in (b"a", b"A"):
+                return "confirm"
+            if ch in (b"s", b"S"):
+                return "back"
             try:
                 return ch.decode("utf-8").lower()
             except UnicodeDecodeError:
@@ -60,8 +65,14 @@ class InputAdapter:
             tty.setraw(fd)
             ch = sys.stdin.read(1)
             if ch == "\x1b":
+                ready, _, _ = select.select([sys.stdin], [], [], 0.01)
+                if not ready:
+                    return "back"
                 n1 = sys.stdin.read(1)
                 if n1 == "[":
+                    ready, _, _ = select.select([sys.stdin], [], [], 0.01)
+                    if not ready:
+                        return "back"
                     n2 = sys.stdin.read(1)
                     if n2 == "A":
                         return "up"
@@ -71,9 +82,13 @@ class InputAdapter:
                         return "left"
                     if n2 == "C":
                         return "right"
-                return "q"
+                return "back"
             if ch in ("\r", "\n"):
-                return "enter"
+                return "options"
+            if ch in ("a", "A"):
+                return "confirm"
+            if ch in ("s", "S"):
+                return "back"
             return ch.lower()
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
