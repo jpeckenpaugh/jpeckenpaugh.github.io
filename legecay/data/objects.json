@@ -855,7 +855,7 @@
       "bB"
     ],
     "align": 0,
-    "variation": 0.10
+    "variation": 0.1
   },
   "pebble": {
     "dynamic": {
@@ -910,5 +910,103 @@
       ],
       "scatter_chance": 0.25
     }
+  },
+  "cloud_large_1": {
+    "art": [
+      "               _",
+      "              (`  ).",
+      "             (     ).",
+      "            _(       '`.",
+      "        .=(`(      .   )",
+      "       ((    (..__.:'-'",
+      "       `(       ) )",
+      "         ` __.:'   )",
+      "      ( )       --'",
+      "     (_.'"
+    ],
+    "color_mask": [
+      "               l",
+      "              lL  ll",
+      "             l     Ll",
+      "            Ll       'lL",
+      "        L=LlL      l   Ll",
+      "       lL    lLL__L:'-L",
+      "       lL       l Ll",
+      "         l LLl:'   l",
+      "      l l       --'",
+      "     lL.'"
+    ],
+    "align": 0
+  },
+  "cloud_medium_1": {
+    "art": [
+      "      _",
+      "   .:(`  )`.",
+      "  :(   .    )",
+      "   `.  (    ) )"
+    ],
+    "color_mask": [
+      "      l",
+      "   l:Ll  llL",
+      "  Ll   l    l",
+      "   lL  l    l l"
+    ],
+    "align": 0
+  },
+  "cloud_medium_2": {
+    "art": [
+      "      .--",
+      "   .+(   )",
+      "  (   .  )",
+      " (   (   ))",
+      "  `- __.'"
+    ],
+    "color_mask": [
+      "      lLL",
+      "   l+L   l",
+      "  l   l  l",
+      " l   l   Ll",
+      "  lL LLlL"
+    ],
+    "align": 0
+  },
+  "cloud_medium_3": {
+    "art": [
+      "        ._",
+      "   `-'.-(`  )",
+      "      :(      ))",
+      "     `(    )  ))",
+      "      ` __.:'"
+    ],
+    "color_mask": [
+      "        lL",
+      "   lLlL-lLl  l",
+      "      Ll      Ll",
+      "     lL    l  Ll",
+      "      l LLl:L"
+    ],
+    "align": 0
+  },
+  "cloud_small_1": {
+    "art": [
+      " (`  ).",
+      "(     )."
+    ],
+    "color_mask": [
+      " Ll  lL",
+      "l     Ll"
+    ],
+    "align": 0
+  },
+  "cloud_small_2": {
+    "art": [
+      ":(`  )`.",
+      "(   .  )"
+    ],
+    "color_mask": [
+      "LlL  llL",
+      "l   l  l"
+    ],
+    "align": 0
   }
 }

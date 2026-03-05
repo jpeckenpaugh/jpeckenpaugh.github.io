@@ -1,0 +1,102 @@
+```text
+                _                                  
+              (`  ).                   _           
+             (     ).              .:(`  )`.       
+            _(       '`.          :(   .    )      
+        .=(`(      .   )     .--  `.  (    ) )      
+       ((    (..__.:'-'   .+(   )   ` _`  ) )                 
+       `(       ) )       (   .  )     (   )  ._   
+         ` __.:'   )     (   (   ))     `-'.-(`  ) 
+      ( )       --'       `- __.'         :(      )) 
+     (_.'          .')                    `(    )  ))
+                  (_  )                     ` __.:'          
+```
+
+
+
+
+
+From that ASCII cloud cluster, you can separate the shapes into **1 large cloud**, **3 medium clouds**, and **2 small clouds**. I’ve extracted and cleaned them so each can be reused individually in a side-view scene.
+
+---
+
+# Large Cloud
+
+```text
+               _                                  
+              (`  ).                   
+             (     ).              
+            _(       '`.          
+        .=(`(      .   )     
+       ((    (..__.:'-'   
+       `(       ) )       
+         ` __.:'   )     
+      ( )       --'       
+     (_.'          
+```
+
+---
+
+# Medium Cloud 1
+
+```text
+      _           
+   .:(`  )`.       
+  :(   .    )      
+   `.  (    ) )      
+```
+
+---
+
+# Medium Cloud 2
+
+```text
+      .--  
+   .+(   )   
+  (   .  )     
+ (   (   ))    
+  `- __.'      
+```
+
+---
+
+# Medium Cloud 3
+
+```text
+        ._   
+   `-'.-(`  ) 
+      :(      ))
+     `(    )  ))
+      ` __.:'  
+```
+
+---
+
+# Small Cloud 1
+
+```text
+ (`  ).
+(     ).
+```
+
+---
+
+# Small Cloud 2
+
+```text
+:(`  )`.
+(   .  )
+```
+
+---
+
+💡 **Tip for side-scroll scenes**
+
+If you are doing a **parallax sky**, you can assign:
+
+| Size   | Use                                 |
+| ------ | ----------------------------------- |
+| Large  | background layer (slowest movement) |
+| Medium | mid layer                           |
+| Small  | fast foreground clouds              |
+

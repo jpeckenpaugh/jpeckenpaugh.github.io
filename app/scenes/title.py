@@ -1,10 +1,18 @@
 from app.scenes.base import Scene, SceneResult
 from app.rendering.title_panorama import TitlePanorama
 import time
+import random
 
 
 class TitleScene(Scene):
     scene_id = "title"
+    _CLOUD_RGB_PALETTE = [
+        (255, 255, 255),
+        (236, 240, 246),
+        (214, 222, 235),
+        (198, 216, 246),
+        (178, 204, 242),
+    ]
 
     def __init__(self) -> None:
         self._options = ["Continue", "New Game", "Asset Explorer", "Quit"]
@@ -17,6 +25,11 @@ class TitleScene(Scene):
         self._screen_width = 100
         self._screen_height = 30
         self._last_blink_phase = -1
+        self._last_cloud_phase = -1
+        self._cloud_rng = random.Random(int(time.time() * 1000) & 0xFFFFFFFF)
+        self._clouds: list[dict] = []
+        self._cloud_templates: dict[str, list[dict]] = {"small": [], "medium": [], "large": []}
+        self._last_cloud_update = time.time()
 
     def _ensure_panorama(self, app: "GameApp") -> None:
         if self._panorama is not None:
@@ -37,6 +50,7 @@ class TitleScene(Scene):
             opponents_data = {}
         self._objects_data = objects_data if isinstance(objects_data, dict) else {}
         self._colors_data = colors_data if isinstance(colors_data, dict) else {}
+        self._load_cloud_templates()
         self._panorama = TitlePanorama(
             viewport_width=100,
             height=15,
@@ -47,6 +61,173 @@ class TitleScene(Scene):
             colors_data=colors_data,
             opponents_data=opponents_data,
         )
+
+    def _load_cloud_templates(self) -> None:
+        templates: dict[str, list[dict]] = {"small": [], "medium": [], "large": []}
+        for object_id, payload in self._objects_data.items():
+            if not isinstance(object_id, str) or not object_id.startswith("cloud_"):
+                continue
+            if not isinstance(payload, dict):
+                continue
+            if "_small_" in object_id:
+                size = "small"
+            elif "_medium_" in object_id:
+                size = "medium"
+            elif "_large_" in object_id:
+                size = "large"
+            else:
+                continue
+            art = payload.get("art", [])
+            mask = payload.get("color_mask", [])
+            if not isinstance(art, list) or not art:
+                continue
+            if not isinstance(mask, list):
+                mask = []
+            width = max((len(str(line)) for line in art), default=1)
+            rows: list[list[str]] = []
+            for y, raw_line in enumerate(art):
+                line = str(raw_line).ljust(width)
+                mask_line = str(mask[y]) if y < len(mask) else ""
+                row: list[str] = []
+                for x, ch in enumerate(line):
+                    if ch == " ":
+                        row.append(" ")
+                        continue
+                    key = mask_line[x] if x < len(mask_line) else "l"
+                    code = self._cloud_color_code(object_id, y, x, key)
+                    row.append(f"{code}{ch}\x1b[0m")
+                rows.append(row)
+            templates[size].append(
+                {
+                    "id": object_id,
+                    "rows": rows,
+                    "width": width,
+                    "height": len(rows),
+                    "size": size,
+                }
+            )
+        self._cloud_templates = templates
+        if not self._clouds:
+            self._seed_initial_clouds()
+
+    def _cloud_color_code(self, object_id: str, row: int, col: int, mask_key: str) -> str:
+        seed = 2166136261
+        for ch in f"{object_id}:{row}:{col}:{mask_key}":
+            seed ^= ord(ch)
+            seed = (seed * 16777619) & 0xFFFFFFFF
+        idx = seed % len(self._CLOUD_RGB_PALETTE)
+        r, g, b = self._CLOUD_RGB_PALETTE[idx]
+        return f"\x1b[38;2;{r};{g};{b}m"
+
+    def _seed_initial_clouds(self) -> None:
+        total = 10
+        for slot in range(total):
+            self._spawn_cloud(initial=True, slot=slot, total_slots=total)
+
+    def _cloud_phase(self) -> int:
+        return int(time.time() * 10.0)
+
+    def _cloud_speed(self, size: str, y: int) -> float:
+        size_weight = {"large": 0.72, "medium": 1.0, "small": 1.28}.get(size, 1.0)
+        height_norm = max(0.0, min(1.0, y / max(1, (self._screen_height // 2) - 1)))
+        height_weight = 0.72 + (0.62 * height_norm)
+        variance = 0.9 + (self._cloud_rng.random() * 0.2)
+        return 1.0 * size_weight * height_weight * variance
+
+    def _pick_cloud_size(self) -> str:
+        weights = [("small", 0.30), ("medium", 0.45), ("large", 0.25)]
+        total = sum(weight for _, weight in weights)
+        roll = self._cloud_rng.random() * total
+        acc = 0.0
+        for size, weight in weights:
+            acc += weight
+            if roll <= acc:
+                return size
+        return "medium"
+
+    def _spawn_cloud(self, initial: bool = False, slot: int = 0, total_slots: int = 1) -> None:
+        size = self._pick_cloud_size()
+        candidates = self._cloud_templates.get(size, [])
+        if not candidates:
+            for fallback in ("medium", "small", "large"):
+                candidates = self._cloud_templates.get(fallback, [])
+                if candidates:
+                    size = fallback
+                    break
+        if not candidates:
+            return
+        template = candidates[self._cloud_rng.randrange(len(candidates))]
+        h = int(template["height"])
+        sky_height = self._screen_height // 2
+        y_min = 0
+        y_max = max(0, sky_height - h)
+        if size == "large":
+            y_min = min(y_max, 1)
+            y_max = max(y_min, y_max)
+        elif size == "small":
+            y_max = max(y_min, sky_height - h)
+        y = self._cloud_rng.randint(y_min, y_max) if y_max >= y_min else 0
+        speed = self._cloud_speed(size, y)
+        width = int(template.get("width", 1))
+        if initial:
+            segments = max(1, total_slots)
+            seg_w = max(1, self._screen_width // segments)
+            seg_start = slot * seg_w
+            seg_end = self._screen_width - 1 if slot == segments - 1 else ((slot + 1) * seg_w - 1)
+            min_x = seg_start - max(1, width // 2)
+            max_x = max(min_x, seg_end)
+            start_x = self._cloud_rng.randint(min_x, max_x)
+        else:
+            start_x = self._screen_width + self._cloud_rng.randint(2, 28)
+        self._clouds.append(
+            {
+                "template": template,
+                "x": float(start_x),
+                "y": y,
+                "speed": speed,
+            }
+        )
+
+    def _update_clouds(self, now: float) -> None:
+        dt = max(0.0, min(0.4, now - self._last_cloud_update))
+        self._last_cloud_update = now
+        for cloud in self._clouds:
+            speed = float(cloud.get("speed", 1.0))
+            cloud["x"] = float(cloud.get("x", 0.0)) - (speed * dt)
+            width = int(cloud.get("template", {}).get("width", 0))
+            if cloud["x"] + width < 0:
+                cloud["x"] = self._screen_width + (cloud["x"] + width)
+
+    def _overlay_clouds(self, lines: list[str]) -> None:
+        sky_height = self._screen_height // 2
+        composed_rows: dict[int, list[str]] = {}
+        for cloud in self._clouds:
+            template = cloud.get("template", {})
+            rows = template.get("rows", [])
+            if not isinstance(rows, list):
+                continue
+            x0 = int(float(cloud.get("x", 0.0)))
+            y0 = int(cloud.get("y", 0))
+            for row_idx, row_cells in enumerate(rows):
+                y = y0 + row_idx
+                if y < 0 or y >= len(lines):
+                    continue
+                # Keep clouds in the full top-half sky region above panorama anchor.
+                if y >= sky_height:
+                    continue
+                if not isinstance(row_cells, list):
+                    continue
+                if y not in composed_rows:
+                    composed_rows[y] = list(lines[y])
+                base = composed_rows[y]
+                for col_idx, cell in enumerate(row_cells):
+                    x = x0 + col_idx
+                    if x < 0 or x >= self._screen_width:
+                        continue
+                    if cell != " ":
+                        base[x] = cell
+        for y, cells in composed_rows.items():
+            lines[y] = "".join(cells)
 
     def input_timeout_seconds(self) -> float:
         return 0.1
@@ -237,6 +418,8 @@ class TitleScene(Scene):
         self._ensure_panorama(app)
         if self._blink_phase() != self._last_blink_phase:
             return True
+        if self._cloud_phase() != self._last_cloud_phase:
+            return True
         if self._signature(app) != self._last_signature:
             return True
         return self._panorama.offset() != self._last_drawn_offset
@@ -248,9 +431,12 @@ class TitleScene(Scene):
         blink_phase = self._blink_phase()
         blink_on = (blink_phase % 2) == 0
         self._last_blink_phase = blink_phase
+        self._last_cloud_phase = self._cloud_phase()
+        self._update_clouds(time.time())
         self._last_drawn_offset = offset
         self._last_signature = self._signature(app)
         lines = [" " * self._screen_width for _ in range(self._screen_height)]
+        self._overlay_clouds(lines)
 
         pano_lines = self._panorama.viewport()
         pano_start_y = self._screen_height - len(pano_lines)
