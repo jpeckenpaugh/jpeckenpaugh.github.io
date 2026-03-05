@@ -607,6 +607,7 @@ def render(
     dialog_entry: dict,
     actor_meta: dict,
     choice_cursor: int,
+    wipe_progress: float = 1.0,
 ) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
@@ -687,6 +688,19 @@ def render(
             y0 = anchor_y - (len(lines) // 2)
             overlay_dialog_box(canvas, lines, x0, y0)
 
+    # Curtain wipe-in: start fully covered, then open from center to sides.
+    progress = max(0.0, min(1.0, wipe_progress))
+    if progress < 1.0:
+        max_cover = SCREEN_W // 2
+        cover = int(round(max_cover * (1.0 - progress)))
+        left_end = cover
+        right_start = SCREEN_W - cover
+        for y in range(SCREEN_H):
+            for x in range(left_end):
+                canvas[y][x] = " "
+            for x in range(right_start, SCREEN_W):
+                canvas[y][x] = " "
+
     return "\n".join("".join(row) for row in canvas)
 
 
@@ -726,6 +740,8 @@ def main() -> None:
     choice_cursor = 0
     crow_y = float(crow_meta.get("start_y", -1)) if isinstance(crow_meta, dict) else -1.0
     crow_x = float(crow_meta.get("x", 0.0)) if isinstance(crow_meta, dict) else 0.0
+    wipe_duration = 1.0
+    wipe_started_at = time.monotonic()
 
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
@@ -734,54 +750,72 @@ def main() -> None:
             now = time.monotonic()
             dt = max(0.0, min(0.2, now - last_tick))
             last_tick = now
+            wipe_progress = min(1.0, max(0.0, (now - wipe_started_at) / wipe_duration))
+            wipe_done = wipe_progress >= 1.0
+
+            # Clouds should drift during wipe and after wipe.
             for cloud in clouds:
                 speed = float(cloud.get("speed", 1.0))
                 cloud["x"] = float(cloud.get("x", 0.0)) - (speed * dt)
                 w = int(cloud["template"]["width"])
                 if cloud["x"] + w < 0:
                     cloud["x"] = SCREEN_W + (cloud["x"] + w)
-            if isinstance(crow_meta, dict) and crow_meta:
-                target = float(crow_meta.get("target_y", 0.0))
-                speed = float(crow_meta.get("speed", 8.0))
-                start = float(crow_meta.get("start_y", -1.0))
-                base_x = float(crow_meta.get("x", 0.0))
-                crow_y = min(target, crow_y + (speed * dt))
-                if crow_y < target:
-                    span = max(1.0, target - start)
-                    progress = max(0.0, min(1.0, (crow_y - start) / span))
-                    # Pendulum-like long swings with wide stroke and mild damping.
-                    cycles = 0.85
-                    amplitude = 15.0 * ((1.0 - progress) ** 0.6)
-                    phase = progress * math.pi * 2.0 * cycles
-                    sway = math.sin(phase) * amplitude
-                    crow_x = base_x + sway
-                else:
-                    crow_x = base_x
-            key = read_key_nonblocking()
-            if dialog_entries:
-                current = dialog_entries[dialog_idx]
-                if str(current.get("type", "text")) == "choice":
-                    opts = current.get("options", [])
-                    opt_count = len(opts) if isinstance(opts, list) else 0
-                    if key in ("up", "w") and opt_count > 0:
-                        choice_cursor = (choice_cursor - 1) % opt_count
-                    elif key in ("down", "s") and opt_count > 0:
-                        choice_cursor = (choice_cursor + 1) % opt_count
+
+            if wipe_done:
+                if isinstance(crow_meta, dict) and crow_meta:
+                    target = float(crow_meta.get("target_y", 0.0))
+                    speed = float(crow_meta.get("speed", 8.0))
+                    start = float(crow_meta.get("start_y", -1.0))
+                    base_x = float(crow_meta.get("x", 0.0))
+                    crow_y = min(target, crow_y + (speed * dt))
+                    if crow_y < target:
+                        span = max(1.0, target - start)
+                        progress = max(0.0, min(1.0, (crow_y - start) / span))
+                        # Pendulum-like long swings with wide stroke and mild damping.
+                        cycles = 0.85
+                        amplitude = 15.0 * ((1.0 - progress) ** 0.6)
+                        phase = progress * math.pi * 2.0 * cycles
+                        sway = math.sin(phase) * amplitude
+                        crow_x = base_x + sway
+                    else:
+                        crow_x = base_x
+                key = read_key_nonblocking()
+                if dialog_entries:
+                    current = dialog_entries[dialog_idx]
+                    if str(current.get("type", "text")) == "choice":
+                        opts = current.get("options", [])
+                        opt_count = len(opts) if isinstance(opts, list) else 0
+                        if key in ("up", "w") and opt_count > 0:
+                            choice_cursor = (choice_cursor - 1) % opt_count
+                        elif key in ("down", "s") and opt_count > 0:
+                            choice_cursor = (choice_cursor + 1) % opt_count
+                        elif key == "a":
+                            branches = current.get("option_branches", [])
+                            if isinstance(branches, list) and 0 <= choice_cursor < len(branches):
+                                selected_branch = branches[choice_cursor]
+                                if isinstance(selected_branch, list) and selected_branch:
+                                    insert_at = dialog_idx + 1
+                                    dialog_entries[insert_at:insert_at] = selected_branch
+                            dialog_idx = min(len(dialog_entries) - 1, dialog_idx + 1)
+                            choice_cursor = 0
                     elif key == "a":
-                        branches = current.get("option_branches", [])
-                        if isinstance(branches, list) and 0 <= choice_cursor < len(branches):
-                            selected_branch = branches[choice_cursor]
-                            if isinstance(selected_branch, list) and selected_branch:
-                                insert_at = dialog_idx + 1
-                                dialog_entries[insert_at:insert_at] = selected_branch
                         dialog_idx = min(len(dialog_entries) - 1, dialog_idx + 1)
-                        choice_cursor = 0
-                elif key == "a":
-                    dialog_idx = min(len(dialog_entries) - 1, dialog_idx + 1)
-                dialog_entry = dialog_entries[dialog_idx]
+                    dialog_entry = dialog_entries[dialog_idx]
+                else:
+                    dialog_entry = {}
             else:
                 dialog_entry = {}
-            frame = render(clouds, forest_lines, crow_meta, crow_x, crow_y, dialog_entry, actor_meta, choice_cursor)
+            frame = render(
+                clouds,
+                forest_lines,
+                crow_meta,
+                crow_x,
+                crow_y,
+                dialog_entry,
+                actor_meta,
+                choice_cursor,
+                wipe_progress=wipe_progress,
+            )
             print(ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)
     except KeyboardInterrupt:
