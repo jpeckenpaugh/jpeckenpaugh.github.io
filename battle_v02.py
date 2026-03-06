@@ -1,4 +1,4 @@
-import os
+﻿import os
 import random
 import re
 import time
@@ -1088,18 +1088,23 @@ def _draw_health_bar(canvas: List[List[str]], center_x: int, top_y: int, filled:
     if y0 < 0 or (y0 + 2) >= SCREEN_H:
         return
 
-    top_row: List[str] = [f"{frame_color}┌{ANSI_RESET}"]
-    top_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
-    top_row.append(f"{frame_color}┐{ANSI_RESET}")
+    box_tl, box_tr = "\u250c", "\u2510"
+    box_bl, box_br = "\u2514", "\u2518"
+    box_h, box_v = "\u2500", "\u2502"
+    fill_ch, miss_ch = "\u2588", "\u00b7"
 
-    mid_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
-    mid_row.extend([f"{hp_color}█{ANSI_RESET}" for _ in range(filled)])
-    mid_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(empty)])
-    mid_row.append(f"{frame_color}│{ANSI_RESET}")
+    top_row: List[str] = [f"{frame_color}{box_tl}{ANSI_RESET}"]
+    top_row.extend([f"{frame_color}{box_h}{ANSI_RESET}" for _ in range(inner_w)])
+    top_row.append(f"{frame_color}{box_tr}{ANSI_RESET}")
 
-    bot_row: List[str] = [f"{frame_color}└{ANSI_RESET}"]
-    bot_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
-    bot_row.append(f"{frame_color}┘{ANSI_RESET}")
+    mid_row: List[str] = [f"{frame_color}{box_v}{ANSI_RESET}"]
+    mid_row.extend([f"{hp_color}{fill_ch}{ANSI_RESET}" for _ in range(filled)])
+    mid_row.extend([f"{miss_color}{miss_ch}{ANSI_RESET}" for _ in range(empty)])
+    mid_row.append(f"{frame_color}{box_v}{ANSI_RESET}")
+
+    bot_row: List[str] = [f"{frame_color}{box_bl}{ANSI_RESET}"]
+    bot_row.extend([f"{frame_color}{box_h}{ANSI_RESET}" for _ in range(inner_w)])
+    bot_row.append(f"{frame_color}{box_br}{ANSI_RESET}")
 
     for dx, cell in enumerate(top_row):
         x = x0 + dx
@@ -1114,7 +1119,6 @@ def _draw_health_bar(canvas: List[List[str]], center_x: int, top_y: int, filled:
         if 0 <= x < SCREEN_W:
             canvas[y0 + 2][x] = cell
 
-
 def _draw_health_bar_custom(
     canvas: List[List[str]],
     center_x: int,
@@ -1125,6 +1129,7 @@ def _draw_health_bar_custom(
     frame_color: str | None = None,
     overlay_text: str | None = None,
     overlay_color: str = "\x1b[38;2;245;245;245m",
+    row_label: str | None = None,
 ) -> None:
     total = max(1, int(total))
     filled = max(0, min(total, int(filled)))
@@ -1140,6 +1145,12 @@ def _draw_health_bar_custom(
     miss_color = "\x1b[38;2;26;26;26m"
     frame_color = frame_color or "\x1b[38;2;210;210;210m"
 
+    def _fg_to_bg(code: str) -> str:
+        m = re.search(r"\x1b\[38;2;(\d+);(\d+);(\d+)m", str(code))
+        if not m:
+            return ""
+        return f"\x1b[48;2;{m.group(1)};{m.group(2)};{m.group(3)}m"
+
     inner_w = total
     box_w = inner_w + 2
     x0 = max(0, min(SCREEN_W - box_w, int(center_x) - (box_w // 2)))
@@ -1147,25 +1158,46 @@ def _draw_health_bar_custom(
     if y0 < 0 or (y0 + 2) >= SCREEN_H:
         return
 
-    top_row: List[str] = [f"{frame_color}┌{ANSI_RESET}"]
-    top_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
-    top_row.append(f"{frame_color}┐{ANSI_RESET}")
+    box_tl, box_tr = "\u250c", "\u2510"
+    box_bl, box_br = "\u2514", "\u2518"
+    box_h, box_v = "\u2500", "\u2502"
+    fill_ch, miss_ch = "\u2588", "\u00b7"
 
-    mid_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
-    mid_row.extend([f"{fill_color}█{ANSI_RESET}" for _ in range(filled)])
-    mid_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(empty)])
-    mid_row.append(f"{frame_color}│{ANSI_RESET}")
+    top_row: List[str] = [f"{frame_color}{box_tl}{ANSI_RESET}"]
+    top_row.extend([f"{frame_color}{box_h}{ANSI_RESET}" for _ in range(inner_w)])
+    top_row.append(f"{frame_color}{box_tr}{ANSI_RESET}")
+
+    inner_styles: List[str] = ([fill_color] * filled) + ([miss_color] * empty)
+    mid_row: List[str] = [f"{frame_color}{box_v}{ANSI_RESET}"]
+    for idx, style in enumerate(inner_styles):
+        ch = fill_ch if idx < filled else miss_ch
+        mid_row.append(f"{style}{ch}{ANSI_RESET}")
+    mid_row.append(f"{frame_color}{box_v}{ANSI_RESET}")
+
+    label_text = str(row_label or "").strip()
+    if label_text:
+        label_text = label_text[:inner_w]
+        for i, ch in enumerate(label_text):
+            if i >= inner_w:
+                break
+            style = inner_styles[i] if i < len(inner_styles) else miss_color
+            bg = _fg_to_bg(style)
+            mid_row[1 + i] = f"\x1b[38;2;245;245;245m{bg}{ch}{ANSI_RESET}" if bg else f"\x1b[38;2;245;245;245m{ch}{ANSI_RESET}"
+
     if overlay_text:
         text = str(overlay_text)
         start = 1 + max(0, (inner_w - len(text)) // 2)
         for i, ch in enumerate(text):
             x = start + i
             if 1 <= x <= inner_w:
-                mid_row[x] = f"{overlay_color}{ch}{ANSI_RESET}"
+                style_idx = x - 1
+                style = inner_styles[style_idx] if 0 <= style_idx < len(inner_styles) else miss_color
+                bg = _fg_to_bg(style)
+                mid_row[x] = f"{overlay_color}{bg}{ch}{ANSI_RESET}" if bg else f"{overlay_color}{ch}{ANSI_RESET}"
 
-    bot_row: List[str] = [f"{frame_color}└{ANSI_RESET}"]
-    bot_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
-    bot_row.append(f"{frame_color}┘{ANSI_RESET}")
+    bot_row: List[str] = [f"{frame_color}{box_bl}{ANSI_RESET}"]
+    bot_row.extend([f"{frame_color}{box_h}{ANSI_RESET}" for _ in range(inner_w)])
+    bot_row.append(f"{frame_color}{box_br}{ANSI_RESET}")
 
     for dy, row in enumerate([top_row, mid_row, bot_row]):
         y = y0 + dy
@@ -1173,7 +1205,6 @@ def _draw_health_bar_custom(
             x = x0 + dx
             if 0 <= x < SCREEN_W and 0 <= y < SCREEN_H:
                 canvas[y][x] = cell
-
 
 def _draw_physical_damage_hud(canvas: List[List[str]], target_actor: dict, clock: float) -> None:
     rows = target_actor.get("rows", [])
@@ -1246,7 +1277,7 @@ def _draw_physical_damage_hud_step(
 
     p = max(0.0, min(1.0, float(progress)))
     if p < 0.50:
-        _draw_health_bar_custom(canvas, center_x, bar_top, pre_hp, total=total)
+        _draw_health_bar_custom(canvas, center_x, bar_top, pre_hp, total=total, row_label="[HP]")
         return
     if p < 0.75:
         flash_on = (int((p - 0.50) / 0.06) % 2) == 0
@@ -1262,6 +1293,7 @@ def _draw_physical_damage_hud_step(
             frame_color=flash_frame,
             overlay_text=f"-{damage}",
             overlay_color="\x1b[38;2;250;250;250m",
+            row_label="[HP]",
         )
         return
     _draw_health_bar_custom(
@@ -1272,6 +1304,7 @@ def _draw_physical_damage_hud_step(
         total=total,
         overlay_text=f"-{damage}",
         overlay_color="\x1b[38;2;245;245;245m",
+        row_label="[HP]",
     )
 
 
@@ -1309,6 +1342,7 @@ def _draw_mp_cast_hud_step(
             pre_fill,
             total=total,
             fill_color=normal_color,
+            row_label="[MP]",
         )
         return
     if p < 0.75:
@@ -1323,6 +1357,7 @@ def _draw_mp_cast_hud_step(
             frame_color=frame_flash if flash_on else None,
             overlay_text=f"-{cost}",
             overlay_color="\x1b[38;2;245;245;255m",
+            row_label="[MP]",
         )
         return
     _draw_health_bar_custom(
@@ -1334,6 +1369,7 @@ def _draw_mp_cast_hud_step(
         fill_color=post_color,
         overlay_text=f"-{cost}",
         overlay_color="\x1b[38;2;245;245;255m",
+        row_label="[MP]",
     )
 
 
@@ -1457,26 +1493,26 @@ def _draw_status_box(
     if y0 < 0 or (y0 + box_h - 1) >= SCREEN_H:
         return
 
-    top_row: List[str] = [f"{frame_color}┌{ANSI_RESET}"]
-    top_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
-    top_row.append(f"{frame_color}┐{ANSI_RESET}")
+    top_row: List[str] = [f"{frame_color}â”Œ{ANSI_RESET}"]
+    top_row.extend([f"{frame_color}â”€{ANSI_RESET}" for _ in range(inner_w)])
+    top_row.append(f"{frame_color}â”{ANSI_RESET}")
 
-    hp_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
-    hp_row.extend([f"{hp_color}█{ANSI_RESET}" for _ in range(hp_filled)])
-    hp_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(hp_empty)])
-    hp_row.append(f"{frame_color}│{ANSI_RESET}")
+    hp_row: List[str] = [f"{frame_color}â”‚{ANSI_RESET}"]
+    hp_row.extend([f"{hp_color}â–ˆ{ANSI_RESET}" for _ in range(hp_filled)])
+    hp_row.extend([f"{miss_color}Â·{ANSI_RESET}" for _ in range(hp_empty)])
+    hp_row.append(f"{frame_color}â”‚{ANSI_RESET}")
 
-    mp_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
+    mp_row: List[str] = [f"{frame_color}â”‚{ANSI_RESET}"]
     if has_mp:
-        mp_row.extend([f"{mp_color}█{ANSI_RESET}" for _ in range(mp_f)])
-        mp_row.extend([f"{mp_miss_color}·{ANSI_RESET}" for _ in range(mp_empty)])
+        mp_row.extend([f"{mp_color}â–ˆ{ANSI_RESET}" for _ in range(mp_f)])
+        mp_row.extend([f"{mp_miss_color}Â·{ANSI_RESET}" for _ in range(mp_empty)])
     else:
-        mp_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(inner_w)])
-    mp_row.append(f"{frame_color}│{ANSI_RESET}")
+        mp_row.extend([f"{miss_color}Â·{ANSI_RESET}" for _ in range(inner_w)])
+    mp_row.append(f"{frame_color}â”‚{ANSI_RESET}")
 
-    bot_row: List[str] = [f"{frame_color}└{ANSI_RESET}"]
-    bot_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
-    bot_row.append(f"{frame_color}┘{ANSI_RESET}")
+    bot_row: List[str] = [f"{frame_color}â””{ANSI_RESET}"]
+    bot_row.extend([f"{frame_color}â”€{ANSI_RESET}" for _ in range(inner_w)])
+    bot_row.append(f"{frame_color}â”˜{ANSI_RESET}")
 
     rows = [top_row, hp_row, mp_row, bot_row] if has_mp else [top_row, hp_row, bot_row]
     for dy, row in enumerate(rows):
@@ -1840,7 +1876,7 @@ def render(
                     x0 = int(primary_placements[target_idx].get("x", 0))
                     y0 = int(primary_placements[target_idx].get("y", 0))
                     center_x = x0 + (w // 2)
-                    _draw_health_bar_custom(canvas, center_x, y0 - 4, hp_val, total=10)
+                    _draw_health_bar_custom(canvas, center_x, y0 - 4, hp_val, total=10, row_label="[HP]")
     # Next demo step: health bars above all actors in both panes.
     if world_layer_level == 8:
         # Primary (4 fairies): 20%, 40%, 100%, 100%.
@@ -2076,3 +2112,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
