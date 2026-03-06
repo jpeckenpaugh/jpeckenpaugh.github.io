@@ -208,7 +208,7 @@ def render(
         _overlay_zone_guides(canvas, zones)
 
     # Scene foundation label on the very last row, centered.
-    footer = f"[foreground][{foreground_split_label}]"
+    footer = f"[background][{foreground_split_label}]"
     if len(footer) <= SCREEN_W:
         x0 = (SCREEN_W - len(footer)) // 2
         y = SCREEN_H - 1
