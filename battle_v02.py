@@ -870,6 +870,8 @@ def _physical_demo_state(clock: float) -> dict:
     t = float(clock) % max(0.001, total)
     hp_now = list(initial_hp)
     cursor = 0.0
+    death_time = (3 * attack_window) + (3 * between_pause) + (0.75 * attack_window)
+    death_elapsed = (t - death_time) if t >= death_time else None
 
     for idx, atk in enumerate(attacks):
         pre = hp_now[atk["target_idx"]]
@@ -888,6 +890,11 @@ def _physical_demo_state(clock: float) -> dict:
                 "post_hp": post,
                 "hp_now": hp_now,
                 "progress": progress,
+                "phase_elapsed": (t - atk_start),
+                "phase_duration": attack_window,
+                "loop_t": t,
+                "total": total,
+                "death_elapsed": death_elapsed,
             }
         # apply this attack for subsequent windows
         hp_now[atk["target_idx"]] = post
@@ -905,6 +912,11 @@ def _physical_demo_state(clock: float) -> dict:
                     "post_hp": post,
                     "hp_now": hp_now,
                     "progress": 1.0,
+                    "phase_elapsed": (t - cursor),
+                    "phase_duration": between_pause,
+                    "loop_t": t,
+                    "total": total,
+                    "death_elapsed": death_elapsed,
                 }
             cursor = pause_end
 
@@ -919,6 +931,11 @@ def _physical_demo_state(clock: float) -> dict:
         "post_hp": hp_now[attacks[-1]["target_idx"]],
         "hp_now": hp_now,
         "progress": 1.0,
+        "phase_elapsed": max(0.0, t - cursor),
+        "phase_duration": final_pause,
+        "loop_t": t,
+        "total": total,
+        "death_elapsed": death_elapsed,
     }
 
 
@@ -1149,6 +1166,53 @@ def _draw_physical_damage_hud_step(
         overlay_text=f"-{damage}",
         overlay_color="\x1b[38;2;245;245;245m",
     )
+
+
+def _grey_cell(cell: str) -> str:
+    ch = _strip_ansi(cell)
+    if ch == " ":
+        return " "
+    return f"\x1b[38;2;156;156;156m{ch}{ANSI_RESET}"
+
+
+def _draw_actor_melt(canvas: List[List[str]], actor: dict, progress: float) -> None:
+    rows = actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return
+    x0 = int(actor.get("x", 0))
+    y0 = int(actor.get("y", 0))
+    h = len(rows)
+    p = max(0.0, min(1.0, float(progress)))
+
+    for dy, row in enumerate(rows):
+        if not isinstance(row, list):
+            continue
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        # Top-to-bottom stagger per line.
+        local = (p * h) - dy
+        if local <= 0.0:
+            stage = 0  # unchanged
+        elif local < 0.5:
+            stage = 1  # grey only
+        elif local < 1.0:
+            stage = 2  # grey + shift
+        else:
+            stage = 3  # disappeared
+        if stage == 3:
+            continue
+        shift = 0
+        if stage == 2:
+            shift = -1 if (dy % 2 == 0) else 1
+        for dx, cell in enumerate(row):
+            x = x0 + dx + shift
+            if x < 0 or x >= SCREEN_W:
+                continue
+            if cell == " ":
+                continue
+            out = cell if stage == 0 else _grey_cell(cell)
+            canvas[y][x] = out
 
 
 def _mp_fill_color(pct: float) -> str:
@@ -1414,7 +1478,15 @@ def render(
         pri_sprites = primary_actor_sprites if primary_actor_sprites is not None else ([mushy_sprite] if mushy_sprite else [])
         primary_placements = layout_actor_strip(primary_zone, pri_sprites, spacing=1, stagger_rows=primary_actor_stagger)
         hp_now = physical_state.get("hp_now", []) if isinstance(physical_state, dict) else []
+        death_elapsed = physical_state.get("death_elapsed") if isinstance(physical_state, dict) else None
+        melt_progress: float | None = None
+        if death_elapsed is not None:
+            melt_progress = max(0.0, min(1.0, float(death_elapsed) / 2.0))
         for idx, actor in enumerate(primary_placements):
+            if world_layer_level == 7 and idx == 0 and melt_progress is not None and melt_progress > 0.0:
+                if melt_progress < 1.0:
+                    _draw_actor_melt(canvas, actor, melt_progress)
+                continue
             if world_layer_level == 7 and isinstance(hp_now, list) and idx < len(hp_now) and int(hp_now[idx]) <= 0:
                 continue
             x0 = int(actor.get("x", 0))
@@ -1474,22 +1546,12 @@ def render(
         frame_idx = min(max(0, impact_frame_hint), len(smash_frames) - 1)
         _draw_smash_frame(canvas, smash_frames[frame_idx], target)
     if world_layer_level == 7 and primary_placements and physical_state is not None:
-        hp_now = physical_state.get("hp_now", [])
-        if isinstance(hp_now, list):
-            for idx, actor in enumerate(primary_placements[: len(hp_now)]):
-                hp_val = max(0, int(hp_now[idx]))
-                rows = actor.get("rows", [])
-                if not isinstance(rows, list) or not rows:
-                    continue
-                w = max((len(row) for row in rows), default=0)
-                x0 = int(actor.get("x", 0))
-                y0 = int(actor.get("y", 0))
-                center_x = x0 + (w // 2)
-                _draw_health_bar_custom(canvas, center_x, y0 - 4, hp_val, total=10)
-
-        if physical_state.get("phase") == "attack":
-            target_idx = int(physical_state.get("target_idx", 0))
-            target_idx = max(0, min(len(primary_placements) - 1, target_idx))
+        phase = str(physical_state.get("phase", ""))
+        show_hud = False
+        target_idx = int(physical_state.get("target_idx", 0))
+        target_idx = max(0, min(len(primary_placements) - 1, target_idx))
+        if phase == "attack":
+            show_hud = True
             _draw_physical_damage_hud_step(
                 canvas,
                 primary_placements[target_idx],
@@ -1499,6 +1561,21 @@ def render(
                 total=10,
                 damage=max(0, int(physical_state.get("damage", 0))),
             )
+        else:
+            phase_elapsed = float(physical_state.get("phase_elapsed", 0.0))
+            if phase_elapsed <= 0.6:
+                show_hud = True
+                hp_now = physical_state.get("hp_now", [])
+                hp_val = 0
+                if isinstance(hp_now, list) and target_idx < len(hp_now):
+                    hp_val = max(0, int(hp_now[target_idx]))
+                rows = primary_placements[target_idx].get("rows", [])
+                if isinstance(rows, list) and rows:
+                    w = max((len(row) for row in rows), default=0)
+                    x0 = int(primary_placements[target_idx].get("x", 0))
+                    y0 = int(primary_placements[target_idx].get("y", 0))
+                    center_x = x0 + (w // 2)
+                    _draw_health_bar_custom(canvas, center_x, y0 - 4, hp_val, total=10)
     # Next demo step: health bars above all actors in both panes.
     if world_layer_level == 8:
         # Primary (4 fairies): 20%, 40%, 100%, 100%.
