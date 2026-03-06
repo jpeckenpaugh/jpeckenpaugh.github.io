@@ -1003,24 +1003,28 @@ def _barrage_demo_state(clock: float) -> dict:
         active = active_1
         recent = recent_1
         hp_now = hp_after_1
+        cast_elapsed = t
     elif t < cast2_start:
         phase = "between"
         attacker_idx = caster1_idx
         active = []
         recent = recent_1
         hp_now = hp_after_1
+        cast_elapsed = 0.0
     elif t < (cast2_start + cast_span):
         phase = "cast2"
         attacker_idx = caster2_idx
         active = active_2
         recent = recent_2
         hp_now = hp_after_2
+        cast_elapsed = cast2_t
     else:
         phase = "final_pause"
         attacker_idx = caster2_idx
         active = []
         recent = []
         hp_now = hp_after_2
+        cast_elapsed = 0.0
 
     # Kills occur in cast2 on fairy2(idx1) and fairy4(idx3) when their projectile resolves.
     melt_progress_by_idx: Dict[int, float] = {}
@@ -1032,6 +1036,7 @@ def _barrage_demo_state(clock: float) -> dict:
     return {
         "phase": phase,
         "attacker_idx": attacker_idx,
+        "cast_elapsed": cast_elapsed,
         "hp_now": hp_now,
         "active_hits": active,
         "recent_hits": recent,
@@ -1267,6 +1272,68 @@ def _draw_physical_damage_hud_step(
         total=total,
         overlay_text=f"-{damage}",
         overlay_color="\x1b[38;2;245;245;245m",
+    )
+
+
+def _draw_mp_cast_hud_step(
+    canvas: List[List[str]],
+    caster_actor: dict,
+    progress: float,
+    pre_mp: int,
+    post_mp: int,
+    total: int = 10,
+    cost: int = 4,
+) -> None:
+    rows = caster_actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return
+    w = max((len(row) for row in rows), default=0)
+    x0 = int(caster_actor.get("x", 0))
+    y0 = int(caster_actor.get("y", 0))
+    center_x = x0 + (w // 2)
+    bar_top = y0 - 4
+
+    p = max(0.0, min(1.0, float(progress)))
+    pre_fill = max(0, min(total, int(pre_mp)))
+    post_fill = max(0, min(total, int(post_mp)))
+    normal_color = _mp_fill_color(pre_fill / max(1.0, float(total)))
+    post_color = _mp_fill_color(post_fill / max(1.0, float(total)))
+    flash_color = "\x1b[38;2;120;190;255m"
+    frame_flash = "\x1b[38;2;165;205;255m"
+
+    if p < 0.45:
+        _draw_health_bar_custom(
+            canvas,
+            center_x,
+            bar_top,
+            pre_fill,
+            total=total,
+            fill_color=normal_color,
+        )
+        return
+    if p < 0.75:
+        flash_on = (int((p - 0.45) / 0.06) % 2) == 0
+        _draw_health_bar_custom(
+            canvas,
+            center_x,
+            bar_top,
+            pre_fill,
+            total=total,
+            fill_color=flash_color if flash_on else normal_color,
+            frame_color=frame_flash if flash_on else None,
+            overlay_text=f"-{cost}",
+            overlay_color="\x1b[38;2;245;245;255m",
+        )
+        return
+    _draw_health_bar_custom(
+        canvas,
+        center_x,
+        bar_top,
+        post_fill,
+        total=total,
+        fill_color=post_color,
+        overlay_text=f"-{cost}",
+        overlay_color="\x1b[38;2;245;245;255m",
     )
 
 
@@ -1722,6 +1789,16 @@ def render(
                         total=10,
                         damage=max(0, int(hit.get("damage", 0))),
                     )
+            # MP indicator at spell-cast start for caster only.
+            cast_elapsed = float(barrage_state.get("cast_elapsed", 0.0))
+            if str(barrage_state.get("phase", "")) in ("cast1", "cast2") and cast_elapsed <= 0.65:
+                mp_progress = max(0.0, min(1.0, cast_elapsed / 0.65))
+                if attacker_idx == 0:
+                    # Guy: 6/10 -> 2/10
+                    _draw_mp_cast_hud_step(canvas, secondary_placements[attacker_idx], mp_progress, pre_mp=6, post_mp=2, total=10, cost=4)
+                elif attacker_idx == 4:
+                    # Beba: 10/10 -> 6/10
+                    _draw_mp_cast_hud_step(canvas, secondary_placements[attacker_idx], mp_progress, pre_mp=10, post_mp=6, total=10, cost=4)
     # Next demo step: physical hit (blink attacker, then smash animation on target).
     if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames and physical_state is not None:
         target_idx = int(physical_state.get("target_idx", 0))
