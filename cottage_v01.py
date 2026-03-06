@@ -217,15 +217,19 @@ def _colorize_object_rows(art_rows: object, mask_rows: object, color_codes: Dict
         mask_rows = []
     width = max((len(str(line)) for line in art_rows), default=0)
     out: List[List[str]] = []
+    opaque_space = f"\x1b[37m {ANSI_RESET}"
     for y, raw in enumerate(art_rows):
         art = str(raw).ljust(width)
         mask = str(mask_rows[y]) if y < len(mask_rows) else ""
         row: List[str] = []
         for x, ch in enumerate(art):
+            key = mask[x] if x < len(mask) else ""
+            if key == "!":
+                row.append(opaque_space)
+                continue
             if ch == " ":
                 row.append(" ")
                 continue
-            key = mask[x] if x < len(mask) else ""
             code = color_codes.get(key, "")
             row.append(f"{code}{ch}{ANSI_RESET}" if code else ch)
         out.append(row)
@@ -236,37 +240,68 @@ def build_world_treeline_sprites(objects_data: object, colors_data: object) -> L
     if not isinstance(objects_data, dict):
         return []
     color_codes = _build_color_codes(colors_data)
-    tree_ids = ["tree_large", "tree_large_2", "tree_large_3"]
-    tree_ids = [obj_id for obj_id in tree_ids if isinstance(objects_data.get(obj_id), dict)]
-    if not tree_ids:
+    tree_ids = [obj_id for obj_id in ["tree_large", "tree_large_2", "tree_large_3"] if isinstance(objects_data.get(obj_id), dict)]
+    house_obj = objects_data.get("house", {})
+    if not tree_ids or not isinstance(house_obj, dict):
         return []
-
     rng = random.Random(6611)
     sprites: List[dict] = []
-    x = -2
-    while x < SCREEN_W:
-        obj_id = tree_ids[rng.randrange(len(tree_ids))]
+
+    def make_sprite(obj_id: str, x: int, anchor_offset: int = 0) -> dict | None:
         payload = objects_data.get(obj_id, {})
-        art = payload.get("art", []) if isinstance(payload, dict) else []
-        mask = payload.get("color_mask", []) if isinstance(payload, dict) else []
+        if not isinstance(payload, dict):
+            return None
+        art = payload.get("art", [])
+        mask = payload.get("color_mask", [])
         rows = _colorize_object_rows(art, mask, color_codes)
         if not rows:
-            x += 4
-            continue
+            return None
         width = len(rows[0])
-        height = len(rows)
-        visible_count = sum(1 for cell in rows[-1] if _strip_ansi(cell) != " ")
-        spacing = rng.randint(2, 6) if visible_count > 2 else rng.randint(4, 8)
-        sprites.append(
-            {
-                "x": x,
-                "width": width,
-                "height": height,
-                "rows": rows,
-                "anchor_offset": rng.randint(0, 2),
-            }
-        )
-        x += max(4, width - 4) + spacing
+        return {
+            "x": x,
+            "width": width,
+            "height": len(rows),
+            "rows": rows,
+            "anchor_offset": max(0, min(2, int(anchor_offset))),
+        }
+
+    # Centered cottage as the focal world object.
+    house_sprite = make_sprite("house", 0, anchor_offset=0)
+    if house_sprite is None:
+        return []
+    house_w = int(house_sprite.get("width", 0))
+    house_x = (SCREEN_W - house_w) // 2
+    house_sprite["x"] = house_x
+    sprites.append(house_sprite)
+
+    # Trees on left and right sides of the cottage.
+    left_cursor = house_x - 3
+    right_cursor = house_x + house_w + 2
+    side_tree_count = 3
+
+    for _ in range(side_tree_count):
+        tree_id = tree_ids[rng.randrange(len(tree_ids))]
+        probe = make_sprite(tree_id, 0, anchor_offset=rng.randint(0, 2))
+        if probe is None:
+            continue
+        tw = int(probe.get("width", 0))
+        left_x = left_cursor - tw
+        probe["x"] = left_x
+        if left_x + tw > 0:
+            sprites.append(probe)
+        left_cursor = left_x - rng.randint(1, 4)
+
+    for _ in range(side_tree_count):
+        tree_id = tree_ids[rng.randrange(len(tree_ids))]
+        probe = make_sprite(tree_id, right_cursor, anchor_offset=rng.randint(0, 2))
+        if probe is None:
+            continue
+        if int(probe.get("x", 0)) < SCREEN_W:
+            sprites.append(probe)
+        right_cursor = int(probe.get("x", 0)) + int(probe.get("width", 0)) + rng.randint(1, 4)
+
+    # Draw from left to right for deterministic overdraw.
+    sprites.sort(key=lambda s: int(s.get("x", 0)))
     return sprites
 
 
