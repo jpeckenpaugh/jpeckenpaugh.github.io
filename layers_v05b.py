@@ -749,6 +749,42 @@ def _draw_smash_frame(canvas: List[List[str]], frame: List[str], center: tuple[i
                 canvas[y][x] = f"{color}{ch}{ANSI_RESET}"
 
 
+def _draw_health_bar(canvas: List[List[str]], center_x: int, top_y: int, filled: int, total: int = 6) -> None:
+    total = max(1, int(total))
+    filled = max(0, min(total, int(filled)))
+    empty = total - filled
+    hp_color = "\x1b[38;2;56;186;72m"
+    miss_color = "\x1b[38;2;18;18;18m"
+    frame_color = "\x1b[38;2;210;210;210m"
+    cells: List[str] = [f"{frame_color}[{ANSI_RESET}"]
+    cells.extend([f"{hp_color}#{ANSI_RESET}" for _ in range(filled)])
+    cells.extend([f"{miss_color}_{ANSI_RESET}" for _ in range(empty)])
+    cells.append(f"{frame_color}]{ANSI_RESET}")
+    width = len(cells)
+    x0 = max(0, min(SCREEN_W - width, int(center_x) - (width // 2)))
+    y = int(top_y)
+    if y < 0 or y >= SCREEN_H:
+        return
+    for i, cell in enumerate(cells):
+        x = x0 + i
+        if 0 <= x < SCREEN_W:
+            canvas[y][x] = cell
+
+
+def _draw_actor_health_bars(canvas: List[List[str]], placements: List[dict], mixed: bool = True) -> None:
+    for idx, actor in enumerate(placements):
+        rows = actor.get("rows", [])
+        if not isinstance(rows, list) or not rows:
+            continue
+        w = max((len(row) for row in rows), default=0)
+        x0 = int(actor.get("x", 0))
+        y0 = int(actor.get("y", 0))
+        center_x = x0 + (w // 2)
+        bar_y = y0 - 1
+        filled = 6 if (not mixed or idx % 2 == 0) else 3
+        _draw_health_bar(canvas, center_x, bar_y, filled, total=6)
+
+
 def render(
     clouds: List[dict],
     ground_rows: List[str],
@@ -832,7 +868,7 @@ def render(
     hide_attacker = False
     show_hit_impact = False
     impact_frame_hint = 0
-    if world_layer_level >= 7:
+    if world_layer_level == 7:
         hide_attacker, show_hit_impact, impact_frame_hint = _physical_hit_state(spell_clock)
 
     # World pane actor pass (secondary): centered collective, bottom-anchored individuals.
@@ -915,7 +951,7 @@ def render(
             targets.append((int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2)))
         _draw_spell_barrage(canvas, source, targets, spell_clock)
     # Next demo step: physical hit (blink attacker, then smash animation on target).
-    if world_layer_level >= 7 and primary_placements and show_hit_impact and smash_frames:
+    if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames:
         dst = primary_placements[0]
         dst_rows = dst.get("rows", [])
         dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
@@ -923,6 +959,10 @@ def render(
         target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
         frame_idx = min(max(0, impact_frame_hint), len(smash_frames) - 1)
         _draw_smash_frame(canvas, smash_frames[frame_idx], target)
+    # Next demo step: health bars above all actors in both panes.
+    if world_layer_level >= 8:
+        _draw_actor_health_bars(canvas, primary_placements, mixed=True)
+        _draw_actor_health_bars(canvas, secondary_placements, mixed=True)
 
     # Vertical wipe-in from bottom.
     progress = max(0.0, min(1.0, wipe_progress))
@@ -956,6 +996,8 @@ def render(
         footer += "[barrage]"
     if world_layer_level >= 7:
         footer += "[physical]"
+    if world_layer_level >= 8:
+        footer += "[health]"
     if len(footer) <= SCREEN_W:
         x0 = (SCREEN_W - len(footer)) // 2
         y = SCREEN_H - 1
@@ -1005,7 +1047,7 @@ def main() -> None:
     wipe_started_at = time.monotonic()
     show_zone_guides = True
     world_layer_level = 0
-    world_mode_count = 8
+    world_mode_count = 9
     world_anchor_stagger = 1
     world_treeline_sprites = build_world_treeline_sprites(objects, colors)
     guy_sprite = build_player_sprite(players, "player_01", color_codes)
