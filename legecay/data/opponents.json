@@ -531,23 +531,22 @@
       "desc": "A grumpy little brute with more bark than bite.",
       "arrival": "stomps in",
       "art": [
-	"   ...",
+        "   ...",
         "  )o.o(",
         " _\\.=./_",
         "(_|-=-|_)",
         " );===;(",
         " _// \\\\_",
-	"'-'   '-'"
+        "'-'   '-'"
       ],
       "color_map": [
-        "  zZggz",
-        "  z rgrz",
-        " zzz HHqz ",
-        "z  qqqq  z ",
-        " z q   q z",
-        "(h;qqqq;h)",
-        " s'qs  sq's",
-        "'zz'    'zz'"
+        "   Ggg",
+        "  gCgCg",
+        " zGQrQGz",
+        "QQqaAaqQQ",
+        " gQaAaQg",
+        " zQQ QQz",
+        "qzq   qzq"
       ],
       "variation": 0.06,
       "jitter_stability": false
@@ -568,21 +567,21 @@
         "  :'~=~':",
         " __\\.../__",
         "(__|-=-|__)",
-        " ) /=-=\\ (",
+        " )./=-=\\.(",
         "(w';===;'w)",
         " _/'___'\\_",
         "'--'   '--'"
       ],
       "color_map": [
-        "    1111111",
-        "     1 1111",
-        "    1!!11111",
-        "  111111!!11",
-        "1111          1",
-        " 11         11",
-        "111111111111111",
-        "  11 11  111111",
-        "11111       1111"
+        "   GggGg",
+        "   gCgCg",
+        "  gqrRrqg",
+        " zZGzzzGZz",
+        "zzzzaAazzzz",
+        " gGzAaAzGg",
+        "gGqqaaaqqGg",
+        " zZqqqqqZz",
+        "qzzq   qzzq"
       ],
       "variation": 0.06,
       "jitter_stability": false
