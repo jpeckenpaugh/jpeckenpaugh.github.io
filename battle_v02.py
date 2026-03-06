@@ -1184,13 +1184,16 @@ def _draw_actor_melt(canvas: List[List[str]], actor: dict, progress: float) -> N
     h = len(rows)
     p = max(0.0, min(1.0, float(progress)))
     # Round A (0.0-0.5): top->bottom decolor sweep.
-    # Round B (0.5-1.0): top->bottom shift-and-disappear sweep.
+    # Round B (0.5-1.0): top->bottom two-beat drift:
+    #   beat1: drift +2 and white
+    #   beat2: drift +2 and black, then disappear
+    # Staggering: next row starts beat1 while previous row is in beat2.
     phase_a = min(1.0, p / 0.5) if p < 0.5 else 1.0
     phase_b = 0.0 if p < 0.5 else min(1.0, (p - 0.5) / 0.5)
     a_sweep = phase_a * h
-    b_sweep = phase_b * h
-    b_row = int(b_sweep)
-    b_frac = b_sweep - b_row
+    b_pos = phase_b * (h + 1)
+    white = "\x1b[38;2;245;245;245m"
+    black = "\x1b[38;2;20;20;20m"
 
     for dy, row in enumerate(rows):
         if not isinstance(row, list):
@@ -1202,18 +1205,22 @@ def _draw_actor_melt(canvas: List[List[str]], actor: dict, progress: float) -> N
         # Round A result for this row.
         is_grey = dy < a_sweep
         shift = 0
+        tint = None
         visible = True
 
-        # Round B: once A is complete, rows start melting away top->bottom.
+        # Round B: two-beat row melt with one-beat stagger between rows.
         if phase_b > 0.0:
-            if dy < b_row:
+            local = b_pos - dy
+            if local < 0.0:
+                pass
+            elif local < 1.0:
+                shift = -2 if (dy % 2 == 0) else 2
+                tint = white
+            elif local < 2.0:
+                shift = -2 if (dy % 2 == 0) else 2
+                tint = black
+            else:
                 visible = False
-            elif dy == b_row and b_row < h:
-                # Brief shifted "wilt" before vanishing.
-                if b_frac < 0.5:
-                    shift = -1 if (dy % 2 == 0) else 1
-                else:
-                    visible = False
 
         if not visible:
             continue
@@ -1223,7 +1230,11 @@ def _draw_actor_melt(canvas: List[List[str]], actor: dict, progress: float) -> N
                 continue
             if cell == " ":
                 continue
-            out = _grey_cell(cell) if is_grey else cell
+            if tint is not None:
+                ch = _strip_ansi(cell)
+                out = f"{tint}{ch}{ANSI_RESET}" if ch != " " else " "
+            else:
+                out = _grey_cell(cell) if is_grey else cell
             canvas[y][x] = out
 
 
