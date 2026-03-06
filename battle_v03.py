@@ -34,6 +34,7 @@ DEMO_BATTLE_LOG_LINES = [
     "Beba casts Magic Spark on 4 Fairy Warriors.",
     "Fairy Warrior has been defeated.",
     "Fairy Warrior has been defeated.",
+    "Fairy 1 casts Healing Light on Fairy 3.",
 ]
 
 
@@ -1023,20 +1024,28 @@ def _physical_demo_state(clock: float) -> dict:
 
 
 def _barrage_demo_state(clock: float) -> dict:
-    # Two-caster scripted barrage:
-    # Guy  -> [4,2,0,2]
-    # Beba -> [0,4,2,6]
+    # Three-part scripted sequence:
+    # Mushy -> [4,2,0,2]
+    # Beba  -> [0,4,2,6]
+    # Fairy1 heals Fairy3 for +2 HP (cost 2 MP)
     initial_hp = [6, 6, 6, 6]
     dmg1 = [4, 2, 0, 2]
     dmg2 = [0, 4, 2, 6]
     caster1_idx = 0  # Guy
     caster2_idx = 4  # Beba
+    healer_idx = 0   # Fairy 1 (primary pane index)
+    heal_target_idx = 2  # Fairy 3
+    heal_amount = 2
+    healer_pre_mp = 6
+    healer_post_mp = 4
+    healer_mp_cost = 2
     start_interval = 0.5
     cast_duration = 1.0
     cast_span = cast_duration + (start_interval * 3)  # 2.5s for 4 targets
     between_casts = 0.5
     final_pause = 2.0
-    total = cast_span + between_casts + cast_span + final_pause
+    heal_cast_duration = cast_duration
+    total = cast_span + between_casts + cast_span + between_casts + heal_cast_duration + final_pause
     t = float(clock) % max(0.001, total)
 
     def _cast_state(cast_t: float, hp_in: List[int], damages: List[int]) -> tuple[List[int], List[dict], List[dict]]:
@@ -1079,6 +1088,38 @@ def _barrage_demo_state(clock: float) -> dict:
     cast2_start = cast_span + between_casts
     cast2_t = max(0.0, t - cast2_start)
     hp_after_2, active_2, recent_2 = _cast_state(min(cast_span, cast2_t), hp_after_1, dmg2)
+    cast3_start = cast2_start + cast_span + between_casts
+    cast3_t = max(0.0, t - cast3_start)
+
+    pre_heal_hp = hp_after_2[heal_target_idx]
+    post_heal_hp = min(6, pre_heal_hp + heal_amount)
+    active_heals: List[dict] = []
+    recent_heals: List[dict] = []
+    hp_after_3 = list(hp_after_2)
+    if cast3_t >= heal_cast_duration:
+        hp_after_3[heal_target_idx] = post_heal_hp
+        if (cast3_t - heal_cast_duration) <= 0.6:
+            recent_heals.append(
+                {
+                    "source_idx": healer_idx,
+                    "target_idx": heal_target_idx,
+                    "heal": heal_amount,
+                    "pre_hp": pre_heal_hp,
+                    "post_hp": post_heal_hp,
+                    "progress": 1.0,
+                }
+            )
+    elif cast3_t > 0.0:
+        active_heals.append(
+            {
+                "source_idx": healer_idx,
+                "target_idx": heal_target_idx,
+                "heal": heal_amount,
+                "pre_hp": pre_heal_hp,
+                "post_hp": post_heal_hp,
+                "progress": cast3_t / max(0.001, heal_cast_duration),
+            }
+        )
 
     if t < cast_span:
         phase = "cast1"
@@ -1088,7 +1129,7 @@ def _barrage_demo_state(clock: float) -> dict:
         hp_now = hp_after_1
         cast_elapsed = t
     elif t < cast2_start:
-        phase = "between"
+        phase = "between1"
         attacker_idx = caster1_idx
         active = []
         recent = recent_1
@@ -1101,12 +1142,26 @@ def _barrage_demo_state(clock: float) -> dict:
         recent = recent_2
         hp_now = hp_after_2
         cast_elapsed = cast2_t
+    elif t < cast3_start:
+        phase = "between2"
+        attacker_idx = caster2_idx
+        active = []
+        recent = recent_2
+        hp_now = hp_after_2
+        cast_elapsed = 0.0
+    elif t < (cast3_start + heal_cast_duration):
+        phase = "cast3"
+        attacker_idx = caster2_idx
+        active = []
+        recent = []
+        hp_now = hp_after_2
+        cast_elapsed = cast3_t
     else:
         phase = "final_pause"
         attacker_idx = caster2_idx
         active = []
         recent = []
-        hp_now = hp_after_2
+        hp_now = hp_after_3
         cast_elapsed = 0.0
 
     # Kills occur in cast2 on fairy2(idx1) and fairy4(idx3) when their projectile resolves.
@@ -1123,9 +1178,18 @@ def _barrage_demo_state(clock: float) -> dict:
         "hp_now": hp_now,
         "active_hits": active,
         "recent_hits": recent,
+        "active_heals": active_heals,
+        "recent_heals": recent_heals,
+        "healer_idx": healer_idx,
+        "heal_target_idx": heal_target_idx,
+        "healer_pre_mp": healer_pre_mp,
+        "healer_post_mp": healer_post_mp,
+        "healer_mp_cost": healer_mp_cost,
         "melt_progress_by_idx": melt_progress_by_idx,
         "loop_t": t,
         "total": total,
+        "cast3_start": cast3_start,
+        "heal_cast_duration": heal_cast_duration,
     }
 
 
@@ -1135,15 +1199,46 @@ def _battle_log_lines_for_barrage(clock: float) -> List[str]:
     cast_duration = 1.0
     cast_span = cast_duration + (start_interval * 3)  # 2.5
     between_casts = 0.5
+    heal_cast_duration = cast_duration
     final_pause = 2.0
-    total = cast_span + between_casts + cast_span + final_pause  # 8.0
+    total = cast_span + between_casts + cast_span + between_casts + heal_cast_duration + final_pause  # 9.0
     t = float(clock) % max(0.001, total)
+    cast2_start = cast_span + between_casts
+    cast3_start = cast2_start + cast_span + between_casts
 
     events = [
         (0.0, "Mushy casts Magic Spark on 4 Fairy Warriors."),
-        (cast_span + between_casts, "Beba casts Magic Spark on 4 Fairy Warriors."),
-        (cast_span + between_casts + (1 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
-        (cast_span + between_casts + (3 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
+        (cast2_start, "Beba casts Magic Spark on 4 Fairy Warriors."),
+        (cast2_start + (1 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
+        (cast2_start + (3 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
+        (cast3_start, "Fairy 1 casts Healing Light on Fairy 3."),
+    ]
+
+    chars_per_sec = 38.0
+    lines: List[str] = []
+    for event_t, text in events:
+        if t < event_t:
+            break
+        elapsed = t - event_t
+        reveal = min(len(text), max(0, int(elapsed * chars_per_sec)))
+        lines.append(text if reveal >= len(text) else text[:reveal])
+    return lines
+
+
+def _battle_log_lines_for_physical(clock: float) -> List[str]:
+    # Timeline aligned with _physical_demo_state.
+    attack_window = 1.0
+    between_pause = 2.0
+    final_pause = 5.0
+    total = (4 * attack_window) + (3 * between_pause) + final_pause  # 15.0
+    t = float(clock) % max(0.001, total)
+
+    events = [
+        (0.0, "Guy attacks Fairy Warrior 1 for 2 damage."),
+        (attack_window + between_pause, "Mushy attacks Fairy Warrior 1 for 3 damage."),
+        ((attack_window + between_pause) * 2, "Chase attacks Fairy Warrior 2 for 4 damage."),
+        ((attack_window + between_pause) * 3, "Ogrito attacks Fairy Warrior 1 for 2 damage."),
+        ((attack_window + between_pause) * 3 + attack_window, "Fairy Warrior 1 has been defeated."),
     ]
 
     chars_per_sec = 38.0
@@ -1415,6 +1510,57 @@ def _draw_physical_damage_hud_step(
         total=total,
         overlay_text=f"-{damage}",
         overlay_color="\x1b[38;2;245;245;245m",
+        row_label="HP",
+    )
+
+
+def _draw_heal_hud_step(
+    canvas: List[List[str]],
+    target_actor: dict,
+    progress: float,
+    pre_hp: int,
+    post_hp: int,
+    total: int,
+    heal: int,
+) -> None:
+    rows = target_actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return
+    w = max((len(row) for row in rows), default=0)
+    x0 = int(target_actor.get("x", 0))
+    y0 = int(target_actor.get("y", 0))
+    center_x = x0 + (w // 2)
+    bar_top = y0 - 4
+
+    p = max(0.0, min(1.0, float(progress)))
+    if p < 0.50:
+        _draw_health_bar_custom(canvas, center_x, bar_top, pre_hp, total=total, row_label="HP")
+        return
+    if p < 0.75:
+        flash_on = (int((p - 0.50) / 0.06) % 2) == 0
+        flash_fill = "\x1b[38;2;96;236;120m" if flash_on else None
+        flash_frame = "\x1b[38;2;170;255;185m" if flash_on else None
+        _draw_health_bar_custom(
+            canvas,
+            center_x,
+            bar_top,
+            pre_hp,
+            total=total,
+            fill_color=flash_fill,
+            frame_color=flash_frame,
+            overlay_text=f"+{heal}",
+            overlay_color="\x1b[38;2;245;255;245m",
+            row_label="HP",
+        )
+        return
+    _draw_health_bar_custom(
+        canvas,
+        center_x,
+        bar_top,
+        post_hp,
+        total=total,
+        overlay_text=f"+{heal}",
+        overlay_color="\x1b[38;2;245;255;245m",
         row_label="HP",
     )
 
@@ -1917,6 +2063,42 @@ def render(
                             damage=max(0, int(hit.get("damage", 0))),
                         )
 
+            active_heals = barrage_state.get("active_heals", [])
+            if isinstance(active_heals, list):
+                for heal_evt in active_heals:
+                    if not isinstance(heal_evt, dict):
+                        continue
+                    source_idx = int(heal_evt.get("source_idx", 0))
+                    target_idx = int(heal_evt.get("target_idx", 0))
+                    if source_idx < 0 or source_idx >= len(primary_placements):
+                        continue
+                    if target_idx < 0 or target_idx >= len(primary_placements):
+                        continue
+                    src_heal = primary_placements[source_idx]
+                    dst_heal = primary_placements[target_idx]
+                    src_rows_h = src_heal.get("rows", [])
+                    dst_rows_h = dst_heal.get("rows", [])
+                    src_w_h = max((len(row) for row in src_rows_h), default=0) if isinstance(src_rows_h, list) else 0
+                    src_h_h = len(src_rows_h) if isinstance(src_rows_h, list) else 0
+                    dst_w_h = max((len(row) for row in dst_rows_h), default=0) if isinstance(dst_rows_h, list) else 0
+                    dst_h_h = len(dst_rows_h) if isinstance(dst_rows_h, list) else 0
+                    source_h = (int(src_heal.get("x", 0)) + (src_w_h // 2), int(src_heal.get("y", 0)) + (src_h_h // 2))
+                    target_h = (int(dst_heal.get("x", 0)) + (dst_w_h // 2), int(dst_heal.get("y", 0)) + (dst_h_h // 2))
+                    _draw_spell_throw(canvas, source_h, target_h, float(heal_evt.get("progress", 0.0)))
+                    pre_hp_6 = max(0, int(heal_evt.get("pre_hp", 0)))
+                    post_hp_6 = max(0, int(heal_evt.get("post_hp", 0)))
+                    pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
+                    post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
+                    _draw_heal_hud_step(
+                        canvas,
+                        dst_heal,
+                        progress=float(heal_evt.get("progress", 0.0)),
+                        pre_hp=pre_hp_10,
+                        post_hp=post_hp_10,
+                        total=10,
+                        heal=max(0, int(heal_evt.get("heal", 0))),
+                    )
+
             recent_hits = barrage_state.get("recent_hits", [])
             if isinstance(recent_hits, list):
                 for hit in recent_hits:
@@ -1941,6 +2123,28 @@ def render(
                         total=10,
                         damage=max(0, int(hit.get("damage", 0))),
                     )
+            recent_heals = barrage_state.get("recent_heals", [])
+            if isinstance(recent_heals, list):
+                for heal_evt in recent_heals:
+                    if not isinstance(heal_evt, dict):
+                        continue
+                    target_idx = int(heal_evt.get("target_idx", 0))
+                    if target_idx < 0 or target_idx >= len(primary_placements):
+                        continue
+                    dst_heal = primary_placements[target_idx]
+                    pre_hp_6 = max(0, int(heal_evt.get("pre_hp", 0)))
+                    post_hp_6 = max(0, int(heal_evt.get("post_hp", 0)))
+                    pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
+                    post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
+                    _draw_heal_hud_step(
+                        canvas,
+                        dst_heal,
+                        progress=1.0,
+                        pre_hp=pre_hp_10,
+                        post_hp=post_hp_10,
+                        total=10,
+                        heal=max(0, int(heal_evt.get("heal", 0))),
+                    )
             # MP indicator at spell-cast start for caster only.
             cast_elapsed = float(barrage_state.get("cast_elapsed", 0.0))
             if str(barrage_state.get("phase", "")) in ("cast1", "cast2") and cast_elapsed <= 0.65:
@@ -1951,6 +2155,19 @@ def render(
                 elif attacker_idx == 4:
                     # Beba: 10/10 -> 6/10
                     _draw_mp_cast_hud_step(canvas, secondary_placements[attacker_idx], mp_progress, pre_mp=10, post_mp=6, total=10, cost=4)
+            if str(barrage_state.get("phase", "")) == "cast3" and cast_elapsed <= 0.65:
+                mp_progress = max(0.0, min(1.0, cast_elapsed / 0.65))
+                healer_idx = int(barrage_state.get("healer_idx", 0))
+                if 0 <= healer_idx < len(primary_placements):
+                    _draw_mp_cast_hud_step(
+                        canvas,
+                        primary_placements[healer_idx],
+                        mp_progress,
+                        pre_mp=max(0, int(barrage_state.get("healer_pre_mp", 6))),
+                        post_mp=max(0, int(barrage_state.get("healer_post_mp", 4))),
+                        total=6,
+                        cost=max(0, int(barrage_state.get("healer_mp_cost", 2))),
+                    )
     # Next demo step: physical hit (blink attacker, then smash animation on target).
     if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames and physical_state is not None:
         target_idx = int(physical_state.get("target_idx", 0))
@@ -2019,6 +2236,8 @@ def render(
     if 5 <= world_layer_level <= 9:
         if world_layer_level == 6:
             log_lines = _battle_log_lines_for_barrage(spell_clock)
+        elif world_layer_level == 7:
+            log_lines = _battle_log_lines_for_physical(spell_clock)
         elif world_layer_level >= 7:
             log_lines = DEMO_BATTLE_LOG_LINES
         else:
@@ -2236,5 +2455,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
