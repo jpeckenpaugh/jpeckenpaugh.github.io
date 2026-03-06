@@ -1079,6 +1079,64 @@
         "variation": 0.08,
         "jitter_stability": true
     },
+    "palm_small": {
+        "art": [
+            "    ___   ____",
+            "  /' --;^/ ,-_\\",
+            " / / --o\\ o-\\ \\\\",
+            "/-/-/|o|-|\\-\\\\|\\\\ ",
+            " '`  ` |-|   `` '",
+            "       |-|",
+            "       |-|",
+            "       |-|",
+            "       |-|"
+        ],
+        "color_mask": [
+            "    ggg   gggg",
+            "  gg ggggg gggg",
+            " g g gggg ggg gg",
+            "ggggggggggggggggg ",
+            " gg  g ddd   gg g",
+            "       ddd",
+            "       ddd",
+            "       ddd",
+            "       ddd"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "palm_large": {
+        "art": [
+            "    _____   ______",
+            "  /'  --;^/ ,-_    \\",
+            " /  / --o\\ o-\\  \\   \\",
+            "/- /- /|o| -|\\-\\\\|\\ \\ ",
+            " '`  `   | -|   `` '",
+            "         | -|",
+            "         | -|",
+            "         | -|",
+            "         | -|",
+            "         |  |",
+            "         |- |"
+        ],
+        "color_mask": [
+            "    ggggg   gggggg",
+            "  gg  ggggg ggg    g",
+            " g  g gggg ggg  g   g",
+            "gg gg gggg gggggggg g ",
+            " gg  g   d dd   gg g",
+            "         d dd",
+            "         d dd",
+            "         d dd",
+            "         d dd",
+            "         d  d",
+            "         dd d"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
     "mushroom_house": {
         "art": [
             "        .",

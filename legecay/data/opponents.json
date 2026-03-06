@@ -645,6 +645,188 @@
       ],
       "variation": 0.05,
       "jitter_stability": false
+    },
+    "frog": {
+      "name": "Frog",
+      "element": "water",
+      "level": 4,
+      "hp": 28,
+      "atk": 14,
+      "defense": 12,
+      "action_chance": 0.9,
+      "desc": "A springy amphibian with a slick tongue strike.",
+      "arrival": "hops into view",
+      "art": [
+        "   _ ",
+        " .'_`--.___   __ ",
+        "( 'o`   - .`.'_ )",
+        " `-._      `_`./ ",
+        "   //\\\\    ( .'/_",
+        "  []_//`---'`-'_/"
+      ],
+      "color_map": [
+        "   1 ",
+        " 1111111111   11 ",
+        "1 111   1 11111 1",
+        " 1111      11111 ",
+        "   1111    1 1111",
+        "  111111111111111"
+      ],
+      "art_variations": [
+        {
+          "label": "left",
+          "art": [
+            "   _ ",
+            " .'_`--.___   __ ",
+            "( 'o`   - .`.'_ )",
+            " `-._      `_`./ ",
+            "   //\\\\    ( .'/_",
+            "  []_//`---'`-'_/"
+          ],
+          "color_map": [
+            "   1 ",
+            " 1111111111   11 ",
+            "1 111   1 11111 1",
+            " 1111      11111 ",
+            "   1111    1 1111",
+            "  111111111111111"
+          ]
+        },
+        {
+          "label": "right",
+          "art": [
+            "             _ ",
+            " __   ___.--`_'. ",
+            "( _.'`. -   `o' )",
+            " \\.`_`      _.-'",
+            " _\\'.(    //\\\\",
+            "\\_'-`'---`\\\\_[]"
+          ],
+          "color_map": [
+            "             1 ",
+            " 11   1111111111 ",
+            "1 11111 1   111 1",
+            " 11111      1111",
+            " 11111    1111",
+            "111111111111111"
+          ]
+        }
+      ],
+      "variation": 0.05,
+      "jitter_stability": false,
+      "max_hp": 28
+    },
+    "dolphin": {
+      "name": "Dolphin",
+      "element": "water",
+      "level": 6,
+      "hp": 38,
+      "atk": 20,
+      "defense": 16,
+      "action_chance": 1.0,
+      "desc": "A swift cetacean that strikes in arcing splashes.",
+      "arrival": "surges from the water",
+      "art": [
+        " _________         .    .",
+        "(..       \\_       |\\  /|",
+        " \\       O  \\      \\ \\/ /",
+        "  \\____      \\ /|   \\  / ",
+        "    \\ \\        \\|   /  |",
+        "     \\      ==   \\_/   |",
+        "      `\\_   ===    \\.  |",
+        "      / /\\_   \\ /      |",
+        "      |/   \\_  \\|      /",
+        "             \\________/"
+      ],
+      "color_map": [
+        " 111111111         1    1",
+        "111       11       11  11",
+        " 1       1  1      1 11 1",
+        "  11111      1 11   1  1 ",
+        "    1 1        11   1  1",
+        "     1      11   111   1",
+        "      111   111    11  1",
+        "      1 111   1 1      1",
+        "      11   11  11      1",
+        "             1111111111"
+      ],
+      "variation": 0.05,
+      "jitter_stability": false,
+      "max_hp": 38
+    },
+    "hawk": {
+      "name": "Hawk",
+      "element": "wind",
+      "level": 7,
+      "hp": 34,
+      "atk": 24,
+      "defense": 14,
+      "action_chance": 1.1,
+      "desc": "A razor-eyed raptor that dives with cutting speed.",
+      "arrival": "dives in from above",
+      "art": [
+        "/\\\\          /\\",
+        "\\\\\\'\\,      / //",
+        " \\\\\\//_  __/ //'",
+        "  \\_- \\/' /  //<'",
+        "    \\ ///  <//'",
+        "    /  >>   \\\\\\`",
+        "   /,)-^>>  _\\`\\",
+        "   (/   \\\\ / \\\\/\\",
+        "         //  /\\__\\",
+        "        ((`"
+      ],
+      "color_map": [
+        "111          11",
+        "111111      1 11",
+        " 111111  111 111",
+        "  111 111 1  1111",
+        "    1 111  1111",
+        "    1  11   1111",
+        "   1111111  1111",
+        "   11   11 1 1111",
+        "         11  11111",
+        "        111"
+      ],
+      "variation": 0.05,
+      "jitter_stability": false,
+      "max_hp": 34
+    },
+    "seahorse": {
+      "name": "Seahorse",
+      "element": "water",
+      "level": 5,
+      "hp": 30,
+      "atk": 16,
+      "defense": 18,
+      "action_chance": 0.95,
+      "desc": "A spiraled swimmer that darts with tidal bursts.",
+      "arrival": "glides in on a curling wave",
+      "art": [
+        "      \\/)/)",
+        "    _'  oo(_.-. ",
+        "  /'.     .---'",
+        "/'-./    (",
+        ")     ; __\\",
+        "\\_.'\\ : __|",
+        "     )  _/",
+        "    (  (,.",
+        "     '-.-'"
+      ],
+      "color_map": [
+        "      11111",
+        "    11  1111111 ",
+        "  111     11111",
+        "11111    1",
+        "1     1 111",
+        "11111 1 111",
+        "     1  11",
+        "    1  111",
+        "     11111"
+      ],
+      "variation": 0.05,
+      "jitter_stability": false,
+      "max_hp": 30
     }
   },
   "element_variants": {

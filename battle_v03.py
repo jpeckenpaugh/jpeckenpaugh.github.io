@@ -589,16 +589,22 @@ def _draw_ui_text_box(canvas: List[List[str]], text: str, primary_zone: LayoutZo
     x0 = max(0, min(SCREEN_W - box_w, mid_x - (box_w // 2)))
     y0 = max(0, min(SCREEN_H - box_h, mid_y - (box_h // 2)))
 
-    top = "o" + ("-" * inner_w) + "o"
-    bottom = top
+    h = "\u2501"
+    v = "\u2503"
+    tl = "\u250f"
+    tr = "\u2513"
+    bl = "\u2517"
+    br = "\u251b"
+    top = tl + (h * inner_w) + tr
+    bottom = bl + (h * inner_w) + br
     lines: List[str] = [top]
     for _ in range(padding_y):
-        lines.append("|" + (" " * inner_w) + "|")
+        lines.append(v + (" " * inner_w) + v)
     for line in wrapped:
         text_line = (" " * padding_x) + line.center(text_w) + (" " * padding_x)
-        lines.append("|" + text_line + "|")
+        lines.append(v + text_line + v)
     for _ in range(padding_y):
-        lines.append("|" + (" " * inner_w) + "|")
+        lines.append(v + (" " * inner_w) + v)
     lines.append(bottom)
 
     text_color = "\x1b[38;2;245;245;245m"
@@ -649,7 +655,7 @@ def _draw_ui_dialogue_box(
         return lines
 
     speaker_title = f"{{ {speaker} }}"
-    button_text = "[ A / Confirm ]--[ S / Cancel ]"
+    button_text = "[ A / Confirm ]━━[ S / Cancel ]"
     wrapped = _balanced_wrap(str(text).strip(), width=52)
     if not wrapped:
         wrapped = [""]
@@ -670,19 +676,25 @@ def _draw_ui_dialogue_box(
 
     title_left = max(0, (inner_w - len(speaker_title)) // 2)
     title_right = max(0, inner_w - len(speaker_title) - title_left)
-    top = "o" + ("-" * title_left) + speaker_title + ("-" * title_right) + "o"
+    h = "\u2501"
+    v = "\u2503"
+    tl = "\u250f"
+    tr = "\u2513"
+    bl = "\u2517"
+    br = "\u251b"
+    top = tl + (h * title_left) + speaker_title + (h * title_right) + tr
     title_start_dx = 1 + title_left
     title_end_dx = title_start_dx + len(speaker_title)
 
     button_left = max(0, (inner_w - len(button_text)) // 2)
     button_right = max(0, inner_w - len(button_text) - button_left)
-    bottom = "o" + ("-" * button_left) + button_text + ("-" * button_right) + "o"
+    bottom = bl + (h * button_left) + button_text + (h * button_right) + br
 
     lines: List[str] = [top]
-    lines.append("|" + (" " * inner_w) + "|")  # top internal margin
+    lines.append(v + (" " * inner_w) + v)  # top internal margin
     for line in wrapped:
-        lines.append("|" + line.center(inner_w) + "|")
-    lines.append("|" + (" " * inner_w) + "|")  # bottom internal margin
+        lines.append(v + line.center(inner_w) + v)
+    lines.append(v + (" " * inner_w) + v)  # bottom internal margin
     lines.append(bottom)
     box_h = len(lines)
 
@@ -2455,6 +2467,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
