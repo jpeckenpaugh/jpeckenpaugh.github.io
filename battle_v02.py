@@ -833,6 +833,95 @@ def _physical_hit_state(clock: float) -> tuple[bool, bool, int]:
     return (False, False, 0)
 
 
+def _physical_hit_state_progress(progress: float) -> tuple[bool, bool, int]:
+    # progress in [0,1]: blink twice, then play smash frames 1..5 once.
+    p = max(0.0, min(1.0, float(progress)))
+    blink_window = 0.50
+    impact_window = 0.50
+    if p < blink_window:
+        step = int((p / max(0.001, blink_window)) * 4.0)
+        blink_visible = (step % 2) == 0
+        return (not blink_visible, False, 0)
+    if p < (blink_window + impact_window):
+        impact_t = (p - blink_window) / max(0.001, impact_window)
+        frame_idx = min(4, int(impact_t * 5.0))
+        return (False, True, frame_idx)
+    return (False, False, 0)
+
+
+def _physical_demo_state(clock: float) -> dict:
+    # Sequence:
+    # 1) Guy -> Fairy1 (2)
+    # 2) Mushy -> Fairy1 (3)
+    # 3) Chase -> Fairy2 (4)
+    # 4) Ogrito -> Fairy1 (2, kill)
+    attacks = [
+        {"attacker_idx": 0, "target_idx": 0, "damage": 2},
+        {"attacker_idx": 1, "target_idx": 0, "damage": 3},
+        {"attacker_idx": 2, "target_idx": 1, "damage": 4},
+        {"attacker_idx": 3, "target_idx": 0, "damage": 2},
+    ]
+    initial_hp = [7, 10, 10, 10]
+    attack_window = 1.0
+    between_pause = 2.0
+    final_pause = 5.0
+
+    total = (len(attacks) * attack_window) + (max(0, len(attacks) - 1) * between_pause) + final_pause
+    t = float(clock) % max(0.001, total)
+    hp_now = list(initial_hp)
+    cursor = 0.0
+
+    for idx, atk in enumerate(attacks):
+        pre = hp_now[atk["target_idx"]]
+        post = max(0, pre - int(atk["damage"]))
+        atk_start = cursor
+        atk_end = atk_start + attack_window
+        if atk_start <= t < atk_end:
+            progress = (t - atk_start) / max(0.001, attack_window)
+            return {
+                "phase": "attack",
+                "attack_idx": idx,
+                "attacker_idx": atk["attacker_idx"],
+                "target_idx": atk["target_idx"],
+                "damage": int(atk["damage"]),
+                "pre_hp": pre,
+                "post_hp": post,
+                "hp_now": hp_now,
+                "progress": progress,
+            }
+        # apply this attack for subsequent windows
+        hp_now[atk["target_idx"]] = post
+        cursor = atk_end
+        if idx < len(attacks) - 1:
+            pause_end = cursor + between_pause
+            if cursor <= t < pause_end:
+                return {
+                    "phase": "pause",
+                    "attack_idx": idx,
+                    "attacker_idx": atk["attacker_idx"],
+                    "target_idx": atk["target_idx"],
+                    "damage": int(atk["damage"]),
+                    "pre_hp": pre,
+                    "post_hp": post,
+                    "hp_now": hp_now,
+                    "progress": 1.0,
+                }
+            cursor = pause_end
+
+    # final hold after all attacks
+    return {
+        "phase": "final_pause",
+        "attack_idx": len(attacks) - 1,
+        "attacker_idx": attacks[-1]["attacker_idx"],
+        "target_idx": attacks[-1]["target_idx"],
+        "damage": int(attacks[-1]["damage"]),
+        "pre_hp": 0,
+        "post_hp": hp_now[attacks[-1]["target_idx"]],
+        "hp_now": hp_now,
+        "progress": 1.0,
+    }
+
+
 def _draw_smash_frame(canvas: List[List[str]], frame: List[str], center: tuple[int, int]) -> None:
     if not frame:
         return
@@ -858,25 +947,296 @@ def _draw_health_bar(canvas: List[List[str]], center_x: int, top_y: int, filled:
     total = max(1, int(total))
     filled = max(0, min(total, int(filled)))
     empty = total - filled
-    hp_color = "\x1b[38;2;56;186;72m"
-    miss_color = "\x1b[38;2;18;18;18m"
-    frame_color = "\x1b[38;2;210;210;210m"
-    cells: List[str] = [f"{frame_color}[{ANSI_RESET}"]
-    cells.extend([f"{hp_color}#{ANSI_RESET}" for _ in range(filled)])
-    cells.extend([f"{miss_color}_{ANSI_RESET}" for _ in range(empty)])
-    cells.append(f"{frame_color}]{ANSI_RESET}")
-    width = len(cells)
-    x0 = max(0, min(SCREEN_W - width, int(center_x) - (width // 2)))
-    y = int(top_y)
-    if y < 0 or y >= SCREEN_H:
+    pct = filled / float(total)
+    if pct >= 0.5:
+        hp_color = "\x1b[38;2;56;186;72m"   # green: healthy
+    elif pct >= 0.25:
+        hp_color = "\x1b[38;2;236;201;58m"  # yellow: medium
+    else:
+        hp_color = "\x1b[38;2;220;70;70m"   # red: low
+    miss_color = "\x1b[38;2;26;26;26m"     # missing hp
+    frame_color = "\x1b[38;2;210;210;210m"  # frame
+
+    inner_w = total
+    box_w = inner_w + 2
+    x0 = max(0, min(SCREEN_W - box_w, int(center_x) - (box_w // 2)))
+    y0 = int(top_y)
+    if y0 < 0 or (y0 + 2) >= SCREEN_H:
         return
-    for i, cell in enumerate(cells):
-        x = x0 + i
+
+    top_row: List[str] = [f"{frame_color}┌{ANSI_RESET}"]
+    top_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
+    top_row.append(f"{frame_color}┐{ANSI_RESET}")
+
+    mid_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
+    mid_row.extend([f"{hp_color}█{ANSI_RESET}" for _ in range(filled)])
+    mid_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(empty)])
+    mid_row.append(f"{frame_color}│{ANSI_RESET}")
+
+    bot_row: List[str] = [f"{frame_color}└{ANSI_RESET}"]
+    bot_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
+    bot_row.append(f"{frame_color}┘{ANSI_RESET}")
+
+    for dx, cell in enumerate(top_row):
+        x = x0 + dx
         if 0 <= x < SCREEN_W:
-            canvas[y][x] = cell
+            canvas[y0][x] = cell
+    for dx, cell in enumerate(mid_row):
+        x = x0 + dx
+        if 0 <= x < SCREEN_W:
+            canvas[y0 + 1][x] = cell
+    for dx, cell in enumerate(bot_row):
+        x = x0 + dx
+        if 0 <= x < SCREEN_W:
+            canvas[y0 + 2][x] = cell
 
 
-def _draw_actor_health_bars(canvas: List[List[str]], placements: List[dict], mixed: bool = True) -> None:
+def _draw_health_bar_custom(
+    canvas: List[List[str]],
+    center_x: int,
+    top_y: int,
+    filled: int,
+    total: int = 10,
+    fill_color: str | None = None,
+    frame_color: str | None = None,
+    overlay_text: str | None = None,
+    overlay_color: str = "\x1b[38;2;245;245;245m",
+) -> None:
+    total = max(1, int(total))
+    filled = max(0, min(total, int(filled)))
+    empty = total - filled
+    pct = filled / float(total)
+    if fill_color is None:
+        if pct >= 0.5:
+            fill_color = "\x1b[38;2;56;186;72m"
+        elif pct >= 0.25:
+            fill_color = "\x1b[38;2;236;201;58m"
+        else:
+            fill_color = "\x1b[38;2;220;70;70m"
+    miss_color = "\x1b[38;2;26;26;26m"
+    frame_color = frame_color or "\x1b[38;2;210;210;210m"
+
+    inner_w = total
+    box_w = inner_w + 2
+    x0 = max(0, min(SCREEN_W - box_w, int(center_x) - (box_w // 2)))
+    y0 = int(top_y)
+    if y0 < 0 or (y0 + 2) >= SCREEN_H:
+        return
+
+    top_row: List[str] = [f"{frame_color}┌{ANSI_RESET}"]
+    top_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
+    top_row.append(f"{frame_color}┐{ANSI_RESET}")
+
+    mid_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
+    mid_row.extend([f"{fill_color}█{ANSI_RESET}" for _ in range(filled)])
+    mid_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(empty)])
+    mid_row.append(f"{frame_color}│{ANSI_RESET}")
+    if overlay_text:
+        text = str(overlay_text)
+        start = 1 + max(0, (inner_w - len(text)) // 2)
+        for i, ch in enumerate(text):
+            x = start + i
+            if 1 <= x <= inner_w:
+                mid_row[x] = f"{overlay_color}{ch}{ANSI_RESET}"
+
+    bot_row: List[str] = [f"{frame_color}└{ANSI_RESET}"]
+    bot_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
+    bot_row.append(f"{frame_color}┘{ANSI_RESET}")
+
+    for dy, row in enumerate([top_row, mid_row, bot_row]):
+        y = y0 + dy
+        for dx, cell in enumerate(row):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W and 0 <= y < SCREEN_H:
+                canvas[y][x] = cell
+
+
+def _draw_physical_damage_hud(canvas: List[List[str]], target_actor: dict, clock: float) -> None:
+    rows = target_actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return
+    w = max((len(row) for row in rows), default=0)
+    x0 = int(target_actor.get("x", 0))
+    y0 = int(target_actor.get("y", 0))
+    center_x = x0 + (w // 2)
+    bar_top = y0 - 4
+
+    total = 10
+    pre_filled = 8
+    damage = 5
+    post_filled = max(0, pre_filled - damage)
+    phase = float(clock) % 1.0
+
+    # 0.00-0.50: pre-hit bar visible (target not yet damaged)
+    if phase < 0.50:
+        _draw_health_bar_custom(canvas, center_x, bar_top, pre_filled, total=total)
+        return
+
+    # 0.50-0.75: impact + "-5" pop-up while bar flashes at pre-hit value.
+    if phase < 0.75:
+        flash_on = (int((phase - 0.50) / 0.06) % 2) == 0
+        flash_fill = "\x1b[38;2;255;95;95m" if flash_on else None
+        flash_frame = "\x1b[38;2;255;170;170m" if flash_on else None
+        _draw_health_bar_custom(
+            canvas,
+            center_x,
+            bar_top,
+            pre_filled,
+            total=total,
+            fill_color=flash_fill,
+            frame_color=flash_frame,
+            overlay_text=f"-{damage}",
+            overlay_color="\x1b[38;2;250;250;250m",
+        )
+        return
+
+    # 0.75-1.00: settle on reduced HP value.
+    _draw_health_bar_custom(
+        canvas,
+        center_x,
+        bar_top,
+        post_filled,
+        total=total,
+        overlay_text=f"-{damage}",
+        overlay_color="\x1b[38;2;245;245;245m",
+    )
+
+
+def _draw_physical_damage_hud_step(
+    canvas: List[List[str]],
+    target_actor: dict,
+    progress: float,
+    pre_hp: int,
+    post_hp: int,
+    total: int,
+    damage: int,
+) -> None:
+    rows = target_actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return
+    w = max((len(row) for row in rows), default=0)
+    x0 = int(target_actor.get("x", 0))
+    y0 = int(target_actor.get("y", 0))
+    center_x = x0 + (w // 2)
+    bar_top = y0 - 4
+
+    p = max(0.0, min(1.0, float(progress)))
+    if p < 0.50:
+        _draw_health_bar_custom(canvas, center_x, bar_top, pre_hp, total=total)
+        return
+    if p < 0.75:
+        flash_on = (int((p - 0.50) / 0.06) % 2) == 0
+        flash_fill = "\x1b[38;2;255;95;95m" if flash_on else None
+        flash_frame = "\x1b[38;2;255;170;170m" if flash_on else None
+        _draw_health_bar_custom(
+            canvas,
+            center_x,
+            bar_top,
+            pre_hp,
+            total=total,
+            fill_color=flash_fill,
+            frame_color=flash_frame,
+            overlay_text=f"-{damage}",
+            overlay_color="\x1b[38;2;250;250;250m",
+        )
+        return
+    _draw_health_bar_custom(
+        canvas,
+        center_x,
+        bar_top,
+        post_hp,
+        total=total,
+        overlay_text=f"-{damage}",
+        overlay_color="\x1b[38;2;245;245;245m",
+    )
+
+
+def _mp_fill_color(pct: float) -> str:
+    # Linear scale from light blue (0%) to bright blue (100%).
+    p = max(0.0, min(1.0, float(pct)))
+    r0, g0, b0 = (120, 170, 235)
+    r1, g1, b1 = (56, 140, 255)
+    r = int(r0 + ((r1 - r0) * p))
+    g = int(g0 + ((g1 - g0) * p))
+    b = int(b0 + ((b1 - b0) * p))
+    return f"\x1b[38;2;{r};{g};{b}m"
+
+
+def _draw_status_box(
+    canvas: List[List[str]],
+    center_x: int,
+    top_y: int,
+    hp_filled: int,
+    total: int = 10,
+    mp_filled: int | None = None,
+) -> None:
+    total = max(1, int(total))
+    hp_filled = max(0, min(total, int(hp_filled)))
+    hp_empty = total - hp_filled
+    hp_pct = hp_filled / float(total)
+    if hp_pct >= 0.5:
+        hp_color = "\x1b[38;2;56;186;72m"
+    elif hp_pct >= 0.25:
+        hp_color = "\x1b[38;2;236;201;58m"
+    else:
+        hp_color = "\x1b[38;2;220;70;70m"
+    miss_color = "\x1b[38;2;26;26;26m"
+    frame_color = "\x1b[38;2;210;210;210m"
+    mp_miss_color = "\x1b[38;2;18;24;36m"
+
+    has_mp = mp_filled is not None
+    mp_f = 0
+    mp_empty = total
+    mp_color = _mp_fill_color(0.0)
+    if has_mp:
+        mp_f = max(0, min(total, int(mp_filled)))
+        mp_empty = total - mp_f
+        mp_color = _mp_fill_color(mp_f / float(total))
+
+    inner_w = total
+    box_w = inner_w + 2
+    box_h = 4 if has_mp else 3
+    x0 = max(0, min(SCREEN_W - box_w, int(center_x) - (box_w // 2)))
+    y0 = int(top_y)
+    if y0 < 0 or (y0 + box_h - 1) >= SCREEN_H:
+        return
+
+    top_row: List[str] = [f"{frame_color}┌{ANSI_RESET}"]
+    top_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
+    top_row.append(f"{frame_color}┐{ANSI_RESET}")
+
+    hp_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
+    hp_row.extend([f"{hp_color}█{ANSI_RESET}" for _ in range(hp_filled)])
+    hp_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(hp_empty)])
+    hp_row.append(f"{frame_color}│{ANSI_RESET}")
+
+    mp_row: List[str] = [f"{frame_color}│{ANSI_RESET}"]
+    if has_mp:
+        mp_row.extend([f"{mp_color}█{ANSI_RESET}" for _ in range(mp_f)])
+        mp_row.extend([f"{mp_miss_color}·{ANSI_RESET}" for _ in range(mp_empty)])
+    else:
+        mp_row.extend([f"{miss_color}·{ANSI_RESET}" for _ in range(inner_w)])
+    mp_row.append(f"{frame_color}│{ANSI_RESET}")
+
+    bot_row: List[str] = [f"{frame_color}└{ANSI_RESET}"]
+    bot_row.extend([f"{frame_color}─{ANSI_RESET}" for _ in range(inner_w)])
+    bot_row.append(f"{frame_color}┘{ANSI_RESET}")
+
+    rows = [top_row, hp_row, mp_row, bot_row] if has_mp else [top_row, hp_row, bot_row]
+    for dy, row in enumerate(rows):
+        y = y0 + dy
+        for dx, cell in enumerate(row):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W:
+                canvas[y][x] = cell
+
+
+def _draw_actor_health_bars(
+    canvas: List[List[str]],
+    placements: List[dict],
+    mixed: bool = True,
+    demo_percents: List[int] | None = None,
+) -> None:
     for idx, actor in enumerate(placements):
         rows = actor.get("rows", [])
         if not isinstance(rows, list) or not rows:
@@ -885,9 +1245,47 @@ def _draw_actor_health_bars(canvas: List[List[str]], placements: List[dict], mix
         x0 = int(actor.get("x", 0))
         y0 = int(actor.get("y", 0))
         center_x = x0 + (w // 2)
-        bar_y = y0 - 1
-        filled = 6 if (not mixed or idx % 2 == 0) else 3
-        _draw_health_bar(canvas, center_x, bar_y, filled, total=6)
+        bar_y = y0 - 3
+        if demo_percents is not None and idx < len(demo_percents):
+            pct = max(0, min(100, int(demo_percents[idx])))
+            filled = int(round((pct / 100.0) * 10))
+        elif mixed:
+            # Demo fallback values.
+            filled = 4 if idx % 2 == 0 else 2
+        else:
+            filled = 10
+        _draw_health_bar(canvas, center_x, bar_y, filled, total=10)
+
+
+def _draw_actor_status_bars(
+    canvas: List[List[str]],
+    placements: List[dict],
+    hp_percents: List[int] | None = None,
+    mp_percents: List[int | None] | None = None,
+) -> None:
+    for idx, actor in enumerate(placements):
+        rows = actor.get("rows", [])
+        if not isinstance(rows, list) or not rows:
+            continue
+        w = max((len(row) for row in rows), default=0)
+        x0 = int(actor.get("x", 0))
+        y0 = int(actor.get("y", 0))
+        center_x = x0 + (w // 2)
+
+        hp_pct = 100
+        if hp_percents is not None and idx < len(hp_percents):
+            hp_pct = max(0, min(100, int(hp_percents[idx])))
+        hp_filled = int(round((hp_pct / 100.0) * 10))
+
+        mp_filled: int | None = None
+        if mp_percents is not None and idx < len(mp_percents):
+            mp_pct = mp_percents[idx]
+            if mp_pct is not None:
+                mp_pct = max(0, min(100, int(mp_pct)))
+                mp_filled = int(round((mp_pct / 100.0) * 10))
+
+        bar_y = y0 - (4 if mp_filled is not None else 3)
+        _draw_status_box(canvas, center_x, bar_y, hp_filled=hp_filled, total=10, mp_filled=mp_filled)
 
 
 def render(
@@ -971,10 +1369,16 @@ def render(
                         canvas[y][x] = cell
 
     hide_attacker = False
+    hide_attacker_idx: int | None = None
     show_hit_impact = False
     impact_frame_hint = 0
+    physical_state: dict | None = None
     if world_layer_level == 7:
-        hide_attacker, show_hit_impact, impact_frame_hint = _physical_hit_state(spell_clock)
+        physical_state = _physical_demo_state(spell_clock)
+        if physical_state.get("phase") == "attack":
+            atk_progress = float(physical_state.get("progress", 0.0))
+            hide_attacker, show_hit_impact, impact_frame_hint = _physical_hit_state_progress(atk_progress)
+            hide_attacker_idx = int(physical_state.get("attacker_idx", 0))
 
     # World pane actor pass (secondary): centered collective, bottom-anchored individuals.
     secondary_placements: List[dict] = []
@@ -988,7 +1392,7 @@ def render(
             reverse_stagger=secondary_actor_reverse_stagger,
         )
         for idx, actor in enumerate(secondary_placements):
-            if hide_attacker and idx == 0:
+            if hide_attacker and hide_attacker_idx is not None and idx == hide_attacker_idx:
                 continue
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
@@ -1009,7 +1413,10 @@ def render(
     if world_layer_level >= 2 and primary_zone is not None:
         pri_sprites = primary_actor_sprites if primary_actor_sprites is not None else ([mushy_sprite] if mushy_sprite else [])
         primary_placements = layout_actor_strip(primary_zone, pri_sprites, spacing=1, stagger_rows=primary_actor_stagger)
-        for actor in primary_placements:
+        hp_now = physical_state.get("hp_now", []) if isinstance(physical_state, dict) else []
+        for idx, actor in enumerate(primary_placements):
+            if world_layer_level == 7 and isinstance(hp_now, list) and idx < len(hp_now) and int(hp_now[idx]) <= 0:
+                continue
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
             rows = actor.get("rows", [])
@@ -1056,19 +1463,64 @@ def render(
             targets.append((int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2)))
         _draw_spell_barrage(canvas, source, targets, spell_clock)
     # Next demo step: physical hit (blink attacker, then smash animation on target).
-    if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames:
-        dst = primary_placements[0]
+    if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames and physical_state is not None:
+        target_idx = int(physical_state.get("target_idx", 0))
+        target_idx = max(0, min(len(primary_placements) - 1, target_idx))
+        dst = primary_placements[target_idx]
         dst_rows = dst.get("rows", [])
         dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
         dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
         target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
         frame_idx = min(max(0, impact_frame_hint), len(smash_frames) - 1)
         _draw_smash_frame(canvas, smash_frames[frame_idx], target)
+    if world_layer_level == 7 and primary_placements and physical_state is not None:
+        hp_now = physical_state.get("hp_now", [])
+        if isinstance(hp_now, list):
+            for idx, actor in enumerate(primary_placements[: len(hp_now)]):
+                hp_val = max(0, int(hp_now[idx]))
+                rows = actor.get("rows", [])
+                if not isinstance(rows, list) or not rows:
+                    continue
+                w = max((len(row) for row in rows), default=0)
+                x0 = int(actor.get("x", 0))
+                y0 = int(actor.get("y", 0))
+                center_x = x0 + (w // 2)
+                _draw_health_bar_custom(canvas, center_x, y0 - 4, hp_val, total=10)
+
+        if physical_state.get("phase") == "attack":
+            target_idx = int(physical_state.get("target_idx", 0))
+            target_idx = max(0, min(len(primary_placements) - 1, target_idx))
+            _draw_physical_damage_hud_step(
+                canvas,
+                primary_placements[target_idx],
+                progress=float(physical_state.get("progress", 0.0)),
+                pre_hp=max(0, int(physical_state.get("pre_hp", 0))),
+                post_hp=max(0, int(physical_state.get("post_hp", 0))),
+                total=10,
+                damage=max(0, int(physical_state.get("damage", 0))),
+            )
     # Next demo step: health bars above all actors in both panes.
     if world_layer_level == 8:
-        _draw_actor_health_bars(canvas, primary_placements, mixed=True)
-        _draw_actor_health_bars(canvas, secondary_placements, mixed=True)
-    if world_layer_level == 9 and primary_zone is not None:
+        # Primary (4 fairies): 20%, 40%, 100%, 100%.
+        _draw_actor_health_bars(canvas, primary_placements, mixed=True, demo_percents=[20, 40, 100, 100])
+        # Secondary team [Guy, Mushy, Chase, Ogrito, Beba]:
+        # Guy 80%, Ogrito 60%, others 100%.
+        _draw_actor_health_bars(canvas, secondary_placements, mixed=True, demo_percents=[80, 100, 100, 60, 100])
+    # Duplicate status demo: HP + MP in a second row for MP-capable actors.
+    if world_layer_level == 9:
+        _draw_actor_status_bars(
+            canvas,
+            primary_placements,
+            hp_percents=[20, 40, 100, 100],
+            mp_percents=[75, 55, 85, 95],
+        )
+        _draw_actor_status_bars(
+            canvas,
+            secondary_placements,
+            hp_percents=[80, 100, 100, 60, 100],
+            mp_percents=[70, 65, None, None, 90],
+        )
+    if world_layer_level == 10 and primary_zone is not None:
         _draw_ui_dialogue_box(canvas, "Beba", UI_DIALOG_TEXT, primary_zone, secondary_zone)
 
     # Vertical wipe-in from bottom.
@@ -1106,6 +1558,8 @@ def render(
     if world_layer_level >= 8:
         footer += "[health]"
     if world_layer_level >= 9:
+        footer += "[mp]"
+    if world_layer_level >= 10:
         footer += "[dialogue]"
     if len(footer) <= SCREEN_W:
         x0 = (SCREEN_W - len(footer)) // 2
@@ -1156,7 +1610,7 @@ def main() -> None:
     wipe_started_at = time.monotonic()
     show_zone_guides = True
     world_layer_level = 0
-    world_mode_count = 10
+    world_mode_count = 11
     world_anchor_stagger = 1
     world_treeline_sprites = build_world_treeline_sprites(objects, colors)
     guy_sprite = build_player_sprite(players, "player_01", color_codes)

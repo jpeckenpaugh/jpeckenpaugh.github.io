@@ -540,11 +540,11 @@
         "'-'   '-'"
       ],
       "color_map": [
-        "   Ggg",
-        "  gCgCg",
-        " zGQrQGz",
+        "   Vii",
+        "  iCiCi",
+        " zVQrQVz",
         "QQqaAaqQQ",
-        " gQaAaQg",
+        " iQaAaQi",
         " zQQ QQz",
         "qzq   qzq"
       ],
@@ -573,13 +573,13 @@
         "'--'   '--'"
       ],
       "color_map": [
-        "   GggGg",
-        "   gCgCg",
-        "  gqrRrqg",
-        " zZGzzzGZz",
+        "   ViiVi",
+        "   iCiCi",
+        "  iqrRrqi",
+        " zZVzzzVZz",
         "zzzzaAazzzz",
-        " gGzAaAzGg",
-        "gGqqaaaqqGg",
+        " iVzAaAzVi",
+        "iVqqaaaqqVi",
         " zZqqqqqZz",
         "qzzq   qzzq"
       ],
