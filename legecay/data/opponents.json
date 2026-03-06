@@ -163,12 +163,12 @@
         " \\_____/"
       ],
       "color_map": [
-        "  cccccc",
-        " cbbbbbc",
-        "c!w!!b!!cc!u",
-        "u!!!ccb!!!!u",
-        "u!!!!!!!ccbb",
-        " uccccc"
+        "  ssssss",
+        " sxxxxxs",
+        "s!w!!x!!ss!S",
+        "S!!!ssx!!!!S",
+        "S!!!!!!!ssxx",
+        " Ssssss"
       ]
     },
     "fairy": {
@@ -703,12 +703,12 @@
             "\\_'-`'---`\\\\_[]"
           ],
           "color_map": [
-            "             c ",
-            " bb   cccbbccccc ",
-            "b!ccccc!b!!!cyc!b",
-            " ccccc!!!!!!bccc",
-            " bcccc!!!!bbbb",
-            "ccccccccccccccc"
+            "             g ",
+            " GG   gggGGggggg ",
+            "G!ggggg!G!!!gyg!G",
+            " ggggg!!!!!!Gggg",
+            " Ggggg!!!!GGGG",
+            "ggggggggggggggg"
           ]
         }
       ],
@@ -739,16 +739,16 @@
         "             \\________/"
       ],
       "color_map": [
-        " ccccccccc         b    b",
-        "ccc!!!!!!!cc       bb  bb",
-        " c!!!!!!!c!!c      b!bb!b",
-        "  ccccc!!!!!!c bb   b!!b ",
-        "    c c!!!!!!!!bb   b!!b",
-        "     c!!!!!!bb!!!bbb!!!b",
-        "      ccc!!!ccc!!!!bb!!b",
-        "      b!bbb!!!b!b!!!!!!b",
-        "      bb   bb!!bb!!!!!!b",
-        "             bbbbbbbbbb"
+        " ppppppppp         s    s",
+        "ppp!!!!!!!pp       ss  ss",
+        " p!!!!!!!p!!p      s!ss!s",
+        "  ppppp!!!!!!p ss   s!!s ",
+        "    p p!!!!!!!!ss   s!!s",
+        "     p!!!!!!ss!!!sss!!!s",
+        "      ppp!!!ppp!!!!ss!!s",
+        "      s!sss!!!s!s!!!!!!s",
+        "      ss   ss!!ss!!!!!!s",
+        "             ssssssssss"
       ],
       "variation": 0.05,
       "jitter_stability": false,

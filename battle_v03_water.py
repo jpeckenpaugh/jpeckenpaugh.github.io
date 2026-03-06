@@ -121,7 +121,7 @@ def build_ground_rows(
     grass_pattern = "~"
     grass_mask = "g"
     if isinstance(objects_data, dict):
-        grass_obj = objects_data.get("grass", {})
+        grass_obj = objects_data.get("sand", {}) or objects_data.get("grass", {})
         if isinstance(grass_obj, dict):
             art = grass_obj.get("art", [])
             mask = grass_obj.get("color_mask", [])
@@ -132,6 +132,8 @@ def build_ground_rows(
 
     pebble_glyphs: List[str] = ["o", "O"]
     pebble_keys: List[str] = ["Z", "z", "X", "x", "L", "l"]
+    water_pattern = "~~"
+    water_mask = "bB"
     if isinstance(objects_data, dict):
         scatter_obj = objects_data.get("battle_ground", {}) or objects_data.get("pebble", {})
         dynamic = scatter_obj.get("dynamic", {}) if isinstance(scatter_obj, dict) else {}
@@ -141,9 +143,20 @@ def build_ground_rows(
             pebble_glyphs = [str(g)[:1] or "o" for g in dyn_glyphs]
         if isinstance(dyn_keys, list) and dyn_keys:
             pebble_keys = [str(k)[:1] or "Z" for k in dyn_keys]
+        water_obj = objects_data.get("water", {})
+        if isinstance(water_obj, dict):
+            w_art = water_obj.get("art", [])
+            w_mask = water_obj.get("color_mask", [])
+            if isinstance(w_art, list) and w_art:
+                water_pattern = str(w_art[0]) or "~~"
+            if isinstance(w_mask, list) and w_mask:
+                water_mask = str(w_mask[0]) or "bB"
 
     density = max(0.0, min(0.4, pebble_density))
-    for _ in range(max(0, row_count)):
+    total_rows = max(0, row_count)
+    water_start_row = int(total_rows * 0.45)
+    max_water_width = max(10, SCREEN_W // 2)
+    for y in range(total_rows):
         row: List[str] = []
         for x in range(SCREEN_W):
             base_glyph = grass_pattern[x % max(1, len(grass_pattern))]
@@ -154,6 +167,15 @@ def build_ground_rows(
                 key = rng.choice(pebble_keys)
                 cell = _colorize_glyph(glyph, key, color_codes)
             row.append(cell)
+        # Bottom-right diagonal water wedge.
+        if y >= water_start_row:
+            depth = y - water_start_row
+            width = min(max_water_width, 8 + (depth * 4))
+            x0 = max(0, SCREEN_W - width)
+            for x in range(x0, SCREEN_W):
+                wg = water_pattern[x % max(1, len(water_pattern))]
+                wk = water_mask[x % max(1, len(water_mask))]
+                row[x] = _colorize_glyph(wg, wk, color_codes)
         rows.append("".join(row))
     return rows
 
@@ -247,7 +269,7 @@ def build_world_treeline_sprites(objects_data: object, colors_data: object) -> L
     if not isinstance(objects_data, dict):
         return []
     color_codes = _build_color_codes(colors_data)
-    tree_ids = ["tree_large", "tree_large_2", "tree_large_3"]
+    tree_ids = ["palm_large", "palm_small"]
     tree_ids = [obj_id for obj_id in tree_ids if isinstance(objects_data.get(obj_id), dict)]
     if not tree_ids:
         return []
@@ -1070,195 +1092,201 @@ def _physical_demo_state(clock: float) -> dict:
 
 
 def _barrage_demo_state(clock: float) -> dict:
-    # Three-part scripted sequence:
-    # Mushy -> [4,2,0,2]
-    # Beba  -> [0,4,2,6]
-    # Fairy1 heals Fairy3 for +2 HP (cost 2 MP)
-    initial_hp = [6, 6, 6, 6]
-    dmg1 = [4, 2, 0, 2]
-    dmg2 = [0, 4, 2, 6]
-    caster1_idx = 0  # Guy
-    caster2_idx = 4  # Beba
-    healer_idx = 0   # Fairy 1 (primary pane index)
-    heal_target_idx = 2  # Fairy 3
-    heal_amount = 2
-    healer_pre_mp = 6
-    healer_post_mp = 4
-    healer_mp_cost = 2
-    start_interval = 0.5
-    cast_duration = 1.0
-    cast_span = cast_duration + (start_interval * 3)  # 2.5s for 4 targets
-    between_casts = 0.5
+    # Water demo scripted round:
+    # 1) Guy -> Magic Spark on enemies
+    # 2) Pink Dolphin -> Magic Mirroring + Magic Spark on team
+    # 3) Turtle -> snapping bite on Piranaha
+    # 4) Frog -> Confusing Poison on Piranaha
+    # 5) Piranaha is confused
+    # 6) Confused Piranaha attacks Pink Dolphin
+    initial_primary_hp = [10, 10]      # [Piranaha, Pink Dolphin]
+    initial_secondary_hp = [10, 10, 10]  # [Guy, Turtle, Frog]
+
+    events = [
+        {
+            "id": "guy_spell",
+            "type": "spell",
+            "source_side": "secondary",
+            "source_idx": 0,
+            "target_side": "primary",
+            "targets": [{"idx": 0, "dmg": 3}, {"idx": 1, "dmg": 2}],
+            "start": 0.0,
+            "duration": 1.1,
+            "mp": {"pre": 10, "post": 6, "total": 10, "cost": 4},
+        },
+        {
+            "id": "dolphin_mirror",
+            "type": "spell",
+            "source_side": "primary",
+            "source_idx": 1,
+            "target_side": "secondary",
+            "targets": [{"idx": 0, "dmg": 2}, {"idx": 1, "dmg": 2}, {"idx": 2, "dmg": 1}],
+            "start": 1.8,
+            "duration": 1.1,
+            "mp": {"pre": 8, "post": 4, "total": 10, "cost": 4},
+        },
+        {
+            "id": "turtle_bite",
+            "type": "physical",
+            "source_side": "secondary",
+            "source_idx": 1,
+            "target_side": "primary",
+            "targets": [{"idx": 0, "dmg": 3}],
+            "start": 3.6,
+            "duration": 0.95,
+        },
+        {
+            "id": "frog_poison",
+            "type": "poison",
+            "source_side": "secondary",
+            "source_idx": 2,
+            "target_side": "primary",
+            "targets": [{"idx": 0, "dmg": 0}],
+            "start": 5.1,
+            "duration": 1.0,
+            "inflict_confused": True,
+        },
+        {
+            "id": "confused_notice",
+            "type": "status",
+            "source_side": "primary",
+            "source_idx": 0,
+            "target_side": "primary",
+            "targets": [{"idx": 0, "dmg": 0}],
+            "start": 6.4,
+            "duration": 0.9,
+        },
+        {
+            "id": "confused_self_hit",
+            "type": "physical",
+            "source_side": "primary",
+            "source_idx": 0,
+            "target_side": "primary",
+            "targets": [{"idx": 1, "dmg": 2}],
+            "start": 7.7,
+            "duration": 0.95,
+        },
+    ]
     final_pause = 2.0
-    heal_cast_duration = cast_duration
-    total = cast_span + between_casts + cast_span + between_casts + heal_cast_duration + final_pause
+    total = events[-1]["start"] + events[-1]["duration"] + final_pause
     t = float(clock) % max(0.001, total)
 
-    def _cast_state(cast_t: float, hp_in: List[int], damages: List[int]) -> tuple[List[int], List[dict], List[dict]]:
-        hp = list(hp_in)
-        active: List[dict] = []
-        recent: List[dict] = []
-        for idx, dmg in enumerate(damages):
-            start = idx * start_interval
-            end = start + cast_duration
-            pre = hp[idx]
-            post = max(0, pre - int(dmg))
-            if cast_t < start:
-                continue
-            if cast_t >= end:
-                hp[idx] = post
-                if dmg > 0 and (cast_t - end) <= 0.6:
-                    recent.append(
+    hp_primary = list(initial_primary_hp)
+    hp_secondary = list(initial_secondary_hp)
+    confused = False
+    active_actions: List[dict] = []
+    recent_actions: List[dict] = []
+    active_event_id = "idle"
+    active_event: dict | None = None
+
+    def _get_hp(side: str, idx: int) -> int:
+        arr = hp_primary if side == "primary" else hp_secondary
+        if 0 <= idx < len(arr):
+            return int(arr[idx])
+        return 0
+
+    def _set_hp(side: str, idx: int, value: int) -> None:
+        arr = hp_primary if side == "primary" else hp_secondary
+        if 0 <= idx < len(arr):
+            arr[idx] = max(0, int(value))
+
+    for ev in events:
+        start = float(ev.get("start", 0.0))
+        duration = max(0.1, float(ev.get("duration", 1.0)))
+        end = start + duration
+        targets = ev.get("targets", [])
+        if not isinstance(targets, list):
+            targets = []
+
+        if t >= end:
+            # Event resolved: apply outcome to persistent state.
+            for trg in targets:
+                if not isinstance(trg, dict):
+                    continue
+                tidx = int(trg.get("idx", -1))
+                dmg = max(0, int(trg.get("dmg", 0)))
+                side = str(ev.get("target_side", "primary"))
+                pre = _get_hp(side, tidx)
+                post = max(0, pre - dmg)
+                if dmg > 0:
+                    _set_hp(side, tidx, post)
+                if (t - end) <= 0.75 and dmg > 0:
+                    recent_actions.append(
                         {
-                            "target_idx": idx,
-                            "damage": int(dmg),
+                            "type": str(ev.get("type", "")),
+                            "source_side": str(ev.get("source_side", "secondary")),
+                            "source_idx": int(ev.get("source_idx", 0)),
+                            "target_side": side,
+                            "target_idx": tidx,
+                            "damage": dmg,
                             "pre_hp": pre,
                             "post_hp": post,
                             "progress": 1.0,
+                            "mp": ev.get("mp"),
                         }
                     )
-                continue
-            progress = (cast_t - start) / max(0.001, cast_duration)
-            active.append(
-                {
-                    "target_idx": idx,
-                    "damage": int(dmg),
-                    "pre_hp": pre,
-                    "post_hp": post,
-                    "progress": progress,
-                }
-            )
-        return hp, active, recent
+            if bool(ev.get("inflict_confused", False)):
+                confused = True
+            continue
 
-    hp_after_1, active_1, recent_1 = _cast_state(min(cast_span, t), initial_hp, dmg1)
-    cast2_start = cast_span + between_casts
-    cast2_t = max(0.0, t - cast2_start)
-    hp_after_2, active_2, recent_2 = _cast_state(min(cast_span, cast2_t), hp_after_1, dmg2)
-    cast3_start = cast2_start + cast_span + between_casts
-    cast3_t = max(0.0, t - cast3_start)
+        if t >= start:
+            # Active event window.
+            active_event_id = str(ev.get("id", "active"))
+            active_event = ev
+            p = (t - start) / duration
+            for trg in targets:
+                if not isinstance(trg, dict):
+                    continue
+                tidx = int(trg.get("idx", -1))
+                dmg = max(0, int(trg.get("dmg", 0)))
+                side = str(ev.get("target_side", "primary"))
+                pre = _get_hp(side, tidx)
+                post = max(0, pre - dmg)
+                active_actions.append(
+                    {
+                        "type": str(ev.get("type", "")),
+                        "source_side": str(ev.get("source_side", "secondary")),
+                        "source_idx": int(ev.get("source_idx", 0)),
+                        "target_side": side,
+                        "target_idx": tidx,
+                        "damage": dmg,
+                        "pre_hp": pre,
+                        "post_hp": post,
+                        "progress": p,
+                        "mp": ev.get("mp"),
+                    }
+                )
+            break
+        break
 
-    pre_heal_hp = hp_after_2[heal_target_idx]
-    post_heal_hp = min(6, pre_heal_hp + heal_amount)
-    active_heals: List[dict] = []
-    recent_heals: List[dict] = []
-    hp_after_3 = list(hp_after_2)
-    if cast3_t >= heal_cast_duration:
-        hp_after_3[heal_target_idx] = post_heal_hp
-        if (cast3_t - heal_cast_duration) <= 0.6:
-            recent_heals.append(
-                {
-                    "source_idx": healer_idx,
-                    "target_idx": heal_target_idx,
-                    "heal": heal_amount,
-                    "pre_hp": pre_heal_hp,
-                    "post_hp": post_heal_hp,
-                    "progress": 1.0,
-                }
-            )
-    elif cast3_t > 0.0:
-        active_heals.append(
-            {
-                "source_idx": healer_idx,
-                "target_idx": heal_target_idx,
-                "heal": heal_amount,
-                "pre_hp": pre_heal_hp,
-                "post_hp": post_heal_hp,
-                "progress": cast3_t / max(0.001, heal_cast_duration),
-            }
-        )
-
-    if t < cast_span:
-        phase = "cast1"
-        attacker_idx = caster1_idx
-        active = active_1
-        recent = recent_1
-        hp_now = hp_after_1
-        cast_elapsed = t
-    elif t < cast2_start:
-        phase = "between1"
-        attacker_idx = caster1_idx
-        active = []
-        recent = recent_1
-        hp_now = hp_after_1
-        cast_elapsed = 0.0
-    elif t < (cast2_start + cast_span):
-        phase = "cast2"
-        attacker_idx = caster2_idx
-        active = active_2
-        recent = recent_2
-        hp_now = hp_after_2
-        cast_elapsed = cast2_t
-    elif t < cast3_start:
-        phase = "between2"
-        attacker_idx = caster2_idx
-        active = []
-        recent = recent_2
-        hp_now = hp_after_2
-        cast_elapsed = 0.0
-    elif t < (cast3_start + heal_cast_duration):
-        phase = "cast3"
-        attacker_idx = caster2_idx
-        active = []
-        recent = []
-        hp_now = hp_after_2
-        cast_elapsed = cast3_t
-    else:
-        phase = "final_pause"
-        attacker_idx = caster2_idx
-        active = []
-        recent = []
-        hp_now = hp_after_3
-        cast_elapsed = 0.0
-
-    # Kills occur in cast2 on fairy2(idx1) and fairy4(idx3) when their projectile resolves.
-    melt_progress_by_idx: Dict[int, float] = {}
-    for kill_idx in (1, 3):
-        kill_time = cast2_start + (kill_idx * start_interval) + cast_duration
-        if t >= kill_time:
-            melt_progress_by_idx[kill_idx] = max(0.0, min(1.0, (t - kill_time) / 1.0))
-
+    show_confused = confused or active_event_id in ("frog_poison", "confused_notice", "confused_self_hit")
     return {
-        "phase": phase,
-        "attacker_idx": attacker_idx,
-        "cast_elapsed": cast_elapsed,
-        "hp_now": hp_now,
-        "active_hits": active,
-        "recent_hits": recent,
-        "active_heals": active_heals,
-        "recent_heals": recent_heals,
-        "healer_idx": healer_idx,
-        "heal_target_idx": heal_target_idx,
-        "healer_pre_mp": healer_pre_mp,
-        "healer_post_mp": healer_post_mp,
-        "healer_mp_cost": healer_mp_cost,
-        "melt_progress_by_idx": melt_progress_by_idx,
         "loop_t": t,
         "total": total,
-        "cast3_start": cast3_start,
-        "heal_cast_duration": heal_cast_duration,
+        "active_event_id": active_event_id,
+        "active_event": active_event,
+        "active_actions": active_actions,
+        "recent_actions": recent_actions,
+        "hp_primary": hp_primary,
+        "hp_secondary": hp_secondary,
+        "show_confused": show_confused,
+        "confused_actor_side": "primary",
+        "confused_actor_idx": 0,
     }
 
 
 def _battle_log_lines_for_barrage(clock: float) -> List[str]:
-    # Timeline aligned with _barrage_demo_state.
-    start_interval = 0.5
-    cast_duration = 1.0
-    cast_span = cast_duration + (start_interval * 3)  # 2.5
-    between_casts = 0.5
-    heal_cast_duration = cast_duration
-    final_pause = 2.0
-    total = cast_span + between_casts + cast_span + between_casts + heal_cast_duration + final_pause  # 9.0
-    t = float(clock) % max(0.001, total)
-    cast2_start = cast_span + between_casts
-    cast3_start = cast2_start + cast_span + between_casts
-
+    # Timeline aligned with the water barrage sequence.
     events = [
-        (0.0, "Mushy casts Magic Spark on 4 Fairy Warriors."),
-        (cast2_start, "Beba casts Magic Spark on 4 Fairy Warriors."),
-        (cast2_start + (1 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
-        (cast2_start + (3 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
-        (cast3_start, "Fairy 1 casts Healing Light on Fairy 3."),
+        (0.0, "Guy casts Magic Spark on the Enemies."),
+        (1.8, "Pink Dolphin uses Magic Mirroring and casts Magic Spark on our Team."),
+        (3.6, "Turtle attacks Piranaha with snapping bite."),
+        (5.1, "Frog casts Confusing Poison on Piranaha."),
+        (6.4, "Piranaha is confused."),
+        (7.7, "Confused Piranaha attacks Pink Dolphin."),
     ]
+    total = 10.65
+    t = float(clock) % max(0.001, total)
 
     chars_per_sec = 38.0
     lines: List[str] = []
@@ -2071,149 +2099,78 @@ def render(
     # Next demo step: barrage to all 4 primary fairies with 50% overlap.
     if world_layer_level == 6 and secondary_placements and primary_placements:
         if isinstance(barrage_state, dict):
-            attacker_idx = int(barrage_state.get("attacker_idx", 0))
-            attacker_idx = max(0, min(len(secondary_placements) - 1, attacker_idx))
-            src = secondary_placements[attacker_idx]
-            src_rows = src.get("rows", [])
-            src_w = max((len(row) for row in src_rows), default=0) if isinstance(src_rows, list) else 0
-            src_h = len(src_rows) if isinstance(src_rows, list) else 0
-            source = (int(src.get("x", 0)) + (src_w // 2), int(src.get("y", 0)) + (src_h // 2))
+            def _placement(side: str, idx: int) -> dict | None:
+                arr = primary_placements if side == "primary" else secondary_placements
+                if 0 <= idx < len(arr):
+                    return arr[idx]
+                return None
 
-            active_hits = barrage_state.get("active_hits", [])
-            if isinstance(active_hits, list):
-                for hit in active_hits:
-                    if not isinstance(hit, dict):
-                        continue
-                    target_idx = int(hit.get("target_idx", 0))
-                    if target_idx < 0 or target_idx >= len(primary_placements):
-                        continue
-                    dst = primary_placements[target_idx]
-                    dst_rows = dst.get("rows", [])
-                    dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
-                    dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
-                    target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
-                    _draw_spell_throw(canvas, source, target, float(hit.get("progress", 0.0)))
-                    if int(hit.get("damage", 0)) > 0:
-                        pre_hp_6 = max(0, int(hit.get("pre_hp", 0)))
-                        post_hp_6 = max(0, int(hit.get("post_hp", 0)))
-                        # Match physical HUD width/behavior (10-cell bar), scale from 6-max fairy HP.
-                        pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
-                        post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
-                        _draw_physical_damage_hud_step(
-                            canvas,
-                            dst,
-                            progress=float(hit.get("progress", 0.0)),
-                            pre_hp=pre_hp_10,
-                            post_hp=post_hp_10,
-                            total=10,
-                            damage=max(0, int(hit.get("damage", 0))),
-                        )
+            def _center(actor: dict) -> tuple[int, int]:
+                rows = actor.get("rows", [])
+                w = max((len(row) for row in rows), default=0) if isinstance(rows, list) else 0
+                h = len(rows) if isinstance(rows, list) else 0
+                return (int(actor.get("x", 0)) + (w // 2), int(actor.get("y", 0)) + (h // 2))
 
-            active_heals = barrage_state.get("active_heals", [])
-            if isinstance(active_heals, list):
-                for heal_evt in active_heals:
-                    if not isinstance(heal_evt, dict):
-                        continue
-                    source_idx = int(heal_evt.get("source_idx", 0))
-                    target_idx = int(heal_evt.get("target_idx", 0))
-                    if source_idx < 0 or source_idx >= len(primary_placements):
-                        continue
-                    if target_idx < 0 or target_idx >= len(primary_placements):
-                        continue
-                    src_heal = primary_placements[source_idx]
-                    dst_heal = primary_placements[target_idx]
-                    src_rows_h = src_heal.get("rows", [])
-                    dst_rows_h = dst_heal.get("rows", [])
-                    src_w_h = max((len(row) for row in src_rows_h), default=0) if isinstance(src_rows_h, list) else 0
-                    src_h_h = len(src_rows_h) if isinstance(src_rows_h, list) else 0
-                    dst_w_h = max((len(row) for row in dst_rows_h), default=0) if isinstance(dst_rows_h, list) else 0
-                    dst_h_h = len(dst_rows_h) if isinstance(dst_rows_h, list) else 0
-                    source_h = (int(src_heal.get("x", 0)) + (src_w_h // 2), int(src_heal.get("y", 0)) + (src_h_h // 2))
-                    target_h = (int(dst_heal.get("x", 0)) + (dst_w_h // 2), int(dst_heal.get("y", 0)) + (dst_h_h // 2))
-                    _draw_spell_throw(canvas, source_h, target_h, float(heal_evt.get("progress", 0.0)))
-                    pre_hp_6 = max(0, int(heal_evt.get("pre_hp", 0)))
-                    post_hp_6 = max(0, int(heal_evt.get("post_hp", 0)))
-                    pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
-                    post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
-                    _draw_heal_hud_step(
-                        canvas,
-                        dst_heal,
-                        progress=float(heal_evt.get("progress", 0.0)),
-                        pre_hp=pre_hp_10,
-                        post_hp=post_hp_10,
-                        total=10,
-                        heal=max(0, int(heal_evt.get("heal", 0))),
-                    )
+            actions: List[dict] = []
+            active_actions = barrage_state.get("active_actions", [])
+            recent_actions = barrage_state.get("recent_actions", [])
+            if isinstance(active_actions, list):
+                actions.extend(active_actions)
+            if isinstance(recent_actions, list):
+                actions.extend(recent_actions)
 
-            recent_hits = barrage_state.get("recent_hits", [])
-            if isinstance(recent_hits, list):
-                for hit in recent_hits:
-                    if not isinstance(hit, dict):
-                        continue
-                    if int(hit.get("damage", 0)) <= 0:
-                        continue
-                    target_idx = int(hit.get("target_idx", 0))
-                    if target_idx < 0 or target_idx >= len(primary_placements):
-                        continue
-                    dst = primary_placements[target_idx]
-                    pre_hp_6 = max(0, int(hit.get("pre_hp", 0)))
-                    post_hp_6 = max(0, int(hit.get("post_hp", 0)))
-                    pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
-                    post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
+            for action in actions:
+                if not isinstance(action, dict):
+                    continue
+                source_side = str(action.get("source_side", "secondary"))
+                target_side = str(action.get("target_side", "primary"))
+                source_idx = int(action.get("source_idx", 0))
+                target_idx = int(action.get("target_idx", 0))
+                src_actor = _placement(source_side, source_idx)
+                dst_actor = _placement(target_side, target_idx)
+                if src_actor is None or dst_actor is None:
+                    continue
+                progress = max(0.0, min(1.0, float(action.get("progress", 1.0))))
+                action_type = str(action.get("type", ""))
+                if action_type in ("spell", "poison"):
+                    _draw_spell_throw(canvas, _center(src_actor), _center(dst_actor), progress)
+                damage = max(0, int(action.get("damage", 0)))
+                if damage > 0:
                     _draw_physical_damage_hud_step(
                         canvas,
-                        dst,
-                        progress=1.0,
-                        pre_hp=pre_hp_10,
-                        post_hp=post_hp_10,
+                        dst_actor,
+                        progress=progress,
+                        pre_hp=max(0, int(action.get("pre_hp", 0))),
+                        post_hp=max(0, int(action.get("post_hp", 0))),
                         total=10,
-                        damage=max(0, int(hit.get("damage", 0))),
+                        damage=damage,
                     )
-            recent_heals = barrage_state.get("recent_heals", [])
-            if isinstance(recent_heals, list):
-                for heal_evt in recent_heals:
-                    if not isinstance(heal_evt, dict):
-                        continue
-                    target_idx = int(heal_evt.get("target_idx", 0))
-                    if target_idx < 0 or target_idx >= len(primary_placements):
-                        continue
-                    dst_heal = primary_placements[target_idx]
-                    pre_hp_6 = max(0, int(heal_evt.get("pre_hp", 0)))
-                    post_hp_6 = max(0, int(heal_evt.get("post_hp", 0)))
-                    pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
-                    post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
-                    _draw_heal_hud_step(
-                        canvas,
-                        dst_heal,
-                        progress=1.0,
-                        pre_hp=pre_hp_10,
-                        post_hp=post_hp_10,
-                        total=10,
-                        heal=max(0, int(heal_evt.get("heal", 0))),
-                    )
-            # MP indicator at spell-cast start for caster only.
-            cast_elapsed = float(barrage_state.get("cast_elapsed", 0.0))
-            if str(barrage_state.get("phase", "")) in ("cast1", "cast2") and cast_elapsed <= 0.65:
-                mp_progress = max(0.0, min(1.0, cast_elapsed / 0.65))
-                if attacker_idx == 0:
-                    # Guy: 6/10 -> 2/10
-                    _draw_mp_cast_hud_step(canvas, secondary_placements[attacker_idx], mp_progress, pre_mp=6, post_mp=2, total=10, cost=4)
-                elif attacker_idx == 4:
-                    # Beba: 10/10 -> 6/10
-                    _draw_mp_cast_hud_step(canvas, secondary_placements[attacker_idx], mp_progress, pre_mp=10, post_mp=6, total=10, cost=4)
-            if str(barrage_state.get("phase", "")) == "cast3" and cast_elapsed <= 0.65:
-                mp_progress = max(0.0, min(1.0, cast_elapsed / 0.65))
-                healer_idx = int(barrage_state.get("healer_idx", 0))
-                if 0 <= healer_idx < len(primary_placements):
+                mp = action.get("mp")
+                if isinstance(mp, dict) and progress <= 0.65:
                     _draw_mp_cast_hud_step(
                         canvas,
-                        primary_placements[healer_idx],
-                        mp_progress,
-                        pre_mp=max(0, int(barrage_state.get("healer_pre_mp", 6))),
-                        post_mp=max(0, int(barrage_state.get("healer_post_mp", 4))),
-                        total=6,
-                        cost=max(0, int(barrage_state.get("healer_mp_cost", 2))),
+                        src_actor,
+                        progress=progress,
+                        pre_mp=max(0, int(mp.get("pre", 10))),
+                        post_mp=max(0, int(mp.get("post", 6))),
+                        total=max(1, int(mp.get("total", 10))),
+                        cost=max(0, int(mp.get("cost", 4))),
                     )
+
+            if bool(barrage_state.get("show_confused", False)):
+                side = str(barrage_state.get("confused_actor_side", "primary"))
+                idx = int(barrage_state.get("confused_actor_idx", 0))
+                actor = _placement(side, idx)
+                if actor is not None:
+                    cx, cy = _center(actor)
+                    text = "[CONFUSED]"
+                    tx = max(0, min(SCREEN_W - len(text), cx - (len(text) // 2)))
+                    ty = max(0, cy - 6)
+                    tint = "\x1b[38;2;245;230;120m"
+                    for i, ch in enumerate(text):
+                        x = tx + i
+                        if 0 <= x < SCREEN_W and 0 <= ty < SCREEN_H:
+                            canvas[ty][x] = f"{tint}{ch}{ANSI_RESET}"
     # Next demo step: physical hit (blink attacker, then smash animation on target).
     if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames and physical_state is not None:
         target_idx = int(physical_state.get("target_idx", 0))

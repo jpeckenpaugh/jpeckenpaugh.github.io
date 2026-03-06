@@ -529,6 +529,15 @@
         ],
         "align": 0
     },
+    "sand": {
+        "art": [
+            ".,`'"
+        ],
+        "color_mask": [
+            "hHyY"
+        ],
+        "align": 0
+    },
     "grass_1": {
         "art": [
             "~"
