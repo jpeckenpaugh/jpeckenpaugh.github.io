@@ -1183,6 +1183,14 @@ def _draw_actor_melt(canvas: List[List[str]], actor: dict, progress: float) -> N
     y0 = int(actor.get("y", 0))
     h = len(rows)
     p = max(0.0, min(1.0, float(progress)))
+    # Round A (0.0-0.5): top->bottom decolor sweep.
+    # Round B (0.5-1.0): top->bottom shift-and-disappear sweep.
+    phase_a = min(1.0, p / 0.5) if p < 0.5 else 1.0
+    phase_b = 0.0 if p < 0.5 else min(1.0, (p - 0.5) / 0.5)
+    a_sweep = phase_a * h
+    b_sweep = phase_b * h
+    b_row = int(b_sweep)
+    b_frac = b_sweep - b_row
 
     for dy, row in enumerate(rows):
         if not isinstance(row, list):
@@ -1190,28 +1198,32 @@ def _draw_actor_melt(canvas: List[List[str]], actor: dict, progress: float) -> N
         y = y0 + dy
         if y < 0 or y >= SCREEN_H:
             continue
-        # Top-to-bottom stagger per line.
-        local = (p * h) - dy
-        if local <= 0.0:
-            stage = 0  # unchanged
-        elif local < 0.5:
-            stage = 1  # grey only
-        elif local < 1.0:
-            stage = 2  # grey + shift
-        else:
-            stage = 3  # disappeared
-        if stage == 3:
-            continue
+
+        # Round A result for this row.
+        is_grey = dy < a_sweep
         shift = 0
-        if stage == 2:
-            shift = -1 if (dy % 2 == 0) else 1
+        visible = True
+
+        # Round B: once A is complete, rows start melting away top->bottom.
+        if phase_b > 0.0:
+            if dy < b_row:
+                visible = False
+            elif dy == b_row and b_row < h:
+                # Brief shifted "wilt" before vanishing.
+                if b_frac < 0.5:
+                    shift = -1 if (dy % 2 == 0) else 1
+                else:
+                    visible = False
+
+        if not visible:
+            continue
         for dx, cell in enumerate(row):
             x = x0 + dx + shift
             if x < 0 or x >= SCREEN_W:
                 continue
             if cell == " ":
                 continue
-            out = cell if stage == 0 else _grey_cell(cell)
+            out = _grey_cell(cell) if is_grey else cell
             canvas[y][x] = out
 
 
@@ -1481,7 +1493,7 @@ def render(
         death_elapsed = physical_state.get("death_elapsed") if isinstance(physical_state, dict) else None
         melt_progress: float | None = None
         if death_elapsed is not None:
-            melt_progress = max(0.0, min(1.0, float(death_elapsed) / 2.0))
+            melt_progress = max(0.0, min(1.0, float(death_elapsed) / 1.0))
         for idx, actor in enumerate(primary_placements):
             if world_layer_level == 7 and idx == 0 and melt_progress is not None and melt_progress > 0.0:
                 if melt_progress < 1.0:
