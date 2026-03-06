@@ -1066,83 +1066,13 @@
         "text": "Mushy: Here, use one of these! - The mushroom stretches out its hand to you, and you see a mage's staff and a warrior's club."
       },
       {
-        "type": "choice",
-        "prompt": "Which do you choose?",
-        "options": [
-          {
-            "label": "A mage's staff.",
-            "actions": [
-              {
-                "type": "set_flag_values",
-                "values": {
-                  "enlightened_01": true,
-                  "empowered_01": false,
-                  "warrior_01": false
-                }
-              },
-              {
-                "type": "grant_items",
-                "items": [
-                  "mycostaff"
-                ]
-              },
-              {
-                "type": "show_message",
-                "message": "As you take the staff in your hand, you see lights flashing in your mind.  The words \"Magic Spark\" echo in your ears.",
-                "art": [
-                  "opponent:baby_crow",
-                  "follower:mushroom_baby"
-                ],
-                "art_effect": {
-                  "spell_id": "magic_spark",
-                  "loops": 3
-                }
-              },
-              {
-                "type": "show_message",
-                "message": "Mushy: This staff has the Magic Spark spell embued into it.  You can use this to fend off that nasty crow."
-              }
-            ]
-          },
-          {
-            "label": "A warrior's club.",
-            "actions": [
-              {
-                "type": "set_flag_values",
-                "values": {
-                  "empowered_01": true,
-                  "enlightened_01": false,
-                  "warrior_01": true
-                }
-              },
-              {
-                "type": "grant_items",
-                "items": [
-                  "mycoclub"
-                ]
-              },
-              {
-                "type": "show_message",
-                "message": "You charge forward with the platinum crystal in hand, the crow recoils and scrambles away."
-              },
-              {
-                "type": "show_message",
-                "message": "Mushy: That platinum crystal hums with strength.  I can embue your club with mushroom magic to make it even stronger."
-              },
-              {
-                "type": "show_message",
-                "message": "I also have a warrior's Tea of Empowerment.  Drink this and your strength will surge."
-              },
-              {
-                "type": "show_message",
-                "message": "Be sure to check the magic enchantments on your items before those pesky birds come back."
-              }
-            ]
-          }
-        ]
+        "text": "Mushy: I sure you hope you know how to use that thing..."
       },
       {
-        "text": "Mushy: I sure you hope you know how to use that thing..."
+        "text": "As you take the staff in your hand, you see lights flashing in your mind.  The words \"Magic Spark\" echo in your ears."
+      },
+      {
+        "text": "Mushy: This staff has the Magic Spark spell embued into it.  You can use this to fend off that nasty crow."
       }
     ],
     "requirements": {
@@ -1164,6 +1094,20 @@
       }
     ],
     "on_start_actions": [
+      {
+        "type": "set_flag_values",
+        "values": {
+          "enlightened_01": true,
+          "empowered_01": false,
+          "warrior_01": false
+        }
+      },
+      {
+        "type": "grant_items",
+        "items": [
+          "mycostaff"
+        ]
+      },
       {
         "type": "set_ui_hint",
         "scene": "forest",

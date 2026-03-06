@@ -35,6 +35,7 @@ WORLD_SCENE_VARIANTS = [
     ("bridge", "bridge"),
     ("mushroom_house", "mushroom_house"),
 ]
+QUEST_ID = "island_01_quest_00"
 
 
 @dataclass(frozen=True)
@@ -962,6 +963,12 @@ def render(
     wipe_progress: float = 1.0,
     show_zone_guides: bool = False,
     world_scene_label: str = "cottage",
+    ui_dialogue_speaker: str | None = None,
+    ui_dialogue_text: str | None = None,
+    quest_spell_phase: float | None = None,
+    quest_smash_frame_idx: int | None = None,
+    hide_secondary_lead: bool = False,
+    quest_phase_label: str | None = None,
 ) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
@@ -1039,7 +1046,7 @@ def render(
             reverse_stagger=secondary_actor_reverse_stagger,
         )
         for idx, actor in enumerate(secondary_placements):
-            if hide_attacker and idx == 0:
+            if (hide_attacker or hide_secondary_lead) and idx == 0:
                 continue
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
@@ -1115,12 +1122,34 @@ def render(
         target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
         frame_idx = min(max(0, impact_frame_hint), len(smash_frames) - 1)
         _draw_smash_frame(canvas, smash_frames[frame_idx], target)
+    if quest_spell_phase is not None and secondary_placements and primary_placements:
+        src = secondary_placements[0]
+        dst = primary_placements[0]
+        src_rows = src.get("rows", [])
+        dst_rows = dst.get("rows", [])
+        src_w = max((len(row) for row in src_rows), default=0) if isinstance(src_rows, list) else 0
+        src_h = len(src_rows) if isinstance(src_rows, list) else 0
+        dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
+        dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
+        source = (int(src.get("x", 0)) + (src_w // 2), int(src.get("y", 0)) + (src_h // 2))
+        target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
+        _draw_spell_throw(canvas, source, target, max(0.0, min(1.0, float(quest_spell_phase))))
+    if quest_smash_frame_idx is not None and primary_placements and smash_frames:
+        dst = primary_placements[0]
+        dst_rows = dst.get("rows", [])
+        dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
+        dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
+        target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
+        frame_idx = min(max(0, int(quest_smash_frame_idx)), len(smash_frames) - 1)
+        _draw_smash_frame(canvas, smash_frames[frame_idx], target)
     # Next demo step: health bars above all actors in both panes.
     if world_layer_level == 8:
         _draw_actor_health_bars(canvas, primary_placements, mixed=True)
         _draw_actor_health_bars(canvas, secondary_placements, mixed=True)
     if world_layer_level == 9 and primary_zone is not None:
         _draw_ui_dialogue_box(canvas, "Beba", UI_DIALOG_TEXT, primary_zone, secondary_zone)
+    if ui_dialogue_text and primary_zone is not None:
+        _draw_ui_dialogue_box(canvas, ui_dialogue_speaker or "Narrator", ui_dialogue_text, primary_zone, secondary_zone)
 
     # Vertical wipe-in from bottom.
     progress = max(0.0, min(1.0, wipe_progress))
@@ -1159,6 +1188,8 @@ def render(
         footer += "[health]"
     if world_layer_level >= 9:
         footer += "[dialogue]"
+    if quest_phase_label:
+        footer += f"[quest:{quest_phase_label}]"
     if len(footer) <= SCREEN_W:
         x0 = (SCREEN_W - len(footer)) // 2
         y = SCREEN_H - 1
@@ -1168,16 +1199,171 @@ def render(
     return "\n".join("".join(row) for row in canvas)
 
 
+def _quest_dialog_lines(quest_payload: object) -> List[str]:
+    if not isinstance(quest_payload, dict):
+        return []
+    raw = quest_payload.get("dialog", [])
+    if not isinstance(raw, list):
+        return []
+    lines: List[str] = []
+    for item in raw:
+        if isinstance(item, str):
+            text = item.strip()
+            if text:
+                lines.append(text)
+            continue
+        if isinstance(item, dict):
+            text = str(item.get("text", "")).strip()
+            if text:
+                lines.append(text)
+    return lines
+
+
+def _quest_text_and_choice(quest_payload: object) -> tuple[List[str], dict]:
+    lines: List[str] = []
+    choice_payload: dict = {}
+    if not isinstance(quest_payload, dict):
+        return lines, choice_payload
+    raw = quest_payload.get("dialog", [])
+    if not isinstance(raw, list):
+        return lines, choice_payload
+    for item in raw:
+        if not isinstance(item, dict):
+            if isinstance(item, str) and item.strip():
+                lines.append(item.strip())
+            continue
+        text = str(item.get("text", "")).strip()
+        if text:
+            lines.append(text)
+        if str(item.get("type", "")).strip().lower() == "choice":
+            choice_payload = item
+            break
+    return lines, choice_payload
+
+
+def _quest_choice_labels(choice_payload: object) -> List[str]:
+    if not isinstance(choice_payload, dict):
+        return []
+    options = choice_payload.get("options", [])
+    if not isinstance(options, list):
+        return []
+    out: List[str] = []
+    for opt in options:
+        if not isinstance(opt, dict):
+            continue
+        label = str(opt.get("label", "")).strip()
+        if label:
+            out.append(label)
+    return out
+
+
+def _infer_dialog_speaker(text_value: str, art_value: object) -> str:
+    speaker_value = "Narrator"
+    art_text = str(art_value).lower()
+    if "mushroom_baby" in art_text:
+        speaker_value = "Mushy"
+    elif "baby_crow" in art_text or "crow" in art_text:
+        speaker_value = "Crow"
+    low_text = text_value.lower()
+    if low_text.startswith("mushy:"):
+        speaker_value = "Mushy"
+    elif low_text.startswith("crow"):
+        speaker_value = "Crow"
+    elif low_text.startswith("narration:"):
+        speaker_value = "Narrator"
+    return speaker_value
+
+
+def _load_quest_dialog_entries(quest_payload: object) -> List[dict]:
+    entries: List[dict] = []
+    if not isinstance(quest_payload, dict):
+        return entries
+    raw = quest_payload.get("dialog", [])
+    if not isinstance(raw, list):
+        return entries
+
+    for entry in raw:
+        if isinstance(entry, str):
+            text = entry.strip()
+            if text:
+                speaker, body = _speaker_and_text(text)
+                entries.append({"speaker": speaker, "type": "text", "text": body})
+            continue
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("type", "")).lower() == "choice":
+            prompt = str(entry.get("prompt", "")).strip() or "Which do you choose?"
+            options = entry.get("options", [])
+            labels: List[str] = []
+            branches: List[List[dict]] = []
+            if isinstance(options, list):
+                for opt in options:
+                    label = ""
+                    branch_lines: List[dict] = []
+                    if isinstance(opt, dict):
+                        label = str(opt.get("label", "")).strip()
+                        actions = opt.get("actions", [])
+                        if isinstance(actions, list):
+                            for action in actions:
+                                if not isinstance(action, dict):
+                                    continue
+                                if str(action.get("type", "")).lower() != "show_message":
+                                    continue
+                                msg = str(action.get("message", "")).strip()
+                                if not msg:
+                                    continue
+                                spk = _infer_dialog_speaker(msg, action.get("art", ""))
+                                msg_speaker, msg_body = _speaker_and_text(msg)
+                                if msg_speaker != "Narrator":
+                                    spk = msg_speaker
+                                branch_lines.append({"speaker": spk, "type": "text", "text": msg_body})
+                    if label:
+                        labels.append(label)
+                    branches.append(branch_lines)
+            entries.append(
+                {
+                    "speaker": "Mushy",
+                    "type": "choice",
+                    "text": prompt,
+                    "options": labels[:2],
+                    "option_branches": branches[:2],
+                }
+            )
+            continue
+        text = str(entry.get("text", "")).strip()
+        if not text:
+            continue
+        speaker = _infer_dialog_speaker(text, entry.get("art", ""))
+        parsed_speaker, body = _speaker_and_text(text)
+        if parsed_speaker != "Narrator":
+            speaker = parsed_speaker
+        entries.append({"speaker": speaker, "type": "text", "text": body})
+    return entries
+
+
+def _speaker_and_text(line: str) -> tuple[str, str]:
+    text = str(line or "").strip()
+    if ":" in text:
+        speaker, body = text.split(":", 1)
+        speaker = speaker.strip()
+        body = body.strip()
+        if speaker and body:
+            return speaker, body
+    return "Narrator", text
+
+
 def main() -> None:
     base = os.getcwd()
     objects_path = os.path.join(base, "legecay", "data", "objects.json")
     colors_path = os.path.join(base, "legecay", "data", "colors.json")
     opponents_path = os.path.join(base, "legecay", "data", "opponents.json")
     players_path = os.path.join(base, "legecay", "data", "players.json")
+    quests_path = os.path.join(base, "legecay", "data", "quests.json")
     objects = load_json(objects_path)
     colors = load_json(colors_path)
     opponents = load_json(opponents_path)
     players = load_json(players_path)
+    quests = load_json(quests_path)
     if not isinstance(objects, dict):
         raise RuntimeError("objects.json is not a JSON object")
     if not isinstance(colors, dict):
@@ -1186,7 +1372,13 @@ def main() -> None:
         raise RuntimeError("opponents.json is not a JSON object")
     if not isinstance(players, dict):
         raise RuntimeError("players.json is not a JSON object")
+    if not isinstance(quests, dict):
+        raise RuntimeError("quests.json is not a JSON object")
     color_codes = _build_color_codes(colors)
+    quest_payload = quests.get(QUEST_ID, {})
+    dialog_entries = _load_quest_dialog_entries(quest_payload)
+    if not dialog_entries:
+        dialog_entries = [{"speaker": "Mushy", "type": "text", "text": "Here, use one of these!"}]
 
     templates = cloud_templates(objects)
     if not templates:
@@ -1206,23 +1398,32 @@ def main() -> None:
     )
     wipe_duration = 1.0
     wipe_started_at = time.monotonic()
-    show_zone_guides = True
-    world_layer_level = 0
-    world_mode_count = 10
+    show_zone_guides = False
+    world_layer_level = 3
     world_anchor_stagger = 1
     world_scene_index = 0
     world_scene_label, world_center_object_id = WORLD_SCENE_VARIANTS[world_scene_index]
     world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
-    guy_sprite = build_player_sprite(players, "player_01", color_codes)
-    chase_sprite = build_opponent_sprite(opponents, "wolf_pup", color_codes)
+    player_id = "player_01"
+    guy_sprite = build_player_sprite(players, player_id, color_codes)
     mushy_sprite = build_opponent_sprite(opponents, "mushroom_baby", color_codes)
-    baby_fairy_sprite = build_opponent_sprite(opponents, "fairy_baby", color_codes)
-    beba_rexa_sprite = build_opponent_sprite(opponents, "fairy_teen", color_codes)
-    if not beba_rexa_sprite:
-        beba_rexa_sprite = baby_fairy_sprite
+    crow_sprite = build_opponent_sprite(opponents, "baby_crow", color_codes)
+    if not crow_sprite:
+        crow_sprite = build_opponent_sprite(opponents, "crow", color_codes)
     smash_frames = load_smash_frames(os.path.join(base, "smash.txt"))
+    if not crow_sprite:
+        crow_sprite = mushy_sprite
     transition_accum = 0.0
     transition_step_seconds = 0.06
+    phase = "dialogue"
+    dialog_index = 0
+    choice_index = 0
+    chosen_weapon = "staff"
+    battle_script_staff = [("hint", 1.4), ("cast", 1.6), ("smash", 0.5), ("victory", None)]
+    battle_script_club = [("hint", 1.4), ("blink", 1.0), ("smash", 0.5), ("victory", None)]
+    battle_step = 0
+    battle_step_started = time.monotonic()
+    confirm_keys = {"a", " ", "\r"}
 
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
@@ -1268,24 +1469,110 @@ def main() -> None:
                 world_scene_index = (world_scene_index + 1) % len(WORLD_SCENE_VARIANTS)
                 world_scene_label, world_center_object_id = WORLD_SCENE_VARIANTS[world_scene_index]
                 world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
+            if key == "p":
+                player_id = "player_02" if player_id == "player_01" else "player_01"
+                guy_sprite = build_player_sprite(players, player_id, color_codes)
             if key == "up":
-                if world_layer_level > 0:
-                    world_anchor_stagger = (world_anchor_stagger % 3) + 1
-                else:
-                    target_split_index = (target_split_index - 1) % len(SKY_ROWS_OPTIONS)
-                    target_sky_rows = SKY_ROWS_OPTIONS[target_split_index]
-                    transition_accum = 0.0
+                target_split_index = (target_split_index - 1) % len(SKY_ROWS_OPTIONS)
+                target_sky_rows = SKY_ROWS_OPTIONS[target_split_index]
+                transition_accum = 0.0
             if key == "down":
-                if world_layer_level > 0:
-                    world_anchor_stagger = 3 if world_anchor_stagger <= 1 else (world_anchor_stagger - 1)
+                target_split_index = (target_split_index + 1) % len(SKY_ROWS_OPTIONS)
+                target_sky_rows = SKY_ROWS_OPTIONS[target_split_index]
+                transition_accum = 0.0
+            if phase == "dialogue":
+                current_entry = dialog_entries[min(dialog_index, len(dialog_entries) - 1)]
+                entry_type = str(current_entry.get("type", "text"))
+                if entry_type == "choice":
+                    options = current_entry.get("options", []) if isinstance(current_entry, dict) else []
+                    opt_count = len(options) if isinstance(options, list) else 0
+                    if key in ("left", "up", "w") and opt_count > 0:
+                        choice_index = (choice_index - 1) % opt_count
+                    elif key in ("right", "down", "s") and opt_count > 0:
+                        choice_index = (choice_index + 1) % opt_count
+                    elif key in confirm_keys:
+                        label = str(options[choice_index]).lower() if opt_count > 0 else ""
+                        chosen_weapon = "staff" if "staff" in label else "club"
+                        branches = current_entry.get("option_branches", []) if isinstance(current_entry, dict) else []
+                        if isinstance(branches, list) and 0 <= choice_index < len(branches):
+                            selected = branches[choice_index]
+                            if isinstance(selected, list) and selected:
+                                insert_at = dialog_index + 1
+                                dialog_entries[insert_at:insert_at] = selected
+                        dialog_index += 1
+                        choice_index = 0
+                elif key in confirm_keys:
+                    dialog_index += 1
+                if dialog_index >= len(dialog_entries):
+                    phase = "battle"
+                    battle_step = 0
+                    battle_step_started = now
+            elif phase == "battle":
+                active_script = battle_script_staff if chosen_weapon == "staff" else battle_script_club
+                step_name, step_duration = active_script[battle_step]
+                if step_name == "victory" and key in confirm_keys:
+                    phase = "complete"
+            elif phase == "complete" and key in confirm_keys:
+                break
+
+            ui_speaker = None
+            ui_text = None
+            quest_spell_phase = None
+            quest_smash_frame_idx = None
+            hide_secondary_lead = False
+            quest_phase_label = phase
+            if phase == "dialogue":
+                entry = dialog_entries[min(dialog_index, len(dialog_entries) - 1)]
+                ui_speaker = str(entry.get("speaker", "Narrator"))
+                entry_text = str(entry.get("text", "")).strip()
+                if str(entry.get("type", "text")) == "choice":
+                    options = entry.get("options", []) if isinstance(entry, dict) else []
+                    left = str(options[0]) if isinstance(options, list) and len(options) > 0 else "Option A"
+                    right = str(options[1]) if isinstance(options, list) and len(options) > 1 else "Option B"
+                    marker_left = ">" if choice_index == 0 else " "
+                    marker_right = ">" if choice_index == 1 else " "
+                    ui_text = (
+                        f"{entry_text}\n"
+                        f"{marker_left} {left}\n"
+                        f"{marker_right} {right}\n"
+                        "Use Left/Right, then A to confirm."
+                    )
                 else:
-                    target_split_index = (target_split_index + 1) % len(SKY_ROWS_OPTIONS)
-                    target_sky_rows = SKY_ROWS_OPTIONS[target_split_index]
-                    transition_accum = 0.0
-            if key == "right":
-                world_layer_level = (world_layer_level + 1) % world_mode_count
-            if key == "left":
-                world_layer_level = (world_layer_level - 1) % world_mode_count
+                    ui_text = entry_text
+            elif phase == "battle":
+                active_script = battle_script_staff if chosen_weapon == "staff" else battle_script_club
+                step_name, step_duration = active_script[battle_step]
+                elapsed = now - battle_step_started
+                if step_duration is not None and elapsed >= step_duration:
+                    if battle_step < len(active_script) - 1:
+                        battle_step += 1
+                        battle_step_started = now
+                    step_name, step_duration = active_script[battle_step]
+                    elapsed = 0.0
+                if step_name == "hint":
+                    ui_speaker = "Mushy"
+                    ui_text = "Drive off that crow!"
+                elif step_name == "cast":
+                    ui_speaker = "Player"
+                    ui_text = "Magic Spark!"
+                    duration = max(0.1, float(step_duration or 1.0))
+                    quest_spell_phase = max(0.0, min(1.0, elapsed / duration))
+                elif step_name == "blink":
+                    ui_speaker = "Mushy"
+                    ui_text = "Swing the club!"
+                    # Two slower blinks across this step.
+                    hide_secondary_lead = (int(elapsed / 0.2) % 2) == 0
+                elif step_name == "smash":
+                    ui_speaker = "System"
+                    ui_text = "Direct hit!"
+                    quest_smash_frame_idx = min(4, int(elapsed / 0.1))
+                elif step_name == "victory":
+                    ui_speaker = "Mushy"
+                    ui_text = "You did it! The crow ran away."
+            else:
+                ui_speaker = "System"
+                picked = "Staff" if chosen_weapon == "staff" else "Club"
+                ui_text = f"Quest intro complete [{picked}]. Press A to exit."
 
             split_label = f"{zones['sky_bg'].height}/{zones['ground_bg'].height}"
             # Global animation clock at 50% default speed for all effects.
@@ -1301,16 +1588,11 @@ def main() -> None:
                 world_layer_level=world_layer_level,
                 world_anchor_stagger=world_anchor_stagger,
                 world_treeline_sprites=world_treeline_sprites,
-                primary_actor_sprites=[
-                    baby_fairy_sprite,
-                    baby_fairy_sprite,
-                    baby_fairy_sprite,
-                    baby_fairy_sprite,
-                ],
-                primary_actor_stagger=1,
-                secondary_actor_sprites=[guy_sprite, mushy_sprite, chase_sprite, beba_rexa_sprite],
-                secondary_actor_stagger=1,
-                secondary_actor_reverse_stagger=True,
+                primary_actor_sprites=[crow_sprite],
+                primary_actor_stagger=0,
+                secondary_actor_sprites=[guy_sprite, mushy_sprite],
+                secondary_actor_stagger=0,
+                secondary_actor_reverse_stagger=False,
                 guy_sprite=guy_sprite,
                 mushy_sprite=mushy_sprite,
                 spell_phase=spell_phase,
@@ -1319,6 +1601,12 @@ def main() -> None:
                 wipe_progress=wipe_progress,
                 show_zone_guides=show_zone_guides,
                 world_scene_label=world_scene_label,
+                ui_dialogue_speaker=ui_speaker,
+                ui_dialogue_text=ui_text,
+                quest_spell_phase=quest_spell_phase,
+                quest_smash_frame_idx=quest_smash_frame_idx,
+                hide_secondary_lead=hide_secondary_lead,
+                quest_phase_label=quest_phase_label,
             )
             print(ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)
