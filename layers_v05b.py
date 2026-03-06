@@ -28,6 +28,7 @@ LAYER_UI = 12
 SKY_ROWS_OPTIONS = [5, 10, 15, 20, 25]
 DEFAULT_SKY_ROWS = 15
 UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
+UI_DIALOG_TEXT = "So what do you say... Are you ready to challenge them?"
 
 
 @dataclass(frozen=True)
@@ -604,6 +605,95 @@ def _draw_ui_text_box(canvas: List[List[str]], text: str, primary_zone: LayoutZo
                 canvas[y][x] = " "
 
 
+def _draw_ui_dialogue_box(
+    canvas: List[List[str]],
+    speaker: str,
+    text: str,
+    primary_zone: LayoutZone,
+    secondary_zone: LayoutZone,
+) -> None:
+    def _balanced_wrap(content: str, width: int) -> List[str]:
+        lines = textwrap.wrap(content, width=width, break_long_words=False, break_on_hyphens=False)
+        if len(lines) < 2:
+            return lines or [content[:width]]
+        # Rebalance to avoid a tiny orphan tail line when possible.
+        while len(lines) >= 2:
+            last_words = lines[-1].split()
+            prev_words = lines[-2].split()
+            if len(last_words) > 2 or len(prev_words) <= 2:
+                break
+            move = prev_words[-1]
+            candidate_last = f"{move} {lines[-1]}".strip()
+            candidate_prev = " ".join(prev_words[:-1]).strip()
+            if not candidate_prev or len(candidate_last) > width:
+                break
+            lines[-2] = candidate_prev
+            lines[-1] = candidate_last
+        return lines
+
+    speaker_title = f"{{ {speaker} }}"
+    button_text = "[ A / Confirm ]--[ S / Cancel ]"
+    wrapped = _balanced_wrap(str(text).strip(), width=52)
+    if not wrapped:
+        wrapped = [""]
+    inner_w = max(len(line) for line in wrapped)
+    inner_w = max(inner_w + 2, len(speaker_title) + 8, len(button_text) + 8)
+    box_w = inner_w + 2
+    box_h = len(wrapped) + 5  # top + top margin + text + bottom margin + bottom
+
+    p_cx = primary_zone.x + (primary_zone.width // 2)
+    p_cy = primary_zone.y + (primary_zone.height // 2)
+    s_cx = secondary_zone.x + (secondary_zone.width // 2)
+    s_cy = secondary_zone.y + (secondary_zone.height // 2)
+    mid_x = int(round((p_cx + s_cx) / 2.0))
+    mid_y = int(round((p_cy + s_cy) / 2.0))
+
+    x0 = max(0, min(SCREEN_W - box_w, mid_x - (box_w // 2)))
+    y0 = max(0, min(SCREEN_H - box_h, mid_y - (box_h // 2)))
+
+    title_left = max(0, (inner_w - len(speaker_title)) // 2)
+    title_right = max(0, inner_w - len(speaker_title) - title_left)
+    top = "o" + ("-" * title_left) + speaker_title + ("-" * title_right) + "o"
+
+    button_left = max(0, (inner_w - len(button_text)) // 2)
+    button_right = max(0, inner_w - len(button_text) - button_left)
+    bottom = "o" + ("-" * button_left) + button_text + ("-" * button_right) + "o"
+
+    lines: List[str] = [top]
+    lines.append("|" + (" " * inner_w) + "|")  # top internal margin
+    for line in wrapped:
+        lines.append("|" + line.center(inner_w) + "|")
+    lines.append("|" + (" " * inner_w) + "|")  # bottom internal margin
+    lines.append(bottom)
+    box_h = len(lines)
+
+    text_color = "\x1b[38;2;245;245;245m"
+    green_key = "\x1b[38;2;56;186;72m"
+    black_key = "\x1b[30m"
+    for dy, raw in enumerate(lines):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        cells = ansi_line_to_cells(raw, len(raw))
+        for dx, cell in enumerate(cells):
+            x = x0 + dx
+            if x < 0 or x >= SCREEN_W:
+                continue
+            ch = _strip_ansi(cell)
+            is_border = dy == 0 or dy == box_h - 1 or dx == 0 or dx == box_w - 1
+            if dy == box_h - 1 and ch == "A":
+                canvas[y][x] = f"{green_key}A{ANSI_RESET}"
+            elif dy == box_h - 1 and ch == "S":
+                canvas[y][x] = f"{black_key}S{ANSI_RESET}"
+            elif is_border and ch != " ":
+                g = ui_border_gradient_code(dx, dy, box_w, box_h)
+                canvas[y][x] = f"{g}{ch}{ANSI_RESET}"
+            elif ch != " ":
+                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+            else:
+                canvas[y][x] = " "
+
+
 def _draw_spell_throw(
     canvas: List[List[str]],
     source: tuple[int, int],
@@ -960,9 +1050,11 @@ def render(
         frame_idx = min(max(0, impact_frame_hint), len(smash_frames) - 1)
         _draw_smash_frame(canvas, smash_frames[frame_idx], target)
     # Next demo step: health bars above all actors in both panes.
-    if world_layer_level >= 8:
+    if world_layer_level == 8:
         _draw_actor_health_bars(canvas, primary_placements, mixed=True)
         _draw_actor_health_bars(canvas, secondary_placements, mixed=True)
+    if world_layer_level == 9 and primary_zone is not None:
+        _draw_ui_dialogue_box(canvas, "Beba", UI_DIALOG_TEXT, primary_zone, secondary_zone)
 
     # Vertical wipe-in from bottom.
     progress = max(0.0, min(1.0, wipe_progress))
@@ -998,6 +1090,8 @@ def render(
         footer += "[physical]"
     if world_layer_level >= 8:
         footer += "[health]"
+    if world_layer_level >= 9:
+        footer += "[dialogue]"
     if len(footer) <= SCREEN_W:
         x0 = (SCREEN_W - len(footer)) // 2
         y = SCREEN_H - 1
@@ -1047,7 +1141,7 @@ def main() -> None:
     wipe_started_at = time.monotonic()
     show_zone_guides = True
     world_layer_level = 0
-    world_mode_count = 9
+    world_mode_count = 10
     world_anchor_stagger = 1
     world_treeline_sprites = build_world_treeline_sprites(objects, colors)
     guy_sprite = build_player_sprite(players, "player_01", color_codes)
