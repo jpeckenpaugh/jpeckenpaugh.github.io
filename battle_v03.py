@@ -29,6 +29,12 @@ SKY_ROWS_OPTIONS = [5, 10, 15, 20, 25]
 DEFAULT_SKY_ROWS = 15
 UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
 UI_DIALOG_TEXT = "So what do you say... Are you ready to challenge them?"
+DEMO_BATTLE_LOG_LINES = [
+    "Mushy casts Magic Spark on 4 Fairy Warriors.",
+    "Beba casts Magic Spark on 4 Fairy Warriors.",
+    "Fairy Warrior has been defeated.",
+    "Fairy Warrior has been defeated.",
+]
 
 
 @dataclass(frozen=True)
@@ -709,6 +715,83 @@ def _draw_ui_dialogue_box(
                 canvas[y][x] = " "
 
 
+def _draw_battle_log_panel(
+    canvas: List[List[str]],
+    width: int = 40,
+    height: int = 10,
+    lines: List[str] | None = None,
+) -> None:
+    w = max(4, int(width))
+    h = max(3, int(height))
+    x0 = max(0, SCREEN_W - w)
+    y0 = max(0, SCREEN_H - h)
+
+    text_color = "\x1b[38;2;245;245;245m"
+    tl, tr = "\u2554", "\u2557"
+    bl, br = "\u255a", "\u255d"
+    hz, vt = "\u2550", "\u2551"
+
+    if 0 <= y0 < SCREEN_H:
+        for dx in range(w):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W:
+                ch = tl if dx == 0 else (tr if dx == w - 1 else hz)
+                g = ui_border_gradient_code(dx, 0, w, h)
+                canvas[y0][x] = f"{g}{ch}{ANSI_RESET}"
+
+    for dy in range(1, h - 1):
+        y = y0 + dy
+        if not (0 <= y < SCREEN_H):
+            continue
+        for dx in range(w):
+            x = x0 + dx
+            if not (0 <= x < SCREEN_W):
+                continue
+            if dx == 0 or dx == w - 1:
+                g = ui_border_gradient_code(dx, dy, w, h)
+                canvas[y][x] = f"{g}{vt}{ANSI_RESET}"
+            else:
+                canvas[y][x] = " "
+
+    yb = y0 + h - 1
+    if 0 <= yb < SCREEN_H:
+        for dx in range(w):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W:
+                ch = bl if dx == 0 else (br if dx == w - 1 else hz)
+                g = ui_border_gradient_code(dx, h - 1, w, h)
+                canvas[yb][x] = f"{g}{ch}{ANSI_RESET}"
+
+    if not lines:
+        return
+    inner_w = max(1, w - 2)
+    inner_h = max(1, h - 2)
+    wrapped: List[str] = []
+    for line in lines:
+        text = str(line).strip()
+        if not text:
+            wrapped.append("")
+            continue
+        wrapped.extend(
+            textwrap.wrap(
+                text,
+                width=inner_w,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
+    visible = wrapped[-inner_h:]
+    start_y = y0 + 1 + max(0, inner_h - len(visible))
+    for row_idx, line in enumerate(visible):
+        y = start_y + row_idx
+        if not (0 <= y < SCREEN_H):
+            continue
+        for i, ch in enumerate(line[:inner_w]):
+            x = x0 + 1 + i
+            if 0 <= x < SCREEN_W:
+                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+
+
 def _draw_spell_throw(
     canvas: List[List[str]],
     source: tuple[int, int],
@@ -1044,6 +1127,34 @@ def _barrage_demo_state(clock: float) -> dict:
         "loop_t": t,
         "total": total,
     }
+
+
+def _battle_log_lines_for_barrage(clock: float) -> List[str]:
+    # Timeline aligned with _barrage_demo_state.
+    start_interval = 0.5
+    cast_duration = 1.0
+    cast_span = cast_duration + (start_interval * 3)  # 2.5
+    between_casts = 0.5
+    final_pause = 2.0
+    total = cast_span + between_casts + cast_span + final_pause  # 8.0
+    t = float(clock) % max(0.001, total)
+
+    events = [
+        (0.0, "Mushy casts Magic Spark on 4 Fairy Warriors."),
+        (cast_span + between_casts, "Beba casts Magic Spark on 4 Fairy Warriors."),
+        (cast_span + between_casts + (1 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
+        (cast_span + between_casts + (3 * start_interval) + cast_duration, "Fairy Warrior has been defeated."),
+    ]
+
+    chars_per_sec = 38.0
+    lines: List[str] = []
+    for event_t, text in events:
+        if t < event_t:
+            break
+        elapsed = t - event_t
+        reveal = min(len(text), max(0, int(elapsed * chars_per_sec)))
+        lines.append(text if reveal >= len(text) else text[:reveal])
+    return lines
 
 
 def _draw_smash_frame(canvas: List[List[str]], frame: List[str], center: tuple[int, int]) -> None:
@@ -1905,6 +2016,14 @@ def render(
         )
     if world_layer_level == 10 and primary_zone is not None:
         _draw_ui_dialogue_box(canvas, "Beba", UI_DIALOG_TEXT, primary_zone, secondary_zone)
+    if 5 <= world_layer_level <= 9:
+        if world_layer_level == 6:
+            log_lines = _battle_log_lines_for_barrage(spell_clock)
+        elif world_layer_level >= 7:
+            log_lines = DEMO_BATTLE_LOG_LINES
+        else:
+            log_lines = []
+        _draw_battle_log_panel(canvas, width=40, height=10, lines=log_lines)
 
     # Vertical wipe-in from bottom.
     progress = max(0.0, min(1.0, wipe_progress))
