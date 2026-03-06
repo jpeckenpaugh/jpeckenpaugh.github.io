@@ -25,19 +25,29 @@ class AssetRepository:
         self._cache.pop(filename, None)
         return self.load(filename)
 
+    def _entry_container(self, filename: str, payload: Any) -> Any:
+        # Opponents are grouped under base_opponents; expose that as the primary list.
+        if filename == "opponents.json" and isinstance(payload, dict):
+            base = payload.get("base_opponents")
+            if isinstance(base, dict):
+                return base
+        return payload
+
     def entry_labels(self, filename: str) -> List[str]:
         payload = self.load(filename)
-        if isinstance(payload, dict):
-            return list(payload.keys())
-        if isinstance(payload, list):
-            return [str(i) for i in range(len(payload))]
+        container = self._entry_container(filename, payload)
+        if isinstance(container, dict):
+            return list(container.keys())
+        if isinstance(container, list):
+            return [str(i) for i in range(len(container))]
         return []
 
     def entry(self, filename: str, label: str) -> Tuple[str, Any]:
         payload = self.load(filename)
-        if isinstance(payload, dict):
-            return label, payload.get(label, {})
-        if isinstance(payload, list):
+        container = self._entry_container(filename, payload)
+        if isinstance(container, dict):
+            return label, container.get(label, {})
+        if isinstance(container, list):
             idx = int(label)
-            return label, payload[idx]
-        return label, payload
+            return label, container[idx]
+        return label, container
