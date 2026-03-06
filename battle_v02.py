@@ -939,6 +939,108 @@ def _physical_demo_state(clock: float) -> dict:
     }
 
 
+def _barrage_demo_state(clock: float) -> dict:
+    # Two-caster scripted barrage:
+    # Guy  -> [4,2,0,2]
+    # Beba -> [0,4,2,6]
+    initial_hp = [6, 6, 6, 6]
+    dmg1 = [4, 2, 0, 2]
+    dmg2 = [0, 4, 2, 6]
+    caster1_idx = 0  # Guy
+    caster2_idx = 4  # Beba
+    start_interval = 0.5
+    cast_duration = 1.0
+    cast_span = cast_duration + (start_interval * 3)  # 2.5s for 4 targets
+    between_casts = 0.5
+    final_pause = 2.0
+    total = cast_span + between_casts + cast_span + final_pause
+    t = float(clock) % max(0.001, total)
+
+    def _cast_state(cast_t: float, hp_in: List[int], damages: List[int]) -> tuple[List[int], List[dict], List[dict]]:
+        hp = list(hp_in)
+        active: List[dict] = []
+        recent: List[dict] = []
+        for idx, dmg in enumerate(damages):
+            start = idx * start_interval
+            end = start + cast_duration
+            pre = hp[idx]
+            post = max(0, pre - int(dmg))
+            if cast_t < start:
+                continue
+            if cast_t >= end:
+                hp[idx] = post
+                if dmg > 0 and (cast_t - end) <= 0.6:
+                    recent.append(
+                        {
+                            "target_idx": idx,
+                            "damage": int(dmg),
+                            "pre_hp": pre,
+                            "post_hp": post,
+                            "progress": 1.0,
+                        }
+                    )
+                continue
+            progress = (cast_t - start) / max(0.001, cast_duration)
+            active.append(
+                {
+                    "target_idx": idx,
+                    "damage": int(dmg),
+                    "pre_hp": pre,
+                    "post_hp": post,
+                    "progress": progress,
+                }
+            )
+        return hp, active, recent
+
+    hp_after_1, active_1, recent_1 = _cast_state(min(cast_span, t), initial_hp, dmg1)
+    cast2_start = cast_span + between_casts
+    cast2_t = max(0.0, t - cast2_start)
+    hp_after_2, active_2, recent_2 = _cast_state(min(cast_span, cast2_t), hp_after_1, dmg2)
+
+    if t < cast_span:
+        phase = "cast1"
+        attacker_idx = caster1_idx
+        active = active_1
+        recent = recent_1
+        hp_now = hp_after_1
+    elif t < cast2_start:
+        phase = "between"
+        attacker_idx = caster1_idx
+        active = []
+        recent = recent_1
+        hp_now = hp_after_1
+    elif t < (cast2_start + cast_span):
+        phase = "cast2"
+        attacker_idx = caster2_idx
+        active = active_2
+        recent = recent_2
+        hp_now = hp_after_2
+    else:
+        phase = "final_pause"
+        attacker_idx = caster2_idx
+        active = []
+        recent = []
+        hp_now = hp_after_2
+
+    # Kills occur in cast2 on fairy2(idx1) and fairy4(idx3) when their projectile resolves.
+    melt_progress_by_idx: Dict[int, float] = {}
+    for kill_idx in (1, 3):
+        kill_time = cast2_start + (kill_idx * start_interval) + cast_duration
+        if t >= kill_time:
+            melt_progress_by_idx[kill_idx] = max(0.0, min(1.0, (t - kill_time) / 1.0))
+
+    return {
+        "phase": phase,
+        "attacker_idx": attacker_idx,
+        "hp_now": hp_now,
+        "active_hits": active,
+        "recent_hits": recent,
+        "melt_progress_by_idx": melt_progress_by_idx,
+        "loop_t": t,
+        "total": total,
+    }
+
+
 def _draw_smash_frame(canvas: List[List[str]], frame: List[str], center: tuple[int, int]) -> None:
     if not frame:
         return
@@ -1460,6 +1562,9 @@ def render(
     show_hit_impact = False
     impact_frame_hint = 0
     physical_state: dict | None = None
+    barrage_state: dict | None = None
+    if world_layer_level == 6:
+        barrage_state = _barrage_demo_state(spell_clock)
     if world_layer_level == 7:
         physical_state = _physical_demo_state(spell_clock)
         if physical_state.get("phase") == "attack":
@@ -1502,10 +1607,19 @@ def render(
         primary_placements = layout_actor_strip(primary_zone, pri_sprites, spacing=1, stagger_rows=primary_actor_stagger)
         hp_now = physical_state.get("hp_now", []) if isinstance(physical_state, dict) else []
         death_elapsed = physical_state.get("death_elapsed") if isinstance(physical_state, dict) else None
+        barrage_hp = barrage_state.get("hp_now", []) if isinstance(barrage_state, dict) else []
+        barrage_melt = barrage_state.get("melt_progress_by_idx", {}) if isinstance(barrage_state, dict) else {}
         melt_progress: float | None = None
         if death_elapsed is not None:
             melt_progress = max(0.0, min(1.0, float(death_elapsed) / 1.0))
         for idx, actor in enumerate(primary_placements):
+            if world_layer_level == 6 and isinstance(barrage_melt, dict) and idx in barrage_melt:
+                p = float(barrage_melt[idx])
+                if p < 1.0:
+                    _draw_actor_melt(canvas, actor, p)
+                continue
+            if world_layer_level == 6 and isinstance(barrage_hp, list) and idx < len(barrage_hp) and int(barrage_hp[idx]) <= 0:
+                continue
             if world_layer_level == 7 and idx == 0 and melt_progress is not None and melt_progress > 0.0:
                 if melt_progress < 1.0:
                     _draw_actor_melt(canvas, actor, melt_progress)
@@ -1545,18 +1659,69 @@ def render(
         _draw_spell_throw(canvas, source, target, spell_phase)
     # Next demo step: barrage to all 4 primary fairies with 50% overlap.
     if world_layer_level == 6 and secondary_placements and primary_placements:
-        src = secondary_placements[0]
-        src_rows = src.get("rows", [])
-        src_w = max((len(row) for row in src_rows), default=0) if isinstance(src_rows, list) else 0
-        src_h = len(src_rows) if isinstance(src_rows, list) else 0
-        source = (int(src.get("x", 0)) + (src_w // 2), int(src.get("y", 0)) + (src_h // 2))
-        targets: List[tuple[int, int]] = []
-        for dst in primary_placements[:4]:
-            dst_rows = dst.get("rows", [])
-            dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
-            dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
-            targets.append((int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2)))
-        _draw_spell_barrage(canvas, source, targets, spell_clock)
+        if isinstance(barrage_state, dict):
+            attacker_idx = int(barrage_state.get("attacker_idx", 0))
+            attacker_idx = max(0, min(len(secondary_placements) - 1, attacker_idx))
+            src = secondary_placements[attacker_idx]
+            src_rows = src.get("rows", [])
+            src_w = max((len(row) for row in src_rows), default=0) if isinstance(src_rows, list) else 0
+            src_h = len(src_rows) if isinstance(src_rows, list) else 0
+            source = (int(src.get("x", 0)) + (src_w // 2), int(src.get("y", 0)) + (src_h // 2))
+
+            active_hits = barrage_state.get("active_hits", [])
+            if isinstance(active_hits, list):
+                for hit in active_hits:
+                    if not isinstance(hit, dict):
+                        continue
+                    target_idx = int(hit.get("target_idx", 0))
+                    if target_idx < 0 or target_idx >= len(primary_placements):
+                        continue
+                    dst = primary_placements[target_idx]
+                    dst_rows = dst.get("rows", [])
+                    dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
+                    dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
+                    target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
+                    _draw_spell_throw(canvas, source, target, float(hit.get("progress", 0.0)))
+                    if int(hit.get("damage", 0)) > 0:
+                        pre_hp_6 = max(0, int(hit.get("pre_hp", 0)))
+                        post_hp_6 = max(0, int(hit.get("post_hp", 0)))
+                        # Match physical HUD width/behavior (10-cell bar), scale from 6-max fairy HP.
+                        pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
+                        post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
+                        _draw_physical_damage_hud_step(
+                            canvas,
+                            dst,
+                            progress=float(hit.get("progress", 0.0)),
+                            pre_hp=pre_hp_10,
+                            post_hp=post_hp_10,
+                            total=10,
+                            damage=max(0, int(hit.get("damage", 0))),
+                        )
+
+            recent_hits = barrage_state.get("recent_hits", [])
+            if isinstance(recent_hits, list):
+                for hit in recent_hits:
+                    if not isinstance(hit, dict):
+                        continue
+                    if int(hit.get("damage", 0)) <= 0:
+                        continue
+                    target_idx = int(hit.get("target_idx", 0))
+                    if target_idx < 0 or target_idx >= len(primary_placements):
+                        continue
+                    dst = primary_placements[target_idx]
+                    pre_hp_6 = max(0, int(hit.get("pre_hp", 0)))
+                    post_hp_6 = max(0, int(hit.get("post_hp", 0)))
+                    pre_hp_10 = int(round((pre_hp_6 / 6.0) * 10.0))
+                    post_hp_10 = int(round((post_hp_6 / 6.0) * 10.0))
+                    _draw_physical_damage_hud_step(
+                        canvas,
+                        dst,
+                        progress=1.0,
+                        pre_hp=pre_hp_10,
+                        post_hp=post_hp_10,
+                        total=10,
+                        damage=max(0, int(hit.get("damage", 0))),
+                    )
     # Next demo step: physical hit (blink attacker, then smash animation on target).
     if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames and physical_state is not None:
         target_idx = int(physical_state.get("target_idx", 0))
