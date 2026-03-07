@@ -1599,6 +1599,10 @@ def _alive_secondary_target_indices(flow: dict, actor_key: str, action: str, sta
     act = str(action).strip()
     caster_idx = 1 if int(stage) >= 3 and a == "player" else (2 if int(stage) >= 3 and a == "mushy" else (0 if int(stage) >= 3 and a == "sharoom" else (0 if a == "player" else 1)))
     if a == "mushy" and act == "Mushroom Tea":
+        # Mushroom Tea can target any living teammate, including the caster.
+        return alive
+    if a == "roomy" and act == "Concentric":
+        # Concentric excludes the caster.
         team_only = [i for i in alive if i != caster_idx]
         return team_only or alive
     return alive
@@ -1864,17 +1868,19 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         desc = str(flow.get("battle_ally_desc", "")).strip()
         who = "Mushy" if actor_key == "mushy" else ("Sharoom" if actor_key == "sharoom" else actor_key.title())
         mode_line = f"Mode: {'ALL' if mode == 'all' else 'Single'}"
-        hint = "Left/Right: target"
+        hint = "L/R target"
         if supports_all:
-            hint += "  Up/Down: Single/All"
+            hint += "  U/D single/all"
+        summary = desc.split(".")[0].strip() + "." if desc else ""
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
             title=f"{who} - {action}",
-            body_text=f"\n{desc}\n\n{mode_line}\n{hint}",
-            center_x=50,
-            center_y=17,
-            max_body_width=56,
+            body_text=f"{summary}\n{mode_line}\n{hint}",
+            anchor="top",
+            center_x=78,
+            center_y=2,
+            max_body_width=34,
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
             preserve_body_whitespace=True,
@@ -2031,14 +2037,6 @@ def _position_screen_box_for_actors(
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen == "story_battle_cmd_sharoom" and secondary_placements:
         return _anchor_box_next_to_actor(spec, secondary_placements[0], prefer="right")
-    if screen == "story_battle_ally_target" and secondary_placements:
-        actor_key = str(spec.title or "").lower()
-        idx = 1 if len(secondary_placements) >= 3 else 0
-        if "sharoom" in actor_key:
-            idx = 0
-        elif "mushy" in actor_key:
-            idx = 2 if len(secondary_placements) >= 3 else 1
-        return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen in ("story_battle_victory", "story_more_crows") and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
     return spec
@@ -4918,7 +4916,7 @@ def main() -> None:
                     "right_label": right.get("label", "Right"),
                     "selected": pidx,
                 }
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_ally_target"):
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
                 sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
                 sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
@@ -4930,9 +4928,6 @@ def main() -> None:
                     actor_idx = 1 if len(sec_hp) >= 3 else 0
                 elif screen == "story_battle_cmd_sharoom":
                     actor_idx = 0
-                elif screen == "story_battle_ally_target":
-                    who = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
-                    actor_idx = 0 if who == "sharoom" else (2 if len(sec_hp) >= 3 and who == "mushy" else 1)
                 if 0 <= actor_idx < len(sec_hp):
                     hp_total = sec_hp_max[actor_idx] if actor_idx < len(sec_hp_max) else max(1, sec_hp[actor_idx])
                     mp_total = sec_mp_max[actor_idx] if actor_idx < len(sec_mp_max) else (sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0)
