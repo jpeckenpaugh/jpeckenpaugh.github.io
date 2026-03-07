@@ -4513,10 +4513,16 @@ def render(
 
 def main() -> None:
     base = os.getcwd()
-    objects_path = os.path.join(base, "legacy", "data", "objects.json")
-    colors_path = os.path.join(base, "legacy", "data", "colors.json")
-    players_path = os.path.join(base, "legacy", "data", "players.json")
-    opponents_path = os.path.join(base, "legacy", "data", "opponents.json")
+    if os.environ.get("LOKARTA_WEB") == "1":
+        data_root = os.path.join(base, "data")
+    else:
+        data_root = os.path.join(base, "legacy", "data")
+        if not os.path.isdir(data_root):
+            data_root = os.path.join(base, "data")
+    objects_path = os.path.join(data_root, "objects.json")
+    colors_path = os.path.join(data_root, "colors.json")
+    players_path = os.path.join(data_root, "players.json")
+    opponents_path = os.path.join(data_root, "opponents.json")
     objects = load_json(objects_path)
     colors = load_json(colors_path)
     players = load_json(players_path)
