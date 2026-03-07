@@ -2915,8 +2915,11 @@ def render(
         # Planning-phase HUD: show HP bars above all opponents while selecting targets.
         if isinstance(story_primary_hp, list):
             total = max(1, int(story_primary_hp_total))
+            hidden_idx = set(int(i) for i in (story_hidden_primary_indices or []))
             for idx, hp_val in enumerate(story_primary_hp):
                 if idx < 0 or idx >= len(primary_placements):
+                    continue
+                if idx in hidden_idx or int(hp_val) <= 0:
                     continue
                 actor = primary_placements[idx]
                 rows = actor.get("rows", [])
