@@ -1563,6 +1563,47 @@ def _action_label(flow: dict, actor_key: str) -> str:
     return options[idx % len(options)]
 
 
+def _spell_targeting_meta(actor_key: str, action: str) -> dict | None:
+    a = str(actor_key).strip().lower()
+    act = str(action).strip()
+    if a == "mushy" and act == "Mushroom Tea":
+        return {
+            "side": "ally",
+            "supports_all": False,
+            "default_mode": "single",
+            "desc": "Mushroom Tea (2 MP): +3 Attack and +3 Defense. Stacks. Decays by 1 each turn.",
+        }
+    if a == "sharoom" and act == "Healing Touch":
+        return {
+            "side": "ally",
+            "supports_all": True,
+            "default_mode": "single",
+            "desc": "Healing Touch (2 MP): single target heals up to 5 HP, or ALL allies heal up to 2 HP each.",
+        }
+    if a == "roomy" and act == "Concentric":
+        return {
+            "side": "ally",
+            "supports_all": False,
+            "default_mode": "all",
+            "desc": "Concentric (2 MP): restore +1 MP to each ally except caster.",
+        }
+    return None
+
+
+def _alive_secondary_target_indices(flow: dict, actor_key: str, action: str, stage: int) -> List[int]:
+    sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+    alive = [idx for idx, hp in enumerate(sec_hp) if hp > 0]
+    if not alive:
+        return []
+    a = str(actor_key).strip().lower()
+    act = str(action).strip()
+    caster_idx = 1 if int(stage) >= 3 and a == "player" else (2 if int(stage) >= 3 and a == "mushy" else (0 if int(stage) >= 3 and a == "sharoom" else (0 if a == "player" else 1)))
+    if a == "mushy" and act == "Mushroom Tea":
+        team_only = [i for i in alive if i != caster_idx]
+        return team_only or alive
+    return alive
+
+
 def _reset_battle_command_picks(flow: dict, stage: int) -> None:
     flow["battle_player_cmd_idx"] = 0
     flow["battle_player_action"] = _actor_action_options("player")[0]
@@ -1815,6 +1856,30 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             preserve_body_whitespace=True,
         )
 
+    if screen == "story_battle_ally_target":
+        actor_key = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
+        action = str(flow.get("battle_ally_action", "Mushroom Tea"))
+        supports_all = bool(flow.get("battle_ally_supports_all", False))
+        mode = str(flow.get("battle_ally_target_mode", "single"))
+        desc = str(flow.get("battle_ally_desc", "")).strip()
+        who = "Mushy" if actor_key == "mushy" else ("Sharoom" if actor_key == "sharoom" else actor_key.title())
+        mode_line = f"Mode: {'ALL' if mode == 'all' else 'Single'}"
+        hint = "Left/Right: target"
+        if supports_all:
+            hint += "  Up/Down: Single/All"
+        return UIBoxSpec(
+            role="battle_select",
+            border_style="double",
+            title=f"{who} - {action}",
+            body_text=f"\n{desc}\n\n{mode_line}\n{hint}",
+            center_x=50,
+            center_y=17,
+            max_body_width=56,
+            body_align="left",
+            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            preserve_body_whitespace=True,
+        )
+
     if screen == "story_battle_victory":
         return UIBoxSpec(
             role="story",
@@ -1966,6 +2031,14 @@ def _position_screen_box_for_actors(
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen == "story_battle_cmd_sharoom" and secondary_placements:
         return _anchor_box_next_to_actor(spec, secondary_placements[0], prefer="right")
+    if screen == "story_battle_ally_target" and secondary_placements:
+        actor_key = str(spec.title or "").lower()
+        idx = 1 if len(secondary_placements) >= 3 else 0
+        if "sharoom" in actor_key:
+            idx = 0
+        elif "mushy" in actor_key:
+            idx = 2 if len(secondary_placements) >= 3 else 1
+        return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen in ("story_battle_victory", "story_more_crows") and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
     return spec
@@ -2146,13 +2219,11 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
                 _enqueue_physical_from_secondary(actor_idx, target_key)
                 continue
-            allies = [i for i, hp in enumerate(sec_hp) if hp > 0 and i != actor_idx]
+            allies = _alive_secondary_target_indices(flow, "mushy", "Mushroom Tea", stage)
             if not allies:
                 allies = [actor_idx]
-            target_ally = min(
-                allies,
-                key=lambda i: (sec_hp[i] / max(1, sec_hp_max[i]), sec_hp[i]),
-            )
+            raw_t = int(flow.get("battle_mushy_spell_target", allies[0]))
+            target_ally = raw_t if raw_t in allies else allies[0]
             pre_mp = sec_mp[actor_idx]
             post_mp = max(0, pre_mp - 2)
             pre_atk = sec_boost_atk[target_ally]
@@ -2184,14 +2255,15 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
                 _enqueue_physical_from_secondary(actor_idx, target_key)
                 continue
-            injured = [i for i, hp in enumerate(sec_hp) if hp > 0 and hp < sec_hp_max[i]]
+            mode = str(flow.get("battle_sharoom_spell_target_mode", "single")).strip().lower()
+            valid_targets = _alive_secondary_target_indices(flow, "sharoom", "Healing Touch", stage)
             pre_mp = sec_mp[actor_idx]
             post_mp = max(0, pre_mp - 2)
             sec_mp[actor_idx] = post_mp
             effects = [{"type": "set_secondary_mp", "index": actor_idx, "value": post_mp}]
-            if len(injured) >= 2:
+            if mode == "all":
                 heals: List[dict] = []
-                for i in injured:
+                for i in valid_targets:
                     pre = sec_hp[i]
                     post = min(sec_hp_max[i], pre + 2)
                     sec_hp[i] = post
@@ -2210,7 +2282,8 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                     }
                 )
             else:
-                target_ally = injured[0] if injured else actor_idx
+                raw_t = int(flow.get("battle_sharoom_spell_target", actor_idx))
+                target_ally = raw_t if raw_t in valid_targets else (valid_targets[0] if valid_targets else actor_idx)
                 pre = sec_hp[target_ally]
                 post = min(sec_hp_max[target_ally], pre + 5)
                 sec_hp[target_ally] = post
@@ -3252,9 +3325,17 @@ def render(
     blink_phase: float = 0.0,
     story_target_primary_index: int | None = None,
     story_target_blink: bool = False,
+    story_target_secondary_index: int | None = None,
+    story_target_secondary_indices: List[int] | None = None,
+    story_target_secondary_blink: bool = False,
     story_spell: dict | None = None,
     story_primary_hp: List[int] | None = None,
     story_primary_hp_total: int = 10,
+    story_secondary_hp: List[int] | None = None,
+    story_secondary_hp_total: List[int] | None = None,
+    story_secondary_mp: List[int] | None = None,
+    story_secondary_mp_total: List[int] | None = None,
+    story_secondary_hud_indices: List[int] | None = None,
     story_damage_hud: dict | None = None,
     story_mp_hud: dict | None = None,
     story_smash: dict | None = None,
@@ -3357,6 +3438,11 @@ def render(
             if hide_attacker and idx == 0:
                 continue
             if idx in story_hidden_secondary:
+                continue
+            blink_indices = set(int(i) for i in (story_target_secondary_indices or []))
+            if story_target_secondary_index is not None:
+                blink_indices.add(int(story_target_secondary_index))
+            if blink_indices and idx in blink_indices and not story_target_secondary_blink:
                 continue
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
@@ -3507,6 +3593,34 @@ def render(
                     max(0, int(hp_val)),
                     total=total,
                     row_label="HP",
+                )
+        if isinstance(story_secondary_hp, list):
+            sec_hp_total = story_secondary_hp_total if isinstance(story_secondary_hp_total, list) else [max(1, int(v)) for v in story_secondary_hp]
+            sec_mp_vals = story_secondary_mp if isinstance(story_secondary_mp, list) else [0 for _ in story_secondary_hp]
+            sec_mp_total = story_secondary_mp_total if isinstance(story_secondary_mp_total, list) else [max(1, int(v)) for v in sec_mp_vals]
+            eligible = set(int(i) for i in (story_secondary_hud_indices or []))
+            if not eligible:
+                eligible = set(range(len(story_secondary_hp)))
+            for idx, hp_val in enumerate(story_secondary_hp):
+                if idx < 0 or idx >= len(secondary_placements) or idx not in eligible or int(hp_val) <= 0:
+                    continue
+                actor = secondary_placements[idx]
+                rows = actor.get("rows", [])
+                w = max((len(r) for r in rows), default=0) if isinstance(rows, list) else 0
+                cx = int(actor.get("x", 0)) + (w // 2)
+                y = int(actor.get("y", 0))
+                hp_total = max(1, int(sec_hp_total[idx] if idx < len(sec_hp_total) else hp_val))
+                mp_val = int(sec_mp_vals[idx] if idx < len(sec_mp_vals) else 0)
+                mp_tot = max(1, int(sec_mp_total[idx] if idx < len(sec_mp_total) else mp_val))
+                _draw_health_bar_custom(canvas, cx, y - 7, max(0, int(hp_val)), total=hp_total, row_label="HP")
+                _draw_health_bar_custom(
+                    canvas,
+                    cx,
+                    y - 4,
+                    max(0, mp_val),
+                    total=mp_tot,
+                    fill_color=_mp_fill_color(max(0.0, min(1.0, mp_val / max(1.0, float(mp_tot))))),
+                    row_label="MP",
                 )
 
     # UI layer demo: auto-sizing text box centered between primary/secondary centers.
@@ -3737,6 +3851,16 @@ def main() -> None:
         "battle_sharoom_action": "Attack",
         "battle_secondary_boost_atk": [0, 0],
         "battle_secondary_boost_def": [0, 0],
+        "battle_mushy_spell_target": 0,
+        "battle_mushy_spell_target_mode": "single",
+        "battle_sharoom_spell_target": 0,
+        "battle_sharoom_spell_target_mode": "single",
+        "battle_ally_select_actor": "",
+        "battle_ally_action": "",
+        "battle_ally_desc": "",
+        "battle_ally_supports_all": False,
+        "battle_ally_target_mode": "single",
+        "battle_ally_target_cursor": 0,
         "battle_player_target": 0,
         "battle_mushy_target": 0,
         "battle_sharoom_target": 0,
@@ -4162,6 +4286,10 @@ def main() -> None:
                         flow["battle_sharoom_action"] = "Attack"
                         flow["battle_secondary_boost_atk"] = [0, 0]
                         flow["battle_secondary_boost_def"] = [0, 0]
+                        flow["battle_mushy_spell_target"] = 0
+                        flow["battle_mushy_spell_target_mode"] = "single"
+                        flow["battle_sharoom_spell_target"] = 0
+                        flow["battle_sharoom_spell_target_mode"] = "single"
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
@@ -4226,14 +4354,14 @@ def main() -> None:
                     elif key == "down":
                         cmd_idx = (cmd_idx + 1) % len(options)
                         flow["battle_player_cmd_idx"] = cmd_idx
-                    elif key == "left" and options[cmd_idx] == "Attack":
+                    elif key == "left" and options[cmd_idx] in ("Attack", "Magic Spark"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and options[cmd_idx] == "Attack":
+                    elif key == "right" and options[cmd_idx] in ("Attack", "Magic Spark"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
                         pick = options[cmd_idx]
                         flow["battle_player_action"] = pick
-                        if pick == "Attack":
+                        if pick in ("Attack", "Magic Spark"):
                             flow["battle_player_target"] = int(flow.get("battle_target_cursor", 0))
                         flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_player_target", 0)))
                         begin_transition("story_battle_cmd_mushy")
@@ -4257,9 +4385,20 @@ def main() -> None:
                     elif confirm:
                         pick = options[cmd_idx]
                         flow["battle_mushy_action"] = pick
+                        meta = _spell_targeting_meta("mushy", pick)
                         if pick == "Attack":
                             flow["battle_mushy_target"] = int(flow.get("battle_target_cursor", 0))
-                        if int(flow.get("battle_stage", 1)) >= 3:
+                        if isinstance(meta, dict) and str(meta.get("side")) == "ally":
+                            stage_now = int(flow.get("battle_stage", 1))
+                            targets = _alive_secondary_target_indices(flow, "mushy", pick, stage_now)
+                            flow["battle_ally_select_actor"] = "mushy"
+                            flow["battle_ally_action"] = pick
+                            flow["battle_ally_desc"] = str(meta.get("desc", ""))
+                            flow["battle_ally_supports_all"] = bool(meta.get("supports_all", False))
+                            flow["battle_ally_target_mode"] = str(meta.get("default_mode", "single"))
+                            flow["battle_ally_target_cursor"] = targets[0] if targets else 0
+                            begin_transition("story_battle_ally_target")
+                        elif int(flow.get("battle_stage", 1)) >= 3:
                             flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_mushy_target", 0)))
                             begin_transition("story_battle_cmd_sharoom")
                         else:
@@ -4289,16 +4428,86 @@ def main() -> None:
                     elif confirm:
                         pick = options[cmd_idx]
                         flow["battle_sharoom_action"] = pick
+                        meta = _spell_targeting_meta("sharoom", pick)
                         if pick == "Attack":
                             flow["battle_sharoom_target"] = int(flow.get("battle_target_cursor", 0))
-                        flow["battle_queue"] = _build_battle_round_actions(flow)
-                        flow["battle_queue_index"] = 0
-                        flow["battle_action_t"] = 0.0
-                        flow["battle_melt_index"] = None
-                        flow["battle_melt_t"] = 0.0
-                        begin_transition("story_battle3_resolve")
+                        if isinstance(meta, dict) and str(meta.get("side")) == "ally":
+                            stage_now = int(flow.get("battle_stage", 1))
+                            targets = _alive_secondary_target_indices(flow, "sharoom", pick, stage_now)
+                            flow["battle_ally_select_actor"] = "sharoom"
+                            flow["battle_ally_action"] = pick
+                            flow["battle_ally_desc"] = str(meta.get("desc", ""))
+                            flow["battle_ally_supports_all"] = bool(meta.get("supports_all", False))
+                            flow["battle_ally_target_mode"] = str(meta.get("default_mode", "single"))
+                            flow["battle_ally_target_cursor"] = targets[0] if targets else 0
+                            begin_transition("story_battle_ally_target")
+                        else:
+                            flow["battle_queue"] = _build_battle_round_actions(flow)
+                            flow["battle_queue_index"] = 0
+                            flow["battle_action_t"] = 0.0
+                            flow["battle_melt_index"] = None
+                            flow["battle_melt_t"] = 0.0
+                            begin_transition("story_battle3_resolve")
                     elif back:
                         begin_transition("story_battle_cmd_mushy")
+                elif screen == "story_battle_ally_target":
+                    actor_key = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
+                    action_name = str(flow.get("battle_ally_action", ""))
+                    supports_all = bool(flow.get("battle_ally_supports_all", False))
+                    stage_now = int(flow.get("battle_stage", 1))
+                    targets = _alive_secondary_target_indices(flow, actor_key, action_name, stage_now)
+                    mode = str(flow.get("battle_ally_target_mode", "single")).strip().lower()
+                    cursor = int(flow.get("battle_ally_target_cursor", targets[0] if targets else 0))
+                    if supports_all and key in ("up", "down"):
+                        mode = "all" if mode == "single" else "single"
+                        flow["battle_ally_target_mode"] = mode
+                    elif mode == "single" and targets and key == "left":
+                        if cursor not in targets:
+                            cursor = targets[0]
+                        else:
+                            pos = targets.index(cursor)
+                            cursor = targets[(pos - 1) % len(targets)]
+                        flow["battle_ally_target_cursor"] = cursor
+                    elif mode == "single" and targets and key == "right":
+                        if cursor not in targets:
+                            cursor = targets[0]
+                        else:
+                            pos = targets.index(cursor)
+                            cursor = targets[(pos + 1) % len(targets)]
+                        flow["battle_ally_target_cursor"] = cursor
+                    elif confirm:
+                        if actor_key == "mushy":
+                            flow["battle_mushy_spell_target_mode"] = mode
+                            flow["battle_mushy_spell_target"] = int(flow.get("battle_ally_target_cursor", 0))
+                            if int(flow.get("battle_stage", 1)) >= 3:
+                                pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
+                                flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_mushy_target", 0)))
+                                begin_transition("story_battle_cmd_sharoom")
+                            else:
+                                flow["battle_queue"] = _build_battle_round_actions(flow)
+                                flow["battle_queue_index"] = 0
+                                flow["battle_action_t"] = 0.0
+                                flow["battle_melt_index"] = None
+                                flow["battle_melt_t"] = 0.0
+                                begin_transition("story_battle_resolve")
+                        elif actor_key == "sharoom":
+                            flow["battle_sharoom_spell_target_mode"] = mode
+                            flow["battle_sharoom_spell_target"] = int(flow.get("battle_ally_target_cursor", 0))
+                            flow["battle_queue"] = _build_battle_round_actions(flow)
+                            flow["battle_queue_index"] = 0
+                            flow["battle_action_t"] = 0.0
+                            flow["battle_melt_index"] = None
+                            flow["battle_melt_t"] = 0.0
+                            begin_transition("story_battle3_resolve")
+                        else:
+                            begin_transition("story_battle_cmd_player")
+                    elif back:
+                        if actor_key == "sharoom":
+                            begin_transition("story_battle_cmd_sharoom")
+                        elif actor_key == "mushy":
+                            begin_transition("story_battle_cmd_mushy")
+                        else:
+                            begin_transition("story_battle_cmd_player")
                 elif screen == "story_battle_victory":
                     if confirm:
                         target_sky_rows = 25
@@ -4338,6 +4547,10 @@ def main() -> None:
                         flow["battle_secondary_mp_max"] = [6, 0, 6]
                         flow["battle_secondary_boost_atk"] = [0, 0, 0]
                         flow["battle_secondary_boost_def"] = [0, 0, 0]
+                        flow["battle_mushy_spell_target"] = 1
+                        flow["battle_mushy_spell_target_mode"] = "single"
+                        flow["battle_sharoom_spell_target"] = 1
+                        flow["battle_sharoom_spell_target_mode"] = "single"
                         flow["battle_player_cmd_idx"] = 0
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
@@ -4393,6 +4606,7 @@ def main() -> None:
                 "story_battle_cmd_player",
                 "story_battle_cmd_mushy",
                 "story_battle_cmd_sharoom",
+                "story_battle_ally_target",
                 "story_battle_resolve",
                 "story_battle3_resolve",
                 "story_battle_victory",
@@ -4630,7 +4844,7 @@ def main() -> None:
                     "right_label": right.get("label", "Right"),
                     "selected": pidx,
                 }
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_ally_target"):
                 sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
                 sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
@@ -4642,6 +4856,9 @@ def main() -> None:
                     actor_idx = 1 if len(sec_hp) >= 3 else 0
                 elif screen == "story_battle_cmd_sharoom":
                     actor_idx = 0
+                elif screen == "story_battle_ally_target":
+                    who = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
+                    actor_idx = 0 if who == "sharoom" else (2 if len(sec_hp) >= 3 and who == "mushy" else 1)
                 if 0 <= actor_idx < len(sec_hp):
                     hp_total = sec_hp_max[actor_idx] if actor_idx < len(sec_hp_max) else max(1, sec_hp[actor_idx])
                     mp_total = sec_mp_max[actor_idx] if actor_idx < len(sec_mp_max) else (sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0)
@@ -4658,6 +4875,29 @@ def main() -> None:
                 t = int(flow.get("battle_target_cursor", 0))
                 if 0 <= t < len(pri_hp_now) and pri_hp_now[t] > 0:
                     story_target_index = t
+            story_target_secondary_index = None
+            story_target_secondary_indices = None
+            story_secondary_hp = None
+            story_secondary_hp_total = None
+            story_secondary_mp = None
+            story_secondary_mp_total = None
+            story_secondary_hud_indices = None
+            if screen == "story_battle_ally_target":
+                stage_now = int(flow.get("battle_stage", 1))
+                actor_key = str(flow.get("battle_ally_select_actor", "mushy"))
+                action_name = str(flow.get("battle_ally_action", ""))
+                targets = _alive_secondary_target_indices(flow, actor_key, action_name, stage_now)
+                mode = str(flow.get("battle_ally_target_mode", "single")).strip().lower()
+                story_secondary_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+                story_secondary_hp_total = [int(v) for v in flow.get("battle_secondary_hp_max", story_secondary_hp)]
+                story_secondary_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+                story_secondary_mp_total = [int(v) for v in flow.get("battle_secondary_mp_max", story_secondary_mp)]
+                story_secondary_hud_indices = list(targets)
+                if mode == "all":
+                    story_target_secondary_indices = list(targets)
+                else:
+                    c = int(flow.get("battle_ally_target_cursor", targets[0] if targets else 0))
+                    story_target_secondary_index = c
             story_spell = None
             story_damage_hud = None
             story_mp_hud = None
@@ -4746,9 +4986,17 @@ def main() -> None:
                 blink_phase=now,
                 story_target_primary_index=story_target_index,
                 story_target_blink=bool((int(now * 2.0) % 2) == 0),
+                story_target_secondary_index=story_target_secondary_index,
+                story_target_secondary_indices=story_target_secondary_indices,
+                story_target_secondary_blink=bool((int(now * 2.0) % 2) == 0),
                 story_spell=story_spell,
                 story_primary_hp=story_primary_hp,
                 story_primary_hp_total=story_primary_hp_total,
+                story_secondary_hp=story_secondary_hp,
+                story_secondary_hp_total=story_secondary_hp_total,
+                story_secondary_mp=story_secondary_mp,
+                story_secondary_mp_total=story_secondary_mp_total,
+                story_secondary_hud_indices=story_secondary_hud_indices,
                 story_damage_hud=story_damage_hud,
                 story_mp_hud=story_mp_hud,
                 story_smash=story_smash,
