@@ -693,18 +693,37 @@ def ui_border_gradient_code(x: int, y: int, width: int, height: int) -> str:
 
 
 def battle_log_border_gradient_code(x: int, y: int, width: int, height: int) -> str:
-    # Battle log style: white -> black -> grey.
+    # Battle log style: white -> dark grey -> light grey.
     if width <= 1 and height <= 1:
         return "\x1b[38;2;128;128;128m"
     t = ((x / max(1, width - 1)) + (y / max(1, height - 1))) / 2.0
     if t <= 0.5:
         tt = t / 0.5
         start = (245, 245, 245)
-        end = (0, 0, 0)
+        end = (56, 56, 56)
     else:
         tt = (t - 0.5) / 0.5
-        start = (0, 0, 0)
-        end = (128, 128, 128)
+        start = (56, 56, 56)
+        end = (176, 176, 176)
+    r = int(start[0] + (end[0] - start[0]) * tt)
+    g = int(start[1] + (end[1] - start[1]) * tt)
+    b = int(start[2] + (end[2] - start[2]) * tt)
+    return f"\x1b[38;2;{r};{g};{b}m"
+
+
+def battle_log_text_gradient_code(x: int, y: int, width: int, height: int) -> str:
+    # Text gradient direction: bottom-left -> top-right.
+    if width <= 1 and height <= 1:
+        return "\x1b[38;2;176;176;176m"
+    t = ((x / max(1, width - 1)) + ((max(0, height - 1) - y) / max(1, height - 1))) / 2.0
+    if t <= 0.5:
+        tt = t / 0.5
+        start = (245, 245, 245)
+        end = (56, 56, 56)
+    else:
+        tt = (t - 0.5) / 0.5
+        start = (56, 56, 56)
+        end = (176, 176, 176)
     r = int(start[0] + (end[0] - start[0]) * tt)
     g = int(start[1] + (end[1] - start[1]) * tt)
     b = int(start[2] + (end[2] - start[2]) * tt)
@@ -2210,7 +2229,6 @@ def _draw_battle_log_panel(
     y0 = max(0, SCREEN_H - h)
     tl, tr, bl, br = "\u250c", "\u2510", "\u2514", "\u2518"
     hz, vt = "\u2500", "\u2502"
-    text_color = "\x1b[38;2;245;245;245m"
     for dx in range(w):
         x = x0 + dx
         if 0 <= x < SCREEN_W and 0 <= y0 < SCREEN_H:
@@ -2264,7 +2282,8 @@ def _draw_battle_log_panel(
         for i, ch in enumerate(line[:inner_w]):
             x = x0 + 1 + i
             if 0 <= x < SCREEN_W:
-                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+                g = battle_log_text_gradient_code(i, row_idx, inner_w, max(1, len(visible)))
+                canvas[y][x] = f"{g}{ch}{ANSI_RESET}"
 
 
 def _draw_ui_text_box(canvas: List[List[str]], text: str, primary_zone: LayoutZone, secondary_zone: LayoutZone) -> None:
