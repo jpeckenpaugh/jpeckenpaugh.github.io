@@ -1609,6 +1609,20 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             actions=["[ A / Continue ]"],
         )
 
+    if screen == "story_more_crows":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Mushy",
+            body_text="Uh oh, more crows. Let's take them together!",
+            center_x=50,
+            center_y=17,
+            max_body_width=40,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
     if screen in ("story_2", "story_battle_resolve"):
         return None
 
@@ -1669,7 +1683,7 @@ def _position_screen_box_for_actors(
         return _anchor_box_next_to_actor(spec, secondary_placements[0], prefer="right")
     if screen == "story_battle_cmd_mushy" and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
-    if screen == "story_battle_victory" and len(secondary_placements) >= 2:
+    if screen in ("story_battle_victory", "story_more_crows") and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
     return spec
 
@@ -1703,6 +1717,8 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     # 1) Player casts Magic Spark.
     if sec_hp[0] > 0 and sec_mp[0] >= 4 and _alive_indices(pri_hp):
         target = int(flow.get("battle_player_target", 0))
+        if target < 0 or target >= len(pri_hp):
+            target = _first_alive(pri_hp, 0)
         if pri_hp[target] <= 0:
             target = _first_alive(pri_hp, target)
         dmg = rng.randint(4, 6)
@@ -1729,6 +1745,8 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     # 2) Mushy physical.
     if sec_hp[1] > 0 and _alive_indices(pri_hp):
         target = int(flow.get("battle_mushy_target", 0))
+        if target < 0 or target >= len(pri_hp):
+            target = _first_alive(pri_hp, 0)
         if pri_hp[target] <= 0:
             target = _first_alive(pri_hp, target)
         dmg = rng.randint(1, 3)
@@ -2563,8 +2581,22 @@ def render(
     hide_attacker = False
     show_hit_impact = False
     impact_frame_hint = 0
+    story_hidden_secondary: set[int] = set()
+    story_hidden_primary: set[int] = set()
     if world_layer_level == 7:
         hide_attacker, show_hit_impact, impact_frame_hint = _physical_hit_state(spell_clock)
+    if isinstance(story_smash, dict):
+        p = max(0.0, min(1.0, float(story_smash.get("progress", 0.0))))
+        if p < 0.5:
+            step = int((p / 0.5) * 4.0)  # two blinks
+            blink_visible = (step % 2) == 0
+            if not blink_visible:
+                s_side = str(story_smash.get("source_side", "secondary")).strip().lower()
+                s_idx = int(story_smash.get("source_index", 0))
+                if s_side == "primary":
+                    story_hidden_primary.add(s_idx)
+                else:
+                    story_hidden_secondary.add(s_idx)
 
     # World pane actor pass (secondary): centered collective, bottom-anchored individuals.
     secondary_placements: List[dict] = []
@@ -2579,6 +2611,8 @@ def render(
         )
         for idx, actor in enumerate(secondary_placements):
             if hide_attacker and idx == 0:
+                continue
+            if idx in story_hidden_secondary:
                 continue
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
@@ -2600,6 +2634,7 @@ def render(
         pri_sprites = primary_actor_sprites if primary_actor_sprites is not None else ([mushy_sprite] if mushy_sprite else [])
         primary_placements = layout_actor_strip(primary_zone, pri_sprites, spacing=1, stagger_rows=primary_actor_stagger)
         hidden_primary = set(int(i) for i in (story_hidden_primary_indices or []))
+        hidden_primary.update(story_hidden_primary)
         for idx, actor in enumerate(primary_placements):
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
@@ -2692,8 +2727,8 @@ def render(
             t_idx = int(story_smash.get("target_index", 0))
             prog = max(0.0, min(1.0, float(story_smash.get("progress", 0.0))))
             actor = _actor_from_side(t_side, t_idx)
-            if isinstance(actor, dict) and prog >= 0.2:
-                frame_idx = min(len(smash_frames) - 1, int(((prog - 0.2) / 0.8) * len(smash_frames)))
+            if isinstance(actor, dict) and prog >= 0.5:
+                frame_idx = min(len(smash_frames) - 1, int(((prog - 0.5) / 0.5) * len(smash_frames)))
                 _draw_smash_frame(canvas, smash_frames[max(0, frame_idx)], _center_of(actor))
 
     # UI layer demo: auto-sizing text box centered between primary/secondary centers.
@@ -2893,7 +2928,8 @@ def main() -> None:
         "message_text": "",
         "story_action": None,
         "story_action_t": 0.0,
-        "battle_primary_hp": [10, 10],      # two baby crows
+        "battle_stage": 1,
+        "battle_primary_hp": [10],          # stage 1 starts with one baby crow
         "battle_secondary_hp": [14, 10],    # player, mushy
         "battle_secondary_mp": [10, 0],     # player, mushy
         "battle_player_target": 0,
@@ -2970,7 +3006,10 @@ def main() -> None:
                     qidx = int(flow.get("battle_queue_index", 0))
                     if qidx >= len(queue):
                         if not _alive_indices(pri_hp):
-                            begin_transition("story_battle_victory")
+                            if int(flow.get("battle_stage", 1)) == 1:
+                                begin_transition("story_more_crows")
+                            else:
+                                begin_transition("story_battle_victory")
                         else:
                             flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
                             begin_transition("story_battle_cmd_player")
@@ -3127,7 +3166,8 @@ def main() -> None:
                     if confirm:
                         flow["story_action"] = None
                         flow["story_action_t"] = 0.0
-                        flow["battle_primary_hp"] = [10, 10]
+                        flow["battle_stage"] = 1
+                        flow["battle_primary_hp"] = [10]
                         flow["battle_secondary_hp"] = [14, 10]
                         flow["battle_secondary_mp"] = [10, 0]
                         flow["battle_player_target"] = 0
@@ -3193,6 +3233,17 @@ def main() -> None:
                     if confirm:
                         target_sky_rows = 25
                         begin_transition("root_menu")
+                elif screen == "story_more_crows":
+                    if confirm:
+                        flow["battle_stage"] = 2
+                        flow["battle_primary_hp"] = [10, 10]
+                        flow["battle_target_cursor"] = _first_alive([10, 10], 0)
+                        flow["battle_queue"] = []
+                        flow["battle_queue_index"] = 0
+                        flow["battle_action_t"] = 0.0
+                        flow["battle_melt_index"] = None
+                        flow["battle_melt_t"] = 0.0
+                        begin_transition("story_battle_cmd_player")
 
             screen = str(flow.get("screen", "root_menu"))
             story_action = flow.get("story_action")
@@ -3211,9 +3262,14 @@ def main() -> None:
             selected_player_sprite = player_cards[selected_idx].get("sprite", [])
             primary_sprites: List[List[List[str]]] = []
             secondary_sprites: List[List[List[str]]] = []
+            battle_screens = {"story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "story_battle_victory"}
             if scene_world_layer_level >= 3:
-                if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "story_battle_victory"):
-                    primary_sprites = [crow_sprite, crow_sprite]
+                if screen in battle_screens:
+                    enemy_count = max(1, len([int(v) for v in flow.get("battle_primary_hp", [10])]))
+                    primary_sprites = [crow_sprite for _ in range(enemy_count)]
+                    secondary_sprites = [selected_player_sprite, mushy_sprite]
+                elif screen == "story_more_crows":
+                    primary_sprites = []
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
                 else:
                     primary_sprites = [mushy_sprite, crow_sprite]
@@ -3266,7 +3322,7 @@ def main() -> None:
                     "selected": pidx,
                 }
 
-            pri_hp_now = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
+            pri_hp_now = [int(v) for v in flow.get("battle_primary_hp", [10])]
             story_target_index = None
             if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy"):
                 t = int(flow.get("battle_target_cursor", 0))
@@ -3312,6 +3368,8 @@ def main() -> None:
                         }
                     else:
                         story_smash = {
+                            "source_side": str(action.get("source_side", "secondary")),
+                            "source_index": int(action.get("source_index", 0)),
                             "target_side": str(action.get("target_side", "primary")),
                             "target_index": int(action.get("target_index", 0)),
                             "progress": prog,
@@ -3320,9 +3378,10 @@ def main() -> None:
             story_melt_idx = int(melt_idx_raw) if melt_idx_raw is not None else None
             story_melt_progress = min(1.0, float(flow.get("battle_melt_t", 0.0)) / 0.8) if melt_idx_raw is not None else 0.0
             story_hidden_primary_indices: List[int] = []
-            for idx, hp in enumerate(pri_hp_now):
-                if hp <= 0 and (story_melt_idx is None or idx != story_melt_idx):
-                    story_hidden_primary_indices.append(idx)
+            if screen in battle_screens:
+                for idx, hp in enumerate(pri_hp_now):
+                    if hp <= 0 and (story_melt_idx is None or idx != story_melt_idx):
+                        story_hidden_primary_indices.append(idx)
 
             frame = render(
                 clouds=clouds,
