@@ -2067,6 +2067,187 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     return queue
 
 
+def _battle_actor_name(side: str, idx: int, stage: int, player_name: str) -> str:
+    side_key = str(side).strip().lower()
+    i = int(idx)
+    if side_key == "primary":
+        return f"Baby Crow {i + 1}"
+    if stage >= 3:
+        if i == 0:
+            return "Sharoom"
+        if i == 1:
+            return player_name
+        if i == 2:
+            return "Mushy"
+        return f"Ally {i + 1}"
+    if i == 0:
+        return player_name
+    if i == 1:
+        return "Mushy"
+    return f"Ally {i + 1}"
+
+
+def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List[str]:
+    if not isinstance(action, dict):
+        return []
+    kind = str(action.get("kind", "physical"))
+    source_side = str(action.get("source_side", "secondary"))
+    source_idx = int(action.get("source_index", 0))
+    target_side = str(action.get("target_side", "primary"))
+    target_idx = int(action.get("target_index", 0))
+    damage = max(0, int(action.get("damage", 0)))
+    pre_hp = max(0, int(action.get("pre_hp", 0)))
+    post_hp = max(0, int(action.get("post_hp", 0)))
+    src = _battle_actor_name(source_side, source_idx, stage, player_name)
+    dst = _battle_actor_name(target_side, target_idx, stage, player_name)
+    if kind == "spell":
+        lines = [f"{src} casts Magic Spark on {dst} for {damage} damage."]
+    else:
+        lines = [f"{src} attacks {dst} for {damage} damage."]
+    if pre_hp > 0 and post_hp <= 0:
+        lines.append(f"{dst} has been defeated.")
+    return lines
+
+
+def _battle_log_start(flow: dict, stage: int) -> None:
+    flow["battle_log_committed"] = []
+    flow["battle_log_pending"] = []
+    flow["battle_log_active"] = None
+    flow["battle_log_active_chars"] = 0
+    if int(stage) >= 3:
+        opener = "Battle begins: Sharoom, Player, and Mushy vs 3 Baby Crows."
+    elif int(stage) == 2:
+        opener = "Battle begins: Player and Mushy vs 2 Baby Crows."
+    else:
+        opener = "Battle begins: Player and Mushy vs Baby Crow."
+    flow["battle_log_pending"] = [opener]
+
+
+def _battle_log_enqueue(flow: dict, lines: List[str]) -> None:
+    if not isinstance(lines, list):
+        return
+    pending = flow.get("battle_log_pending")
+    if not isinstance(pending, list):
+        pending = []
+    for line in lines:
+        text = str(line).strip()
+        if text:
+            pending.append(text)
+    flow["battle_log_pending"] = pending
+
+
+def _battle_log_tick(flow: dict, dt: float) -> None:
+    cps = 38.0
+    pending = flow.get("battle_log_pending")
+    if not isinstance(pending, list):
+        pending = []
+    active = flow.get("battle_log_active")
+    if not isinstance(active, str) or active == "":
+        if pending:
+            active = str(pending.pop(0))
+            flow["battle_log_active"] = active
+            flow["battle_log_active_chars"] = 0
+        else:
+            flow["battle_log_active"] = None
+            flow["battle_log_active_chars"] = 0
+            flow["battle_log_pending"] = pending
+            return
+    chars = int(flow.get("battle_log_active_chars", 0)) + int(max(0.0, dt) * cps)
+    active = str(flow.get("battle_log_active", ""))
+    committed = flow.get("battle_log_committed")
+    if not isinstance(committed, list):
+        committed = []
+    if chars >= len(active):
+        committed.append(active)
+        flow["battle_log_committed"] = committed[-200:]
+        flow["battle_log_active"] = None
+        flow["battle_log_active_chars"] = 0
+    else:
+        flow["battle_log_active_chars"] = chars
+    flow["battle_log_pending"] = pending
+
+
+def _battle_log_visible_lines(flow: dict) -> List[str]:
+    committed = flow.get("battle_log_committed")
+    if not isinstance(committed, list):
+        committed = []
+    out = [str(line) for line in committed if str(line)]
+    active = flow.get("battle_log_active")
+    if isinstance(active, str) and active:
+        chars = max(0, min(len(active), int(flow.get("battle_log_active_chars", 0))))
+        out.append(active[:chars])
+    return out
+
+
+def _draw_battle_log_panel(
+    canvas: List[List[str]],
+    lines: List[str] | None,
+    width: int = 40,
+    height: int = 10,
+) -> None:
+    w = max(8, int(width))
+    h = max(5, int(height))
+    x0 = max(0, SCREEN_W - w)
+    y0 = max(0, SCREEN_H - h)
+    tl, tr, bl, br = "\u2554", "\u2557", "\u255a", "\u255d"
+    hz, vt = "\u2550", "\u2551"
+    text_color = "\x1b[38;2;245;245;245m"
+    for dx in range(w):
+        x = x0 + dx
+        if 0 <= x < SCREEN_W and 0 <= y0 < SCREEN_H:
+            ch = tl if dx == 0 else (tr if dx == w - 1 else hz)
+            g = ui_border_gradient_code(dx, 0, w, h)
+            canvas[y0][x] = f"{g}{ch}{ANSI_RESET}"
+    for dy in range(1, h - 1):
+        y = y0 + dy
+        if not (0 <= y < SCREEN_H):
+            continue
+        for dx in range(w):
+            x = x0 + dx
+            if not (0 <= x < SCREEN_W):
+                continue
+            if dx == 0 or dx == w - 1:
+                g = ui_border_gradient_code(dx, dy, w, h)
+                canvas[y][x] = f"{g}{vt}{ANSI_RESET}"
+            else:
+                canvas[y][x] = " "
+    yb = y0 + h - 1
+    for dx in range(w):
+        x = x0 + dx
+        if 0 <= x < SCREEN_W and 0 <= yb < SCREEN_H:
+            ch = bl if dx == 0 else (br if dx == w - 1 else hz)
+            g = ui_border_gradient_code(dx, h - 1, w, h)
+            canvas[yb][x] = f"{g}{ch}{ANSI_RESET}"
+    if not lines:
+        return
+    inner_w = max(1, w - 2)
+    inner_h = max(1, h - 2)
+    wrapped: List[str] = []
+    for line in lines:
+        text = str(line).strip()
+        if not text:
+            wrapped.append("")
+            continue
+        wrapped.extend(
+            textwrap.wrap(
+                text,
+                width=inner_w,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
+    visible = wrapped[-inner_h:]
+    start_y = y0 + 1 + max(0, inner_h - len(visible))
+    for row_idx, line in enumerate(visible):
+        y = start_y + row_idx
+        if not (0 <= y < SCREEN_H):
+            continue
+        for i, ch in enumerate(line[:inner_w]):
+            x = x0 + 1 + i
+            if 0 <= x < SCREEN_W:
+                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+
+
 def _draw_ui_text_box(canvas: List[List[str]], text: str, primary_zone: LayoutZone, secondary_zone: LayoutZone) -> None:
     text = str(text).strip()
     if not text:
@@ -2797,6 +2978,7 @@ def render(
     story_melt_progress: float = 0.0,
     story_hidden_primary_indices: List[int] | None = None,
     story_transition_actors: List[dict] | None = None,
+    battle_log_lines: List[str] | None = None,
 ) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
@@ -3130,6 +3312,9 @@ def render(
                 blink_selected_on=blink_on,
             )
 
+    if isinstance(battle_log_lines, list):
+        _draw_battle_log_panel(canvas, battle_log_lines, width=40, height=10)
+
     # Vertical wipe-in from bottom.
     progress = max(0.0, min(1.0, wipe_progress))
     if progress < 1.0:
@@ -3268,6 +3453,10 @@ def main() -> None:
         "battle_action_t": 0.0,
         "battle_melt_index": None,
         "battle_melt_t": 0.0,
+        "battle_log_committed": [],
+        "battle_log_pending": [],
+        "battle_log_active": None,
+        "battle_log_active_chars": 0,
         "lineup_transition": None,
         "actor_entrance": None,
         "battle2_entrance": None,
@@ -3361,6 +3550,7 @@ def main() -> None:
             dt = max(0.0, min(0.2, now - last_tick))
             last_tick = now
             wipe_progress = min(1.0, max(0.0, (now - wipe_started_at) / wipe_duration))
+            _battle_log_tick(flow, dt)
 
             if current_sky_rows != target_sky_rows:
                 transition_accum += dt
@@ -3450,6 +3640,9 @@ def main() -> None:
                                     sec_mp[s_idx] = post_mp
                                     flow["battle_secondary_mp"] = sec_mp
                                 flow["battle_staff_charges"] = post_charges
+                            stage_now = int(flow.get("battle_stage", 1))
+                            player_name = str(flow.get("selected_name", "Player")).strip() or "Player"
+                            _battle_log_enqueue(flow, _battle_action_log_lines(action, stage_now, player_name))
                             flow["battle_queue_index"] = qidx + 1
                             flow["battle_action_t"] = 0.0
             elif anim_mode == "open" and screen == "story_lineup_shift":
@@ -3458,6 +3651,7 @@ def main() -> None:
                     trans["t"] = float(trans.get("t", 0.0)) + dt
                     if float(trans.get("t", 0.0)) >= float(trans.get("duration", 1.0)):
                         flow["lineup_transition"] = None
+                        _battle_log_start(flow, int(flow.get("battle_stage", 1)))
                         begin_transition("story_battle_cmd_player")
             elif anim_mode == "open" and screen == "story_actor_entrance":
                 ent = flow.get("actor_entrance")
@@ -3472,6 +3666,7 @@ def main() -> None:
                     ent["t"] = float(ent.get("t", 0.0)) + dt
                     if float(ent.get("t", 0.0)) >= float(ent.get("duration", 1.0)):
                         flow["battle2_entrance"] = None
+                        _battle_log_start(flow, int(flow.get("battle_stage", 1)))
                         begin_transition("story_battle_cmd_player")
             elif anim_mode == "open" and screen == "story_sharoom_entrance":
                 ent = flow.get("sharoom_entrance")
@@ -3498,6 +3693,7 @@ def main() -> None:
                         flow["sharoom_lineup_transition"] = None
                         pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
                         flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
+                        _battle_log_start(flow, int(flow.get("battle_stage", 1)))
                         begin_transition("story_battle_cmd_player")
 
             if anim_mode == "open" and flow.get("story_action") is None:
@@ -3640,6 +3836,10 @@ def main() -> None:
                         flow["battle_action_t"] = 0.0
                         flow["battle_melt_index"] = None
                         flow["battle_melt_t"] = 0.0
+                        flow["battle_log_committed"] = []
+                        flow["battle_log_pending"] = []
+                        flow["battle_log_active"] = None
+                        flow["battle_log_active_chars"] = 0
                         begin_transition("story_1")
                     elif back:
                         begin_transition("fortune_select")
@@ -3815,6 +4015,7 @@ def main() -> None:
                 "story_battle3_resolve",
                 "story_battle_victory",
             }
+            battle_log_screens = set(battle_screens)
             if scene_world_layer_level >= 3:
                 if screen in battle_screens:
                     enemy_count = max(1, len([int(v) for v in flow.get("battle_primary_hp", [10])]))
@@ -4134,6 +4335,7 @@ def main() -> None:
                 for idx, hp in enumerate(pri_hp_now):
                     if hp <= 0 and (story_melt_idx is None or idx != story_melt_idx):
                         story_hidden_primary_indices.append(idx)
+            battle_log_lines = _battle_log_visible_lines(flow) if screen in battle_log_screens else None
 
             frame = render(
                 clouds=clouds,
@@ -4171,6 +4373,7 @@ def main() -> None:
                 story_melt_progress=story_melt_progress,
                 story_hidden_primary_indices=story_hidden_primary_indices,
                 story_transition_actors=story_transition_actors,
+                battle_log_lines=battle_log_lines,
             )
             print(ANSI_HOME + frame, end="", flush=True)
 
