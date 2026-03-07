@@ -15,7 +15,7 @@ python main.py
 - `TitleScene` includes `Continue`, `New Game`, `Asset Explorer`, and `Quit`.
 - `TitleScene` now includes a legacy-style top panorama tilemap (`forest + town + forest`) that scrolls over a 100x10 viewport.
   - The panorama is assembled from legacy `scenes.json` + `objects.json` assets with `color_mask` + `colors.json` ANSI coloring.
-- `AssetExplorerScene` browses JSON assets from `legecay/data`.
+- `AssetExplorerScene` browses JSON assets from `legacy/data`.
 - `SaveGameService` handles JSON save/load (`saves/slot1.json`).
 - `Renderer` and `InputAdapter` isolate terminal IO.
 
@@ -32,3 +32,4 @@ python main.py
 - Add a `TownScene` and transition from `TitleScene` to `TownScene`.
 - Introduce command objects for actions.
 - Add encounter and battle domain classes.
+

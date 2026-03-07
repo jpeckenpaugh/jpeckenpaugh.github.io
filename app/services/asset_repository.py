@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 class AssetRepository:
     def __init__(self, data_dir: str | None = None) -> None:
-        base_dir = data_dir or os.path.join(os.getcwd(), "legecay", "data")
+        base_dir = data_dir or os.path.join(os.getcwd(), "legacy", "data")
         self.data_dir = base_dir
         self._cache: Dict[str, Any] = {}
 
@@ -51,3 +51,4 @@ class AssetRepository:
             idx = int(label)
             return label, container[idx]
         return label, container
+

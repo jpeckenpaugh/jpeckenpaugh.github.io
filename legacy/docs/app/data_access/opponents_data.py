@@ -1,0 +1,200 @@
+"""Load and spawn opponent data from JSON."""
+
+import json
+import random
+from typing import Dict, List, Optional
+
+from app.models import Opponent
+
+
+class OpponentsData:
+    def __init__(self, path: str):
+        self._path = path
+        self._opponents: Dict[str, dict] = {}
+        self._variants: Dict[str, dict] = {}
+        self.load()
+
+    def load(self):
+        try:
+            with open(self._path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        if isinstance(data, dict) and "base_opponents" in data:
+            self._opponents = data.get("base_opponents", {}) or {}
+            self._variants = data.get("element_variants", {}) or {}
+        else:
+            self._opponents = data if isinstance(data, dict) else {}
+            self._variants = {}
+
+    def all(self) -> Dict[str, dict]:
+        return self._opponents
+
+    def get(self, key: str, default: Optional[dict] = None) -> dict:
+        if default is None:
+            default = {}
+        return self._opponents.get(key, default)
+
+    def list_descriptions(self) -> List[str]:
+        lines = []
+        for data in self._opponents.values():
+            name = data.get("name", "Unknown")
+            desc = data.get("desc", "")
+            lines.append(f"{name}: {desc}")
+        return lines
+
+    def _variant_meta(self) -> dict:
+        return self._variants.get("meta", {}) if isinstance(self._variants, dict) else {}
+
+    def _variant_names(self) -> dict:
+        return self._variants.get("names", {}) if isinstance(self._variants, dict) else {}
+
+    def _variant_desc(self) -> dict:
+        return self._variants.get("descriptions", {}) if isinstance(self._variants, dict) else {}
+
+    def _colorize_map(self, color_map, element: str):
+        meta = self._variant_meta()
+        palette = meta.get("color_palettes", {}).get(element) if isinstance(meta, dict) else None
+        if not isinstance(palette, dict):
+            return color_map
+        if isinstance(color_map, dict):
+            mapped = {}
+            for key, value in color_map.items():
+                if str(value) in ("1", "2", "3"):
+                    mapped[key] = palette.get(str(value), value)
+                else:
+                    mapped[key] = value
+            return mapped
+        if isinstance(color_map, list):
+            trans = {}
+            for digit in ("1", "2", "3"):
+                key = palette.get(digit)
+                if isinstance(key, str) and len(key) == 1:
+                    trans[digit] = key
+            if not trans:
+                return color_map
+            return [
+                "".join(trans.get(ch, ch) for ch in line)
+                for line in color_map
+            ]
+        return color_map
+
+    def build_variant(self, base_id: str, element: str) -> dict:
+        base = dict(self._opponents.get(base_id, {}))
+        if not base:
+            return {}
+        base["opponent_id"] = base_id
+        meta = self._variant_meta()
+        level_offsets = meta.get("level_offsets", {})
+        multipliers = meta.get("stat_multipliers", {})
+        offset = int(level_offsets.get(element, 0) or 0)
+        mult = multipliers.get(element, {}) if isinstance(multipliers, dict) else {}
+        hp_mult = float(mult.get("hp", 1.0) or 1.0)
+        atk_mult = float(mult.get("atk", 1.0) or 1.0)
+        def_mult = float(mult.get("defense", 1.0) or 1.0)
+        spd_mult = float(mult.get("speed", 1.0) or 1.0)
+        base["level"] = int(base.get("level", 1)) + offset
+        base["hp"] = max(1, int(int(base.get("hp", 1)) * hp_mult))
+        base["atk"] = max(1, int(int(base.get("atk", 1)) * atk_mult))
+        base["defense"] = max(0, int(int(base.get("defense", 0)) * def_mult))
+        base["action_chance"] = float(base.get("action_chance", 1.0)) * spd_mult
+        base["element"] = element
+        key = f"{base_id}_{element}"
+        names = self._variant_names()
+        descs = self._variant_desc()
+        if key in names:
+            base["name"] = names[key]
+        if key in descs:
+            base["desc"] = descs[key]
+        return base
+
+    def create(self, data: dict, art_color: str) -> Opponent:
+        name = data.get("name", "Slime")
+        element = data.get("element", "base")
+        opponent_id = str(data.get("opponent_id", data.get("id", "")) or "")
+        level = int(data.get("level", 1))
+        hp = int(data.get("hp", 10))
+        atk = int(data.get("atk", 5))
+        defense = int(data.get("defense", 5))
+        action_chance = float(data.get("action_chance", 1.0))
+        art_lines = data.get("art", [])
+        color_map = data.get("color_map", [])
+        arrival = data.get("arrival", "appears")
+        variation = data.get("variation", 0.0)
+        jitter_stability = data.get("jitter_stability", True)
+        follower_type = str(data.get("follower_type", "") or "")
+        follower_names = data.get("follower_names", [])
+        if not isinstance(follower_names, list):
+            follower_names = []
+        ai = data.get("ai")
+        if not isinstance(ai, dict):
+            ai = None
+        if element and self._variants:
+            color_map = self._colorize_map(color_map, element)
+        return Opponent(
+            name=name,
+            element=element,
+            opponent_id=opponent_id,
+            level=level,
+            hp=hp,
+            max_hp=hp,
+            atk=atk,
+            defense=defense,
+            stunned_turns=0,
+            action_chance=action_chance,
+            melted=False,
+            art_lines=art_lines,
+            art_color=art_color,
+            color_map=color_map,
+            arrival=arrival,
+            follower_type=follower_type,
+            follower_names=follower_names,
+            variation=variation,
+            jitter_stability=bool(jitter_stability),
+            ai=ai
+        )
+
+    def spawn(
+        self,
+        player_level: int,
+        art_color: str,
+        element: str = "base",
+        recruit_only_types: Optional[List[str]] = None,
+        recruit_spawn_weights: Optional[Dict[str, int]] = None,
+    ) -> List[Opponent]:
+        if not self._opponents:
+            return []
+        base_ids = list(self._opponents.keys())
+        candidates = [self.build_variant(base_id, element) for base_id in base_ids]
+        candidates = [c for c in candidates if c]
+        if not candidates:
+            candidates = [self.build_variant(base_id, "base") for base_id in base_ids]
+            candidates = [c for c in candidates if c]
+        budget = max(0, int(player_level))
+        eligible = [c for c in candidates if int(c.get("level", 1)) <= budget]
+        if not eligible:
+            lowest = min(candidates, key=lambda c: int(c.get("level", 1)))
+            return [self.create(lowest, art_color)]
+        spawned: List[Opponent] = []
+        total_level = 0
+        while len(spawned) < 4:
+            remaining = budget - total_level
+            if remaining <= 0:
+                break
+            choices = [c for c in eligible if int(c.get("level", 1)) <= remaining]
+            if not choices:
+                break
+            if recruit_only_types:
+                weights = []
+                for candidate in choices:
+                    follower_type = candidate.get("follower_type") or str(candidate.get("name", "")).lower()
+                    weight = 1
+                    if follower_type in recruit_only_types:
+                        weight = int((recruit_spawn_weights or {}).get(follower_type, 1) or 1)
+                    weights.append(max(1, weight))
+                data = random.choices(choices, weights=weights, k=1)[0]
+            else:
+                data = random.choice(choices)
+            spawned.append(self.create(data, art_color))
+            total_level += int(data.get("level", 1))
+        return spawned

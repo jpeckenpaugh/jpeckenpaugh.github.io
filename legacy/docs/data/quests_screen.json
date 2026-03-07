@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "layout": {
+    "menu": {
+      "x": 30,
+      "y": 10,
+      "margin": 1,
+      "frame_style": "round"
+    },
+    "atlas": {
+      "x": 70,
+      "y": 10,
+      "margin": 1,
+      "frame_style": "round",
+      "glyph_id": "atlas"
+    },
+    "description": {
+      "x": 50,
+      "y": 24,
+      "width": 96,
+      "anchor": "bottom",
+      "margin": 1,
+      "frame_style": "round"
+    }
+  },
+  "actions": {
+    "detail": [
+      "next",
+      "back"
+    ],
+    "labels": {
+      "next": "Next",
+      "start": "Start Quest",
+      "back": "Cancel",
+      "list_back": "Back"
+    }
+  }
+}

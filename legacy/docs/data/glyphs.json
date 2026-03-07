@@ -1,0 +1,36 @@
+{
+  "atlas": {
+    "name": "Atlas",
+    "art": [
+      "     o------------o",
+      "    /66/ww|33|ww\\77\\",
+      "   /66/www|33|www\\77\\",
+      "  /--o wwwo--owwwwo--\\",
+      " /wwwwwwwwwwwwwwwwwwww\\",
+      "o--owwwwwwo--owwwwwwo--o",
+      "|22|wwwwww|11|wwwwww|44|",
+      "|22|wwwwww|11|wwwwww|44|",
+      "o--owwwwwwo--owwwwwwo--o",
+      " \\wwwwwwwwwwwwwwwwwwww/",
+      "  \\--owwwwo--owwwwo--/",
+      "   \\99\\www|55|www/88/",
+      "    \\99\\ww|55|ww/88/",
+      "     o------------o"
+    ]
+  },
+  "element_atlas": {
+    "name": "Element Atlas",
+    "art": [
+      "   o--o--o--o",
+      "  /66/|33|\\77\\",
+      " /66/a|33|b\\77\\",
+      "o--oaao--obbo--o",
+      "|22|aa|11|bb|44|",
+      "|22|aa|11|bb|44|",
+      "o--oaao--obbo--o",
+      " \\99\\a|55|b/88/",
+      "  \\99\\|55|/88/",
+      "   o--o--o--o"
+    ]
+  }
+}

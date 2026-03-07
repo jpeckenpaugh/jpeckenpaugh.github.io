@@ -1,0 +1,12 @@
+{
+  "battle": {
+    "opponent_arrival": "A {name} {arrival}.",
+    "opponent_arrival_plural": "Opponents emerge from the forest.",
+    "quiet": "All is quiet. No enemies in sight.",
+    "opponent_stunned": "The {name} is stunned.",
+    "opponent_hesitates": "The {name} hesitates.",
+    "opponent_miss": "The {name} misses you.",
+    "opponent_hit": "The {name} hits you for {damage}.",
+    "opponent_crit": "Critical hit! The {name} hits you for {damage}."
+  }
+}

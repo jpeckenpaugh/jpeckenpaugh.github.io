@@ -1,0 +1,467 @@
+const statusEl = document.getElementById("status");
+const termEl = document.getElementById("terminal");
+const keyboardEl = document.getElementById("virtual-keyboard");
+const modeSelectEl = document.getElementById("mode-select");
+const languageSelectEl = document.getElementById("language-select");
+const manifestUrl = new URL("asset-manifest.json", window.location.href);
+manifestUrl.searchParams.set("v", Date.now().toString());
+const rootUrl = new URL(".", window.location.href);
+
+const term = new Terminal({
+  cols: 100,
+  rows: 30,
+  convertEol: true,
+  cursorBlink: false,
+  lineHeight: 1.0,
+  fontFamily: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  fontSize: 14,
+  theme: {
+    background: "#050607",
+    foreground: "#e8e4dc",
+  },
+});
+
+initTerminal();
+setupVirtualKeyboard();
+initTipsModal();
+initDebugModal();
+initBuildTime();
+initDocsMenu();
+initModePicker();
+initLanguagePicker();
+
+async function initTerminal() {
+  await waitForFonts();
+  term.open(termEl);
+  term.write("Booting runtime...\r\n");
+  sizeTerminalToGrid();
+  window.addEventListener("resize", () => sizeTerminalToGrid());
+  bootPyodide().catch((err) => {
+    writeToTerminal(`\x1b[31mBoot error: ${err}\x1b[0m\r\n`);
+    setStatus("Boot failed. Check console.");
+    console.error(err);
+  });
+}
+
+function writeToTerminal(text) {
+  if (!text) return;
+  const normalized = text.replace(/\n/g, "\r\n");
+  term.write(normalized);
+}
+
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text;
+}
+
+function measureCharSize() {
+  const probe = document.createElement("span");
+  probe.textContent = "M";
+  probe.style.fontFamily = term.options.fontFamily || "monospace";
+  probe.style.fontSize = `${term.options.fontSize || 14}px`;
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  document.body.appendChild(probe);
+  const rect = probe.getBoundingClientRect();
+  probe.remove();
+  return { width: rect.width, height: rect.height };
+}
+
+function waitForFonts() {
+  if (!document.fonts?.load) {
+    return Promise.resolve();
+  }
+  const fontFamily = term.options.fontFamily || "monospace";
+  const fontSize = term.options.fontSize || 14;
+  const load = document.fonts.load(`${fontSize}px ${fontFamily}`);
+  const ready = document.fonts.ready;
+  const timeout = new Promise((resolve) => setTimeout(resolve, 1500));
+  return Promise.race([Promise.all([load, ready]), timeout]);
+}
+
+function sizeTerminalToGrid() {
+  if (sizeTerminalToGrid._busy) return;
+  sizeTerminalToGrid._busy = true;
+  requestAnimationFrame(() => {
+    _sizeTerminalToGrid();
+  });
+}
+
+function _sizeTerminalToGrid() {
+  let cellWidth = 0;
+  let cellHeight = 0;
+  const dims = term._core?._renderService?.dimensions;
+  if (dims?.css?.cell) {
+    cellWidth = dims.css.cell.width;
+    cellHeight = dims.css.cell.height;
+  } else {
+    const measured = measureCharSize();
+    const fontSize = term.options.fontSize || 14;
+    const lineHeight = term.options.lineHeight || 1;
+    cellWidth = measured.width;
+    cellHeight = Math.max(measured.height, fontSize * lineHeight);
+  }
+  const borderPad = 2;
+  const safetyPad = 4;
+  let targetWidth = Math.ceil(cellWidth * term.cols) + borderPad + safetyPad;
+  let targetHeight = Math.ceil(cellHeight * term.rows) + borderPad + safetyPad;
+
+  termEl.style.width = `${targetWidth}px`;
+  termEl.style.height = `${targetHeight}px`;
+  term.resize(term.cols, term.rows);
+  requestAnimationFrame(() => {
+    const screen = termEl.querySelector(".xterm-screen");
+    if (screen) {
+      const rect = screen.getBoundingClientRect();
+      const minWidth = Math.ceil(rect.width) + borderPad + safetyPad;
+      const minHeight = Math.ceil(rect.height) + borderPad + safetyPad;
+      const finalWidth = Math.max(targetWidth, minWidth);
+      const finalHeight = Math.max(targetHeight, minHeight);
+      if (finalWidth !== targetWidth || finalHeight !== targetHeight) {
+        termEl.style.width = `${finalWidth}px`;
+        termEl.style.height = `${finalHeight}px`;
+      }
+    }
+    sizeTerminalToGrid._busy = false;
+  });
+}
+
+function ensureDir(fs, dirPath) {
+  if (!dirPath || dirPath === "/") return;
+  const parts = dirPath.split("/").filter(Boolean);
+  let current = "";
+  for (const part of parts) {
+    current += `/${part}`;
+    if (!fs.analyzePath(current).exists) {
+      fs.mkdir(current);
+    }
+  }
+}
+
+async function fetchManifest() {
+  const response = await fetch(manifestUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to load manifest: ${response.status}`);
+  }
+  return response.json();
+}
+
+async function loadAssets(pyodide, manifest) {
+  const { FS } = pyodide;
+  const cacheBust = manifest?.version ? String(manifest.version) : Date.now().toString();
+  for (const file of manifest.files || []) {
+    const fileUrl = new URL(file, rootUrl);
+    fileUrl.searchParams.set("v", cacheBust);
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${file} (${response.status})`);
+    }
+    const text = await response.text();
+    const dir = `/${file.split("/").slice(0, -1).join("/")}`;
+    ensureDir(FS, dir);
+    FS.writeFile(`/${file}`, text);
+  }
+}
+
+function mapKeyEvent(domEvent) {
+  switch (domEvent.key) {
+    case "ArrowLeft":
+      return "LEFT";
+    case "ArrowRight":
+      return "RIGHT";
+    case "ArrowUp":
+      return "UP";
+    case "ArrowDown":
+      return "DOWN";
+    case "Enter":
+      return "ENTER";
+    case "Shift":
+      return "SHIFT";
+    default:
+      break;
+  }
+  if (domEvent.key && domEvent.key.length === 1) {
+    return domEvent.key;
+  }
+  return "";
+}
+
+async function bootPyodide() {
+  setStatus("Loading Pyodide...");
+  const pyodide = await loadPyodide({
+    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.2/full/",
+    stdout: (text) => writeToTerminal(text),
+    stderr: (text) => writeToTerminal(`\x1b[31m${text}\x1b[0m`),
+  });
+  window.pyodide = pyodide;
+  writeToTerminal("Pyodide ready.\r\n");
+
+  setStatus("Loading asset manifest...");
+  const manifest = await fetchManifest();
+  writeToTerminal(`Loading assets (${manifest.files.length})...\r\n`);
+  await loadAssets(pyodide, manifest);
+
+  setStatus("Mounting save storage...");
+  const { FS } = pyodide;
+  ensureDir(FS, "/saves");
+  FS.mount(FS.filesystems.IDBFS, {}, "/saves");
+  await new Promise((resolve, reject) => {
+    FS.syncfs(true, (err) => (err ? reject(err) : resolve()));
+  });
+  window.syncSaves = () =>
+    new Promise((resolve, reject) => {
+      FS.syncfs(false, (err) => (err ? reject(err) : resolve()));
+    });
+
+  setStatus("Configuring input bridge...");
+  FS.chdir("/");
+  await pyodide.runPythonAsync(
+    [
+      "import sys",
+      "sys.path.insert(0, '/')",
+      "import os",
+      "os.environ['LOKARTA_WEB'] = '1'",
+      `os.environ['LOKARTA_DEMO_LANG'] = '${getSelectedLanguage()}'`,
+      `os.environ['LOKARTA_LEGACY'] = '${isLegacyMode() ? "1" : "0"}'`,
+      "os.environ['COLUMNS'] = '100'",
+      "os.environ['LINES'] = '30'",
+      "import app.input as input_mod",
+      "input_mod.enable_browser_input()",
+      "enqueue_key = input_mod.enqueue_key",
+    ].join("\n")
+  );
+  const enqueueKey = pyodide.globals.get("enqueue_key");
+  window.enqueueKey = enqueueKey;
+
+  term.onKey(({ domEvent }) => {
+    const mapped = mapKeyEvent(domEvent);
+    if (mapped) {
+      enqueueKey(mapped);
+    }
+    domEvent.preventDefault();
+  });
+
+  setStatus("Launching game...");
+  writeToTerminal("Launching game...\r\n");
+  pyodide.runPythonAsync("import main; main.main()").catch((err) => {
+    writeToTerminal(`\x1b[31mRuntime error: ${err}\x1b[0m\r\n`);
+    setStatus("Runtime error. Check console.");
+    console.error(err);
+  });
+}
+
+function getSelectedLanguage() {
+  if (!languageSelectEl) return getLangFromUrl() || "en";
+  const val = (languageSelectEl.value || getLangFromUrl() || "en").toLowerCase();
+  if (["en", "es", "pt-br"].includes(val)) return val;
+  return "en";
+}
+
+function getLangFromUrl() {
+  const qp = new URLSearchParams(window.location.search);
+  const raw = (qp.get("lang") || "").toLowerCase().trim();
+  if (raw === "pt" || raw === "pt_br") return "pt-br";
+  if (["en", "es", "pt-br"].includes(raw)) return raw;
+  return "";
+}
+
+function isLegacyMode() {
+  const fromUrl = getLegacyFromUrl();
+  if (fromUrl !== null) return fromUrl;
+  if (!modeSelectEl) return false;
+  return (modeSelectEl.value || "demo") === "legacy";
+}
+
+function getLegacyFromUrl() {
+  const qp = new URLSearchParams(window.location.search);
+  const raw = (qp.get("legacy") || "").toLowerCase().trim();
+  if (!raw) return null;
+  return ["1", "true", "yes", "on"].includes(raw);
+}
+
+function syncModeAndLangToUrl(modeValue, langValue) {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("lang", langValue);
+  if (modeValue === "legacy") {
+    nextUrl.searchParams.set("legacy", "true");
+  } else {
+    nextUrl.searchParams.delete("legacy");
+  }
+  return nextUrl;
+}
+
+function initModePicker() {
+  if (!modeSelectEl) return;
+  const legacyFromUrl = getLegacyFromUrl();
+  const savedMode = window.localStorage.getItem("lokarta_demo_mode");
+  if (legacyFromUrl === true) {
+    modeSelectEl.value = "legacy";
+    window.localStorage.setItem("lokarta_demo_mode", "legacy");
+  } else if (legacyFromUrl === false) {
+    modeSelectEl.value = "demo";
+    window.localStorage.setItem("lokarta_demo_mode", "demo");
+  } else if (savedMode === "legacy" || savedMode === "demo") {
+    modeSelectEl.value = savedMode;
+  }
+  modeSelectEl.addEventListener("change", () => {
+    const modeValue = (modeSelectEl.value || "demo") === "legacy" ? "legacy" : "demo";
+    window.localStorage.setItem("lokarta_demo_mode", modeValue);
+    const nextUrl = syncModeAndLangToUrl(modeValue, getSelectedLanguage());
+    setStatus(`Mode set to ${modeValue === "legacy" ? "Legacy" : "Demo"}. Reloading...`);
+    window.setTimeout(() => window.location.assign(nextUrl.toString()), 120);
+  });
+}
+
+function initLanguagePicker() {
+  if (!languageSelectEl) return;
+  const fromUrl = getLangFromUrl();
+  const saved = window.localStorage.getItem("lokarta_demo_lang");
+  if (fromUrl) {
+    languageSelectEl.value = fromUrl;
+    window.localStorage.setItem("lokarta_demo_lang", fromUrl);
+  } else if (saved && ["en", "es", "pt-br"].includes(saved)) {
+    languageSelectEl.value = saved;
+  }
+  languageSelectEl.addEventListener("change", () => {
+    const selected = getSelectedLanguage();
+    window.localStorage.setItem("lokarta_demo_lang", selected);
+    const modeValue = modeSelectEl && modeSelectEl.value === "legacy" ? "legacy" : "demo";
+    const nextUrl = syncModeAndLangToUrl(modeValue, selected);
+    const labels = {
+      en: "English",
+      es: "Español",
+      "pt-br": "Português (Brasil)",
+    };
+    setStatus(`Language set to ${labels[selected]}. Reloading...`);
+    window.setTimeout(() => window.location.assign(nextUrl.toString()), 120);
+  });
+}
+
+async function initBuildTime() {
+  const target = document.getElementById("build-time");
+  if (!target) return;
+  try {
+    const url = new URL("build-time.txt", window.location.href);
+    url.searchParams.set("v", Date.now().toString());
+    const response = await fetch(url);
+    if (!response.ok) {
+      return;
+    }
+    const text = (await response.text()).trim();
+    if (text) {
+      target.textContent = `Build: ${text}`;
+    }
+  } catch (_err) {
+    return;
+  }
+}
+
+function initDocsMenu() {
+  const button = document.getElementById("docs-open");
+  const menu = document.getElementById("docs-menu");
+  if (!button || !menu) return;
+
+  function closeMenu() {
+    menu.classList.add("hidden");
+    button.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleMenu() {
+    const isOpen = !menu.classList.contains("hidden");
+    if (isOpen) {
+      closeMenu();
+    } else {
+      menu.classList.remove("hidden");
+      button.setAttribute("aria-expanded", "true");
+    }
+  }
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleMenu();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!menu.contains(event.target) && event.target !== button) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMenu();
+    }
+  });
+}
+
+function setupVirtualKeyboard() {
+  if (!keyboardEl) return;
+  keyboardEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-key]");
+    if (!button) return;
+    const key = button.getAttribute("data-key") || "";
+    if (window.enqueueKey) {
+      window.enqueueKey(key);
+    }
+  });
+}
+
+function initTipsModal() {
+  const modal = document.getElementById("tips-modal");
+  const closeBtn = document.getElementById("tips-close");
+  const dismissCheckbox = document.getElementById("tips-dismiss");
+  if (!modal || !closeBtn || !dismissCheckbox) return;
+  const dismissed = window.localStorage.getItem("lokarta_tips_dismissed");
+  if (dismissed === "1") {
+    modal.classList.add("hidden");
+  } else {
+    modal.classList.remove("hidden");
+  }
+  closeBtn.addEventListener("click", () => {
+    if (dismissCheckbox.checked) {
+      window.localStorage.setItem("lokarta_tips_dismissed", "1");
+    }
+    modal.classList.add("hidden");
+  });
+}
+
+function initDebugModal() {
+  const modal = document.getElementById("debug-modal");
+  const openBtn = document.getElementById("debug-open");
+  const closeBtn = document.getElementById("debug-close");
+  const clearBtn = document.getElementById("debug-clear");
+  if (!modal || !openBtn || !closeBtn || !clearBtn) return;
+  const show = () => modal.classList.remove("hidden");
+  const hide = () => modal.classList.add("hidden");
+  openBtn.addEventListener("click", show);
+  closeBtn.addEventListener("click", hide);
+  clearBtn.addEventListener("click", async () => {
+    const ok = window.confirm("Clear all saved games for this site?");
+    if (!ok) return;
+    const ok2 = window.confirm(
+      "This is permanent. Any currently open games will be lost. " +
+      "The page will reload after the reset. Continue?"
+    );
+    if (!ok2) return;
+    if (!window.pyodide) return;
+    const { FS } = window.pyodide;
+    try {
+      const entries = FS.readdir("/saves").filter((name) => !name.startsWith("."));
+      for (const name of entries) {
+        const path = `/saves/${name}`;
+        try {
+          FS.unlink(path);
+        } catch (err) {
+          // Ignore file errors.
+        }
+      }
+      await new Promise((resolve, reject) => {
+        FS.syncfs(false, (err) => (err ? reject(err) : resolve()));
+      });
+      window.alert("Saved games cleared. Reloading...");
+      window.location.reload();
+    } catch (err) {
+      window.alert("Unable to clear saves. Check console for details.");
+      console.error(err);
+    }
+  });
+}

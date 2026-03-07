@@ -1,0 +1,73 @@
+.docs-body {
+  margin: 0;
+  padding: 24px;
+  background: #050607;
+  color: #e8e4dc;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.docs-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  background: rgba(15, 18, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px 24px 32px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.docs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.docs-back {
+  color: #8ad4ff;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.docs-back:hover,
+.docs-back:focus-visible {
+  text-decoration: underline;
+}
+
+.docs-title {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.docs-content h1,
+.docs-content h2,
+.docs-content h3,
+.docs-content h4 {
+  margin-top: 24px;
+}
+
+.docs-content code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.docs-content pre {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 12px;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.docs-content a {
+  color: #8ad4ff;
+}
+
+.docs-content a:hover,
+.docs-content a:focus-visible {
+  text-decoration: underline;
+}

@@ -1,0 +1,82 @@
+{
+  "mushroom_baby": {
+    "name": "Mushy",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 5,
+    "defense": 5,
+    "hp": 12,
+    "max_hp": 12,
+    "mp": 6,
+    "max_mp": 6,
+    "equipment": {},
+    "abilities": [
+      "mushroom_tea_brew"
+    ],
+    "active_ability": "mushroom_tea_brew"
+  },
+  "fairy_baby": {
+    "name": "Beba",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 4,
+    "defense": 2,
+    "hp": 12,
+    "max_hp": 12,
+    "mp": 6,
+    "max_mp": 6,
+    "equipment": {},
+    "abilities": [
+      "fairy_heal",
+      "fairy_mana"
+    ],
+    "active_ability": "fairy_heal"
+  },
+  "wolf_pup": {
+    "name": "Chase",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 4,
+    "defense": 2,
+    "hp": 12,
+    "max_hp": 12,
+    "mp": 6,
+    "max_mp": 6,
+    "equipment": {},
+    "abilities": [],
+    "active_ability": ""
+  },
+  "baby_ogre": {
+    "name": "Ogrito",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 6,
+    "defense": 3,
+    "hp": 16,
+    "max_hp": 16,
+    "mp": 4,
+    "max_mp": 4,
+    "equipment": {},
+    "abilities": [],
+    "active_ability": ""
+  },
+  "ogre": {
+    "name": "Ogre",
+    "level": 1,
+    "xp": 0,
+    "max_level": 5,
+    "atk": 10,
+    "defense": 6,
+    "hp": 24,
+    "max_hp": 24,
+    "mp": 4,
+    "max_mp": 4,
+    "equipment": {},
+    "abilities": [],
+    "active_ability": ""
+  }
+}

@@ -1,0 +1,14 @@
+     o------------o
+    /22/ww|77|ww\33\
+   /22/www|77|www\33\
+  /--o wwwo--owwwwo--\
+ /wwwwwwwwwwwwwwwwwwww\
+o--owwwwwwo--owwwwwwo--o
+|66|wwwwww|11|wwwwww|88|
+|66|wwwwww|11|wwwwww|88|
+o--owwwwwwo--owwwwwwo--o
+ \wwwwwwwwwwwwwwwwwwww/
+  \--owwwwo--owwwwo--/
+   \55\www|99|www/44/
+    \55\ww|99|ww/44/
+     o------------o

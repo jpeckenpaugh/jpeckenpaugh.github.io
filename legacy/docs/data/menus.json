@@ -1,0 +1,163 @@
+{
+  "inventory": {
+    "title": "Inventory",
+    "open_message": "Choose an item to use or equip.",
+    "close_message": "Closed inventory.",
+    "empty": "Inventory is empty.",
+    "actions": [
+      {
+        "label": "Use/Equip",
+        "command": "NUM"
+      },
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "spellbook": {
+    "title": "Spellbook",
+    "open_message": "Open spellbook.",
+    "close_message": "Closed spellbook.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "options": {
+    "title": "Options",
+    "open_message": "Options menu.",
+    "close_message": "Closed options.",
+    "actions": [
+      {
+        "label": "Inventory",
+        "command": "INVENTORY",
+        "enabled_when": "has_items"
+      },
+    {
+      "label": "Portal",
+      "command": "PORTAL",
+      "enabled_when": "in_town"
+    },
+      {
+        "label": "Quest",
+        "command": "QUEST"
+      },
+      {
+        "label": "Stats",
+        "command": "STATS"
+      },
+      {
+        "label": "Followers",
+        "command": "FOLLOWERS"
+      },
+      {
+        "label": "Spellbook",
+        "command": "SPELLBOOK",
+        "enabled_when": "has_mp"
+      },
+      {
+        "label": "Audio",
+        "command": "TOGGLE_AUDIO"
+      },
+      {
+        "label": "XP Multiplier",
+        "command": "XP_MULTIPLIER"
+      },
+      {
+        "label": "Quit",
+        "command": "QUIT"
+      }
+    ]
+  },
+  "stats": {
+    "title": "Stats",
+    "open_message": "View stats and spend points.",
+    "close_message": "Closed stats.",
+    "actions": [
+      {
+        "label": "+HP",
+        "command": "STAT_HP"
+      },
+      {
+        "label": "+MP",
+        "command": "STAT_MP"
+      },
+      {
+        "label": "+ATK",
+        "command": "STAT_ATK"
+      },
+      {
+        "label": "+DEF",
+        "command": "STAT_DEF"
+      },
+      {
+        "label": "Balanced allocation",
+        "command": "STAT_BALANCED"
+      },
+      {
+        "label": "Random allocation",
+        "command": "STAT_RANDOM"
+      },
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "followers": {
+    "title": "Followers",
+    "open_message": "View your followers.",
+    "close_message": "Closed followers.",
+    "actions": [
+      {
+        "label": "Equip Gear",
+        "command": "FOLLOWER_EQUIP"
+      },
+      {
+        "label": "Unequip Gear",
+        "command": "FOLLOWER_UNEQUIP"
+      },
+      {
+        "label": "Fuse",
+        "command": "FOLLOWER_FUSE",
+        "enabled_when": "in_temple"
+      }
+    ]
+  },
+  "elements": {
+    "title": "Elements",
+    "open_message": "Select an element.",
+    "close_message": "Closed elements.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "alchemist": {
+    "title": "Alchemist",
+    "open_message": "Select two items to fuse.",
+    "close_message": "Closed alchemist.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  },
+  "portal": {
+    "title": "Portal",
+    "open_message": "Select a continent.",
+    "close_message": "Closed portal.",
+    "actions": [
+      {
+        "label": "Back",
+        "command": "B_KEY"
+      }
+    ]
+  }
+}

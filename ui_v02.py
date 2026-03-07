@@ -2199,9 +2199,9 @@ def render(
 
 def main() -> None:
     base = os.getcwd()
-    objects_path = os.path.join(base, "legecay", "data", "objects.json")
-    colors_path = os.path.join(base, "legecay", "data", "colors.json")
-    players_path = os.path.join(base, "legecay", "data", "players.json")
+    objects_path = os.path.join(base, "legacy", "data", "objects.json")
+    colors_path = os.path.join(base, "legacy", "data", "colors.json")
+    players_path = os.path.join(base, "legacy", "data", "players.json")
     objects = load_json(objects_path)
     colors = load_json(colors_path)
     players = load_json(players_path)
@@ -2517,3 +2517,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

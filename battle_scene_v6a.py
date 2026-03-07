@@ -209,7 +209,7 @@ def render(
 
 def main() -> None:
     base = os.getcwd()
-    objects_path = os.path.join(base, "legecay", "data", "objects.json")
+    objects_path = os.path.join(base, "legacy", "data", "objects.json")
     objects = load_json(objects_path)
     if not isinstance(objects, dict):
         raise RuntimeError("objects.json is not a JSON object")
@@ -293,3 +293,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

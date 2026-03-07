@@ -1,0 +1,146 @@
+{
+  "hat_mayor": {
+    "art": [
+      "  /=\\",
+      " ====="
+    ],
+    "color_mask": [
+      "  bBb",
+      " BbBbB"
+    ]
+  },
+  "hat_innkeeper": {
+    "art": [
+      "  ___",
+      " /~~~\\"
+    ],
+    "color_mask": [
+      "  fFf",
+      " FfffF"
+    ]
+  },
+  "face_mayor": {
+    "art": [
+      " /o_o\\",
+      " \\_^_/"
+    ],
+    "color_mask": [
+      " dodod",
+      " ddDdd"
+    ]
+  },
+  "face_innkeeper": {
+    "art": [
+      " /o_o\\",
+      " \\_~_/"
+    ],
+    "color_mask": [
+      " djdjd",
+      " ddRdd"
+    ]
+  },
+  "torso_mayor": {
+    "art": [
+      "/|===|\\",
+      "||___||"
+    ],
+    "color_mask": [
+      "dBbbbBd",
+      "dBbbbBd"
+    ]
+  },
+  "torso_innkeeper": {
+    "art": [
+      "/|###|\\",
+      "||   ||"
+    ],
+    "color_mask": [
+      "ffFFFff",
+      "df   fd"
+    ]
+  },
+  "legs_mayor": {
+    "art": [
+      " |+|+|",
+      " |_|_|"
+    ],
+    "color_mask": [
+      " tTttt",
+      " tTtTt"
+    ]
+  },
+  "legs_dress": {
+    "art": [
+      " /###\\",
+      "_|___|_"
+    ],
+    "color_mask": [
+      " fFFFf",
+      "zfffffZ"
+    ]
+  },
+  "shoes_basic": {
+    "art": [
+      "*== ==*"
+    ],
+    "color_mask": [
+      "Zzz zzZ"
+    ]
+  },
+  "shoes_innkeeper": {
+    "art": [
+      "\\__/__/"
+    ],
+    "color_mask": [
+      "ZzzzzzZ"
+    ]
+  },
+  "hat_shopkeeper": {
+    "art": [
+      "  ___",
+      " /~~~\\"
+    ],
+    "color_mask": [
+      "  oOo",
+      " OoooO"
+    ]
+  },
+  "face_shopkeeper": {
+    "art": [
+      " /o_o\\",
+      " \\_~_/"
+    ],
+    "color_mask": [
+      " lclcl",
+      " lLRLl"
+    ]
+  },
+  "torso_shopkeeper": {
+    "art": [
+      "/|###|\\",
+      "o|___|o"
+    ],
+    "color_mask": [
+      "ooOOOoo",
+      "loRrRol"
+    ]
+  },
+  "shoes_shopkeeper": {
+    "art": [
+      "\\__/__/"
+    ],
+    "color_mask": [
+      "XzxxzX"
+    ]
+  },
+  "legs_dress_shopkeeper": {
+    "art": [
+      " /###\\",
+      "_|___|_"
+    ],
+    "color_mask": [
+      " oOoOo",
+      "Xooooox"
+    ]
+  }
+}

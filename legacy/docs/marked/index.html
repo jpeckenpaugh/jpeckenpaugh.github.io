@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lokarta Docs</title>
+    <link rel="stylesheet" href="../style.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="docs-body">
+    <main class="docs-shell">
+      <header class="docs-header">
+        <a class="docs-back" href="../index.html">← Back</a>
+        <div class="docs-title" id="doc-title">Documentation</div>
+      </header>
+      <article id="doc-content" class="docs-content">Loading…</article>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        const params = new URLSearchParams(window.location.search);
+        const file = params.get("file");
+        const content = document.getElementById("doc-content");
+        const title = document.getElementById("doc-title");
+        if (!file) {
+          content.textContent = "Missing ?file= parameter.";
+          return;
+        }
+        title.textContent = file;
+        fetch(`../${file}`)
+          .then((resp) => {
+            if (!resp.ok) {
+              throw new Error(`Failed to load ${file}`);
+            }
+            return resp.text();
+          })
+          .then((text) => {
+            if (window.marked) {
+              content.innerHTML = window.marked.parse(text);
+            } else {
+              content.textContent = text;
+            }
+          })
+          .catch((err) => {
+            content.textContent = err.message;
+          });
+      });
+    </script>
+  </body>
+</html>

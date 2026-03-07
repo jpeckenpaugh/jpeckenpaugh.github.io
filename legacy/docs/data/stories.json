@@ -1,0 +1,41 @@
+{
+  "intro_arc": {
+    "title": "First Lessons",
+    "intro": "A mushroom companion warns that the forest will shred an unprepared traveler. With basic white magic, a level 1 fighter can stand a chance.",
+    "quests": [
+      "island_01_quest_00",
+      "island_01_quest_000a",
+      "island_01_quest_001a",
+      "island_01_quest_000b",
+      "island_01_quest_001b",
+      "island_01_quest_000c",
+      "island_01_quest_001c",
+      "island_01_quest_01a",
+      "island_01_quest_01b",
+      "island_01_quest_01c",
+      "island_01_quest_01d",
+      "island_01_quest_02a",
+      "island_01_quest_02b",
+      "island_01_quest_02c",
+      "island_01_quest_03a",
+      "island_01_quest_03b",
+      "island_01_quest_03c",
+      "island_01_quest_03d",
+      "island_01_quest_03e",
+      "island_01_quest_03f",
+      "island_01_quest_04a",
+      "island_01_quest_04b",
+      "island_01_quest_04c",
+      "island_01_quest_04d"
+    ],
+    "notes": "These quests build a team strong enough to seek the moving Ancient Tower rumored to align with the moon."
+  },
+  "portal_arc": {
+    "title": "Portal Advances",
+    "intro": "The portal no longer opens by level alone. Prove stability through quests to unlock new continents.",
+    "quests": [
+      "unlock_continent_01"
+    ],
+    "notes": "Placeholder arc for continent unlocks."
+  }
+}
