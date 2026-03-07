@@ -2119,7 +2119,7 @@ def _position_screen_box_for_actors(
     if screen == "story_roomy_3" and primary_placements:
         return _anchor_box_next_to_actor(spec, primary_placements[0], prefer="left")
     if screen == "story_roomy_4" and len(secondary_placements) >= 2:
-        idx = 3 if len(secondary_placements) >= 4 else (2 if len(secondary_placements) >= 3 else 1)
+        idx = 2 if len(secondary_placements) >= 3 else 1
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen in ("story_7", "story_9", "story_battle_cmd_player") and secondary_placements:
         idx = 1 if len(secondary_placements) >= 3 else 0
@@ -5184,12 +5184,9 @@ def main() -> None:
                                         "rows": tg.get("rows", []),
                                     }
                                 ]
-                elif screen in ("story_roomy_2", "story_roomy_3"):
+                elif screen in ("story_roomy_2", "story_roomy_3", "story_roomy_4"):
                     primary_sprites = [roomie_sprite]
                     secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite]
-                elif screen == "story_roomy_4":
-                    primary_sprites = []
-                    secondary_sprites = [roomie_sprite, sharoom_sprite, selected_player_sprite, mushy_sprite]
                 elif screen == "story_roomy_lineup_shift":
                     primary_sprites = []
                     secondary_sprites = []
