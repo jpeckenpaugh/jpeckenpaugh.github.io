@@ -2288,15 +2288,43 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             actions=["[ A / Continue ]"],
         )
 
+    if screen == "story_mp_increase":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Reward",
+            body_text="Your magic level increased. Max MP +2.",
+            center_x=50,
+            center_y=17,
+            max_body_width=42,
+            wrap_mode="balanced",
+            body_align="center",
+            actions=["[ A / Accept ]"],
+        )
+
     if screen == "story_sharoom_1":
         return UIBoxSpec(
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="We should seek out my friend Sharoom. She is a powerful magic user, who can give us a boost.",
+            body_text="Your Mana Points are increasing. That means you can use MP to cast spells in battle when your items run out of charges.",
             center_x=50,
             center_y=17,
-            max_body_width=44,
+            max_body_width=52,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_sharoom_2":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Mushy",
+            body_text="I have a friend Sharoom who knows some healing magic. She would be a good addition to our little team.",
+            center_x=50,
+            center_y=17,
+            max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -2321,7 +2349,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Sharoom",
-            body_text="Keep an eye on your life. We don't want your hit points to reach 0.",
+            body_text="Sure I will join your team. I think we can work well together.",
             center_x=50,
             center_y=17,
             max_body_width=44,
@@ -2455,7 +2483,7 @@ def _position_screen_box_for_actors(
     if screen in ("story_4", "story_5", "story_6", "story_11") and primary_placements:
         idx = 1 if len(primary_placements) >= 2 else 0
         return _anchor_box_next_to_actor(spec, primary_placements[idx], prefer="left")
-    if screen in ("story_sharoom_1", "story_more_crows", "story_more_crows_2", "story_more_crows_3") and len(secondary_placements) >= 2:
+    if screen in ("story_mp_increase", "story_sharoom_1", "story_sharoom_2", "story_more_crows", "story_more_crows_2", "story_more_crows_3") and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
     if screen == "story_sharoom_3" and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
@@ -4635,6 +4663,7 @@ def main() -> None:
         "battle_log_pending": [],
         "battle_log_active": None,
         "battle_log_active_chars": 0,
+        "story_reward_stage2_mp_applied": False,
         "lineup_transition": None,
         "actor_entrance": None,
         "battle2_entrance": None,
@@ -4831,7 +4860,7 @@ def main() -> None:
                             if int(flow.get("battle_stage", 1)) == 1:
                                 begin_transition("story_more_crows")
                             elif int(flow.get("battle_stage", 1)) == 2:
-                                begin_transition("story_sharoom_1")
+                                begin_transition("story_mp_increase")
                             elif int(flow.get("battle_stage", 1)) == 3:
                                 begin_transition("story_battle_victory")
                             elif int(flow.get("battle_stage", 1)) == 4:
@@ -5147,6 +5176,7 @@ def main() -> None:
                         flow["battle_log_pending"] = []
                         flow["battle_log_active"] = None
                         flow["battle_log_active_chars"] = 0
+                        flow["story_reward_stage2_mp_applied"] = False
                         begin_transition("story_1")
                     elif back:
                         begin_transition("fortune_select")
@@ -5600,7 +5630,28 @@ def main() -> None:
                         flow["battle_melt_t"] = 0.0
                         flow["battle2_entrance"] = {"t": 0.0, "duration": 1.0}
                         begin_transition("story_battle2_entrance")
+                elif screen == "story_mp_increase":
+                    if confirm:
+                        if not bool(flow.get("story_reward_stage2_mp_applied", False)):
+                            sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+                            sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
+                            pidx = 1 if len(sec_mp_max) >= 3 else 0
+                            if pidx >= len(sec_mp_max):
+                                pidx = 0
+                            while len(sec_mp) <= pidx:
+                                sec_mp.append(0)
+                            while len(sec_mp_max) <= pidx:
+                                sec_mp_max.append(0)
+                            sec_mp_max[pidx] = max(0, int(sec_mp_max[pidx])) + 2
+                            sec_mp[pidx] = min(sec_mp_max[pidx], max(0, int(sec_mp[pidx])) + 2)
+                            flow["battle_secondary_mp"] = sec_mp
+                            flow["battle_secondary_mp_max"] = sec_mp_max
+                            flow["story_reward_stage2_mp_applied"] = True
+                        begin_transition("story_sharoom_1")
                 elif screen == "story_sharoom_1":
+                    if confirm:
+                        begin_transition("story_sharoom_2")
+                elif screen == "story_sharoom_2":
                     if confirm:
                         flow["sharoom_entrance"] = {"t": 0.0, "duration": 1.0}
                         begin_transition("story_sharoom_entrance")
@@ -5858,7 +5909,7 @@ def main() -> None:
                                 if isinstance(rows, list):
                                     tmp.append({"x": x, "y": y, "rows": rows})
                             story_transition_actors = tmp
-                elif screen in ("story_more_crows", "story_more_crows_2", "story_more_crows_3", "story_sharoom_1"):
+                elif screen in ("story_more_crows", "story_more_crows_2", "story_more_crows_3", "story_mp_increase", "story_sharoom_1", "story_sharoom_2"):
                     primary_sprites = []
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
                 elif screen == "story_sharoom_entrance":
