@@ -1623,7 +1623,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             actions=["[ A / Continue ]"],
         )
 
-    if screen in ("story_2", "story_battle_resolve", "story_lineup_shift"):
+    if screen in ("story_2", "story_actor_entrance", "story_battle_resolve", "story_lineup_shift"):
         return None
 
     message = str(flow.get("message_text", ""))
@@ -2974,6 +2974,7 @@ def main() -> None:
         "battle_melt_index": None,
         "battle_melt_t": 0.0,
         "lineup_transition": None,
+        "actor_entrance": None,
     }
     anim_mode = "opening"  # opening | open | closing
     anim_step = 0
@@ -3112,10 +3113,18 @@ def main() -> None:
                     if float(trans.get("t", 0.0)) >= float(trans.get("duration", 1.0)):
                         flow["lineup_transition"] = None
                         begin_transition("story_battle_cmd_player")
+            elif anim_mode == "open" and screen == "story_actor_entrance":
+                ent = flow.get("actor_entrance")
+                if isinstance(ent, dict):
+                    ent["t"] = float(ent.get("t", 0.0)) + dt
+                    if float(ent.get("t", 0.0)) >= float(ent.get("duration", 1.0)):
+                        flow["actor_entrance"] = None
+                        begin_transition("story_4")
 
             if anim_mode == "open" and flow.get("story_action") is None:
                 if str(flow.get("screen", "root_menu")) == "story_2" and current_sky_rows == target_sky_rows:
-                    begin_transition("story_4")
+                    flow["actor_entrance"] = {"t": 0.0, "duration": 1.0}
+                    begin_transition("story_actor_entrance")
 
             if anim_mode == "open" and key is not None and flow.get("story_action") is None:
                 if screen == "root_menu":
@@ -3359,6 +3368,45 @@ def main() -> None:
                     enemy_count = max(1, len([int(v) for v in flow.get("battle_primary_hp", [10])]))
                     primary_sprites = [crow_sprite for _ in range(enemy_count)]
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
+                elif screen == "story_actor_entrance":
+                    primary_sprites = []
+                    secondary_sprites = []
+                    ent = flow.get("actor_entrance")
+                    if isinstance(ent, dict):
+                        t = max(0.0, min(1.0, float(ent.get("t", 0.0)) / max(0.001, float(ent.get("duration", 1.0)))))
+                        te = t * t * (3.0 - (2.0 * t))
+                        targets = _compute_story_formation_positions(selected_player_sprite, "pre")
+                        tmp: List[dict] = []
+                        # Secondary policy: enter from below viewport.
+                        if "player" in targets:
+                            tg = targets["player"]
+                            sx = int(tg["x"])
+                            sy = SCREEN_H + 2
+                            ex = int(tg["x"])
+                            ey = int(tg["y"])
+                            tmp.append(
+                                {
+                                    "x": int(round(sx + ((ex - sx) * te))),
+                                    "y": int(round(sy + ((ey - sy) * te))),
+                                    "rows": tg["rows"],
+                                }
+                            )
+                        # Primary policy: enter from right side off viewport.
+                        primary_ids = [aid for aid in ("mushy", "crow1") if aid in targets]
+                        for idx, aid in enumerate(primary_ids):
+                            tg = targets[aid]
+                            sx = SCREEN_W + 2 + (idx * 4)
+                            sy = int(tg["y"])
+                            ex = int(tg["x"])
+                            ey = int(tg["y"])
+                            tmp.append(
+                                {
+                                    "x": int(round(sx + ((ex - sx) * te))),
+                                    "y": int(round(sy + ((ey - sy) * te))),
+                                    "rows": tg["rows"],
+                                }
+                            )
+                        story_transition_actors = tmp
                 elif screen == "story_lineup_shift":
                     primary_sprites = []
                     secondary_sprites = []

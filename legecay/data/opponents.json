@@ -69,18 +69,20 @@
       "arrival": "flutters into view",
       "desc": "A scrappy fledgling with a sharp beak.",
       "art": [
-        "                ,",
-        " ,_     ,     .'<_",
-        "_>.`'-,'(__.-'.__<",
-        ">_.--(.._). =;`",
-        "     `V-'`'\\/``"
+        "  _\\|      __     |/_",
+        "_-  \\_   _/\"->   _/  -_",
+        "-_    `-'(   )`-'    _-",
+        " `=.__.=-(   )-=.__.='",
+        "         |/-\\|",
+        "         Y   Y"
       ],
       "color_map": [
-        "                1",
-        " 11     1     1111",
-        "111111111111111111",
-        "11111111111 111",
-        "     1111111111"
+        "  sss      ss     sss",
+        "ss!!ss   ssbyy   ss!!ss",
+        "ss!!!!ssss!!!ssss!!!!ss",
+        " sssssssss!!!sssssssss",
+        "         sssss",
+        "         y   y"
       ],
       "variation": 0.06,
       "jitter_stability": false,
