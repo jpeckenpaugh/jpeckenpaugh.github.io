@@ -1,5 +1,5 @@
 {
-  "version": 1772912737,
+  "version": 1772913312,
   "files": [
     ".gitignore",
     ".nojekyll",
@@ -165,6 +165,8 @@
     "battle_scene.py",
     "ui_v07.py",
     "ui_v07_esp.py",
-    "ui_v07_pt_br.py"
+    "ui_v07_pt_br.py",
+    "app/rendering/__init__.py",
+    "app/rendering/title_panorama.py"
   ]
 }
