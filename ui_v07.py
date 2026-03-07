@@ -2237,7 +2237,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="Just try to call too often. Maybe once per battle is good for now.",
+            body_text="Just try not to call too often. Maybe once per battle is good for now.",
             center_x=50,
             center_y=17,
             max_body_width=48,
