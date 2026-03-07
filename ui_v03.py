@@ -1514,7 +1514,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             ),
             center_x=50,
             center_y=17,
-            max_body_width=70,
+            max_body_width=52,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -1528,7 +1528,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_text="Hey you! You seem like a nice person. Would you come help me deal with this pesky crow?",
             center_x=50,
             center_y=17,
-            max_body_width=66,
+            max_body_width=42,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -1545,7 +1545,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             ),
             center_x=50,
             center_y=17,
-            max_body_width=70,
+            max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Accept Mycostaff ]"],
@@ -1559,7 +1559,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_text="Great! Now let's show this crow who is boss around here.",
             center_x=50,
             center_y=17,
-            max_body_width=62,
+            max_body_width=40,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -1573,7 +1573,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_text="[ Attack ]\n\nSelect target: Baby Crow",
             center_x=50,
             center_y=17,
-            max_body_width=42,
+            max_body_width=32,
             body_align="center",
             actions=["[ A / Confirm ]"],
             blink_body_rows=[0],
@@ -1587,7 +1587,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_text="[ Attack ]\n\nSelect target: Baby Crow",
             center_x=50,
             center_y=17,
-            max_body_width=42,
+            max_body_width=32,
             body_align="center",
             actions=["[ A / Confirm ]"],
             blink_body_rows=[0],
@@ -1601,7 +1601,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_text="That was great! Why don't we team up, and there is no crow that can stand against us!",
             center_x=50,
             center_y=17,
-            max_body_width=68,
+            max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -1623,6 +1623,49 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         wrap_mode="balanced",
         actions=["[ A / OK ]", "[ S / Back ]"],
     )
+
+
+def _anchor_box_next_to_actor(spec: UIBoxSpec, actor: dict, prefer: str = "auto") -> UIBoxSpec:
+    rows = actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return spec
+    w = max((len(r) for r in rows), default=0)
+    h = len(rows)
+    ax0 = int(actor.get("x", 0))
+    ay0 = int(actor.get("y", 0))
+    actor_cx = ax0 + (w // 2)
+    actor_cy = ay0 + (h // 2)
+    side = str(prefer).strip().lower()
+    if side not in ("left", "right"):
+        side = "left" if actor_cx > (SCREEN_W // 2) else "right"
+
+    spec.x = None
+    spec.y = None
+    spec.center_y = max(2, min(SCREEN_H - 3, actor_cy))
+    if side == "right":
+        # Render box to the right of actor.
+        spec.anchor = "left"
+        spec.center_x = min(SCREEN_W - 2, ax0 + w + 2)
+    else:
+        # Render box to the left of actor.
+        spec.anchor = "right"
+        spec.center_x = max(1, ax0 - 2)
+    return spec
+
+
+def _position_screen_box_for_actors(
+    screen: str,
+    spec: UIBoxSpec | None,
+    primary_placements: List[dict],
+    secondary_placements: List[dict],
+) -> UIBoxSpec | None:
+    if not isinstance(spec, UIBoxSpec):
+        return spec
+    if screen in ("story_4", "story_5", "story_6", "story_11") and primary_placements:
+        return _anchor_box_next_to_actor(spec, primary_placements[0], prefer="left")
+    if screen in ("story_7", "story_9") and secondary_placements:
+        return _anchor_box_next_to_actor(spec, secondary_placements[0], prefer="right")
+    return spec
 
 
 def _draw_ui_text_box(canvas: List[List[str]], text: str, primary_zone: LayoutZone, secondary_zone: LayoutZone) -> None:
@@ -1957,42 +2000,252 @@ def _draw_health_bar(canvas: List[List[str]], center_x: int, top_y: int, filled:
             canvas[y][x] = cell
 
 
-def _draw_defeat_dissolve(canvas: List[List[str]], actor: dict, progress: float) -> None:
+def _mp_fill_color(pct: float) -> str:
+    p = max(0.0, min(1.0, float(pct)))
+    start = (120, 175, 255)
+    end = (40, 120, 255)
+    r = int(start[0] + ((end[0] - start[0]) * p))
+    g = int(start[1] + ((end[1] - start[1]) * p))
+    b = int(start[2] + ((end[2] - start[2]) * p))
+    return f"\x1b[38;2;{r};{g};{b}m"
+
+
+def _draw_health_bar_custom(
+    canvas: List[List[str]],
+    center_x: int,
+    top_y: int,
+    filled: int,
+    total: int = 10,
+    fill_color: str | None = None,
+    frame_color: str | None = None,
+    overlay_text: str | None = None,
+    overlay_color: str = "\x1b[38;2;245;245;245m",
+    row_label: str | None = None,
+) -> None:
+    total = max(1, int(total))
+    filled = max(0, min(total, int(filled)))
+    empty = total - filled
+    pct = filled / float(total)
+    if fill_color is None:
+        if pct >= 0.5:
+            fill_color = "\x1b[38;2;56;186;72m"
+        elif pct >= 0.25:
+            fill_color = "\x1b[38;2;236;201;58m"
+        else:
+            fill_color = "\x1b[38;2;220;70;70m"
+    miss_color = "\x1b[38;2;26;26;26m"
+    frame_color = frame_color or "\x1b[38;2;210;210;210m"
+
+    def _fg_to_bg(code: str) -> str:
+        m = re.search(r"\x1b\[38;2;(\d+);(\d+);(\d+)m", str(code))
+        if not m:
+            return ""
+        return f"\x1b[48;2;{m.group(1)};{m.group(2)};{m.group(3)}m"
+
+    inner_w = total
+    box_w = inner_w + 2
+    x0 = max(0, min(SCREEN_W - box_w, int(center_x) - (box_w // 2)))
+    y0 = int(top_y)
+    if y0 < 0 or (y0 + 2) >= SCREEN_H:
+        return
+
+    tl, tr = "\u250c", "\u2510"
+    bl, br = "\u2514", "\u2518"
+    hz, vt = "\u2500", "\u2502"
+    fill_ch, miss_ch = "\u2588", "\u00b7"
+
+    top_row: List[str] = [f"{frame_color}{tl}{ANSI_RESET}"]
+    top_row.extend([f"{frame_color}{hz}{ANSI_RESET}" for _ in range(inner_w)])
+    top_row.append(f"{frame_color}{tr}{ANSI_RESET}")
+
+    styles: List[str] = ([fill_color] * filled) + ([miss_color] * empty)
+    mid_row: List[str] = [f"{frame_color}{vt}{ANSI_RESET}"]
+    for idx, style in enumerate(styles):
+        ch = fill_ch if idx < filled else miss_ch
+        mid_row.append(f"{style}{ch}{ANSI_RESET}")
+    mid_row.append(f"{frame_color}{vt}{ANSI_RESET}")
+
+    label = str(row_label or "").strip()
+    if label:
+        for i, ch in enumerate(label[:inner_w]):
+            style = styles[i] if i < len(styles) else miss_color
+            bg = _fg_to_bg(style)
+            mid_row[1 + i] = f"\x1b[38;2;245;245;245m{bg}{ch}{ANSI_RESET}" if bg else f"\x1b[38;2;245;245;245m{ch}{ANSI_RESET}"
+
+    if overlay_text:
+        text = str(overlay_text)
+        start = 1 + max(0, (inner_w - len(text)) // 2)
+        for i, ch in enumerate(text):
+            x = start + i
+            if 1 <= x <= inner_w:
+                style_idx = x - 1
+                style = styles[style_idx] if 0 <= style_idx < len(styles) else miss_color
+                bg = _fg_to_bg(style)
+                mid_row[x] = f"{overlay_color}{bg}{ch}{ANSI_RESET}" if bg else f"{overlay_color}{ch}{ANSI_RESET}"
+
+    bot_row: List[str] = [f"{frame_color}{bl}{ANSI_RESET}"]
+    bot_row.extend([f"{frame_color}{hz}{ANSI_RESET}" for _ in range(inner_w)])
+    bot_row.append(f"{frame_color}{br}{ANSI_RESET}")
+
+    for dy, row in enumerate([top_row, mid_row, bot_row]):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        for dx, cell in enumerate(row):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W:
+                canvas[y][x] = cell
+
+
+def _draw_damage_hud_step(
+    canvas: List[List[str]],
+    target_actor: dict,
+    progress: float,
+    pre_hp: int,
+    post_hp: int,
+    total: int,
+    damage: int,
+) -> None:
+    rows = target_actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return
+    w = max((len(row) for row in rows), default=0)
+    x0 = int(target_actor.get("x", 0))
+    y0 = int(target_actor.get("y", 0))
+    cx = x0 + (w // 2)
+    bar_top = y0 - 4
     p = max(0.0, min(1.0, float(progress)))
+    if p < 0.50:
+        _draw_health_bar_custom(canvas, cx, bar_top, pre_hp, total=total, row_label="HP")
+        return
+    if p < 0.75:
+        flash_on = (int((p - 0.50) / 0.06) % 2) == 0
+        _draw_health_bar_custom(
+            canvas,
+            cx,
+            bar_top,
+            pre_hp,
+            total=total,
+            fill_color="\x1b[38;2;255;95;95m" if flash_on else None,
+            frame_color="\x1b[38;2;255;170;170m" if flash_on else None,
+            overlay_text=f"-{damage}",
+            overlay_color="\x1b[38;2;250;250;250m",
+            row_label="HP",
+        )
+        return
+    _draw_health_bar_custom(canvas, cx, bar_top, post_hp, total=total, overlay_text=f"-{damage}", row_label="HP")
+
+
+def _draw_mp_cast_hud_step(
+    canvas: List[List[str]],
+    caster_actor: dict,
+    progress: float,
+    pre_mp: int,
+    post_mp: int,
+    total: int = 10,
+    cost: int = 4,
+) -> None:
+    rows = caster_actor.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return
+    w = max((len(row) for row in rows), default=0)
+    x0 = int(caster_actor.get("x", 0))
+    y0 = int(caster_actor.get("y", 0))
+    cx = x0 + (w // 2)
+    bar_top = y0 - 4
+    p = max(0.0, min(1.0, float(progress)))
+    pre_fill = max(0, min(total, int(pre_mp)))
+    post_fill = max(0, min(total, int(post_mp)))
+    normal = _mp_fill_color(pre_fill / max(1.0, float(total)))
+    post = _mp_fill_color(post_fill / max(1.0, float(total)))
+    if p < 0.45:
+        _draw_health_bar_custom(canvas, cx, bar_top, pre_fill, total=total, fill_color=normal, row_label="MP")
+        return
+    if p < 0.75:
+        flash_on = (int((p - 0.45) / 0.06) % 2) == 0
+        _draw_health_bar_custom(
+            canvas,
+            cx,
+            bar_top,
+            pre_fill,
+            total=total,
+            fill_color="\x1b[38;2;120;190;255m" if flash_on else normal,
+            frame_color="\x1b[38;2;165;205;255m" if flash_on else None,
+            overlay_text=f"-{cost}",
+            overlay_color="\x1b[38;2;245;245;255m",
+            row_label="MP",
+        )
+        return
+    _draw_health_bar_custom(canvas, cx, bar_top, post_fill, total=total, fill_color=post, overlay_text=f"-{cost}", row_label="MP")
+
+
+def _grey_cell(cell: str) -> str:
+    ch = _strip_ansi(cell)
+    if ch == " ":
+        return " "
+    return f"\x1b[38;2;156;156;156m{ch}{ANSI_RESET}"
+
+
+def _draw_defeat_dissolve(canvas: List[List[str]], actor: dict, progress: float) -> None:
     rows = actor.get("rows", [])
     if not isinstance(rows, list) or not rows:
         return
     x0 = int(actor.get("x", 0))
     y0 = int(actor.get("y", 0))
     h = len(rows)
-    dissolve_rows = int(h * p)
-    gray = "\x1b[38;2;160;160;160m"
-    white = "\x1b[38;2;240;240;240m"
-    black = "\x1b[38;2;24;24;24m"
+    p = max(0.0, min(1.0, float(progress)))
+
+    # Round A (0.0-0.5): top->bottom decolor sweep.
+    # Round B (0.5-1.0): top->bottom two-beat drift:
+    #   beat1: drift +/-2 and white
+    #   beat2: drift +/-2 and black, then disappear
+    # Staggering: next row starts beat1 while previous row is in beat2.
+    phase_a = min(1.0, p / 0.5) if p < 0.5 else 1.0
+    phase_b = 0.0 if p < 0.5 else min(1.0, (p - 0.5) / 0.5)
+    a_sweep = phase_a * h
+    b_pos = phase_b * (h + 1)
+    white = "\x1b[38;2;245;245;245m"
+    black = "\x1b[38;2;20;20;20m"
+
     for dy, row in enumerate(rows):
+        if not isinstance(row, list):
+            continue
         y = y0 + dy
-        if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+        if y < 0 or y >= SCREEN_H:
+            continue
+
+        is_grey = dy < a_sweep
+        shift = 0
+        tint = None
+        visible = True
+
+        if phase_b > 0.0:
+            local = b_pos - dy
+            if local < 0.0:
+                pass
+            elif local < 1.0:
+                shift = -2 if (dy % 2 == 0) else 2
+                tint = white
+            elif local < 2.0:
+                shift = -2 if (dy % 2 == 0) else 2
+                tint = black
+            else:
+                visible = False
+
+        if not visible:
             continue
         for dx, cell in enumerate(row):
-            ch = _strip_ansi(cell)
-            if ch == " ":
-                continue
-            drift = 0
-            if dy < dissolve_rows:
-                drift = 2 if (dy % 2 == 0) else -2
-            x = x0 + dx + drift
+            x = x0 + dx + shift
             if x < 0 or x >= SCREEN_W:
                 continue
-            if dy < dissolve_rows:
-                if p < 0.75:
-                    color = gray
-                elif p < 0.9:
-                    color = white
-                else:
-                    color = black
-                canvas[y][x] = f"{color}{ch}{ANSI_RESET}"
+            if cell == " ":
+                continue
+            if tint is not None:
+                ch = _strip_ansi(cell)
+                out = f"{tint}{ch}{ANSI_RESET}" if ch != " " else " "
             else:
-                canvas[y][x] = cell
+                out = _grey_cell(cell) if is_grey else cell
+            canvas[y][x] = out
 
 
 def _draw_actor_health_bars(canvas: List[List[str]], placements: List[dict], mixed: bool = True) -> None:
@@ -2081,7 +2334,9 @@ def _overlay_title_logo(canvas: List[List[str]], logo: dict) -> None:
     if not isinstance(rows, list) or width <= 0 or height <= 0:
         return
     x0 = max(0, (SCREEN_W - width) // 2)
+    # Title behavior: logo stays near the top of the screen.
     y0 = 1
+    subtitle_y = min(SCREEN_H - 1, y0 + height)
     for dy, row in enumerate(rows):
         y = y0 + dy
         if y < 0 or y >= SCREEN_H or not isinstance(row, list):
@@ -2091,7 +2346,6 @@ def _overlay_title_logo(canvas: List[List[str]], logo: dict) -> None:
             if 0 <= x < SCREEN_W and cell != " ":
                 canvas[y][x] = cell
 
-    subtitle_y = y0 + height + 1
     if 0 <= subtitle_y < SCREEN_H:
         text = _title_subtitle_text()
         sx = max(0, (SCREEN_W - len(text)) // 2)
@@ -2136,6 +2390,8 @@ def render(
     story_spell: dict | None = None,
     story_primary_hp: List[int] | None = None,
     story_primary_hp_total: int = 10,
+    story_damage_hud: dict | None = None,
+    story_mp_hud: dict | None = None,
     story_melt_primary_index: int | None = None,
     story_melt_progress: float = 0.0,
 ) -> str:
@@ -2280,16 +2536,31 @@ def render(
             if 0 <= s_idx < len(secondary_placements) and 0 <= t_idx < len(primary_placements):
                 _draw_spell_throw(canvas, _center_of(secondary_placements[s_idx]), _center_of(primary_placements[t_idx]), prog)
 
-        if isinstance(story_primary_hp, list):
-            for idx, hp in enumerate(story_primary_hp):
-                if idx < 0 or idx >= len(primary_placements):
-                    continue
-                actor = primary_placements[idx]
-                rows = actor.get("rows", [])
-                w = max((len(r) for r in rows), default=0) if isinstance(rows, list) else 0
-                x = int(actor.get("x", 0)) + (w // 2)
-                y = int(actor.get("y", 0)) - 1
-                _draw_health_bar(canvas, x, y, int(hp), total=max(1, int(story_primary_hp_total)))
+        if isinstance(story_damage_hud, dict):
+            t_idx = int(story_damage_hud.get("target_primary_index", 0))
+            if 0 <= t_idx < len(primary_placements):
+                _draw_damage_hud_step(
+                    canvas,
+                    primary_placements[t_idx],
+                    progress=float(story_damage_hud.get("progress", 0.0)),
+                    pre_hp=max(0, int(story_damage_hud.get("pre_hp", 0))),
+                    post_hp=max(0, int(story_damage_hud.get("post_hp", 0))),
+                    total=max(1, int(story_damage_hud.get("total", 10))),
+                    damage=max(0, int(story_damage_hud.get("damage", 0))),
+                )
+
+        if isinstance(story_mp_hud, dict):
+            s_idx = int(story_mp_hud.get("source_secondary_index", 0))
+            if 0 <= s_idx < len(secondary_placements):
+                _draw_mp_cast_hud_step(
+                    canvas,
+                    secondary_placements[s_idx],
+                    progress=float(story_mp_hud.get("progress", 0.0)),
+                    pre_mp=max(0, int(story_mp_hud.get("pre_mp", 0))),
+                    post_mp=max(0, int(story_mp_hud.get("post_mp", 0))),
+                    total=max(1, int(story_mp_hud.get("total", 10))),
+                    cost=max(0, int(story_mp_hud.get("cost", 4))),
+                )
 
     # UI layer demo: auto-sizing text box centered between primary/secondary centers.
     if world_layer_level == 4 and primary_zone is not None:
@@ -2487,6 +2758,7 @@ def main() -> None:
         "key_col": 0,
         "message_text": "",
         "crow_hp": 10,
+        "player_mp": 10,
         "story_action": None,  # cast1 | cast2 | melt
         "story_action_t": 0.0,
     }
@@ -2546,6 +2818,7 @@ def main() -> None:
                 flow["story_action_t"] = float(flow.get("story_action_t", 0.0)) + dt
                 if float(flow["story_action_t"]) >= 1.2:
                     flow["crow_hp"] = 4
+                    flow["player_mp"] = 6
                     flow["story_action"] = None
                     flow["story_action_t"] = 0.0
                     begin_transition("story_9")
@@ -2553,6 +2826,7 @@ def main() -> None:
                 flow["story_action_t"] = float(flow.get("story_action_t", 0.0)) + dt
                 if float(flow["story_action_t"]) >= 1.2:
                     flow["crow_hp"] = 0
+                    flow["player_mp"] = 2
                     flow["story_action"] = "melt"
                     flow["story_action_t"] = 0.0
                     flow["screen"] = "story_10_melt"
@@ -2562,6 +2836,10 @@ def main() -> None:
                     flow["story_action"] = None
                     flow["story_action_t"] = 0.0
                     begin_transition("story_11")
+
+            if anim_mode == "open" and flow.get("story_action") is None:
+                if str(flow.get("screen", "root_menu")) == "story_2" and current_sky_rows == target_sky_rows:
+                    begin_transition("story_4")
 
             if anim_mode == "open" and key is not None and flow.get("story_action") is None:
                 if screen == "root_menu":
@@ -2681,6 +2959,7 @@ def main() -> None:
                 elif screen == "start_confirm":
                     if confirm:
                         flow["crow_hp"] = 10
+                        flow["player_mp"] = 10
                         flow["story_action"] = None
                         flow["story_action_t"] = 0.0
                         begin_transition("story_1")
@@ -2693,9 +2972,6 @@ def main() -> None:
                     if confirm:
                         target_sky_rows = 10
                         begin_transition("story_2")
-                elif screen == "story_2":
-                    if current_sky_rows == target_sky_rows:
-                        begin_transition("story_4")
                 elif screen == "story_4":
                     if confirm:
                         begin_transition("story_5")
@@ -2720,18 +2996,11 @@ def main() -> None:
                         target_sky_rows = 25
                         begin_transition("root_menu")
 
-            split_label = f"{zones['sky_bg'].height}/{zones['ground_bg'].height}"
-            active_spec = _build_screen_spec(flow)
-            step_count = ui_box_step_count(active_spec) if isinstance(active_spec, UIBoxSpec) else 1
-            ui_ready = wipe_progress >= 1.0
-            if anim_mode == "open":
-                anim_progress = 1.0
-            else:
-                anim_progress = anim_step / max(1, step_count)
-
             screen = str(flow.get("screen", "root_menu"))
             story_action = flow.get("story_action")
             story_mode = screen.startswith("story_") or story_action is not None
+            split_label = f"{zones['sky_bg'].height}/{zones['ground_bg'].height}"
+            active_spec = _build_screen_spec(flow)
 
             if screen in ("story_1", "story_2"):
                 scene_world_layer_level = 1
@@ -2751,6 +3020,40 @@ def main() -> None:
                     primary_sprites = [mushy_sprite, crow_sprite]
                 secondary_sprites = [selected_player_sprite]
 
+            primary_placements_for_ui: List[dict] = []
+            secondary_placements_for_ui: List[dict] = []
+            if scene_world_layer_level >= 3:
+                secondary_zone = build_secondary_zone()
+                secondary_placements_for_ui = layout_actor_strip(
+                    secondary_zone,
+                    secondary_sprites,
+                    spacing=1,
+                    stagger_rows=1,
+                    reverse_stagger=True,
+                )
+                ground_zone = zones.get("ground_bg")
+                if isinstance(ground_zone, LayoutZone):
+                    lowest_tree_row = _treeline_lowest_row(ground_zone.y, world_anchor_stagger)
+                    primary_zone = build_primary_zone(lowest_tree_row + 1)
+                    primary_placements_for_ui = layout_actor_strip(
+                        primary_zone,
+                        primary_sprites,
+                        spacing=1,
+                        stagger_rows=1,
+                    )
+            active_spec = _position_screen_box_for_actors(
+                screen,
+                active_spec,
+                primary_placements_for_ui,
+                secondary_placements_for_ui,
+            )
+            step_count = ui_box_step_count(active_spec) if isinstance(active_spec, UIBoxSpec) else 1
+            ui_ready = wipe_progress >= 1.0
+            if anim_mode == "open":
+                anim_progress = 1.0
+            else:
+                anim_progress = anim_step / max(1, step_count)
+
             avatar_overlay = None
             if screen == "avatar_select":
                 pidx = int(flow.get("player_index", 0)) % len(player_cards)
@@ -2766,11 +3069,46 @@ def main() -> None:
 
             story_target_index = 1 if screen in ("story_7", "story_9") and len(primary_sprites) >= 2 else None
             story_spell = None
+            story_damage_hud = None
+            story_mp_hud = None
             if story_action == "cast1":
-                story_spell = {"source_secondary_index": 0, "target_primary_index": 1, "progress": min(1.0, float(flow.get("story_action_t", 0.0)) / 1.2)}
+                cast_progress = min(1.0, float(flow.get("story_action_t", 0.0)) / 1.2)
+                story_spell = {"source_secondary_index": 0, "target_primary_index": 1, "progress": cast_progress}
+                story_damage_hud = {
+                    "target_primary_index": 1,
+                    "progress": cast_progress,
+                    "pre_hp": 10,
+                    "post_hp": 4,
+                    "total": 10,
+                    "damage": 6,
+                }
+                story_mp_hud = {
+                    "source_secondary_index": 0,
+                    "progress": cast_progress,
+                    "pre_mp": 10,
+                    "post_mp": 6,
+                    "total": 10,
+                    "cost": 4,
+                }
             elif story_action == "cast2":
-                story_spell = {"source_secondary_index": 0, "target_primary_index": 1, "progress": min(1.0, float(flow.get("story_action_t", 0.0)) / 1.2)}
-            story_hp = [10, max(0, int(flow.get("crow_hp", 10)))] if len(primary_sprites) >= 2 else None
+                cast_progress = min(1.0, float(flow.get("story_action_t", 0.0)) / 1.2)
+                story_spell = {"source_secondary_index": 0, "target_primary_index": 1, "progress": cast_progress}
+                story_damage_hud = {
+                    "target_primary_index": 1,
+                    "progress": cast_progress,
+                    "pre_hp": 4,
+                    "post_hp": 0,
+                    "total": 10,
+                    "damage": 4,
+                }
+                story_mp_hud = {
+                    "source_secondary_index": 0,
+                    "progress": cast_progress,
+                    "pre_mp": 6,
+                    "post_mp": 2,
+                    "total": 10,
+                    "cost": 4,
+                }
             story_melt_idx = 1 if story_action == "melt" and len(primary_sprites) >= 2 else None
             story_melt_progress = min(1.0, float(flow.get("story_action_t", 0.0)) / 1.0) if story_action == "melt" else 0.0
 
@@ -2792,7 +3130,7 @@ def main() -> None:
                 show_zone_guides=show_zone_guides,
                 world_scene_label=world_scene_label,
                 title_logo=title_logo,
-                show_title_logo=True,
+                show_title_logo=(not screen.startswith("story_")),
                 ui_active_box=(active_spec if (ui_ready and isinstance(active_spec, UIBoxSpec)) else None),
                 ui_active_box_progress=(anim_progress if ui_ready else 0.0),
                 ui_avatar_overlay=(avatar_overlay if ui_ready else None),
@@ -2800,8 +3138,8 @@ def main() -> None:
                 story_target_primary_index=story_target_index,
                 story_target_blink=bool((int(now * 2.0) % 2) == 0),
                 story_spell=story_spell,
-                story_primary_hp=story_hp,
-                story_primary_hp_total=10,
+                story_damage_hud=story_damage_hud,
+                story_mp_hud=story_mp_hud,
                 story_melt_primary_index=story_melt_idx,
                 story_melt_progress=story_melt_progress,
             )
@@ -2810,11 +3148,11 @@ def main() -> None:
             # Transition animation is now input-driven.
             if ui_ready:
                 if anim_mode == "opening":
-                    anim_step = min(step_count, anim_step + 2)
+                    anim_step = min(step_count, anim_step + 4)
                     if anim_step >= step_count:
                         anim_mode = "open"
                 elif anim_mode == "closing":
-                    anim_step = max(0, anim_step - 2)
+                    anim_step = max(0, anim_step - 4)
                     if anim_step <= 0:
                         nxt = str(flow.get("next_screen") or flow.get("screen"))
                         flow["screen"] = nxt
