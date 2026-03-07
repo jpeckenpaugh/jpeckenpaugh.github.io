@@ -917,6 +917,87 @@ def _draw_ui_box_layout(
                 canvas[y][x] = f"{use_color}{ch}{ANSI_RESET}"
 
 
+def _build_meter_cells(value: int, total: int, width: int, fill_color: str, empty_color: str) -> List[str]:
+    total = max(1, int(total))
+    width = max(1, int(width))
+    value = max(0, min(total, int(value)))
+    fill_count = int(round((value / float(total)) * width))
+    fill_count = max(0, min(width, fill_count))
+    cells: List[str] = []
+    for i in range(width):
+        if i < fill_count:
+            cells.append(f"{fill_color}\u2588{ANSI_RESET}")
+        else:
+            cells.append(f"{empty_color}\u2588{ANSI_RESET}")
+    return cells
+
+
+def _draw_actor_cmd_status_overlay(
+    canvas: List[List[str]],
+    spec: UIBoxSpec,
+    hp: int,
+    hp_total: int,
+    mp: int,
+    mp_total: int,
+    progress: float = 1.0,
+) -> None:
+    layout = _build_ui_box_layout(spec)
+    inner_w = max(1, layout.box_w - 2)
+    y = layout.y0 + 1
+    if y < 0 or y >= SCREEN_H:
+        return
+    hp_ratio = (max(0, hp) / max(1, hp_total))
+    if hp_ratio >= 0.5:
+        hp_fill = "\x1b[38;2;56;186;72m"
+    elif hp_ratio >= 0.25:
+        hp_fill = "\x1b[38;2;236;201;58m"
+    else:
+        hp_fill = "\x1b[38;2;220;70;70m"
+    mp_fill = "\x1b[38;2;80;150;255m"
+    empty = "\x1b[38;2;30;30;30m"
+    label = "\x1b[38;2;245;245;245m"
+    hp_cells = _build_meter_cells(hp, hp_total, 8, hp_fill, empty)
+    mp_cells = _build_meter_cells(mp, mp_total, 8, mp_fill, empty)
+    cells: List[str] = [f"{label}H{ANSI_RESET}", f"{label}P{ANSI_RESET}", f"{label}:{ANSI_RESET}", " "]
+    cells.extend(hp_cells)
+    cells.extend([" ", f"{label}M{ANSI_RESET}", f"{label}P{ANSI_RESET}", f"{label}:{ANSI_RESET}", " "])
+    cells.extend(mp_cells)
+    if len(cells) > inner_w:
+        cells = cells[:inner_w]
+
+    x = layout.x0 + 1 + max(0, (inner_w - len(cells)) // 2)
+
+    # Match box open/close clipping so this strip reveals with the box.
+    p = max(0.0, min(1.0, float(progress)))
+    h_steps = max(0, layout.box_h - 2)
+    w_steps = max(0, layout.box_w - 2)
+    h_ticks = max(0, (h_steps + 1) // 2)
+    w_ticks = max(0, (w_steps + 1) // 2)
+    total_ticks = max(1, h_ticks + w_ticks)
+    tick = int(round(total_ticks * p))
+    tick = max(0, min(total_ticks, tick))
+    if tick <= h_ticks:
+        vh = 2 + min(h_steps, tick * 2)
+        vw = 2
+    else:
+        vh = layout.box_h
+        width_tick = tick - h_ticks
+        vw = 2 + min(w_steps, width_tick * 2)
+    vw = max(2, min(layout.box_w, int(vw)))
+    vh = max(2, min(layout.box_h, int(vh)))
+    ax0 = layout.x0 + ((layout.box_w - vw) // 2)
+    ay0 = layout.y0 + ((layout.box_h - vh) // 2)
+    ax1 = ax0 + vw - 1
+    ay1 = ay0 + vh - 1
+    if y <= ay0 or y >= ay1:
+        return
+
+    for i, cell in enumerate(cells):
+        xx = x + i
+        if 0 <= xx < SCREEN_W and (ax0 < xx < ax1):
+            canvas[y][xx] = cell
+
+
 def draw_ui_box(canvas: List[List[str]], spec: UIBoxSpec, blink_on: bool = True) -> None:
     layout = _build_ui_box_layout(spec)
     _draw_ui_box_layout(canvas, layout, blink_on=blink_on)
@@ -1616,7 +1697,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="battle_select",
             border_style="double",
             title=str(flow.get("selected_name", flow.get("avatar_label", "Player"))),
-            body_text=f"Attack\nTarget: Baby Crow {target}",
+            body_text=f"\nAttack\nTarget: Baby Crow {target}",
             center_x=50,
             center_y=17,
             max_body_width=28,
@@ -1631,7 +1712,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="battle_select",
             border_style="double",
             title="Mushy",
-            body_text=f"Attack\nTarget: Baby Crow {target}",
+            body_text=f"\nAttack\nTarget: Baby Crow {target}",
             center_x=50,
             center_y=17,
             max_body_width=28,
@@ -1646,7 +1727,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="battle_select",
             border_style="double",
             title="Sharoom",
-            body_text=f"Attack\nTarget: Baby Crow {target}",
+            body_text=f"\nAttack\nTarget: Baby Crow {target}",
             center_x=50,
             center_y=17,
             max_body_width=28,
@@ -2675,6 +2756,7 @@ def render(
     ui_box_specs: List[UIBoxSpec] | None = None,
     ui_active_box: UIBoxSpec | None = None,
     ui_active_box_progress: float = 1.0,
+    ui_actor_status: dict | None = None,
     ui_avatar_overlay: dict | None = None,
     blink_phase: float = 0.0,
     story_target_primary_index: int | None = None,
@@ -2993,6 +3075,16 @@ def render(
     if isinstance(ui_active_box, UIBoxSpec):
         box_blink_on = bool((int(float(blink_phase) * 2.0) % 2) == 0)
         draw_ui_box_animated(canvas, ui_active_box, ui_active_box_progress, blink_on=box_blink_on)
+        if isinstance(ui_actor_status, dict):
+            _draw_actor_cmd_status_overlay(
+                canvas,
+                ui_active_box,
+                hp=max(0, int(ui_actor_status.get("hp", 0))),
+                hp_total=max(1, int(ui_actor_status.get("hp_total", 1))),
+                mp=max(0, int(ui_actor_status.get("mp", 0))),
+                mp_total=max(1, int(ui_actor_status.get("mp_total", 1))),
+                progress=ui_active_box_progress,
+            )
     if isinstance(ui_avatar_overlay, dict) and isinstance(ui_active_box, UIBoxSpec):
         left_rows = ui_avatar_overlay.get("left_rows", [])
         right_rows = ui_avatar_overlay.get("right_rows", [])
@@ -3137,7 +3229,9 @@ def main() -> None:
         "battle_stage": 1,
         "battle_primary_hp": [10],          # stage 1 starts with one baby crow
         "battle_secondary_hp": [14, 10],    # player, mushy
+        "battle_secondary_hp_max": [14, 10],
         "battle_secondary_mp": [10, 0],     # player, mushy
+        "battle_secondary_mp_max": [10, 0],
         "battle_staff_charges": 3,          # Mycostaff charges for Magic Spark
         "battle_player_target": 0,
         "battle_mushy_target": 0,
@@ -3507,7 +3601,9 @@ def main() -> None:
                         flow["battle_stage"] = 1
                         flow["battle_primary_hp"] = [10]
                         flow["battle_secondary_hp"] = [14, 10]
+                        flow["battle_secondary_hp_max"] = [14, 10]
                         flow["battle_secondary_mp"] = [10, 0]
+                        flow["battle_secondary_mp_max"] = [10, 0]
                         flow["battle_staff_charges"] = 3
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
@@ -3637,7 +3733,9 @@ def main() -> None:
                         flow["battle_stage"] = 3
                         flow["battle_primary_hp"] = [10, 10, 10]
                         flow["battle_secondary_hp"] = [12, 14, 10]  # Sharoom, Player, Mushy
+                        flow["battle_secondary_hp_max"] = [12, 14, 10]
                         flow["battle_secondary_mp"] = [10, 10, 0]
+                        flow["battle_secondary_mp_max"] = [10, 10, 0]
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
@@ -3911,6 +4009,7 @@ def main() -> None:
                 anim_progress = anim_step / max(1, step_count)
 
             avatar_overlay = None
+            ui_actor_status = None
             if screen == "avatar_select":
                 pidx = int(flow.get("player_index", 0)) % len(player_cards)
                 left = player_cards[0]
@@ -3922,6 +4021,27 @@ def main() -> None:
                     "right_label": right.get("label", "Right"),
                     "selected": pidx,
                 }
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
+                sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [14, 10])]
+                sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
+                sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [10, 0])]
+                sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
+                actor_idx = 0
+                if screen == "story_battle_cmd_mushy":
+                    actor_idx = 2 if len(sec_hp) >= 3 else 1
+                elif screen == "story_battle_cmd_player":
+                    actor_idx = 1 if len(sec_hp) >= 3 else 0
+                elif screen == "story_battle_cmd_sharoom":
+                    actor_idx = 0
+                if 0 <= actor_idx < len(sec_hp):
+                    hp_total = sec_hp_max[actor_idx] if actor_idx < len(sec_hp_max) else max(1, sec_hp[actor_idx])
+                    mp_total = sec_mp_max[actor_idx] if actor_idx < len(sec_mp_max) else (sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0)
+                    ui_actor_status = {
+                        "hp": sec_hp[actor_idx],
+                        "hp_total": max(1, hp_total),
+                        "mp": sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0,
+                        "mp_total": max(1, mp_total),
+                    }
 
             pri_hp_now = [int(v) for v in flow.get("battle_primary_hp", [10])]
             story_target_index = None
@@ -4010,6 +4130,7 @@ def main() -> None:
                 show_title_logo=(not screen.startswith("story_")),
                 ui_active_box=(active_spec if (ui_ready and isinstance(active_spec, UIBoxSpec)) else None),
                 ui_active_box_progress=(anim_progress if ui_ready else 0.0),
+                ui_actor_status=(ui_actor_status if ui_ready else None),
                 ui_avatar_overlay=(avatar_overlay if ui_ready else None),
                 blink_phase=now,
                 story_target_primary_index=story_target_index,
