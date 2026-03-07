@@ -1900,6 +1900,48 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             actions=["[ A / Continue ]"],
         )
 
+    if screen == "story_roomy_2":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Mushy",
+            body_text="Roomie! Over here. We need your support in this crow war.",
+            center_x=50,
+            center_y=17,
+            max_body_width=44,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_roomy_3":
+        return UIBoxSpec(
+            role="story",
+            border_style="double",
+            title="Roomie",
+            body_text="I can reinforce the team. Let's keep everyone energized.",
+            center_x=50,
+            center_y=17,
+            max_body_width=42,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_roomy_4":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Mushy",
+            body_text="Perfect. Roomie joins us. Four hearts, one team!",
+            center_x=50,
+            center_y=17,
+            max_body_width=42,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
     if screen == "story_sharoom_1":
         return UIBoxSpec(
             role="story",
@@ -1960,6 +2002,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         "story_2",
         "story_actor_entrance",
         "story_sharoom_entrance",
+        "story_roomy_entrance",
         "story_sharoom_lineup_shift",
         "story_battle2_entrance",
         "story_battle3_entrance",
@@ -2029,6 +2072,14 @@ def _position_screen_box_for_actors(
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
     if screen == "story_sharoom_4" and primary_placements:
         return _anchor_box_next_to_actor(spec, primary_placements[0], prefer="left")
+    if screen == "story_roomy_2" and len(secondary_placements) >= 2:
+        idx = 2 if len(secondary_placements) >= 3 else 1
+        return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
+    if screen == "story_roomy_3" and primary_placements:
+        return _anchor_box_next_to_actor(spec, primary_placements[0], prefer="left")
+    if screen == "story_roomy_4" and len(secondary_placements) >= 2:
+        idx = 3 if len(secondary_placements) >= 4 else (2 if len(secondary_placements) >= 3 else 1)
+        return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen in ("story_7", "story_9", "story_battle_cmd_player") and secondary_placements:
         idx = 1 if len(secondary_placements) >= 3 else 0
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
@@ -3950,6 +4001,7 @@ def main() -> None:
         "actor_entrance": None,
         "battle2_entrance": None,
         "sharoom_entrance": None,
+        "roomy_entrance": None,
         "battle3_entrance": None,
         "sharoom_lineup_transition": None,
     }
@@ -4197,6 +4249,13 @@ def main() -> None:
                     if float(ent.get("t", 0.0)) >= float(ent.get("duration", 1.0)):
                         flow["sharoom_entrance"] = None
                         begin_transition("story_sharoom_3")
+            elif anim_mode == "open" and screen == "story_roomy_entrance":
+                ent = flow.get("roomy_entrance")
+                if isinstance(ent, dict):
+                    ent["t"] = float(ent.get("t", 0.0)) + dt
+                    if float(ent.get("t", 0.0)) >= float(ent.get("duration", 1.0)):
+                        flow["roomy_entrance"] = None
+                        begin_transition("story_roomy_2")
             elif anim_mode == "open" and screen == "story_battle3_entrance":
                 ent = flow.get("battle3_entrance")
                 if isinstance(ent, dict):
@@ -4582,6 +4641,16 @@ def main() -> None:
                             begin_transition("story_battle_cmd_player")
                 elif screen == "story_battle_victory":
                     if confirm:
+                        flow["roomy_entrance"] = {"t": 0.0, "duration": 1.0}
+                        begin_transition("story_roomy_entrance")
+                elif screen == "story_roomy_2":
+                    if confirm:
+                        begin_transition("story_roomy_3")
+                elif screen == "story_roomy_3":
+                    if confirm:
+                        begin_transition("story_roomy_4")
+                elif screen == "story_roomy_4":
+                    if confirm:
                         target_sky_rows = 25
                         begin_transition("root_menu")
                 elif screen == "story_more_crows":
@@ -4862,6 +4931,36 @@ def main() -> None:
                                         "rows": tg.get("rows", []),
                                     }
                                 ]
+                elif screen == "story_roomy_entrance":
+                    primary_sprites = []
+                    secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite]
+                    ent = flow.get("roomy_entrance")
+                    if isinstance(ent, dict):
+                        t = max(0.0, min(1.0, float(ent.get("t", 0.0)) / max(0.001, float(ent.get("duration", 1.0)))))
+                        te = t * t * (3.0 - (2.0 * t))
+                        ground_zone = zones.get("ground_bg")
+                        if isinstance(ground_zone, LayoutZone):
+                            pz = build_primary_zone(_treeline_lowest_row(ground_zone.y, world_anchor_stagger) + 1)
+                            targets = layout_actor_strip(pz, [roomie_sprite], spacing=1, stagger_rows=1)
+                            if targets:
+                                tg = targets[0]
+                                tx = int(tg.get("x", 0))
+                                ty = int(tg.get("y", 0))
+                                sx = SCREEN_W + 4
+                                sy = ty
+                                story_transition_actors = [
+                                    {
+                                        "x": int(round(sx + ((tx - sx) * te))),
+                                        "y": int(round(sy + ((ty - sy) * te))),
+                                        "rows": tg.get("rows", []),
+                                    }
+                                ]
+                elif screen in ("story_roomy_2", "story_roomy_3"):
+                    primary_sprites = [roomie_sprite]
+                    secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite]
+                elif screen == "story_roomy_4":
+                    primary_sprites = []
+                    secondary_sprites = [roomie_sprite, sharoom_sprite, selected_player_sprite, mushy_sprite]
                 elif screen in ("story_sharoom_3", "story_sharoom_4"):
                     primary_sprites = [sharoom_sprite]
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
