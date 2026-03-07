@@ -1,0 +1,1855 @@
+import os
+import random
+import re
+import time
+import textwrap
+from dataclasses import dataclass
+from typing import Dict, List
+
+from battle_scene import (
+    ANSI_CLEAR,
+    ANSI_HIDE_CURSOR,
+    ANSI_HOME,
+    ANSI_RESET,
+    ANSI_SHOW_CURSOR,
+    SCREEN_H,
+    SCREEN_W,
+    ansi_line_to_cells,
+    cloud_templates,
+    load_json,
+    read_key_nonblocking as base_read_key_nonblocking,
+)
+
+
+LAYER_BACKGROUND = 0
+LAYER_WORLD = 4
+LAYER_FOREGROUND = 8
+LAYER_UI = 12
+SKY_ROWS_OPTIONS = [5, 10, 15, 20, 25]
+DEFAULT_SKY_ROWS = 15
+UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
+UI_DIALOG_TEXT = "So what do you say... Are you ready to challenge them?"
+DEMO_BATTLE_LOG_LINES = [
+    "Mushy casts Magic Spark on 4 Fairy Warriors.",
+    "Beba casts Magic Spark on 4 Fairy Warriors.",
+    "Fairy Warrior has been defeated.",
+    "Fairy Warrior has been defeated.",
+    "Fairy 1 casts Healing Light on Fairy 3.",
+]
+WORLD_SCENE_VARIANTS = [
+    ("cottage", "house"),
+    ("fairy_castle", "fairy_castle"),
+    ("bridge", "bridge"),
+    ("mushroom_house", "mushroom_house"),
+]
+
+
+@dataclass(frozen=True)
+class LayoutZone:
+    name: str
+    x: int
+    y: int
+    width: int
+    height: int
+    layer: int
+
+    @property
+    def x1(self) -> int:
+        return self.x + max(0, self.width) - 1
+
+    @property
+    def y1(self) -> int:
+        return self.y + max(0, self.height) - 1
+
+
+@dataclass(frozen=True)
+class UIBoxBorderGlyphs:
+    tl: str
+    tr: str
+    bl: str
+    br: str
+    h: str
+    v: str
+
+
+@dataclass
+class UIBoxSpec:
+    role: str
+    border_style: str
+    body_text: str
+    title: str = ""
+    actions: List[str] | None = None
+    center_x: int | None = None
+    center_y: int | None = None
+    x: int | None = None
+    y: int | None = None
+    max_body_width: int = 40
+    padding_x: int = 1
+    padding_y: int = 1
+    body_align: str = "left"
+    wrap_mode: str = "normal"
+    border_gradient: bool = True
+    anchor: str = "center"
+
+
+@dataclass(frozen=True)
+class UIBoxLayout:
+    spec: UIBoxSpec
+    lines: List[str]
+    x0: int
+    y0: int
+    box_w: int
+    box_h: int
+    title_start: int
+    title_end: int
+    action_row_index: int
+
+
+def read_key_nonblocking() -> str | None:
+    if os.name == "nt":
+        import msvcrt
+
+        if not msvcrt.kbhit():
+            return None
+        ch = msvcrt.getch()
+        if ch in (b"\x00", b"\xe0"):
+            ext = msvcrt.getch()
+            if ext == b"H":
+                return "up"
+            if ext == b"P":
+                return "down"
+            if ext == b"K":
+                return "left"
+            if ext == b"M":
+                return "right"
+            return None
+        try:
+            return ch.decode("utf-8").lower()
+        except UnicodeDecodeError:
+            return None
+    return base_read_key_nonblocking()
+
+
+def _make_zone(name: str, x: int, y: int, width: int, height: int, layer: int) -> LayoutZone:
+    x = max(0, min(SCREEN_W, x))
+    y = max(0, min(SCREEN_H, y))
+    width = max(0, min(width, SCREEN_W - x))
+    height = max(0, min(height, SCREEN_H - y))
+    return LayoutZone(name=name, x=x, y=y, width=width, height=height, layer=layer)
+
+
+def _anchored_x_with_overflow_guard(center_x: int, width: int) -> int:
+    # Keep centered intent, but if overflow would occur, shift inward until fully visible.
+    x = int(center_x) - (max(0, int(width)) // 2)
+    max_x = max(0, SCREEN_W - max(0, int(width)))
+    return max(0, min(max_x, x))
+
+
+def build_scene_zones(sky_rows: int) -> Dict[str, LayoutZone]:
+    sky_height = max(1, min(SCREEN_H - 1, int(sky_rows)))
+    ground_height = SCREEN_H - sky_height
+    return {
+        "sky_bg": _make_zone("sky_bg", 0, 0, SCREEN_W, sky_height, LAYER_BACKGROUND),
+        "ground_bg": _make_zone("ground_bg", 0, sky_height, SCREEN_W, ground_height, LAYER_BACKGROUND),
+    }
+
+
+def _colorize_glyph(glyph: str, key: str, color_codes: Dict[str, str]) -> str:
+    code = color_codes.get(key, "")
+    return f"{code}{glyph}{ANSI_RESET}" if code else glyph
+
+
+def build_ground_rows(
+    row_count: int,
+    objects_data: object,
+    color_codes: Dict[str, str],
+    pebble_density: float = 0.07,
+) -> List[str]:
+    rng = random.Random(9051701)
+    rows: List[str] = []
+    grass_pattern = "~"
+    grass_mask = "g"
+    if isinstance(objects_data, dict):
+        grass_obj = objects_data.get("grass", {})
+        if isinstance(grass_obj, dict):
+            art = grass_obj.get("art", [])
+            mask = grass_obj.get("color_mask", [])
+            if isinstance(art, list) and art:
+                grass_pattern = str(art[0]) or "~"
+            if isinstance(mask, list) and mask:
+                grass_mask = str(mask[0]) or "g"
+
+    pebble_glyphs: List[str] = ["o", "O"]
+    pebble_keys: List[str] = ["Z", "z", "X", "x", "L", "l"]
+    if isinstance(objects_data, dict):
+        scatter_obj = objects_data.get("battle_ground", {}) or objects_data.get("pebble", {})
+        dynamic = scatter_obj.get("dynamic", {}) if isinstance(scatter_obj, dict) else {}
+        dyn_glyphs = dynamic.get("glyphs", []) if isinstance(dynamic, dict) else []
+        dyn_keys = dynamic.get("color_keys", []) if isinstance(dynamic, dict) else []
+        if isinstance(dyn_glyphs, list) and dyn_glyphs:
+            pebble_glyphs = [str(g)[:1] or "o" for g in dyn_glyphs]
+        if isinstance(dyn_keys, list) and dyn_keys:
+            pebble_keys = [str(k)[:1] or "Z" for k in dyn_keys]
+
+    density = max(0.0, min(0.4, pebble_density))
+    base_road_width = 7
+    # Match centered object parity so road aligns with centered house anchor.
+    road_center = (SCREEN_W - 1) // 2
+    road_chars = [".", ",", "'", "`"]
+    road_color = "\x1b[38;2;170;170;170m"
+
+    for row_idx in range(max(0, row_count)):
+        # Perspective: widen by 1 column on each side every 2 rows downward.
+        expand_steps = row_idx // 2
+        road_width = min(SCREEN_W, base_road_width + (expand_steps * 2))
+        road_half = road_width // 2
+        road_start = max(0, road_center - road_half)
+        road_end = min(SCREEN_W - 1, road_start + road_width - 1)
+        row: List[str] = []
+        for x in range(SCREEN_W):
+            base_glyph = grass_pattern[x % max(1, len(grass_pattern))]
+            base_key = grass_mask[x % max(1, len(grass_mask))]
+            cell = _colorize_glyph(base_glyph, base_key, color_codes)
+            if rng.random() < density:
+                glyph = rng.choice(pebble_glyphs)
+                key = rng.choice(pebble_keys)
+                cell = _colorize_glyph(glyph, key, color_codes)
+            if road_start <= x <= road_end:
+                dirt = rng.choice(road_chars)
+                cell = f"{road_color}{dirt}{ANSI_RESET}"
+            row.append(cell)
+        rows.append("".join(row))
+    return rows
+
+
+def _cloud_speed(size: str, y: int, field_height: int, rng: random.Random) -> float:
+    size_weight = {"large": 0.72, "medium": 1.0, "small": 1.28}.get(size, 1.0)
+    y_norm = max(0.0, min(1.0, y / max(1, field_height - 1)))
+    height_weight = 0.72 + (0.62 * y_norm)
+    variance = 1.0 + (rng.random() * 3.0)
+    return 0.25 * size_weight * height_weight * variance
+
+
+def spawn_clouds_full_canvas(templates: List[dict]) -> List[dict]:
+    rng = random.Random(14113)
+    clouds: List[dict] = []
+    if not templates:
+        return clouds
+    count = max(8, min(24, int(round((SCREEN_W * SCREEN_H) / 150.0))))
+    for _ in range(count):
+        template = templates[rng.randrange(len(templates))]
+        w = int(template["width"])
+        h = int(template["height"])
+        y_max = max(0, SCREEN_H - h)
+        y = rng.randint(0, y_max) if y_max > 0 else 0
+        x = rng.randint(-max(1, w // 2), SCREEN_W - 1)
+        speed = _cloud_speed(str(template.get("size", "medium")), y, SCREEN_H, rng)
+        clouds.append({"template": template, "x": float(x), "y": float(y), "speed": speed})
+    return clouds
+
+
+def sky_bottom_anchor_for_rows(sky_rows: int) -> int:
+    # Parallax: move sky-bottom anchor 1 row for every 2 rows of sky change.
+    half_shift = max(0, int(sky_rows) // 2)
+    anchor = SCREEN_H - half_shift
+    return max(0, min(SCREEN_H, anchor))
+
+
+def _hex_to_rgb(hex_value: str) -> tuple[int, int, int]:
+    value = hex_value.strip().lstrip("#")
+    if len(value) != 6:
+        return (255, 255, 255)
+    return (int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16))
+
+
+def _build_color_codes(colors_data: object) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    if not isinstance(colors_data, dict):
+        return out
+    for key, payload in colors_data.items():
+        if not isinstance(key, str) or len(key) != 1 or not isinstance(payload, dict):
+            continue
+        hex_value = payload.get("hex")
+        if not isinstance(hex_value, str):
+            continue
+        r, g, b = _hex_to_rgb(hex_value)
+        out[key] = f"\x1b[38;2;{r};{g};{b}m"
+    return out
+
+
+def _strip_ansi(text: str) -> str:
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
+
+def _colorize_object_rows(art_rows: object, mask_rows: object, color_codes: Dict[str, str]) -> List[List[str]]:
+    if not isinstance(art_rows, list) or not art_rows:
+        return []
+    if not isinstance(mask_rows, list):
+        mask_rows = []
+    width = max((len(str(line)) for line in art_rows), default=0)
+    out: List[List[str]] = []
+    opaque_space = f"\x1b[37m {ANSI_RESET}"
+    for y, raw in enumerate(art_rows):
+        art = str(raw).ljust(width)
+        mask = str(mask_rows[y]) if y < len(mask_rows) else ""
+        row: List[str] = []
+        for x, ch in enumerate(art):
+            key = mask[x] if x < len(mask) else ""
+            if key == "!":
+                row.append(opaque_space)
+                continue
+            if ch == " ":
+                row.append(" ")
+                continue
+            code = color_codes.get(key, "")
+            row.append(f"{code}{ch}{ANSI_RESET}" if code else ch)
+        out.append(row)
+    return out
+
+
+def build_world_treeline_sprites(
+    objects_data: object,
+    colors_data: object,
+    center_object_id: str = "house",
+) -> List[dict]:
+    if not isinstance(objects_data, dict):
+        return []
+    color_codes = _build_color_codes(colors_data)
+    tree_ids = [obj_id for obj_id in ["tree_large", "tree_large_2", "tree_large_3"] if isinstance(objects_data.get(obj_id), dict)]
+    center_obj = objects_data.get(center_object_id, {})
+    if not tree_ids or not isinstance(center_obj, dict):
+        return []
+    rng = random.Random(6611)
+    sprites: List[dict] = []
+
+    def make_sprite(obj_id: str, x: int, anchor_offset: int = 0) -> dict | None:
+        payload = objects_data.get(obj_id, {})
+        if not isinstance(payload, dict):
+            return None
+        art = payload.get("art", [])
+        mask = payload.get("color_mask", [])
+        rows = _colorize_object_rows(art, mask, color_codes)
+        if not rows:
+            return None
+        width = len(rows[0])
+        return {
+            "x": x,
+            "width": width,
+            "height": len(rows),
+            "rows": rows,
+            "anchor_offset": max(0, min(2, int(anchor_offset))),
+        }
+
+    # Centered focal world object (cottage/castle/bridge/mushroom house).
+    center_sprite = make_sprite(center_object_id, 0, anchor_offset=0)
+    if center_sprite is None:
+        return []
+    center_w = int(center_sprite.get("width", 0))
+    center_x = (SCREEN_W - center_w) // 2
+    center_sprite["x"] = center_x
+    sprites.append(center_sprite)
+
+    # Trees on left and right sides of the centered focal object.
+    left_cursor = center_x - 3
+    right_cursor = center_x + center_w + 2
+    side_tree_count = 3
+
+    for _ in range(side_tree_count):
+        tree_id = tree_ids[rng.randrange(len(tree_ids))]
+        probe = make_sprite(tree_id, 0, anchor_offset=rng.randint(0, 2))
+        if probe is None:
+            continue
+        tw = int(probe.get("width", 0))
+        left_x = left_cursor - tw
+        probe["x"] = left_x
+        if left_x + tw > 0:
+            sprites.append(probe)
+        left_cursor = left_x - rng.randint(1, 4)
+
+    for _ in range(side_tree_count):
+        tree_id = tree_ids[rng.randrange(len(tree_ids))]
+        probe = make_sprite(tree_id, right_cursor, anchor_offset=rng.randint(0, 2))
+        if probe is None:
+            continue
+        if int(probe.get("x", 0)) < SCREEN_W:
+            sprites.append(probe)
+        right_cursor = int(probe.get("x", 0)) + int(probe.get("width", 0)) + rng.randint(1, 4)
+
+    # Draw from left to right for deterministic overdraw.
+    sprites.sort(key=lambda s: int(s.get("x", 0)))
+    return sprites
+
+
+def build_mushy_sprite(opponents_data: object, color_codes: Dict[str, str]) -> List[List[str]]:
+    if not isinstance(opponents_data, dict):
+        return []
+    base_opponents = opponents_data.get("base_opponents", {})
+    if not isinstance(base_opponents, dict):
+        return []
+    mushy = base_opponents.get("mushroom_baby", {})
+    if not isinstance(mushy, dict):
+        return []
+    art = mushy.get("art", [])
+    mask = mushy.get("color_map", [])
+    if not isinstance(art, list) or not art:
+        return []
+    if not isinstance(mask, list):
+        mask = []
+    width = max((len(str(line)) for line in art), default=0)
+    out: List[List[str]] = []
+    for y, raw in enumerate(art):
+        line = str(raw).ljust(width)
+        mask_line = str(mask[y]) if y < len(mask) else ""
+        row: List[str] = []
+        for x, ch in enumerate(line):
+            if ch == " ":
+                row.append(" ")
+                continue
+            key = mask_line[x] if x < len(mask_line) else ""
+            if key == "!":
+                row.append(ch)
+                continue
+            code = color_codes.get(key, "")
+            row.append(f"{code}{ch}{ANSI_RESET}" if code else ch)
+        out.append(row)
+    return out
+
+
+def build_opponent_sprite(opponents_data: object, opponent_id: str, color_codes: Dict[str, str]) -> List[List[str]]:
+    if not isinstance(opponents_data, dict):
+        return []
+    base_opponents = opponents_data.get("base_opponents", {})
+    if not isinstance(base_opponents, dict):
+        return []
+    opponent = base_opponents.get(opponent_id, {})
+    if not isinstance(opponent, dict):
+        return []
+    art = opponent.get("art", [])
+    mask = opponent.get("color_map", [])
+    return _colorize_object_rows(art, mask, color_codes)
+
+
+def build_player_sprite(players_data: object, player_id: str, color_codes: Dict[str, str]) -> List[List[str]]:
+    if not isinstance(players_data, dict):
+        return []
+    player = players_data.get(player_id, {})
+    if not isinstance(player, dict):
+        return []
+    art = player.get("art", [])
+    mask = player.get("color_map", [])
+    if not isinstance(art, list) or not art:
+        return []
+    if not isinstance(mask, list):
+        mask = []
+    width = max((len(str(line)) for line in art), default=0)
+    out: List[List[str]] = []
+    opaque_space = f"\x1b[37m {ANSI_RESET}"
+    for y, raw in enumerate(art):
+        line = str(raw).ljust(width)
+        mask_line = str(mask[y]) if y < len(mask) else ""
+        row: List[str] = []
+        for x, ch in enumerate(line):
+            key = mask_line[x] if x < len(mask_line) else ""
+            if key == "!":
+                # Blocking cell: render opaque space to hide layers behind.
+                row.append(opaque_space)
+                continue
+            if ch == " ":
+                row.append(" ")
+                continue
+            code = color_codes.get(key, "")
+            row.append(f"{code}{ch}{ANSI_RESET}" if code else ch)
+        out.append(row)
+    return out
+
+
+def _sprite_size(rows: List[List[str]]) -> tuple[int, int]:
+    if not rows:
+        return (0, 0)
+    width = max((len(row) for row in rows), default=0)
+    return (width, len(rows))
+
+
+def layout_actor_strip(
+    area: LayoutZone,
+    sprites: List[List[List[str]]],
+    spacing: int = 1,
+    stagger_rows: int = 0,
+    reverse_stagger: bool = False,
+) -> List[dict]:
+    active = [rows for rows in sprites if isinstance(rows, list) and rows]
+    if not active:
+        return []
+    sizes = [_sprite_size(rows) for rows in active]
+    widths = [w for w, _h in sizes]
+    total_width = sum(widths) + (max(0, len(active) - 1) * max(0, spacing))
+    start_x = area.x + ((area.width - total_width) // 2)
+    placements: List[dict] = []
+    x = start_x
+    count = len(active)
+    for idx, (rows, (w, h)) in enumerate(zip(active, sizes)):
+        step = (count - 1 - idx) if reverse_stagger else idx
+        if reverse_stagger:
+            y = area.y1 - max(0, h - 1) - (step * max(0, int(stagger_rows)))
+        else:
+            y = area.y1 - max(0, h - 1) + (step * max(0, int(stagger_rows)))
+        y = max(0, min(SCREEN_H - h, y))
+        placements.append({"x": x, "y": y, "rows": rows})
+        x += w + max(0, spacing)
+    # Rule 1: render left-to-right.
+    placements.sort(key=lambda item: int(item.get("x", 0)))
+    return placements
+
+
+def _overlay_zone_guides(canvas: List[List[str]], zones: Dict[str, LayoutZone]) -> None:
+    colors = [
+        "\x1b[38;2;255;230;120m",
+        "\x1b[38;2;135;210;255m",
+    ]
+    for idx, zone in enumerate(zones.values()):
+        if zone.width <= 0 or zone.height <= 0:
+            continue
+        color = colors[idx % len(colors)]
+        x0, y0 = zone.x, zone.y
+        x1, y1 = zone.x1, zone.y1
+        top_left = f"+-[{zone.name}:z{zone.layer}]-"
+        top_right = "-+"
+        bottom_left = "+-"
+        bottom_right = "-+"
+
+        for i, ch in enumerate(top_left):
+            x = x0 + i
+            if x > x1:
+                break
+            canvas[y0][x] = f"{color}{ch}{ANSI_RESET}"
+        for i, ch in enumerate(top_right):
+            x = x1 - (len(top_right) - 1) + i
+            if x < x0 or x > x1:
+                continue
+            canvas[y0][x] = f"{color}{ch}{ANSI_RESET}"
+
+        for i, ch in enumerate(bottom_left):
+            x = x0 + i
+            if x > x1:
+                break
+            canvas[y1][x] = f"{color}{ch}{ANSI_RESET}"
+        for i, ch in enumerate(bottom_right):
+            x = x1 - (len(bottom_right) - 1) + i
+            if x < x0 or x > x1:
+                continue
+            canvas[y1][x] = f"{color}{ch}{ANSI_RESET}"
+
+        # Light vertical corner hints near top/bottom only (not full box edges).
+        if y1 - y0 >= 2:
+            canvas[y0 + 1][x0] = f"{color}|{ANSI_RESET}"
+            canvas[y0 + 1][x1] = f"{color}|{ANSI_RESET}"
+        if y1 - y0 >= 3:
+            canvas[y1 - 1][x0] = f"{color}|{ANSI_RESET}"
+            canvas[y1 - 1][x1] = f"{color}|{ANSI_RESET}"
+
+
+def _guide_zones_for_render(
+    zones: Dict[str, LayoutZone],
+    world_layer_level: int,
+    world_treeline_sprites: List[dict] | None,
+    world_anchor_stagger: int,
+) -> Dict[str, LayoutZone]:
+    if world_layer_level <= 0:
+        return zones
+    if world_layer_level >= 4:
+        return {}
+    if world_layer_level >= 3:
+        secondary_zone = build_secondary_zone()
+        ground_zone = zones.get("ground_bg")
+        if isinstance(ground_zone, LayoutZone):
+            lowest_tree_row = _treeline_lowest_row(ground_zone.y, world_anchor_stagger)
+            return {
+                "primary": build_primary_zone(lowest_tree_row + 1),
+                "secondary": secondary_zone,
+            }
+        return {"primary": build_primary_zone(SCREEN_H - 1), "secondary": secondary_zone}
+    if world_layer_level >= 2:
+        ground_zone = zones.get("ground_bg")
+        if isinstance(ground_zone, LayoutZone):
+            lowest_tree_row = _treeline_lowest_row(ground_zone.y, world_anchor_stagger)
+            return {"primary": build_primary_zone(lowest_tree_row + 1)}
+        return {"primary": build_primary_zone(SCREEN_H - 1)}
+    if not world_treeline_sprites:
+        return {}
+    ground_zone = zones.get("ground_bg")
+    if not isinstance(ground_zone, LayoutZone):
+        return {}
+    max_tree_h = 1
+    for sprite in world_treeline_sprites:
+        h = int(sprite.get("height", 0)) if isinstance(sprite, dict) else 0
+        max_tree_h = max(max_tree_h, h)
+    stagger = max(1, min(3, int(world_anchor_stagger)))
+    top = ground_zone.y - max(0, max_tree_h - 1)
+    bottom = ground_zone.y + max(0, stagger - 1)
+    return {
+        "treeline": _make_zone(
+            "treeline",
+            0,
+            top,
+            SCREEN_W,
+            (bottom - top + 1),
+            LAYER_WORLD,
+        ),
+    }
+
+
+def build_primary_zone(anchor_bottom_y: int) -> LayoutZone:
+    width = 20
+    height = 12
+    x_center = 75
+    x = _anchored_x_with_overflow_guard(x_center, width)
+    y = anchor_bottom_y - height + 1
+    return _make_zone("primary", x, y, width, height, LAYER_FOREGROUND)
+
+
+def build_secondary_zone() -> LayoutZone:
+    # Bottom-left quadrant secondary slot:
+    # - bottom-left corner anchor position = 1 row above screen bottom
+    width = 20
+    height = 12
+    x_center = SCREEN_W // 4
+    x = _anchored_x_with_overflow_guard(x_center, width)
+    bottom_anchor_position = 1
+    bottom_y = (SCREEN_H - 1) - bottom_anchor_position
+    y = bottom_y - height + 1
+    return _make_zone("secondary", x, y, width, height, LAYER_WORLD)
+
+
+def _treeline_lowest_row(ground_top_y: int, world_anchor_stagger: int) -> int:
+    stagger = max(1, min(3, int(world_anchor_stagger)))
+    return ground_top_y + max(0, stagger - 1)
+
+
+def ui_border_gradient_code(x: int, y: int, width: int, height: int) -> str:
+    # Match the standard white -> blue -> grey panel gradient.
+    if width <= 1 and height <= 1:
+        return "\x1b[38;2;192;192;192m"
+    t = ((x / max(1, width - 1)) + (y / max(1, height - 1))) / 2.0
+    if t <= 0.5:
+        tt = t / 0.5
+        start = (192, 192, 192)
+        end = (77, 77, 255)
+    else:
+        tt = (t - 0.5) / 0.5
+        start = (77, 77, 255)
+        end = (96, 96, 96)
+    r = int(start[0] + (end[0] - start[0]) * tt)
+    g = int(start[1] + (end[1] - start[1]) * tt)
+    b = int(start[2] + (end[2] - start[2]) * tt)
+    return f"\x1b[38;2;{r};{g};{b}m"
+
+
+def _ui_border_glyphs(style: str) -> UIBoxBorderGlyphs:
+    key = str(style).strip().lower()
+    if key == "double":
+        return UIBoxBorderGlyphs(tl="\u2554", tr="\u2557", bl="\u255a", br="\u255d", h="\u2550", v="\u2551")
+    if key == "heavy":
+        return UIBoxBorderGlyphs(tl="\u250f", tr="\u2513", bl="\u2517", br="\u251b", h="\u2501", v="\u2503")
+    return UIBoxBorderGlyphs(tl="\u250c", tr="\u2510", bl="\u2514", br="\u2518", h="\u2500", v="\u2502")
+
+
+def _balanced_wrap_lines(text: str, width: int) -> List[str]:
+    lines = textwrap.wrap(text, width=width, break_long_words=False, break_on_hyphens=False)
+    if len(lines) < 2:
+        return lines or [text[:width]]
+    while len(lines) >= 2:
+        tail_words = lines[-1].split()
+        prev_words = lines[-2].split()
+        if len(tail_words) > 2 or len(prev_words) <= 2:
+            break
+        moved = prev_words[-1]
+        cand_tail = f"{moved} {lines[-1]}".strip()
+        cand_prev = " ".join(prev_words[:-1]).strip()
+        if not cand_prev or len(cand_tail) > width:
+            break
+        lines[-2] = cand_prev
+        lines[-1] = cand_tail
+    return lines
+
+
+def _wrap_ui_body(text: str, width: int, mode: str) -> List[str]:
+    out: List[str] = []
+    wrap_mode = str(mode).strip().lower()
+    for para in str(text).splitlines():
+        line = para.strip()
+        if not line:
+            out.append("")
+            continue
+        if wrap_mode == "balanced":
+            out.extend(_balanced_wrap_lines(line, width))
+        else:
+            out.extend(textwrap.wrap(line, width=width, break_long_words=False, break_on_hyphens=False))
+    return out or [""]
+
+
+def _format_ui_body_line(text: str, width: int, align: str) -> str:
+    mode = str(align).strip().lower()
+    if mode == "center":
+        return text.center(width)
+    if mode == "right":
+        return text.rjust(width)
+    return text.ljust(width)
+
+
+def _resolve_ui_box_origin(box_w: int, box_h: int, spec: UIBoxSpec) -> tuple[int, int]:
+    if spec.x is not None and spec.y is not None:
+        x0 = max(0, min(SCREEN_W - box_w, int(spec.x)))
+        y0 = max(0, min(SCREEN_H - box_h, int(spec.y)))
+        return (x0, y0)
+
+    cx = SCREEN_W // 2 if spec.center_x is None else int(spec.center_x)
+    cy = SCREEN_H // 2 if spec.center_y is None else int(spec.center_y)
+    anchor = str(spec.anchor).strip().lower()
+    if anchor == "left":
+        x0 = cx
+        y0 = cy - (box_h // 2)
+    elif anchor == "right":
+        x0 = cx - box_w
+        y0 = cy - (box_h // 2)
+    elif anchor == "top":
+        x0 = cx - (box_w // 2)
+        y0 = cy
+    elif anchor == "bottom":
+        x0 = cx - (box_w // 2)
+        y0 = cy - box_h
+    else:
+        x0 = cx - (box_w // 2)
+        y0 = cy - (box_h // 2)
+    x0 = max(0, min(SCREEN_W - box_w, x0))
+    y0 = max(0, min(SCREEN_H - box_h, y0))
+    return (x0, y0)
+
+
+def _build_ui_box_layout(spec: UIBoxSpec) -> UIBoxLayout:
+    glyphs = _ui_border_glyphs(spec.border_style)
+    max_w = max(8, min(SCREEN_W - 4, int(spec.max_body_width)))
+    wrapped = _wrap_ui_body(spec.body_text, max_w, spec.wrap_mode)
+    body_w = max((len(line) for line in wrapped), default=0)
+
+    actions = spec.actions if isinstance(spec.actions, list) else []
+    action_row = "  ".join([str(item).strip() for item in actions if str(item).strip()])
+
+    title = str(spec.title).strip()
+    inner_w = body_w + (max(0, int(spec.padding_x)) * 2)
+    if title:
+        inner_w = max(inner_w, len(title) + 6)
+    if action_row:
+        inner_w = max(inner_w, len(action_row) + 4)
+
+    lines: List[str] = []
+    title_left = max(0, (inner_w - len(title)) // 2) if title else 0
+    title_right = max(0, inner_w - len(title) - title_left) if title else 0
+    if title:
+        top = glyphs.tl + (glyphs.h * title_left) + title + (glyphs.h * title_right) + glyphs.tr
+    else:
+        top = glyphs.tl + (glyphs.h * inner_w) + glyphs.tr
+    lines.append(top)
+
+    for _ in range(max(0, int(spec.padding_y))):
+        lines.append(glyphs.v + (" " * inner_w) + glyphs.v)
+
+    for line in wrapped:
+        body = _format_ui_body_line(line, body_w, spec.body_align)
+        content = (" " * max(0, int(spec.padding_x))) + body + (" " * max(0, int(spec.padding_x)))
+        lines.append(glyphs.v + content.ljust(inner_w)[:inner_w] + glyphs.v)
+
+    for _ in range(max(0, int(spec.padding_y))):
+        lines.append(glyphs.v + (" " * inner_w) + glyphs.v)
+
+    action_row_index = -1
+    if action_row:
+        action_row_index = len(lines)
+        lines.append(glyphs.v + action_row.center(inner_w)[:inner_w] + glyphs.v)
+
+    lines.append(glyphs.bl + (glyphs.h * inner_w) + glyphs.br)
+
+    box_w = inner_w + 2
+    box_h = len(lines)
+    x0, y0 = _resolve_ui_box_origin(box_w, box_h, spec)
+    title_start = 1 + title_left
+    title_end = title_start + len(title)
+    return UIBoxLayout(
+        spec=spec,
+        lines=lines,
+        x0=x0,
+        y0=y0,
+        box_w=box_w,
+        box_h=box_h,
+        title_start=title_start,
+        title_end=title_end,
+        action_row_index=action_row_index,
+    )
+
+
+def _draw_ui_box_layout(
+    canvas: List[List[str]],
+    layout: UIBoxLayout,
+    visible_w: int | None = None,
+    visible_h: int | None = None,
+) -> None:
+    spec = layout.spec
+    text_color = "\x1b[38;2;245;245;245m"
+    title_color = "\x1b[38;2;255;255;255m"
+    key_green = "\x1b[38;2;56;186;72m"
+    key_red = "\x1b[38;2;220;70;70m"
+    border_flat = "\x1b[38;2;210;210;210m"
+
+    vw = layout.box_w if visible_w is None else max(2, min(layout.box_w, int(visible_w)))
+    vh = layout.box_h if visible_h is None else max(2, min(layout.box_h, int(visible_h)))
+    clip_x0 = (layout.box_w - vw) // 2
+    clip_y0 = (layout.box_h - vh) // 2
+    clip_x1 = clip_x0 + vw - 1
+    clip_y1 = clip_y0 + vh - 1
+
+    for dy, raw in enumerate(layout.lines):
+        if dy < clip_y0 or dy > clip_y1:
+            continue
+        y = layout.y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        for dx, ch in enumerate(raw):
+            if dx < clip_x0 or dx > clip_x1:
+                continue
+            x = layout.x0 + dx
+            if x < 0 or x >= SCREEN_W:
+                continue
+            is_border = dy == 0 or dy == (layout.box_h - 1) or dx == 0 or dx == (layout.box_w - 1)
+            if is_border and ch != " ":
+                border_code = ui_border_gradient_code(dx, dy, layout.box_w, layout.box_h) if spec.border_gradient else border_flat
+                if dy == 0 and layout.title_end > layout.title_start and layout.title_start <= dx < layout.title_end:
+                    canvas[y][x] = f"{title_color}{ch}{ANSI_RESET}"
+                else:
+                    canvas[y][x] = f"{border_code}{ch}{ANSI_RESET}"
+                continue
+            if ch == " ":
+                canvas[y][x] = " "
+                continue
+            if dy == layout.action_row_index and ch == "A":
+                canvas[y][x] = f"{key_green}A{ANSI_RESET}"
+            elif dy == layout.action_row_index and ch == "S":
+                canvas[y][x] = f"{key_red}S{ANSI_RESET}"
+            else:
+                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+
+
+def draw_ui_box(canvas: List[List[str]], spec: UIBoxSpec) -> None:
+    layout = _build_ui_box_layout(spec)
+    _draw_ui_box_layout(canvas, layout)
+
+
+def draw_ui_box_animated(
+    canvas: List[List[str]],
+    spec: UIBoxSpec,
+    progress: float,
+) -> None:
+    layout = _build_ui_box_layout(spec)
+    p = max(0.0, min(1.0, float(progress)))
+    h_steps = max(0, layout.box_h - 2)
+    w_steps = max(0, layout.box_w - 2)
+    total_steps = max(1, h_steps + w_steps)
+    step = int(round(total_steps * p))
+    step = max(0, min(total_steps, step))
+
+    if step <= h_steps:
+        # Phase 1: grow vertically first while keeping width at 2.
+        vh = 2 + step
+        vw = 2
+    else:
+        # Phase 2: then grow horizontally while height stays full.
+        vh = layout.box_h
+        vw = 2 + (step - h_steps)
+
+    vw = max(2, min(layout.box_w, int(vw)))
+    vh = max(2, min(layout.box_h, int(vh)))
+
+    ax0 = layout.x0 + ((layout.box_w - vw) // 2)
+    ay0 = layout.y0 + ((layout.box_h - vh) // 2)
+    ax1 = ax0 + vw - 1
+    ay1 = ay0 + vh - 1
+
+    glyphs = _ui_border_glyphs(spec.border_style)
+    border_flat = "\x1b[38;2;210;210;210m"
+    text_color = "\x1b[38;2;245;245;245m"
+    key_green = "\x1b[38;2;56;186;72m"
+    key_red = "\x1b[38;2;220;70;70m"
+
+    # Draw animated frame geometry (actual growing/shrinking box).
+    for dy in range(vh):
+        y = ay0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        for dx in range(vw):
+            x = ax0 + dx
+            if x < 0 or x >= SCREEN_W:
+                continue
+            border = dy == 0 or dy == (vh - 1) or dx == 0 or dx == (vw - 1)
+            if border:
+                if dy == 0 and dx == 0:
+                    ch = glyphs.tl
+                elif dy == 0 and dx == (vw - 1):
+                    ch = glyphs.tr
+                elif dy == (vh - 1) and dx == 0:
+                    ch = glyphs.bl
+                elif dy == (vh - 1) and dx == (vw - 1):
+                    ch = glyphs.br
+                elif dy == 0 or dy == (vh - 1):
+                    ch = glyphs.h
+                else:
+                    ch = glyphs.v
+                border_code = ui_border_gradient_code(dx, dy, vw, vh) if spec.border_gradient else border_flat
+                canvas[y][x] = f"{border_code}{ch}{ANSI_RESET}"
+            else:
+                canvas[y][x] = " "
+
+    # Reveal pre-positioned final content only where animated box currently covers.
+    for dy, raw in enumerate(layout.lines):
+        y = layout.y0 + dy
+        if y < ay0 or y > ay1 or y < 0 or y >= SCREEN_H:
+            continue
+        for dx, ch in enumerate(raw):
+            x = layout.x0 + dx
+            if x < ax0 or x > ax1 or x < 0 or x >= SCREEN_W:
+                continue
+            on_anim_border = y == ay0 or y == ay1 or x == ax0 or x == ax1
+            if on_anim_border:
+                continue
+            if ch == " ":
+                continue
+            final_border = dy == 0 or dy == (layout.box_h - 1) or dx == 0 or dx == (layout.box_w - 1)
+            if final_border:
+                continue
+            if dy == layout.action_row_index and ch == "A":
+                canvas[y][x] = f"{key_green}A{ANSI_RESET}"
+            elif dy == layout.action_row_index and ch == "S":
+                canvas[y][x] = f"{key_red}S{ANSI_RESET}"
+            else:
+                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+
+
+def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
+    mode = max(0, int(variant) % 3)
+    if mode == 1:
+        return [
+            UIBoxSpec(
+                role="notification",
+                border_style="double",
+                title="Notification",
+                body_text="Status effects resolved. Turn order updated.",
+                x=2,
+                y=12,
+                max_body_width=44,
+                body_align="left",
+            ),
+            UIBoxSpec(
+                role="prompt",
+                border_style="double",
+                title="Beba",
+                body_text="So what do you say... Are you ready to challenge them?",
+                center_x=54,
+                center_y=18,
+                max_body_width=54,
+                wrap_mode="balanced",
+                body_align="center",
+                actions=["[ A / Confirm ]", "[ S / Cancel ]"],
+            ),
+            UIBoxSpec(
+                role="history",
+                border_style="heavy",
+                title="Battle Log",
+                body_text="\n".join(DEMO_BATTLE_LOG_LINES[-3:]),
+                x=58,
+                y=18,
+                max_body_width=40,
+            ),
+        ]
+    if mode == 2:
+        return [
+            UIBoxSpec(
+                role="notification",
+                border_style="heavy",
+                title="Notice",
+                body_text="Magic Spark is now attuned to Water affinity.",
+                x=3,
+                y=13,
+                max_body_width=42,
+                body_align="center",
+            ),
+            UIBoxSpec(
+                role="prompt",
+                border_style="light",
+                title="Action Prompt",
+                body_text="Use current loadout for the next encounter?",
+                center_x=50,
+                center_y=18,
+                max_body_width=46,
+                wrap_mode="balanced",
+                body_align="center",
+                actions=["[ A / Yes ]", "[ S / No ]"],
+            ),
+            UIBoxSpec(
+                role="history",
+                border_style="double",
+                title="Console",
+                body_text="\n".join(DEMO_BATTLE_LOG_LINES),
+                x=56,
+                y=17,
+                max_body_width=42,
+            ),
+        ]
+    return [
+        UIBoxSpec(
+            role="notification",
+            border_style="light",
+            title="Notification",
+            body_text="Quest progress updated: 2 objectives remaining.",
+            x=2,
+            y=12,
+            max_body_width=44,
+        ),
+        UIBoxSpec(
+            role="prompt",
+            border_style="heavy",
+            title="Beba",
+            body_text="So what do you say... Are you ready to challenge them?",
+            center_x=50,
+            center_y=18,
+            max_body_width=52,
+            wrap_mode="balanced",
+            body_align="center",
+            actions=["[ A / Confirm ]", "[ S / Cancel ]"],
+        ),
+        UIBoxSpec(
+            role="history",
+            border_style="double",
+            title="Battle Log",
+            body_text="\n".join(DEMO_BATTLE_LOG_LINES),
+            x=58,
+            y=17,
+            max_body_width=40,
+        ),
+    ]
+
+
+def build_ui_animation_specs() -> List[UIBoxSpec]:
+    return [
+        UIBoxSpec(
+            role="notification",
+            border_style="light",
+            title="Notification",
+            body_text="Quest progress updated.",
+            center_x=17,
+            center_y=17,
+            max_body_width=22,
+            body_align="center",
+            wrap_mode="balanced",
+            anchor="center",
+        ),
+        UIBoxSpec(
+            role="prompt",
+            border_style="heavy",
+            title="Prompt",
+            body_text="Engage this battle now?",
+            center_x=50,
+            center_y=17,
+            max_body_width=24,
+            body_align="center",
+            wrap_mode="balanced",
+            actions=["[ A / Confirm ]", "[ S / Cancel ]"],
+            anchor="center",
+        ),
+        UIBoxSpec(
+            role="history",
+            border_style="double",
+            title="History",
+            body_text="Mushy casts Magic Spark.\nFairy Warrior is defeated.",
+            center_x=83,
+            center_y=17,
+            max_body_width=22,
+            body_align="left",
+            wrap_mode="normal",
+            anchor="center",
+        ),
+    ]
+
+
+def ui_box_step_count(spec: UIBoxSpec) -> int:
+    layout = _build_ui_box_layout(spec)
+    return max(1, (layout.box_h - 2) + (layout.box_w - 2))
+
+
+def _draw_ui_text_box(canvas: List[List[str]], text: str, primary_zone: LayoutZone, secondary_zone: LayoutZone) -> None:
+    text = str(text).strip()
+    if not text:
+        return
+    padding_x = 1
+    padding_y = 1
+    max_text_w = min(50, max(16, SCREEN_W - 10 - (padding_x * 2)))
+    wrapped: List[str] = []
+    for para in text.splitlines():
+        line = para.strip()
+        if not line:
+            wrapped.append("")
+            continue
+        wrapped.extend(
+            textwrap.wrap(
+                line,
+                width=max_text_w,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
+    if not wrapped:
+        wrapped = [text[:max_text_w]]
+    text_w = max(len(line) for line in wrapped)
+    inner_w = text_w + (padding_x * 2)
+    box_w = inner_w + 2
+    box_h = len(wrapped) + (padding_y * 2) + 2
+
+    p_cx = primary_zone.x + (primary_zone.width // 2)
+    p_cy = primary_zone.y + (primary_zone.height // 2)
+    s_cx = secondary_zone.x + (secondary_zone.width // 2)
+    s_cy = secondary_zone.y + (secondary_zone.height // 2)
+    mid_x = int(round((p_cx + s_cx) / 2.0))
+    mid_y = int(round((p_cy + s_cy) / 2.0))
+
+    x0 = max(0, min(SCREEN_W - box_w, mid_x - (box_w // 2)))
+    y0 = max(0, min(SCREEN_H - box_h, mid_y - (box_h // 2)))
+
+    top = "o" + ("-" * inner_w) + "o"
+    bottom = top
+    lines: List[str] = [top]
+    for _ in range(padding_y):
+        lines.append("|" + (" " * inner_w) + "|")
+    for line in wrapped:
+        text_line = (" " * padding_x) + line.center(text_w) + (" " * padding_x)
+        lines.append("|" + text_line + "|")
+    for _ in range(padding_y):
+        lines.append("|" + (" " * inner_w) + "|")
+    lines.append(bottom)
+
+    text_color = "\x1b[38;2;245;245;245m"
+    for dy, raw in enumerate(lines):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        cells = ansi_line_to_cells(raw, len(raw))
+        for dx, cell in enumerate(cells):
+            x = x0 + dx
+            if x < 0 or x >= SCREEN_W:
+                continue
+            ch = _strip_ansi(cell)
+            is_border = dy == 0 or dy == box_h - 1 or dx == 0 or dx == box_w - 1
+            if is_border and ch != " ":
+                g = ui_border_gradient_code(dx, dy, box_w, box_h)
+                canvas[y][x] = f"{g}{ch}{ANSI_RESET}"
+            elif ch != " ":
+                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+            else:
+                canvas[y][x] = " "
+
+
+def _draw_ui_dialogue_box(
+    canvas: List[List[str]],
+    speaker: str,
+    text: str,
+    primary_zone: LayoutZone,
+    secondary_zone: LayoutZone,
+) -> None:
+    def _balanced_wrap(content: str, width: int) -> List[str]:
+        lines = textwrap.wrap(content, width=width, break_long_words=False, break_on_hyphens=False)
+        if len(lines) < 2:
+            return lines or [content[:width]]
+        # Rebalance to avoid a tiny orphan tail line when possible.
+        while len(lines) >= 2:
+            last_words = lines[-1].split()
+            prev_words = lines[-2].split()
+            if len(last_words) > 2 or len(prev_words) <= 2:
+                break
+            move = prev_words[-1]
+            candidate_last = f"{move} {lines[-1]}".strip()
+            candidate_prev = " ".join(prev_words[:-1]).strip()
+            if not candidate_prev or len(candidate_last) > width:
+                break
+            lines[-2] = candidate_prev
+            lines[-1] = candidate_last
+        return lines
+
+    speaker_title = f"{{ {speaker} }}"
+    button_text = "[ A / Confirm ]--[ S / Cancel ]"
+    wrapped = _balanced_wrap(str(text).strip(), width=52)
+    if not wrapped:
+        wrapped = [""]
+    inner_w = max(len(line) for line in wrapped)
+    inner_w = max(inner_w + 2, len(speaker_title) + 8, len(button_text) + 8)
+    box_w = inner_w + 2
+    box_h = len(wrapped) + 5  # top + top margin + text + bottom margin + bottom
+
+    p_cx = primary_zone.x + (primary_zone.width // 2)
+    p_cy = primary_zone.y + (primary_zone.height // 2)
+    s_cx = secondary_zone.x + (secondary_zone.width // 2)
+    s_cy = secondary_zone.y + (secondary_zone.height // 2)
+    mid_x = int(round((p_cx + s_cx) / 2.0))
+    mid_y = int(round((p_cy + s_cy) / 2.0))
+
+    x0 = max(0, min(SCREEN_W - box_w, mid_x - (box_w // 2)))
+    y0 = max(0, min(SCREEN_H - box_h, mid_y - (box_h // 2)))
+
+    title_left = max(0, (inner_w - len(speaker_title)) // 2)
+    title_right = max(0, inner_w - len(speaker_title) - title_left)
+    top = "o" + ("-" * title_left) + speaker_title + ("-" * title_right) + "o"
+    title_start_dx = 1 + title_left
+    title_end_dx = title_start_dx + len(speaker_title)
+
+    button_left = max(0, (inner_w - len(button_text)) // 2)
+    button_right = max(0, inner_w - len(button_text) - button_left)
+    bottom = "o" + ("-" * button_left) + button_text + ("-" * button_right) + "o"
+
+    lines: List[str] = [top]
+    lines.append("|" + (" " * inner_w) + "|")  # top internal margin
+    for line in wrapped:
+        lines.append("|" + line.center(inner_w) + "|")
+    lines.append("|" + (" " * inner_w) + "|")  # bottom internal margin
+    lines.append(bottom)
+    box_h = len(lines)
+
+    text_color = "\x1b[38;2;245;245;245m"
+    green_key = "\x1b[38;2;56;186;72m"
+    red_key = "\x1b[38;2;220;70;70m"
+    white_title = "\x1b[38;2;245;245;245m"
+    for dy, raw in enumerate(lines):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        cells = ansi_line_to_cells(raw, len(raw))
+        for dx, cell in enumerate(cells):
+            x = x0 + dx
+            if x < 0 or x >= SCREEN_W:
+                continue
+            ch = _strip_ansi(cell)
+            is_border = dy == 0 or dy == box_h - 1 or dx == 0 or dx == box_w - 1
+            if dy == 0 and title_start_dx <= dx < title_end_dx and ch != " ":
+                canvas[y][x] = f"{white_title}{ch}{ANSI_RESET}"
+            elif dy == box_h - 1 and ch == "A":
+                canvas[y][x] = f"{green_key}A{ANSI_RESET}"
+            elif dy == box_h - 1 and ch == "S":
+                canvas[y][x] = f"{red_key}S{ANSI_RESET}"
+            elif is_border and ch != " ":
+                g = ui_border_gradient_code(dx, dy, box_w, box_h)
+                canvas[y][x] = f"{g}{ch}{ANSI_RESET}"
+            elif ch != " ":
+                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+            else:
+                canvas[y][x] = " "
+
+
+def _draw_spell_throw(
+    canvas: List[List[str]],
+    source: tuple[int, int],
+    target: tuple[int, int],
+    spell_phase: float,
+) -> None:
+    progress = max(0.0, min(1.0, float(spell_phase)))
+    sx, sy = source
+    tx, ty = target
+    travel_portion = 0.62
+    if progress < travel_portion:
+        travel_t = progress / max(0.001, travel_portion)
+        x = int(round(sx + ((tx - sx) * travel_t)))
+        y = int(round(sy + ((ty - sy) * travel_t)))
+        stage_idx = min(2, int(travel_t * 3.0))
+    else:
+        # Hold at destination and cycle through all three stages before loop reset.
+        x, y = tx, ty
+        impact_t = (progress - travel_portion) / max(0.001, 1.0 - travel_portion)
+        cycles = 2.0
+        stage_idx = int((impact_t * cycles * 3.0)) % 3
+
+    # Gold -> white gradient spectrum for per-spark variation.
+    start = (255, 215, 90)
+    end = (255, 255, 255)
+    steps = 10
+    palette: List[str] = []
+    for i in range(steps):
+        t = i / max(1, steps - 1)
+        r = int(start[0] + ((end[0] - start[0]) * t))
+        g = int(start[1] + ((end[1] - start[1]) * t))
+        b = int(start[2] + ((end[2] - start[2]) * t))
+        palette.append(f"\x1b[38;2;{r};{g};{b}m")
+    if stage_idx == 0:
+        pattern = ["*"]
+    elif stage_idx == 1:
+        pattern = [
+            " * ",
+            "* *",
+            " * ",
+        ]
+    else:
+        pattern = [
+            "  *  ",
+            " * * ",
+            "*   *",
+            " * * ",
+            "  *  ",
+        ]
+    h = len(pattern)
+    w = max((len(row) for row in pattern), default=1)
+    x0 = x - (w // 2)
+    y0 = y - (h // 2)
+    for dy, row in enumerate(pattern):
+        for dx, ch in enumerate(row):
+            if ch != "*":
+                continue
+            gx = x0 + dx
+            gy = y0 + dy
+            if 0 <= gx < SCREEN_W and 0 <= gy < SCREEN_H:
+                # Deterministic per-cell/per-phase random color pick from gold-white spectrum.
+                seed = (gx * 73856093) ^ (gy * 19349663) ^ int(progress * 1000)
+                rng = random.Random(seed)
+                color = palette[rng.randrange(len(palette))]
+                canvas[gy][gx] = f"{color}*{ANSI_RESET}"
+
+
+def _draw_spell_barrage(
+    canvas: List[List[str]],
+    source: tuple[int, int],
+    targets: List[tuple[int, int]],
+    spell_clock: float,
+) -> None:
+    if not targets:
+        return
+    # 50% overlap: each next cast starts when previous reaches half progress.
+    start_interval = 0.5
+    cast_duration = 1.0
+    total_span = cast_duration + (start_interval * max(0, len(targets) - 1))
+    t = float(spell_clock) % total_span
+    for idx, target in enumerate(targets):
+        local = t - (idx * start_interval)
+        if local < 0:
+            local += total_span
+        if 0.0 <= local < cast_duration:
+            _draw_spell_throw(canvas, source, target, local / cast_duration)
+
+
+def load_smash_frames(path: str) -> List[List[str]]:
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as handle:
+        raw_lines = handle.read().splitlines()
+    frames: List[List[str]] = []
+    current: List[str] = []
+    for line in raw_lines:
+        if line.strip() == "":
+            if current:
+                frames.append(current)
+                current = []
+            continue
+        current.append(line.rstrip("\n"))
+    if current:
+        frames.append(current)
+    return frames
+
+
+def _physical_hit_state(clock: float) -> tuple[bool, bool, int]:
+    # (hide_attacker, show_impact, frame_index_hint)
+    # One cycle: blink twice, then play smash frames 1..5 once (no intra-hit looping).
+    phase = float(clock) % 1.0
+    blink_window = 0.50
+    impact_window = 0.50
+    if phase < blink_window:
+        step = int((phase / max(0.001, blink_window)) * 4.0)  # two blinks
+        blink_visible = (step % 2) == 0
+        return (not blink_visible, False, 0)
+    if phase < (blink_window + impact_window):
+        impact_t = (phase - blink_window) / max(0.001, impact_window)
+        frame_idx = min(4, int(impact_t * 5.0))
+        return (False, True, frame_idx)
+    return (False, False, 0)
+
+
+def _draw_smash_frame(canvas: List[List[str]], frame: List[str], center: tuple[int, int]) -> None:
+    if not frame:
+        return
+    h = len(frame)
+    w = max((len(line) for line in frame), default=0)
+    cx, cy = center
+    x0 = cx - (w // 2)
+    y0 = cy - (h // 2)
+    color = "\x1b[38;2;255;245;245m"
+    for dy, line in enumerate(frame):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        for dx, ch in enumerate(line):
+            if ch == " ":
+                continue
+            x = x0 + dx
+            if 0 <= x < SCREEN_W:
+                canvas[y][x] = f"{color}{ch}{ANSI_RESET}"
+
+
+def _draw_health_bar(canvas: List[List[str]], center_x: int, top_y: int, filled: int, total: int = 6) -> None:
+    total = max(1, int(total))
+    filled = max(0, min(total, int(filled)))
+    empty = total - filled
+    hp_color = "\x1b[38;2;56;186;72m"
+    miss_color = "\x1b[38;2;18;18;18m"
+    frame_color = "\x1b[38;2;210;210;210m"
+    cells: List[str] = [f"{frame_color}[{ANSI_RESET}"]
+    cells.extend([f"{hp_color}#{ANSI_RESET}" for _ in range(filled)])
+    cells.extend([f"{miss_color}_{ANSI_RESET}" for _ in range(empty)])
+    cells.append(f"{frame_color}]{ANSI_RESET}")
+    width = len(cells)
+    x0 = max(0, min(SCREEN_W - width, int(center_x) - (width // 2)))
+    y = int(top_y)
+    if y < 0 or y >= SCREEN_H:
+        return
+    for i, cell in enumerate(cells):
+        x = x0 + i
+        if 0 <= x < SCREEN_W:
+            canvas[y][x] = cell
+
+
+def _draw_actor_health_bars(canvas: List[List[str]], placements: List[dict], mixed: bool = True) -> None:
+    for idx, actor in enumerate(placements):
+        rows = actor.get("rows", [])
+        if not isinstance(rows, list) or not rows:
+            continue
+        w = max((len(row) for row in rows), default=0)
+        x0 = int(actor.get("x", 0))
+        y0 = int(actor.get("y", 0))
+        center_x = x0 + (w // 2)
+        bar_y = y0 - 1
+        filled = 6 if (not mixed or idx % 2 == 0) else 3
+        _draw_health_bar(canvas, center_x, bar_y, filled, total=6)
+
+
+def _logo_gradient_code(x: int, y: int, width: int, height: int) -> str:
+    if width <= 1 and height <= 1:
+        return "\x1b[38;2;192;192;192m"
+    t = ((x / max(1, width - 1)) + (y / max(1, height - 1))) / 2.0
+    if t <= 0.5:
+        tt = t / 0.5
+        start = (192, 192, 192)
+        end = (77, 77, 255)
+    else:
+        tt = (t - 0.5) / 0.5
+        start = (77, 77, 255)
+        end = (96, 96, 96)
+    r = int(start[0] + (end[0] - start[0]) * tt)
+    g = int(start[1] + (end[1] - start[1]) * tt)
+    b = int(start[2] + (end[2] - start[2]) * tt)
+    return f"\x1b[38;2;{r};{g};{b}m"
+
+
+def _title_subtitle_text() -> str:
+    return "*-----<{([  AI World Engine  ])}>-----*"
+
+
+def _title_subtitle_cells(y: int, start_x: int) -> List[str]:
+    text = _title_subtitle_text()
+    left = "*-----<{([  "
+    mid = "AI World Engine"
+    out: List[str] = []
+    for i, ch in enumerate(text):
+        if ch == " ":
+            out.append(" ")
+        elif len(left) <= i < len(left) + len(mid):
+            out.append(f"\x1b[38;2;255;255;255m{ch}{ANSI_RESET}")
+        else:
+            out.append(f"{_logo_gradient_code(start_x + i, y, SCREEN_W, SCREEN_H)}{ch}{ANSI_RESET}")
+    return out
+
+
+def _logo_cells_from_objects(objects: Dict[str, object]) -> dict:
+    entry = objects.get("lokarta_logo", {})
+    if not isinstance(entry, dict):
+        return {"width": 0, "height": 0, "rows": []}
+    art = entry.get("art", [])
+    blocking = str(entry.get("blocking_space", "#"))[:1] or "#"
+    if not isinstance(art, list) or not art:
+        return {"width": 0, "height": 0, "rows": []}
+
+    lines = [str(line) for line in art]
+    width = max((len(line) for line in lines), default=0)
+    height = len(lines)
+    rows: List[List[str]] = []
+    for y, line in enumerate(lines):
+        padded = line.ljust(width)
+        row: List[str] = []
+        for x, ch in enumerate(padded):
+            if ch == " ":
+                row.append(" ")
+            elif ch == blocking:
+                # Opaque empty cell that blocks background behind the logo.
+                row.append(f"{ANSI_RESET} ")
+            else:
+                row.append(f"{_logo_gradient_code(x, y, width, height)}{ch}{ANSI_RESET}")
+        rows.append(row)
+    return {"width": width, "height": height, "rows": rows}
+
+
+def _overlay_title_logo(canvas: List[List[str]], logo: dict) -> None:
+    rows = logo.get("rows", [])
+    width = int(logo.get("width", 0))
+    height = int(logo.get("height", 0))
+    if not isinstance(rows, list) or width <= 0 or height <= 0:
+        return
+    x0 = max(0, (SCREEN_W - width) // 2)
+    y0 = 1
+    for dy, row in enumerate(rows):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+            continue
+        for dx, cell in enumerate(row):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W and cell != " ":
+                canvas[y][x] = cell
+
+    subtitle_y = y0 + height + 1
+    if 0 <= subtitle_y < SCREEN_H:
+        text = _title_subtitle_text()
+        sx = max(0, (SCREEN_W - len(text)) // 2)
+        cells = _title_subtitle_cells(subtitle_y, sx)
+        for i, cell in enumerate(cells):
+            x = sx + i
+            if 0 <= x < SCREEN_W and cell != " ":
+                canvas[subtitle_y][x] = cell
+
+
+def render(
+    clouds: List[dict],
+    ground_rows: List[str],
+    zones: Dict[str, LayoutZone],
+    sky_bottom_anchor: int,
+    foreground_split_label: str,
+    world_layer_level: int = 0,
+    world_anchor_stagger: int = 1,
+    world_treeline_sprites: List[dict] | None = None,
+    primary_actor_sprites: List[List[List[str]]] | None = None,
+    primary_actor_stagger: int = 0,
+    secondary_actor_sprites: List[List[List[str]]] | None = None,
+    secondary_actor_stagger: int = 0,
+    secondary_actor_reverse_stagger: bool = False,
+    guy_sprite: List[List[str]] | None = None,
+    mushy_sprite: List[List[str]] | None = None,
+    spell_phase: float = 0.0,
+    spell_clock: float = 0.0,
+    smash_frames: List[List[str]] | None = None,
+    wipe_progress: float = 1.0,
+    show_zone_guides: bool = False,
+    world_scene_label: str = "cottage",
+    title_logo: dict | None = None,
+    show_title_logo: bool = False,
+    ui_box_specs: List[UIBoxSpec] | None = None,
+    ui_active_box: UIBoxSpec | None = None,
+    ui_active_box_progress: float = 1.0,
+) -> str:
+    canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
+
+    sky_zone = zones["sky_bg"]
+    ground_zone = zones["ground_bg"]
+    secondary_zone = build_secondary_zone()
+    primary_zone = None
+    if world_layer_level >= 2:
+        lowest_tree_row = _treeline_lowest_row(ground_zone.y, world_anchor_stagger)
+        primary_zone = build_primary_zone(lowest_tree_row + 1)
+    sky_source_bottom = max(0, min(SCREEN_H, int(sky_bottom_anchor)))
+    sky_source_top = sky_source_bottom - sky_zone.height
+
+    # Background sky pass: drifting cloud sprites.
+    for cloud in clouds:
+        template = cloud["template"]
+        x0 = int(cloud["x"])
+        y0 = int(cloud["y"])
+        for dy, row in enumerate(template["rows"]):
+            src_y = y0 + dy
+            if src_y < sky_source_top or src_y >= sky_source_bottom:
+                continue
+            y = sky_zone.y + (src_y - sky_source_top)
+            for dx, cell in enumerate(row):
+                x = x0 + dx
+                if 0 <= x < SCREEN_W and cell != " ":
+                    canvas[y][x] = cell
+
+    # Background ground pass: 15 rows of grass and pebbles.
+    for i in range(ground_zone.height):
+        y = ground_zone.y + i
+        src = ground_rows[i] if i < len(ground_rows) else ""
+        cells = ansi_line_to_cells(src, SCREEN_W)
+        for x, cell in enumerate(cells):
+            if cell != " ":
+                canvas[y][x] = cell
+
+    # World layer pass: tree sprites anchored to top of ground.
+    if world_layer_level >= 1 and world_treeline_sprites:
+        for sprite in world_treeline_sprites:
+            rows = sprite.get("rows", [])
+            if not isinstance(rows, list):
+                continue
+            x0 = int(sprite.get("x", 0))
+            height = int(sprite.get("height", len(rows)))
+            stagger = max(1, min(3, int(world_anchor_stagger)))
+            offset_cap = stagger - 1
+            offset = min(offset_cap, max(0, int(sprite.get("anchor_offset", 0))))
+            y_base = ground_zone.y + offset
+            y0 = y_base - max(0, height - 1)
+            for dy, row in enumerate(rows):
+                y = y0 + dy
+                if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+                    continue
+                for dx, cell in enumerate(row):
+                    x = x0 + dx
+                    if 0 <= x < SCREEN_W and cell != " ":
+                        canvas[y][x] = cell
+
+    hide_attacker = False
+    show_hit_impact = False
+    impact_frame_hint = 0
+    if world_layer_level == 7:
+        hide_attacker, show_hit_impact, impact_frame_hint = _physical_hit_state(spell_clock)
+
+    # World pane actor pass (secondary): centered collective, bottom-anchored individuals.
+    secondary_placements: List[dict] = []
+    if world_layer_level >= 3:
+        sec_sprites = secondary_actor_sprites if secondary_actor_sprites is not None else ([guy_sprite] if guy_sprite else [])
+        secondary_placements = layout_actor_strip(
+            secondary_zone,
+            sec_sprites,
+            spacing=1,
+            stagger_rows=secondary_actor_stagger,
+            reverse_stagger=secondary_actor_reverse_stagger,
+        )
+        for idx, actor in enumerate(secondary_placements):
+            if hide_attacker and idx == 0:
+                continue
+            x0 = int(actor.get("x", 0))
+            y0 = int(actor.get("y", 0))
+            rows = actor.get("rows", [])
+            if not isinstance(rows, list):
+                continue
+            for dy, row in enumerate(rows):
+                y = y0 + dy
+                if y < 0 or y >= SCREEN_H:
+                    continue
+                for dx, cell in enumerate(row):
+                    x = x0 + dx
+                    if 0 <= x < SCREEN_W and cell != " ":
+                        canvas[y][x] = cell
+
+    # Foreground primary pass (primary pane): centered collective, bottom-anchored individuals.
+    primary_placements: List[dict] = []
+    if world_layer_level >= 2 and primary_zone is not None:
+        pri_sprites = primary_actor_sprites if primary_actor_sprites is not None else ([mushy_sprite] if mushy_sprite else [])
+        primary_placements = layout_actor_strip(primary_zone, pri_sprites, spacing=1, stagger_rows=primary_actor_stagger)
+        for actor in primary_placements:
+            x0 = int(actor.get("x", 0))
+            y0 = int(actor.get("y", 0))
+            rows = actor.get("rows", [])
+            if not isinstance(rows, list):
+                continue
+            for dy, row in enumerate(rows):
+                y = y0 + dy
+                if y < 0 or y >= SCREEN_H:
+                    continue
+                for dx, cell in enumerate(row):
+                    x = x0 + dx
+                    if 0 <= x < SCREEN_W and cell != " ":
+                        canvas[y][x] = cell
+
+    # UI layer demo: auto-sizing text box centered between primary/secondary centers.
+    if world_layer_level == 4 and primary_zone is not None:
+        _draw_ui_text_box(canvas, UI_DEMO_TEXT, primary_zone, secondary_zone)
+
+    # Effect layer demo: Guy throws spell at first primary fairy.
+    if world_layer_level == 5 and secondary_placements and primary_placements:
+        src = secondary_placements[0]
+        dst = primary_placements[0]
+        src_rows = src.get("rows", [])
+        dst_rows = dst.get("rows", [])
+        src_w = max((len(row) for row in src_rows), default=0) if isinstance(src_rows, list) else 0
+        src_h = len(src_rows) if isinstance(src_rows, list) else 0
+        dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
+        dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
+        source = (int(src.get("x", 0)) + (src_w // 2), int(src.get("y", 0)) + (src_h // 2))
+        target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
+        _draw_spell_throw(canvas, source, target, spell_phase)
+    # Next demo step: barrage to all 4 primary fairies with 50% overlap.
+    if world_layer_level == 6 and secondary_placements and primary_placements:
+        src = secondary_placements[0]
+        src_rows = src.get("rows", [])
+        src_w = max((len(row) for row in src_rows), default=0) if isinstance(src_rows, list) else 0
+        src_h = len(src_rows) if isinstance(src_rows, list) else 0
+        source = (int(src.get("x", 0)) + (src_w // 2), int(src.get("y", 0)) + (src_h // 2))
+        targets: List[tuple[int, int]] = []
+        for dst in primary_placements[:4]:
+            dst_rows = dst.get("rows", [])
+            dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
+            dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
+            targets.append((int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2)))
+        _draw_spell_barrage(canvas, source, targets, spell_clock)
+    # Next demo step: physical hit (blink attacker, then smash animation on target).
+    if world_layer_level == 7 and primary_placements and show_hit_impact and smash_frames:
+        dst = primary_placements[0]
+        dst_rows = dst.get("rows", [])
+        dst_w = max((len(row) for row in dst_rows), default=0) if isinstance(dst_rows, list) else 0
+        dst_h = len(dst_rows) if isinstance(dst_rows, list) else 0
+        target = (int(dst.get("x", 0)) + (dst_w // 2), int(dst.get("y", 0)) + (dst_h // 2))
+        frame_idx = min(max(0, impact_frame_hint), len(smash_frames) - 1)
+        _draw_smash_frame(canvas, smash_frames[frame_idx], target)
+    # Next demo step: health bars above all actors in both panes.
+    if world_layer_level == 8:
+        _draw_actor_health_bars(canvas, primary_placements, mixed=True)
+        _draw_actor_health_bars(canvas, secondary_placements, mixed=True)
+    if world_layer_level == 9 and primary_zone is not None:
+        _draw_ui_dialogue_box(canvas, "Beba", UI_DIALOG_TEXT, primary_zone, secondary_zone)
+
+    if show_title_logo and isinstance(title_logo, dict):
+        _overlay_title_logo(canvas, title_logo)
+
+    if isinstance(ui_box_specs, list):
+        for spec in ui_box_specs:
+            if isinstance(spec, UIBoxSpec):
+                draw_ui_box(canvas, spec)
+    if isinstance(ui_active_box, UIBoxSpec):
+        draw_ui_box_animated(canvas, ui_active_box, ui_active_box_progress)
+
+    # Vertical wipe-in from bottom.
+    progress = max(0.0, min(1.0, wipe_progress))
+    if progress < 1.0:
+        visible_rows = int(round(SCREEN_H * progress))
+        top_hidden_rows = max(0, SCREEN_H - visible_rows)
+        for y in range(top_hidden_rows):
+            for x in range(SCREEN_W):
+                canvas[y][x] = " "
+
+    if show_zone_guides:
+        guide_zones = _guide_zones_for_render(
+            zones=zones,
+            world_layer_level=world_layer_level,
+            world_treeline_sprites=world_treeline_sprites,
+            world_anchor_stagger=world_anchor_stagger,
+        )
+        _overlay_zone_guides(canvas, guide_zones)
+
+    return "\n".join("".join(row) for row in canvas)
+
+
+def main() -> None:
+    base = os.getcwd()
+    objects_path = os.path.join(base, "legecay", "data", "objects.json")
+    colors_path = os.path.join(base, "legecay", "data", "colors.json")
+    objects = load_json(objects_path)
+    colors = load_json(colors_path)
+    if not isinstance(objects, dict):
+        raise RuntimeError("objects.json is not a JSON object")
+    if not isinstance(colors, dict):
+        raise RuntimeError("colors.json is not a JSON object")
+    color_codes = _build_color_codes(colors)
+
+    templates = cloud_templates(objects)
+    if not templates:
+        raise RuntimeError("No cloud_* objects found in objects.json")
+    title_logo = _logo_cells_from_objects(objects)
+
+    # Fixed title scene foundation:
+    # [background][25/5][world][3][scene:cottage]
+    current_sky_rows = 25
+    zones = build_scene_zones(sky_rows=current_sky_rows)
+    sky_bottom_anchor = sky_bottom_anchor_for_rows(current_sky_rows)
+    clouds = spawn_clouds_full_canvas(templates)
+    ground_rows = build_ground_rows(
+        row_count=zones["ground_bg"].height,
+        objects_data=objects,
+        color_codes=color_codes,
+        pebble_density=0.07,
+    )
+    wipe_duration = 1.0
+    wipe_started_at = time.monotonic()
+    show_zone_guides = False
+    world_layer_level = 1
+    world_anchor_stagger = 3
+    world_scene_label = "cottage"
+    world_center_object_id = "house"
+    world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
+    ui_sequence = build_ui_animation_specs()
+    ui_seq_index = 0
+    ui_anim_opening = True
+    ui_anim_step = 0
+    ui_open_hold_remaining = 0.0
+
+    print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
+    try:
+        last_tick = time.monotonic()
+        while True:
+            now = time.monotonic()
+            dt = max(0.0, min(0.2, now - last_tick))
+            last_tick = now
+            wipe_progress = min(1.0, max(0.0, (now - wipe_started_at) / wipe_duration))
+
+            for cloud in clouds:
+                speed = float(cloud.get("speed", 1.0))
+                cloud["x"] = float(cloud.get("x", 0.0)) - (speed * dt)
+                w = int(cloud["template"]["width"])
+                if cloud["x"] + w < 0:
+                    cloud["x"] = SCREEN_W + (cloud["x"] + w)
+
+            key = read_key_nonblocking()
+            if key == "q":
+                break
+
+            split_label = f"{zones['sky_bg'].height}/{zones['ground_bg'].height}"
+            active_spec = ui_sequence[ui_seq_index]
+            step_count = ui_box_step_count(active_spec)
+            anim_progress = ui_anim_step / max(1, step_count)
+            frame = render(
+                clouds=clouds,
+                ground_rows=ground_rows,
+                zones=zones,
+                sky_bottom_anchor=sky_bottom_anchor,
+                foreground_split_label=split_label,
+                world_layer_level=world_layer_level,
+                world_anchor_stagger=world_anchor_stagger,
+                world_treeline_sprites=world_treeline_sprites,
+                primary_actor_sprites=[],
+                primary_actor_stagger=1,
+                secondary_actor_sprites=[],
+                secondary_actor_stagger=1,
+                secondary_actor_reverse_stagger=True,
+                wipe_progress=wipe_progress,
+                show_zone_guides=show_zone_guides,
+                world_scene_label=world_scene_label,
+                title_logo=title_logo,
+                show_title_logo=True,
+                ui_active_box=active_spec,
+                ui_active_box_progress=anim_progress,
+            )
+            print(ANSI_HOME + frame, end="", flush=True)
+
+            # Box animation sequence: in/out for each box in order.
+            if ui_anim_opening:
+                ui_anim_step = min(step_count, ui_anim_step + 4)
+                if ui_anim_step >= step_count:
+                    ui_anim_opening = False
+                    ui_open_hold_remaining = 1.0
+            else:
+                if ui_open_hold_remaining > 0.0:
+                    ui_open_hold_remaining = max(0.0, ui_open_hold_remaining - dt)
+                else:
+                    ui_anim_step = max(0, ui_anim_step - 4)
+                    if ui_anim_step <= 0:
+                        ui_anim_opening = True
+                        ui_seq_index = (ui_seq_index + 1) % len(ui_sequence)
+            time.sleep(0.05)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        print(ANSI_SHOW_CURSOR + ANSI_RESET)
+
+
+if __name__ == "__main__":
+    main()
