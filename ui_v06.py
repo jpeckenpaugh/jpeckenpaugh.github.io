@@ -3034,6 +3034,81 @@ def _draw_health_bar_custom(
                 canvas[y][x] = cell
 
 
+def _draw_status_hud_dual(
+    canvas: List[List[str]],
+    center_x: int,
+    top_y: int,
+    hp: int,
+    hp_total: int,
+    mp: int,
+    mp_total: int,
+) -> None:
+    hp_total = max(1, int(hp_total))
+    mp_total = max(1, int(mp_total))
+    hp = max(0, min(hp_total, int(hp)))
+    mp = max(0, min(mp_total, int(mp)))
+    inner_w = 10
+    box_w = inner_w + 2
+    x0 = max(0, min(SCREEN_W - box_w, int(center_x) - (box_w // 2)))
+    y0 = int(top_y)
+    if y0 < 0 or (y0 + 3) >= SCREEN_H:
+        return
+
+    def _fg_to_bg(code: str) -> str:
+        m = re.search(r"\x1b\[38;2;(\d+);(\d+);(\d+)m", str(code))
+        if not m:
+            return ""
+        return f"\x1b[48;2;{m.group(1)};{m.group(2)};{m.group(3)}m"
+
+    frame_color = "\x1b[38;2;210;210;210m"
+    miss_color = "\x1b[38;2;26;26;26m"
+    hp_pct = hp / float(max(1, hp_total))
+    if hp_pct >= 0.5:
+        hp_color = "\x1b[38;2;56;186;72m"
+    elif hp_pct >= 0.25:
+        hp_color = "\x1b[38;2;236;201;58m"
+    else:
+        hp_color = "\x1b[38;2;220;70;70m"
+    mp_color = _mp_fill_color(mp / float(max(1, mp_total)))
+    tl, tr = "\u250c", "\u2510"
+    bl, br = "\u2514", "\u2518"
+    hz, vt = "\u2500", "\u2502"
+    fill_ch, miss_ch = "\u2588", "\u00b7"
+
+    hp_slots = max(0, min(inner_w, int(round((hp / float(max(1, hp_total))) * inner_w))))
+    mp_slots = max(0, min(inner_w, int(round((mp / float(max(1, mp_total))) * inner_w))))
+
+    def _build_row(label: str, filled_slots: int, fill_color: str) -> List[str]:
+        styles: List[str] = []
+        for i in range(inner_w):
+            if i < filled_slots:
+                styles.append(fill_color)
+            else:
+                styles.append(miss_color)
+        row = [f"{frame_color}{vt}{ANSI_RESET}"]
+        for i in range(inner_w):
+            ch = fill_ch if i < filled_slots else miss_ch
+            row.append(f"{styles[i]}{ch}{ANSI_RESET}")
+        for i, ch in enumerate(label[:inner_w]):
+            bg = _fg_to_bg(styles[i])
+            row[1 + i] = f"\x1b[38;2;245;245;245m{bg}{ch}{ANSI_RESET}" if bg else f"\x1b[38;2;245;245;245m{ch}{ANSI_RESET}"
+        row.append(f"{frame_color}{vt}{ANSI_RESET}")
+        return row
+
+    top_row: List[str] = [f"{frame_color}{tl}{ANSI_RESET}"] + [f"{frame_color}{hz}{ANSI_RESET}" for _ in range(inner_w)] + [f"{frame_color}{tr}{ANSI_RESET}"]
+    hp_row = _build_row("HP", hp_slots, hp_color)
+    mp_row = _build_row("MP", mp_slots, mp_color)
+    bot_row: List[str] = [f"{frame_color}{bl}{ANSI_RESET}"] + [f"{frame_color}{hz}{ANSI_RESET}" for _ in range(inner_w)] + [f"{frame_color}{br}{ANSI_RESET}"]
+    for dy, row in enumerate([top_row, hp_row, mp_row, bot_row]):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H:
+            continue
+        for dx, cell in enumerate(row):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W:
+                canvas[y][x] = cell
+
+
 def _draw_damage_hud_step(
     canvas: List[List[str]],
     target_actor: dict,
@@ -3612,15 +3687,14 @@ def render(
                 hp_total = max(1, int(sec_hp_total[idx] if idx < len(sec_hp_total) else hp_val))
                 mp_val = int(sec_mp_vals[idx] if idx < len(sec_mp_vals) else 0)
                 mp_tot = max(1, int(sec_mp_total[idx] if idx < len(sec_mp_total) else mp_val))
-                _draw_health_bar_custom(canvas, cx, y - 7, max(0, int(hp_val)), total=hp_total, row_label="HP")
-                _draw_health_bar_custom(
+                _draw_status_hud_dual(
                     canvas,
                     cx,
-                    y - 4,
-                    max(0, mp_val),
-                    total=mp_tot,
-                    fill_color=_mp_fill_color(max(0.0, min(1.0, mp_val / max(1.0, float(mp_tot))))),
-                    row_label="MP",
+                    y - 7,
+                    hp=max(0, int(hp_val)),
+                    hp_total=hp_total,
+                    mp=max(0, mp_val),
+                    mp_total=mp_tot,
                 )
 
     # UI layer demo: auto-sizing text box centered between primary/secondary centers.
