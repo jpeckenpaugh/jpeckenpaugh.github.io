@@ -2912,6 +2912,26 @@ def render(
                 frame_idx = min(len(smash_frames) - 1, int(((prog - 0.5) / 0.5) * len(smash_frames)))
                 _draw_smash_frame(canvas, smash_frames[max(0, frame_idx)], _center_of(actor))
 
+        # Planning-phase HUD: show HP bars above all opponents while selecting targets.
+        if isinstance(story_primary_hp, list):
+            total = max(1, int(story_primary_hp_total))
+            for idx, hp_val in enumerate(story_primary_hp):
+                if idx < 0 or idx >= len(primary_placements):
+                    continue
+                actor = primary_placements[idx]
+                rows = actor.get("rows", [])
+                w = max((len(r) for r in rows), default=0) if isinstance(rows, list) else 0
+                x = int(actor.get("x", 0)) + (w // 2)
+                y = int(actor.get("y", 0)) - 1
+                _draw_health_bar_custom(
+                    canvas,
+                    x,
+                    y - 2,
+                    max(0, int(hp_val)),
+                    total=total,
+                    row_label="HP",
+                )
+
     # UI layer demo: auto-sizing text box centered between primary/secondary centers.
     if world_layer_level == 4 and primary_zone is not None:
         _draw_ui_text_box(canvas, UI_DEMO_TEXT, primary_zone, secondary_zone)
@@ -3910,6 +3930,10 @@ def main() -> None:
             story_damage_hud = None
             story_mp_hud = None
             story_smash = None
+            story_primary_hp = None
+            story_primary_hp_total = 10
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
+                story_primary_hp = list(pri_hp_now)
             if screen in ("story_battle_resolve", "story_battle3_resolve"):
                 queue = flow.get("battle_queue", [])
                 qidx = int(flow.get("battle_queue_index", 0))
@@ -3988,6 +4012,8 @@ def main() -> None:
                 story_target_primary_index=story_target_index,
                 story_target_blink=bool((int(now * 2.0) % 2) == 0),
                 story_spell=story_spell,
+                story_primary_hp=story_primary_hp,
+                story_primary_hp_total=story_primary_hp_total,
                 story_damage_hud=story_damage_hud,
                 story_mp_hud=story_mp_hud,
                 story_smash=story_smash,
