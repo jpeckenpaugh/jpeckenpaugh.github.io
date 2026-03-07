@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DOCS="$ROOT/docs"
+LEGACY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$LEGACY_ROOT/.." && pwd)"
+DOCS="$REPO_ROOT/docs"
+WEB_SRC="$LEGACY_ROOT/docs"
+
+mkdir -p "$DOCS"
+
+# 1) Start from web shell/template files.
+rsync -av --delete \
+  --exclude ".git/" \
+  --exclude "__pycache__/" \
+  --exclude "tmp/" \
+  --exclude "*.pyc" \
+  "$WEB_SRC/" "$DOCS/"
 
 rsync -av --delete \
   --exclude ".git/" \
@@ -13,23 +25,38 @@ rsync -av --delete \
   --exclude "saves/" \
   --exclude "docs/" \
   --exclude "*.pyc" \
-  "$ROOT/app/" "$DOCS/app/"
+  "$LEGACY_ROOT/app/" "$DOCS/app/"
 
 rsync -av --delete \
   --exclude "__pycache__/" \
   --exclude "*.pyc" \
-  "$ROOT/data/" "$DOCS/data/"
+  "$LEGACY_ROOT/data/" "$DOCS/data/"
 
+# 2) Legacy runtime entrypoint modules.
 rsync -av \
-  "$ROOT/main.py" \
-  "$ROOT/music.py" \
-  "$ROOT/render.py" \
-  "$ROOT/color_map.py" \
+  "$LEGACY_ROOT/main.py" \
+  "$LEGACY_ROOT/music.py" \
+  "$LEGACY_ROOT/render.py" \
+  "$LEGACY_ROOT/color_map.py" \
   "$DOCS/"
+
+# 3) Demo battle scene files from repo root.
+rsync -av \
+  "$REPO_ROOT/battle_scene.py" \
+  "$REPO_ROOT/ui_v07.py" \
+  "$REPO_ROOT/ui_v07_esp.py" \
+  "$REPO_ROOT/ui_v07_pt_br.py" \
+  "$DOCS/"
+
+# battle_scene.py imports app.rendering.title_panorama from root app package.
+rsync -av --delete \
+  --exclude "__pycache__/" \
+  --exclude "*.pyc" \
+  "$REPO_ROOT/app/rendering/" "$DOCS/app/rendering/"
 
 date "+%Y-%m-%d %H:%M:%S %Z" > "$DOCS/build-time.txt"
 
-ROOT_PATH="$ROOT"
+ROOT_PATH="$REPO_ROOT"
 python3 - <<'PY'
 import json
 import os

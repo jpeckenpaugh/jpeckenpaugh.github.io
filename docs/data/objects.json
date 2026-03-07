@@ -1,1012 +1,1198 @@
 {
-  "flower_box": {
-    "art": [
-      "  (O)",
-      " (O*O)",
-      "  (O)",
-      "   |)",
-      "  (|",
-      "  _|_",
-      " [###]",
-      "=[###]="
-    ],
-    "color_mask": [
-      "  fif",
-      " fidif",
-      "  fif",
-      "   gG",
-      "  Gg",
-      "  dgd",
-      " zzzzz",
-      "ZzzzzzZ"
-    ],
-    "align": 0
-  },
-  "flower_box_small": {
-    "art": [
-      " (o)",
-      "(o*o)",
-      " (o)",
-      "  |)",
-      " (|",
-      "=[#]="
-    ],
-    "color_mask": [
-      " fif",
-      "fidif",
-      " fif",
-      "  gG",
-      " Gg",
-      "ZzzzZ"
-    ],
-    "align": 0
-  },
-  "house_wall_left": {
-    "art": [
-      "  /",
-      " /",
-      "/_",
-      " |",
-      " |",
-      " |",
-      " |",
-      " |",
-      " |",
-      "~|"
-    ],
-    "color_mask": [
-      "  d",
-      " d",
-      "dD",
-      " d",
-      " d",
-      " d",
-      " d",
-      " d",
-      " d",
-      "gd"
-    ],
-    "align": 0,
-    "variation": 0.08,
-    "jitter_stability": true
-  },
-  "house_wall_right": {
-    "art": [
-      "\\",
-      " \\",
-      " _\\",
-      " |",
-      " |",
-      " |o",
-      " |----o",
-      " |    |",
-      " |    |",
-      " |====="
-    ],
-    "color_mask": [
-      "d",
-      " d",
-      " Dd",
-      " d",
-      " d",
-      " dL",
-      " dqqqqQ",
-      " d    q",
-      " d    q",
-      " dQQQQQQ"
-    ],
-    "align": 0,
-    "variation": 0.08,
-    "jitter_stability": true
-  },
-  "house_wall_interior": {
-    "art": [
-      "=",
-      "|",
-      "|",
-      "|",
-      "|o",
-      "|",
-      "|",
-      "|",
-      "|"
-    ],
-    "color_mask": [
-      "D",
-      "d",
-      "d",
-      "d",
-      "dw",
-      "d",
-      "d",
-      "d",
-      "d"
-    ],
-    "align": 0,
-    "variation": 0.08,
-    "jitter_stability": true
-  },
-  "chair": {
-    "art": [
-      "o",
-      "|",
-      "|",
-      "|",
-      "o===o",
-      "|   |",
-      "|   |",
-      "o   o"
-    ],
-    "color_mask": [
-      "s",
-      "d",
-      "d",
-      "d",
-      "sttts",
-      "d   d",
-      "d   d",
-      "s   s"
-    ],
-    "align": 0
-  },
-  "sign": {
-    "art": [
-      " ___",
-      "/===\\",
-      "\\===/",
-      " |^|",
-      " |^|",
-      " |^|",
-      " |^|",
-      "[|=|]"
-    ],
-    "color_mask": [
-      " sss",
-      "sXxXs",
-      "sxXxs",
-      " szS",
-      " Szs",
-      " szS",
-      " Szs",
-      "dSzSd"
-    ],
-    "align": 0
-  },
-  "sign_small": {
-    "art": [
-      " __",
-      "/==\\",
-      "\\==/",
-      " ||",
-      " ||",
-      " ||",
-      "[||]"
-    ],
-    "color_mask": [
-      " ss",
-      "sXxs",
-      "sxXs",
-      " sS",
-      " Ss",
-      " sS",
-      "dSSd"
-    ],
-    "align": 0
-  },
-  "lamp": {
-    "art": [
-      "  __",
-      " /##\\",
-      "/_##_\\",
-      "  ||",
-      "  ||",
-      "  ||",
-      "  ||",
-      "  ||",
-      " /[]\\"
-    ],
-    "color_mask": [
-      "  yy",
-      " yYYy",
-      "yYYYYy",
-      "  ss",
-      "  ss",
-      "  ss",
-      "  ss",
-      "  ss",
-      " xXXx"
-    ],
-    "align": 0
-  },
-  "fireplace": {
-    "art": [
-      "     , ,        ,",
-      "  ___#_#______#_#___",
-      " [__________________]",
-      "  |=_= =_ == _ =_ =|",
-      "  |_.------------.=|",
-      "  |=| o        o |=|",
-      " _|-| !   `(   ! |-|_",
-      "/==_| ! _(_.)_ ! |=_-\\",
-      "|=_ |/^\\^=^^=^/^\\| _=|"
-    ],
-    "color_mask": [
-      "     y y        y",
-      "  ssssssssssssssssss",
-      " ssssssssssssssssssss",
-      "  ssss ss ss s ss ss",
-      "  ssyssssssssssssyss",
-      "  sss r        r sss",
-      " ssss r   ys   r ssss",
-      "sssss r sssyss r sssss",
-      "sss ssssssssssssss sss"
-    ],
-    "align": 0,
-    "variation": 0.06,
-    "jitter_stability": true
-  },
-  "fairy_companion": {
-    "art": [
-      "   ,@@@@",
-      "_ ),\\\\(\\ _,;",
-      "\\\\\\_(((\\),:;",
-      "`._,)))))::`,",
-      "     \\  (`:::.",
-      "      ) .. `:;",
-      "      / ))  `'",
-      "      `.\\\\",
-      "       \\(("
-    ],
-    "color_mask": [
-      "   yyyyy",
-      "1 1y1111 1yy",
-      "111111111y1y",
-      "yy1y1111111yy",
-      "     1  1y111y",
-      "      1 yy y1y",
-      "      1 11  y1",
-      "      yy11",
-      "       111"
-    ],
-    "align": 0,
-    "variation": 0.06,
-    "jitter_stability": true
-  },
-  "fairy_companion_right": {
-    "art": [
-      "     @@@@,",
-      ";,_ /)//,( _",
-      ";:,(/)))_///",
-      ",`::(((((,_.`",
-      ".:::`)  / ",
-      ";:` ...( ",
-      "'`  ((.\\",
-      "      /./",
-      "    ))./ "
-    ],
-    "color_mask": [
-      "yyyyy   ",
-      "yy1 1111y1 1",
-      "y1y111111111",
-      "yy1111111y1yy",
-      "y111y1  1     ",
-      "y1y yy 1      ",
-      "1y  11 1      ",
-      "11yy      ",
-      "111       "
-    ],
-    "align": 0,
-    "variation": 0.06,
-    "jitter_stability": true
-  },
-  "large_pedistle": {
-    "art": [
-      ",-'            `'=-:.",
-      ":.                 .' |",
-      "| '._______._...-'    ,",
-      "`.                _,.'",
-      "   `--..__________.-'",
-      "     \\..|   |.|  |../",
-      "      |.|   |_|  |.|",
-      "     _|.|        |.|_",
-      "~~~~(__/~~~~~~~~~\\__)"
-    ],
-    "color_mask": [
-      "ysy            yysssy",
-      "sy                 yy s",
-      "s yysssssssysyyysy    y",
-      "yy                syyy",
-      "   yssyyssssssssssysy",
-      "     yyys   sys  syys",
-      "      sys   sss  sys",
-      "     ssys        syss",
-      "ggggssssggggggggggysss"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "bottle_1": {
-    "art": [
-      "   ___",
-      "   )_(",
-      "   | |",
-      " .-'-'-.",
-      "/-::_..-\\",
-      ")_     _(",
-      "|;::    |",
-      "|;::    |",
-      "|;::    |",
-      "|;::-.._|",
-      "`-.._..-'"
-    ],
-    "color_mask": [
-      "   111",
-      "   111",
-      "   1 1",
-      " 1111111",
-      "111111111",
-      "11     11",
-      "1111    1",
-      "1111    1",
-      "1111    1",
-      "111111111",
-      "111111111"
-    ],
-    "align": 0
-  },
-  "bottle_2": {
-    "art": [
-      "   _",
-      " _[_]_",
-      "/_   _\\",
-      ")_``'_(",
-      "|;:   |",
-      "|;:   |",
-      "|;:.._|",
-      "`-...-'"
-    ],
-    "color_mask": [
-      "   1",
-      " 11111",
-      "11   11",
-      "1111111",
-      "111   1",
-      "111   1",
-      "1111111",
-      "1111111"
-    ],
-    "align": 0
-  },
-  "bottle_3": {
-    "art": [
-      "  [-]",
-      ".-'-'-.",
-      ":-...-:",
-      "|;:   |",
-      "|;:.._|",
-      "`-...-'"
-    ],
-    "color_mask": [
-      "  111",
-      "1111111",
-      "1111111",
-      "111   1",
-      "1111111",
-      "1111111"
-    ],
-    "align": 0
-  },
-  "bottle_4": {
-    "art": [
-      "  (-)",
-      ".-'-'-.",
-      "|-...-|",
-      "|;:.._|",
-      "`-...-'"
-    ],
-    "color_mask": [
-      "  111",
-      "1111111",
-      "1111111",
-      "1111111",
-      "1111111"
-    ],
-    "align": 0
-  },
-  "bottle_5": {
-    "art": [
-      "    _",
-      "   [_ ]",
-      " .-'. '-.",
-      "/:;/ _.-'\\",
-      "|:._   .-|",
-      "|:._     |",
-      "|:._     |",
-      "|:._     |",
-      "|:._     |",
-      "`-.____.-'"
-    ],
-    "color_mask": [
-      "    1",
-      "   11 1",
-      " 1111 111",
-      "1111 11111",
-      "1111   111",
-      "1111     1",
-      "1111     1",
-      "1111     1",
-      "1111     1",
-      "1111111111"
-    ],
-    "align": 0
-  },
-  "potion_small": {
-    "art": [
-      " .___,",
-      " (___)",
-      "  ) (",
-      " /`-.\\",
-      ":,'`.':",
-      " \\    /",
-      "  `..'"
-    ],
-    "color_mask": [
-      " 21112",
-      " 11111",
-      "  1 1",
-      " 12121",
-      "1222221",
-      " 1    1",
-      "  2222"
-    ],
-    "align": 0
-  },
-  "potion_large": {
-    "art": [
-      "  .___,",
-      "  (___)",
-      "  <   >",
-      "   ) (",
-      "  /`-.\\",
-      " / _   \\",
-      ":,' `.' :",
-      " \\      /",
-      "  `.__.'"
-    ],
-    "color_mask": [
-      "  21112",
-      "  11111",
-      "  1   1",
-      "   1 1",
-      "  12121",
-      " 1 1   1",
-      "122 222 1",
-      " 1      1",
-      "  221122"
-    ],
-    "align": 0
-  },
-  "potion_xlarge": {
-    "art": [
-      "   _____",
-      "  `.___,'",
-      "   (___)",
-      "   <   >",
-      "    ) (",
-      "   /`-.\\",
-      "  /     \\",
-      " / _    _\\",
-      ":,' `-.' `:",
-      "|         |",
-      ":         ;",
-      " \\       /",
-      "  `.___.'"
-    ],
-    "color_mask": [
-      "   11111",
-      "  2211122",
-      "   11111",
-      "   1   1",
-      "    1 1",
-      "   12121",
-      "  1     1",
-      " 1 1    11",
-      "122 2122 21",
-      "1         1",
-      "1         1",
-      " 1       1",
-      "  2211122"
-    ],
-    "align": 0
-  },
-  "grass": {
-    "art": [
-      "~~~"
-    ],
-    "color_mask": [
-      "gGg"
-    ],
-    "align": 0
-  },
-  "grass_1": {
-    "art": [
-      "~"
-    ],
-    "color_mask": [
-      "g"
-    ],
-    "align": 0
-  },
-  "table": {
-    "art": [
-      "      o",
-      " ____(O)____",
-      "|___________|",
-      "|           |",
-      "|           |",
-      "|           |",
-      "o           o"
-    ],
-    "color_mask": [
-      "      r",
-      " xXxXRpRXxXx",
-      "xXXXXXXXXXXXx",
-      "x           x",
-      "x           x",
-      "x           x",
-      "w           w"
-    ],
-    "align": 0
-  },
-  "bed": {
-    "art": [
-      "o",
-      "|",
-      "|_____________o",
-      "|#############|",
-      "|             |",
-      "o             o"
-    ],
-    "color_mask": [
-      "w",
-      "x",
-      "XbBbBbBbBbBbBbw",
-      "xBbBbBbBbBbBbBx",
-      "x             x",
-      "w             w"
-    ],
-    "align": 0
-  },
-  "table_shop": {
-    "art": [
-      "  ^      o",
-      " _O__[]_(O)_",
-      "|___________|",
-      "|           |",
-      "|           |",
-      "|           |",
-      "o           o"
-    ],
-    "color_mask": [
-      "  a  mm  i",
-      " xaxxMMxIIIx",
-      "xXXXXXXXXXXXx",
-      "x           x",
-      "x           x",
-      "x           x",
-      "w           w"
-    ],
-    "align": 0
-  },
-  "bush_small": {
-    "art": [
-      " _--_",
-      "/####\\",
-      "\\####/",
-      "~|##|~"
-    ],
-    "color_mask": [
-      " gGGg",
-      "gGGGGg",
-      "gGGGGg",
-      "gdDDdg"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "bush_large": {
-    "art": [
-      "  __----__",
-      " /########\\",
-      "/##########\\",
-      "|##########|",
-      "\\##########/",
-      " \\########/",
-      "~~|######|~~"
-    ],
-    "color_mask": [
-      "  ggGgGGgg",
-      " gGGGGGgGGg",
-      "gGGGgGeGgGGg",
-      "gGGGgGGGgEGg",
-      "gGgEGGGGgGGg",
-      " gGGGgGeGGg",
-      "GgdDDDDDDdGg"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "tree_small": {
-    "art": [
-      "  /\\",
-      " /##\\",
-      "/####\\",
-      "~~||~~ "
-    ],
-    "color_mask": [
-      "  gg",
-      " gGGg",
-      "gGGGGg",
-      "  dd",
-      "gGddgG"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "tree_large": {
-    "art": [
-      "      /\\",
-      "     /##\\",
-      "    /####\\",
-      "   /######\\",
-      "  /########\\",
-      " /##########\\",
-      "/############\\",
-      "~~~~~/||\\~~~~~"
-    ],
-    "color_mask": [
-      "      gg",
-      "     gGGg",
-      "    gGdGGg",
-      "   gGgGdGgg",
-      "  gGGdgGGgdg",
-      " ggGGGgdGggGg",
-      "ggGgGdGgGdGgGg",
-      "gGgGgDddDGgGgG"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "bookshelf": {
-    "art": [
-      "o==========o",
-      "| [] [] [] |",
-      "|----------|",
-      "| [] [] [] |",
-      "|----------|",
-      "|   o||o   |",
-      "|__________|",
-      "O          O"
-    ],
-    "color_mask": [
-      "QDDDDDDDDDDQ",
-      "d 66 77 NN d",
-      "ddDDDDDDDDDdd",
-      "d RR 99 77 d",
-      "ddDDDDDDDDdd",
-      "dDDDDDDDDDDd",
-      "DddddddddddD",
-      "Q          Q"
-    ],
-    "align": 0
-  },
-  "roof": {
-    "art": [
-      "="
-    ],
-    "color_mask": [
-      "d"
-    ],
-    "align": 1
-  },
-  "tree_large_2": {
-    "art": [
-      "      __",
-      "     /##\\",
-      "    /####\\",
-      "   /######\\",
-      "  /########\\",
-      "  \\########/",
-      "   \\######/",
-      "~~~~~/||\\~~~~~"
-    ],
-    "color_mask": [
-      "      gg",
-      "     gGGg",
-      "    gGdGGg",
-      "   gGeGdJgg",
-      "  gGJdgGGgdg",
-      "  gGGGgEGjgg",
-      "   gGdGgGdG",
-      "gGgGgDddDGgGgG"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "tree_large_3": {
-    "art": [
-      "      /\\",
-      "     /##\\",
-      "    /####\\",
-      "   /######\\",
-      "  /########\\",
-      " /##########\\",
-      " \\##########/",
-      "~~~~~/||\\~~~~~"
-    ],
-    "color_mask": [
-      "      gg",
-      "     gGGg",
-      "    g8dGGg",
-      "   gGgGd8gg",
-      "  gGG8gGGgdg",
-      " ggGGGgd8ggGg",
-      " gGg8dGgG8GgG",
-      "gGgGgDddDGgGgG"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "bush_large_2": {
-    "art": [
-      "  __-_--_-__",
-      " /##o######o\\",
-      "/############\\",
-      "|##o####o####|",
-      "|############|",
-      "\\#########o##/",
-      " \\#o########/",
-      "~~~|######|~~~"
-    ],
-    "color_mask": [
-      "  ggGgGgGGgg",
-      " gGGrGGgGgGrg",
-      "gGGGgGGgGGgGGg",
-      "gGgrGGgGRGgGGg",
-      "gGGGgGGgGGgGGg",
-      "gGgGGGgGGgrgGg",
-      " gGRGGggGGGGg",
-      "GgGdDDDDDDdGgG"
-    ],
-    "align": 0,
-    "variation": 0.05,
-    "jitter_stability": true
-  },
-  "house": {
-    "art": [
-      "     [==]",
-      "  /===================\\",
-      " / # # # # # # # # # # \\",
-      "/_#_#_#_#_#_#_#_#_#_#_#_\\",
-      "|   __    _____    __   |",
-      "|  [##]  |     |  [##]  |",
-      "|  [__]  |     |  [__]  |",
-      "|        |o    |        |",
-      "|        |     |        |",
-      "|________=======________|"
-    ],
-    "color_mask": [
-      "    DddD",
-      "  ddddddddddddddddddddd",
-      " d D d D d D d D d D d d",
-      "ddDdddddddddddddddddddddd",
-      "d   SS    ddddd    SS   d",
-      "d  sSSs  d     d  sSss  d",
-      "d  sSSs  d     d  sSSs  d",
-      "d        dL    d        d",
-      "d        d     d        d",
-      "dDdDdDdDdQqQqQqQdDdDdDdDd"
-    ],
-    "align": 0,
-    "variation": 0.08,
-    "jitter_stability": true
-  },
-  "town_wall": {
-    "art": [
-      "|##|",
-      "|##|",
-      "|##|",
-      "|##|",
-      "|##|",
-      "|##|",
-      "|##|",
-      "|##|",
-      "|##|",
-      "===="
-    ],
-    "color_mask": [
-      "ZXxZ",
-      "ZxXZ",
-      "ZXxZ",
-      "zxXz",
-      "zXxz",
-      "zxXz",
-      "ZXxZ",
-      "ZxXZ",
-      "ZXxZ",
-      "XXXX"
-    ],
-    "align": 0,
-    "variation": 0.12,
-    "jitter_stability": true
-  },
-  "water": {
-    "art": [
-      "~~"
-    ],
-    "color_mask": [
-      "bB"
-    ],
-    "align": 0,
-    "variation": 0.1
-  },
-  "pebble": {
-    "dynamic": {
-      "mode": "scatter",
-      "glyphs": [
-        "o",
-        "O"
-      ],
-      "color_keys": [
-        "Z",
-        "z",
-        "X",
-        "x",
-        "L",
-        "l"
-      ],
-      "scatter_chance": 0.2
+    "flower_box": {
+        "art": [
+            "  (O)",
+            " (O*O)",
+            "  (O)",
+            "   |)",
+            "  (|",
+            "  _|_",
+            " [###]",
+            "=[###]="
+        ],
+        "color_mask": [
+            "  fif",
+            " fidif",
+            "  fif",
+            "   gG",
+            "  Gg",
+            "  dgd",
+            " zzzzz",
+            "ZzzzzzZ"
+        ],
+        "align": 0
+    },
+    "flower_box_small": {
+        "art": [
+            " (o)",
+            "(o*o)",
+            " (o)",
+            "  |)",
+            " (|",
+            "=[#]="
+        ],
+        "color_mask": [
+            " fif",
+            "fidif",
+            " fif",
+            "  gG",
+            " Gg",
+            "ZzzzZ"
+        ],
+        "align": 0
+    },
+    "house_wall_left": {
+        "art": [
+            "  /",
+            " /",
+            "/_",
+            " |",
+            " |",
+            " |",
+            " |",
+            " |",
+            " |",
+            "~|"
+        ],
+        "color_mask": [
+            "  d",
+            " d",
+            "dD",
+            " d",
+            " d",
+            " d",
+            " d",
+            " d",
+            " d",
+            "gd"
+        ],
+        "align": 0,
+        "variation": 0.08,
+        "jitter_stability": true
+    },
+    "house_wall_right": {
+        "art": [
+            "\\",
+            " \\",
+            " _\\",
+            " |",
+            " |",
+            " |o",
+            " |----o",
+            " |    |",
+            " |    |",
+            " |====="
+        ],
+        "color_mask": [
+            "d",
+            " d",
+            " Dd",
+            " d",
+            " d",
+            " dL",
+            " dqqqqQ",
+            " d    q",
+            " d    q",
+            " dQQQQQQ"
+        ],
+        "align": 0,
+        "variation": 0.08,
+        "jitter_stability": true
+    },
+    "house_wall_interior": {
+        "art": [
+            "=",
+            "|",
+            "|",
+            "|",
+            "|o",
+            "|",
+            "|",
+            "|",
+            "|"
+        ],
+        "color_mask": [
+            "D",
+            "d",
+            "d",
+            "d",
+            "dw",
+            "d",
+            "d",
+            "d",
+            "d"
+        ],
+        "align": 0,
+        "variation": 0.08,
+        "jitter_stability": true
+    },
+    "chair": {
+        "art": [
+            "o",
+            "|",
+            "|",
+            "|",
+            "o===o",
+            "|   |",
+            "|   |",
+            "o   o"
+        ],
+        "color_mask": [
+            "s",
+            "d",
+            "d",
+            "d",
+            "sttts",
+            "d   d",
+            "d   d",
+            "s   s"
+        ],
+        "align": 0
+    },
+    "sign": {
+        "art": [
+            " ___",
+            "/===\\",
+            "\\===/",
+            " |^|",
+            " |^|",
+            " |^|",
+            " |^|",
+            "[|=|]"
+        ],
+        "color_mask": [
+            " sss",
+            "sXxXs",
+            "sxXxs",
+            " szS",
+            " Szs",
+            " szS",
+            " Szs",
+            "dSzSd"
+        ],
+        "align": 0
+    },
+    "sign_small": {
+        "art": [
+            " __",
+            "/==\\",
+            "\\==/",
+            " ||",
+            " ||",
+            " ||",
+            "[||]"
+        ],
+        "color_mask": [
+            " ss",
+            "sXxs",
+            "sxXs",
+            " sS",
+            " Ss",
+            " sS",
+            "dSSd"
+        ],
+        "align": 0
+    },
+    "lamp": {
+        "art": [
+            "  __",
+            " /##\\",
+            "/_##_\\",
+            "  ||",
+            "  ||",
+            "  ||",
+            "  ||",
+            "  ||",
+            " /[]\\"
+        ],
+        "color_mask": [
+            "  yy",
+            " yYYy",
+            "yYYYYy",
+            "  ss",
+            "  ss",
+            "  ss",
+            "  ss",
+            "  ss",
+            " xXXx"
+        ],
+        "align": 0
+    },
+    "fireplace": {
+        "art": [
+            "     , ,        ,",
+            "  ___#_#______#_#___",
+            " [__________________]",
+            "  |=_= =_ == _ =_ =|",
+            "  |_.------------.=|",
+            "  |=| o        o |=|",
+            " _|-| !   `(   ! |-|_",
+            "/==_| ! _(_.)_ ! |=_-\\",
+            "|=_ |/^\\^=^^=^/^\\| _=|"
+        ],
+        "color_mask": [
+            "     y y        y",
+            "  ssssssssssssssssss",
+            " ssssssssssssssssssss",
+            "  ssss ss ss s ss ss",
+            "  ssyssssssssssssyss",
+            "  sss r        r sss",
+            " ssss r   ys   r ssss",
+            "sssss r sssyss r sssss",
+            "sss ssssssssssssss sss"
+        ],
+        "align": 0,
+        "variation": 0.06,
+        "jitter_stability": true
+    },
+    "fairy_companion": {
+        "art": [
+            "   ,@@@@",
+            "_ ),\\\\(\\ _,;",
+            "\\\\\\_(((\\),:;",
+            "`._,)))))::`,",
+            "     \\  (`:::.",
+            "      ) .. `:;",
+            "      / ))  `'",
+            "      `.\\\\",
+            "       \\(("
+        ],
+        "color_mask": [
+            "   yyyyy",
+            "1 1y1111 1yy",
+            "111111111y1y",
+            "yy1y1111111yy",
+            "     1  1y111y",
+            "      1 yy y1y",
+            "      1 11  y1",
+            "      yy11",
+            "       111"
+        ],
+        "align": 0,
+        "variation": 0.06,
+        "jitter_stability": true
+    },
+    "fairy_companion_right": {
+        "art": [
+            "     @@@@,",
+            ";,_ /)//,( _",
+            ";:,(/)))_///",
+            ",`::(((((,_.`",
+            ".:::`)  / ",
+            ";:` ...( ",
+            "'`  ((.\\",
+            "      /./",
+            "    ))./ "
+        ],
+        "color_mask": [
+            "yyyyy   ",
+            "yy1 1111y1 1",
+            "y1y111111111",
+            "yy1111111y1yy",
+            "y111y1  1     ",
+            "y1y yy 1      ",
+            "1y  11 1      ",
+            "11yy      ",
+            "111       "
+        ],
+        "align": 0,
+        "variation": 0.06,
+        "jitter_stability": true
+    },
+    "large_pedistle": {
+        "art": [
+            ",-'            `'=-:.",
+            ":.                 .' |",
+            "| '._______._...-'    ,",
+            "`.                _,.'",
+            "   `--..__________.-'",
+            "     \\..|   |.|  |../",
+            "      |.|   |_|  |.|",
+            "     _|.|        |.|_",
+            "~~~~(__/~~~~~~~~~\\__)"
+        ],
+        "color_mask": [
+            "ysy            yysssy",
+            "sy                 yy s",
+            "s yysssssssysyyysy    y",
+            "yy                syyy",
+            "   yssyyssssssssssysy",
+            "     yyys   sys  syys",
+            "      sys   sss  sys",
+            "     ssys        syss",
+            "ggggssssggggggggggysss"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "bottle_1": {
+        "art": [
+            "   ___",
+            "   )_(",
+            "   | |",
+            " .-'-'-.",
+            "/-::_..-\\",
+            ")_     _(",
+            "|;::    |",
+            "|;::    |",
+            "|;::    |",
+            "|;::-.._|",
+            "`-.._..-'"
+        ],
+        "color_mask": [
+            "   111",
+            "   111",
+            "   1 1",
+            " 1111111",
+            "111111111",
+            "11     11",
+            "1111    1",
+            "1111    1",
+            "1111    1",
+            "111111111",
+            "111111111"
+        ],
+        "align": 0
+    },
+    "bottle_2": {
+        "art": [
+            "   _",
+            " _[_]_",
+            "/_   _\\",
+            ")_``'_(",
+            "|;:   |",
+            "|;:   |",
+            "|;:.._|",
+            "`-...-'"
+        ],
+        "color_mask": [
+            "   1",
+            " 11111",
+            "11   11",
+            "1111111",
+            "111   1",
+            "111   1",
+            "1111111",
+            "1111111"
+        ],
+        "align": 0
+    },
+    "bottle_3": {
+        "art": [
+            "  [-]",
+            ".-'-'-.",
+            ":-...-:",
+            "|;:   |",
+            "|;:.._|",
+            "`-...-'"
+        ],
+        "color_mask": [
+            "  111",
+            "1111111",
+            "1111111",
+            "111   1",
+            "1111111",
+            "1111111"
+        ],
+        "align": 0
+    },
+    "bottle_4": {
+        "art": [
+            "  (-)",
+            ".-'-'-.",
+            "|-...-|",
+            "|;:.._|",
+            "`-...-'"
+        ],
+        "color_mask": [
+            "  111",
+            "1111111",
+            "1111111",
+            "1111111",
+            "1111111"
+        ],
+        "align": 0
+    },
+    "bottle_5": {
+        "art": [
+            "    _",
+            "   [_ ]",
+            " .-'. '-.",
+            "/:;/ _.-'\\",
+            "|:._   .-|",
+            "|:._     |",
+            "|:._     |",
+            "|:._     |",
+            "|:._     |",
+            "`-.____.-'"
+        ],
+        "color_mask": [
+            "    1",
+            "   11 1",
+            " 1111 111",
+            "1111 11111",
+            "1111   111",
+            "1111     1",
+            "1111     1",
+            "1111     1",
+            "1111     1",
+            "1111111111"
+        ],
+        "align": 0
+    },
+    "potion_small": {
+        "art": [
+            " .___,",
+            " (___)",
+            "  ) (",
+            " /`-.\\",
+            ":,'`.':",
+            " \\    /",
+            "  `..'"
+        ],
+        "color_mask": [
+            " 21112",
+            " 11111",
+            "  1 1",
+            " 12121",
+            "1222221",
+            " 1    1",
+            "  2222"
+        ],
+        "align": 0
+    },
+    "potion_large": {
+        "art": [
+            "  .___,",
+            "  (___)",
+            "  <   >",
+            "   ) (",
+            "  /`-.\\",
+            " / _   \\",
+            ":,' `.' :",
+            " \\      /",
+            "  `.__.'"
+        ],
+        "color_mask": [
+            "  21112",
+            "  11111",
+            "  1   1",
+            "   1 1",
+            "  12121",
+            " 1 1   1",
+            "122 222 1",
+            " 1      1",
+            "  221122"
+        ],
+        "align": 0
+    },
+    "potion_xlarge": {
+        "art": [
+            "   _____",
+            "  `.___,'",
+            "   (___)",
+            "   <   >",
+            "    ) (",
+            "   /`-.\\",
+            "  /     \\",
+            " / _    _\\",
+            ":,' `-.' `:",
+            "|         |",
+            ":         ;",
+            " \\       /",
+            "  `.___.'"
+        ],
+        "color_mask": [
+            "   11111",
+            "  2211122",
+            "   11111",
+            "   1   1",
+            "    1 1",
+            "   12121",
+            "  1     1",
+            " 1 1    11",
+            "122 2122 21",
+            "1         1",
+            "1         1",
+            " 1       1",
+            "  2211122"
+        ],
+        "align": 0
+    },
+    "grass": {
+        "art": [
+            "~~~"
+        ],
+        "color_mask": [
+            "gGg"
+        ],
+        "align": 0
+    },
+    "sand": {
+        "art": [
+            ".,`'"
+        ],
+        "color_mask": [
+            "hHyY"
+        ],
+        "align": 0
+    },
+    "grass_1": {
+        "art": [
+            "~"
+        ],
+        "color_mask": [
+            "g"
+        ],
+        "align": 0
+    },
+    "table": {
+        "art": [
+            "      o",
+            " ____(O)____",
+            "|___________|",
+            "|           |",
+            "|           |",
+            "|           |",
+            "o           o"
+        ],
+        "color_mask": [
+            "      r",
+            " xXxXRpRXxXx",
+            "xXXXXXXXXXXXx",
+            "x           x",
+            "x           x",
+            "x           x",
+            "w           w"
+        ],
+        "align": 0
+    },
+    "bed": {
+        "art": [
+            "o",
+            "|",
+            "|_____________o",
+            "|#############|",
+            "|             |",
+            "o             o"
+        ],
+        "color_mask": [
+            "w",
+            "x",
+            "XbBbBbBbBbBbBbw",
+            "xBbBbBbBbBbBbBx",
+            "x             x",
+            "w             w"
+        ],
+        "align": 0
+    },
+    "table_shop": {
+        "art": [
+            "  ^      o",
+            " _O__[]_(O)_",
+            "|___________|",
+            "|           |",
+            "|           |",
+            "|           |",
+            "o           o"
+        ],
+        "color_mask": [
+            "  a  mm  i",
+            " xaxxMMxIIIx",
+            "xXXXXXXXXXXXx",
+            "x           x",
+            "x           x",
+            "x           x",
+            "w           w"
+        ],
+        "align": 0
+    },
+    "bush_small": {
+        "art": [
+            " _--_",
+            "/####\\",
+            "\\####/",
+            "~|##|~"
+        ],
+        "color_mask": [
+            " gGGg",
+            "gGGGGg",
+            "gGGGGg",
+            "gdDDdg"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "bush_large": {
+        "art": [
+            "  __----__",
+            " /########\\",
+            "/##########\\",
+            "|##########|",
+            "\\##########/",
+            " \\########/",
+            "~~|######|~~"
+        ],
+        "color_mask": [
+            "  ggGgGGgg",
+            " gGGGGGgGGg",
+            "gGGGgGeGgGGg",
+            "gGGGgGGGgEGg",
+            "gGgEGGGGgGGg",
+            " gGGGgGeGGg",
+            "GgdDDDDDDdGg"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "tree_small": {
+        "art": [
+            "  /\\",
+            " /##\\",
+            "/####\\",
+            "~~||~~ "
+        ],
+        "color_mask": [
+            "  gg",
+            " gGGg",
+            "gGGGGg",
+            "  dd",
+            "gGddgG"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "tree_large": {
+        "art": [
+            "      /\\",
+            "     /##\\",
+            "    /####\\",
+            "   /######\\",
+            "  /########\\",
+            " /##########\\",
+            "/############\\",
+            "~~~~~/||\\~~~~~"
+        ],
+        "color_mask": [
+            "      gg",
+            "     gGGg",
+            "    gGdGGg",
+            "   gGgGdGgg",
+            "  gGGdgGGgdg",
+            " ggGGGgdGggGg",
+            "ggGgGdGgGdGgGg",
+            "gGgGgDddDGgGgG"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "bookshelf": {
+        "art": [
+            "o==========o",
+            "| [] [] [] |",
+            "|----------|",
+            "| [] [] [] |",
+            "|----------|",
+            "|   o||o   |",
+            "|__________|",
+            "O          O"
+        ],
+        "color_mask": [
+            "QDDDDDDDDDDQ",
+            "d 66 77 NN d",
+            "ddDDDDDDDDDdd",
+            "d RR 99 77 d",
+            "ddDDDDDDDDdd",
+            "dDDDDDDDDDDd",
+            "DddddddddddD",
+            "Q          Q"
+        ],
+        "align": 0
+    },
+    "roof": {
+        "art": [
+            "="
+        ],
+        "color_mask": [
+            "d"
+        ],
+        "align": 1
+    },
+    "tree_large_2": {
+        "art": [
+            "      __",
+            "     /##\\",
+            "    /####\\",
+            "   /######\\",
+            "  /########\\",
+            "  \\########/",
+            "   \\######/",
+            "~~~~~/||\\~~~~~"
+        ],
+        "color_mask": [
+            "      gg",
+            "     gGGg",
+            "    gGdGGg",
+            "   gGeGdJgg",
+            "  gGJdgGGgdg",
+            "  gGGGgEGjgg",
+            "   gGdGgGdG",
+            "gGgGgDddDGgGgG"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "tree_large_3": {
+        "art": [
+            "      /\\",
+            "     /##\\",
+            "    /####\\",
+            "   /######\\",
+            "  /########\\",
+            " /##########\\",
+            " \\##########/",
+            "~~~~~/||\\~~~~~"
+        ],
+        "color_mask": [
+            "      gg",
+            "     gGGg",
+            "    g8dGGg",
+            "   gGgGd8gg",
+            "  gGG8gGGgdg",
+            " ggGGGgd8ggGg",
+            " gGg8dGgG8GgG",
+            "gGgGgDddDGgGgG"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "bush_large_2": {
+        "art": [
+            "  __-_--_-__",
+            " /##o######o\\",
+            "/############\\",
+            "|##o####o####|",
+            "|############|",
+            "\\#########o##/",
+            " \\#o########/",
+            "~~~|######|~~~"
+        ],
+        "color_mask": [
+            "  ggGgGgGGgg",
+            " gGGrGGgGgGrg",
+            "gGGGgGGgGGgGGg",
+            "gGgrGGgGRGgGGg",
+            "gGGGgGGgGGgGGg",
+            "gGgGGGgGGgrgGg",
+            " gGRGGggGGGGg",
+            "GgGdDDDDDDdGgG"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "house": {
+        "art": [
+            "     [==]",
+            "  /===================\\",
+            " / # # # # # # # # # # \\",
+            "/_#_#_#_#_#_#_#_#_#_#_#_\\",
+            "|   __    _____    __   |",
+            "|  [##]  |     |  [##]  |",
+            "|  [__]  |     |  [__]  |",
+            "|        |o    |        |",
+            "|        |     |        |",
+            "|________=======________|"
+        ],
+        "color_mask": [
+            "     DddD",
+            "  ddddddddddddddddddddd",
+            " d!D!d!D!d!D!d!D!d!D!d!d",
+            "ddDdddddddddddddddddddddd",
+            "d!!!SS!!!!ddddd!!!!SS!!!d",
+            "d!!sSSs!!d!!!!!d!!sSss!!d",
+            "d!!sSSs!!d!!!!!d!!sSSs!!d",
+            "d!!!!!!!!dL!!!!d!!!!!!!!d",
+            "d!!!!!!!!d!!!!!d!!!!!!!!d",
+            "dDdDdDdDdQqQqQqQdDdDdDdDd"
+        ],
+        "align": 0,
+        "variation": 0.08,
+        "jitter_stability": true
+    },
+    "town_wall": {
+        "art": [
+            "|##|",
+            "|##|",
+            "|##|",
+            "|##|",
+            "|##|",
+            "|##|",
+            "|##|",
+            "|##|",
+            "|##|",
+            "===="
+        ],
+        "color_mask": [
+            "ZXxZ",
+            "ZxXZ",
+            "ZXxZ",
+            "zxXz",
+            "zXxz",
+            "zxXz",
+            "ZXxZ",
+            "ZxXZ",
+            "ZXxZ",
+            "XXXX"
+        ],
+        "align": 0,
+        "variation": 0.12,
+        "jitter_stability": true
+    },
+    "water": {
+        "art": [
+            "~~"
+        ],
+        "color_mask": [
+            "bB"
+        ],
+        "align": 0,
+        "variation": 0.1
+    },
+    "pebble": {
+        "dynamic": {
+            "mode": "scatter",
+            "glyphs": [
+                "o",
+                "O"
+            ],
+            "color_keys": [
+                "Z",
+                "z",
+                "X",
+                "x",
+                "L",
+                "l"
+            ],
+            "scatter_chance": 0.2
+        }
+    },
+    "lokarta_logo": {
+        "blocking_space": "#",
+        "art": [
+            "    __          __              __       ",
+            "   /#/   ____  /#/______ ______/#/_____ _",
+            "  /#/   /#__#\\/#//_/#__#`/#___/#__/#__#`/",
+            " /#/___/#/_/#/#,< /#/_/#/#/  /#/_/#/_/#/ ",
+            "/_____/\\____/_/|_|\\__,_/_/   \\__/\\__,_/  "
+        ],
+        "color_mask": [
+            "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+            "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+            "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+            "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
+            "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+        ],
+        "align": 0
+    },
+    "battle_ground": {
+        "dynamic": {
+            "mode": "scatter",
+            "glyphs": [
+                "o",
+                "O"
+            ],
+            "color_keys": [
+                "Z",
+                "z",
+                "X",
+                "x",
+                "L",
+                "l"
+            ],
+            "scatter_chance": 0.25
+        }
+    },
+    "cloud_large_1": {
+        "art": [
+            "               _",
+            "              (`  ).",
+            "             (     ).",
+            "            _(       '`.",
+            "        .=(`(      .   )",
+            "       ((    (..__.:'-'",
+            "       `(       ) )",
+            "         ` __.:'   )",
+            "      ( )       --'",
+            "     (_.'"
+        ],
+        "color_mask": [
+            "               l",
+            "              lL  ll",
+            "             l     Ll",
+            "            Ll       'lL",
+            "        L=LlL      l   Ll",
+            "       lL    lLL__L:'-L",
+            "       lL       l Ll",
+            "         l LLl:'   l",
+            "      l l       --'",
+            "     lL.'"
+        ],
+        "align": 0
+    },
+    "cloud_medium_1": {
+        "art": [
+            "      _",
+            "   .:(`  )`.",
+            "  :(   .    )",
+            "   `.  (    ) )"
+        ],
+        "color_mask": [
+            "      l",
+            "   l:Ll  llL",
+            "  Ll   l    l",
+            "   lL  l    l l"
+        ],
+        "align": 0
+    },
+    "cloud_medium_2": {
+        "art": [
+            "      .--",
+            "   .+(   )",
+            "  (   .  )",
+            " (   (   ))",
+            "  `- __.'"
+        ],
+        "color_mask": [
+            "      lLL",
+            "   l+L   l",
+            "  l   l  l",
+            " l   l   Ll",
+            "  lL LLlL"
+        ],
+        "align": 0
+    },
+    "cloud_medium_3": {
+        "art": [
+            "        ._",
+            "   `-'.-(`  )",
+            "      :(      ))",
+            "     `(    )  ))",
+            "      ` __.:'"
+        ],
+        "color_mask": [
+            "        lL",
+            "   lLlL-lLl  l",
+            "      Ll      Ll",
+            "     lL    l  Ll",
+            "      l LLl:L"
+        ],
+        "align": 0
+    },
+    "cloud_small_1": {
+        "art": [
+            " (`  ).",
+            "(     )."
+        ],
+        "color_mask": [
+            " Ll  lL",
+            "l     Ll"
+        ],
+        "align": 0
+    },
+    "cloud_small_2": {
+        "art": [
+            ":(`  )`.",
+            "(   .  )"
+        ],
+        "color_mask": [
+            "LlL  llL",
+            "l   l  l"
+        ],
+        "align": 0
+    },
+    "fairy_castle": {
+        "art": [
+            "               T~~",
+            "               |",
+            "              /\"\\",
+            "      T~~     |'| T~~",
+            "  T~~ |    T~ ====|",
+            "  |  /\"\\   |  |  |/\\T~~",
+            " /\"\\ ===  /\"\\ |' |==|",
+            "=====/\\| /   \\|'/\\|/\"\\",
+            "|   /__\\/]===[\\/__\\====",
+            "|\"  ===='|I_I|'===='  |",
+            "|   |' |/  -  \\|' |'  |",
+            "|'  |  |=======|' |   |",
+            "|   |' | |[_]| |  |'  |",
+            "|   |  |_|###|_|  |   |",
+            "'---'--'-/___\\-'--'---'"
+        ],
+        "color_mask": [
+            "!!!!!!!!!!!!!!!ddd",
+            "!!!!!!!!!!!!!!!d",
+            "!!!!!!!!!!!!!!ddd",
+            "!!!!!!ddd!!!!!ddd!ddd",
+            "!!ddd!d!!!!dd!ddddd",
+            "!!d!!ddd!!!d!!d!!dddddd",
+            "!ddd!ddd!!ddd!dd!dddd",
+            "dddddddd!d!!!ddddddddd",
+            "d!!!ddddddddddddddddddd",
+            "dd!!dddddddddddddddd!!d",
+            "d!!!dd!dd!!d!!ddd!dd!!d",
+            "dd!!d!!dddddddddd!d!!!d",
+            "d!!!dd!d!ddddd!d!!dd!!d",
+            "d!!!d!!ddddddddd!!d!!!d",
+            "ddddddddddddddddddddddd"
+        ],
+        "align": 0,
+        "variation": 0.08,
+        "jitter_stability": true
+    },
+    "bridge": {
+        "art": [
+            " ______________________________________________________",
+            " [[]]-[[]]-[[]]-[[]]-[[]]-[[]]-[[]]-[[]]-[[]]-[[]]-[[]]",
+            " .-.`| `-/-.__/.-'\\_.-._,'/`-._'\\_.-._`-'_/-._.'|/.-'\\-",
+            " \\_.-`./`-._'\\__.-`-.__.-`--._/--.`-._\\`-._\\__.-)`-'._/",
+            " `._-'.\\_.---._-.\\_`-..`\\_.---._`-.__.-`'._.--./`-'._,'",
+            " __/`.-/       `.'_`./`.'       '.\\__.-`.'    (_.-\\_,-.",
+            " `._-/'          |._.-|           |.'`.|       `(_.`-._",
+            " .-',`)          | /`.|           |`-/`|         ;.-'_/",
+            " `\\,-/           |\\.-'|           |\\-'`|          ;\\_,-",
+            "  -./`._        [[[[[[[[         [[[[[[[[         .',-'",
+            "  `.`--.~~-^_~-/.`-._`-.\\^~-_~-^/`-.'-,.'\\^~-~_^\"'`-.'_"
+        ],
+        "color_mask": [
+            "!dddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "!dddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "!ddddd!dddddddddddddddddddddddddddddddddddddddddddddddd",
+            "!dddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "!dddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "!ddddddd!!!!!!!dddddddddd!!!!!!!dddddddddd!!!!ddddddddd",
+            "!dddddd!!!!!!!!!!dddddd!!!!!!!!!!!dddddd!!!!!!!dddddddd",
+            "!dddddd!!!!!!!!!!d!dddd!!!!!!!!!!!dddddd!!!!!!!!!dddddd",
+            "!ddddd!!!!!!!!!!!dddddd!!!!!!!!!!!dddddd!!!!!!!!!!ddddd",
+            "!!dddddd!!!!!!!!dddddddd!!!!!!!!!dddddddd!!!!!!!!!ddddd",
+            "!!ddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "align": 0,
+        "variation": 0.08,
+        "jitter_stability": true
+    },
+    "palm_small": {
+        "art": [
+            "    ___   ____",
+            "  /' --;^/ ,-_\\",
+            " / / --o\\ o-\\ \\\\",
+            "/-/-/|o|-|\\-\\\\|\\\\ ",
+            " '`  ` |-|   `` '",
+            "       |-|",
+            "       |-|",
+            "       |-|",
+            "       |-|"
+        ],
+        "color_mask": [
+            "    ggg   gggg",
+            "  gg!ggggg!gggg",
+            " g!g!gggg!ggg!gg",
+            "ggggggggggggggggg ",
+            " gg  g ddd   gg g",
+            "       ddd",
+            "       ddd",
+            "       ddd",
+            "       ddd"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "palm_large": {
+        "art": [
+            "    _____   ______",
+            "  /'  --;^/ ,-_    \\",
+            " /  / --o\\ o-\\  \\   \\",
+            "/- /- /|o| -|\\-\\\\|\\ \\ ",
+            " '`  `   | -|   `` '",
+            "         | -|",
+            "         | -|",
+            "         | -|",
+            "         | -|",
+            "         |  |",
+            "         |- |"
+        ],
+        "color_mask": [
+            "    ggggg   gggggg",
+            "  gg!!gdggg!gddg!!!!g",
+            " g!!g!dggg!ggg!!g!!!g",
+            "gg!dg!gggd!ddgggdgg!g ",
+            " gg  g   d!dd   gg g",
+            "         d!dd",
+            "         d!dd",
+            "         d!dd",
+            "         d!dd",
+            "         d!!d",
+            "         dd!d"
+        ],
+        "align": 0,
+        "variation": 0.05,
+        "jitter_stability": true
+    },
+    "mushroom_house": {
+        "art": [
+            "        .",
+            "      ('",
+            "      '|",
+            "      |'    _......_",
+            "     [::].-'      _.-`.",
+            "     [:.'     .-. '-._.-`.",
+            "     [/   /\\  |  \\        `-.",
+            "    /    / |   `-.'      .-.  `-.",
+            "  .'     \\_/             _.-':;_'",
+            " /   .-.             _.-' \\;.-'",
+            "/   (   \\       _..-'     |",
+            "\\    `._/  _..-'    .--.  |",
+            " `-.....-'/  _ _  .'    '.|",
+            "          | |_|_| |      | \\  (o)",
+            "     (o)  | |_|_| |      | | (\\'/)",
+            "    (\\'/)/  ''''' |     o|  \\;:;",
+            "     :;  |        |      |  |/)",
+            "      ;: `-.._    /__..--'\\.' ;:",
+            "          :;  `--' :;   :;",
+            ""
+        ],
+        "color_mask": [
+            "!!!!!!!!d",
+            "!!!!!!dd",
+            "!!!!!!dd",
+            "!!!!!!dd!!!!dddddddd",
+            "!!!!!ddddddd!!!!!!ddddd",
+            "!!!!!dddd!!!!!ddd!dddddddd",
+            "!!!!!dd!!!dd!!d!!d!!!!!!!!ddd",
+            "!!!!d!!!!d!d!!!dddd!!!!!!ddd!!ddd",
+            "!!dd!!!!!ddd!!!!!!!!!!!!!dddddddd",
+            "!d!!!ddd!!!!!!!!!!!!!dddd!ddddd",
+            "d!!!d!!!d!!!!!!!ddddd!!!!!d",
+            "d!!!!dddd!!ddddd!!!!dddd!!d",
+            "!dddddddddd!!d!d!!dd!!!!ddd",
+            "!!!!!!!!!!d!ddddd!d!!!!!!d!d!!ddd",
+            "!!!!!ddd!!d!ddddd!d!!!!!!d!d!ddddd",
+            "!!!!dddddd!!ddddd!d!!!!!dd!!dddd",
+            "!!!!!dd!!d!!!!!!!!d!!!!!!d!!ddd",
+            "!!!!!!dd!ddddd!!!!ddddddddddd!dd",
+            "!!!!!!!!!!dd!!dddd!dd!!!dd",
+            ""
+        ],
+        "align": 0,
+        "variation": 0.08,
+        "jitter_stability": true
     }
-  },
-  "lokarta_logo": {
-    "blocking_space": "#",
-    "art": [
-      "    __          __              __       ",
-      "   /#/   ____  /#/______ ______/#/_____ _",
-      "  /#/   /#__#\\/#//_/#__#`/#___/#__/#__#`/",
-      " /#/___/#/_/#/#,< /#/_/#/#/  /#/_/#/_/#/ ",
-      "/_____/\\____/_/|_|\\__,_/_/   \\__/\\__,_/  "
-    ],
-    "color_mask": [
-      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
-      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
-      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
-      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",
-      "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-    ],
-    "align": 0
-  },
-  "battle_ground": {
-    "dynamic": {
-      "mode": "scatter",
-      "glyphs": [
-        "o",
-        "O"
-      ],
-      "color_keys": [
-        "Z",
-        "z",
-        "X",
-        "x",
-        "L",
-        "l"
-      ],
-      "scatter_chance": 0.25
-    }
-  },
-  "cloud_large_1": {
-    "art": [
-      "               _",
-      "              (`  ).",
-      "             (     ).",
-      "            _(       '`.",
-      "        .=(`(      .   )",
-      "       ((    (..__.:'-'",
-      "       `(       ) )",
-      "         ` __.:'   )",
-      "      ( )       --'",
-      "     (_.'"
-    ],
-    "color_mask": [
-      "               l",
-      "              lL  ll",
-      "             l     Ll",
-      "            Ll       'lL",
-      "        L=LlL      l   Ll",
-      "       lL    lLL__L:'-L",
-      "       lL       l Ll",
-      "         l LLl:'   l",
-      "      l l       --'",
-      "     lL.'"
-    ],
-    "align": 0
-  },
-  "cloud_medium_1": {
-    "art": [
-      "      _",
-      "   .:(`  )`.",
-      "  :(   .    )",
-      "   `.  (    ) )"
-    ],
-    "color_mask": [
-      "      l",
-      "   l:Ll  llL",
-      "  Ll   l    l",
-      "   lL  l    l l"
-    ],
-    "align": 0
-  },
-  "cloud_medium_2": {
-    "art": [
-      "      .--",
-      "   .+(   )",
-      "  (   .  )",
-      " (   (   ))",
-      "  `- __.'"
-    ],
-    "color_mask": [
-      "      lLL",
-      "   l+L   l",
-      "  l   l  l",
-      " l   l   Ll",
-      "  lL LLlL"
-    ],
-    "align": 0
-  },
-  "cloud_medium_3": {
-    "art": [
-      "        ._",
-      "   `-'.-(`  )",
-      "      :(      ))",
-      "     `(    )  ))",
-      "      ` __.:'"
-    ],
-    "color_mask": [
-      "        lL",
-      "   lLlL-lLl  l",
-      "      Ll      Ll",
-      "     lL    l  Ll",
-      "      l LLl:L"
-    ],
-    "align": 0
-  },
-  "cloud_small_1": {
-    "art": [
-      " (`  ).",
-      "(     )."
-    ],
-    "color_mask": [
-      " Ll  lL",
-      "l     Ll"
-    ],
-    "align": 0
-  },
-  "cloud_small_2": {
-    "art": [
-      ":(`  )`.",
-      "(   .  )"
-    ],
-    "color_mask": [
-      "LlL  llL",
-      "l   l  l"
-    ],
-    "align": 0
-  }
 }

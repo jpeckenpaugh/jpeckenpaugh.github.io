@@ -1,4 +1,4 @@
-﻿import os
+import os
 import random
 import re
 import time
@@ -112,26 +112,6 @@ class UIBoxLayout:
 
 
 def read_key_nonblocking() -> str | None:
-    if os.environ.get("LOKARTA_WEB") == "1":
-        try:
-            from app.input import read_keypress_timeout
-
-            raw = read_keypress_timeout(0.0)
-            if not raw:
-                return None
-            k = str(raw).strip()
-            mapping = {
-                "LEFT": "left",
-                "RIGHT": "right",
-                "UP": "up",
-                "DOWN": "down",
-                "ENTER": "\n",
-            }
-            if k in mapping:
-                return mapping[k]
-            return k.lower()[:1] if k else None
-        except Exception:
-            return None
     if os.name == "nt":
         import msvcrt
 
@@ -4533,13 +4513,10 @@ def render(
 
 def main() -> None:
     base = os.getcwd()
-    data_root = os.path.join(base, "legecay", "data")
-    if not os.path.isdir(data_root):
-        data_root = os.path.join(base, "data")
-    objects_path = os.path.join(data_root, "objects.json")
-    colors_path = os.path.join(data_root, "colors.json")
-    players_path = os.path.join(data_root, "players.json")
-    opponents_path = os.path.join(data_root, "opponents.json")
+    objects_path = os.path.join(base, "legacy", "data", "objects.json")
+    colors_path = os.path.join(base, "legacy", "data", "colors.json")
+    players_path = os.path.join(base, "legacy", "data", "players.json")
+    opponents_path = os.path.join(base, "legacy", "data", "opponents.json")
     objects = load_json(objects_path)
     colors = load_json(colors_path)
     players = load_json(players_path)
@@ -6283,3 +6260,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

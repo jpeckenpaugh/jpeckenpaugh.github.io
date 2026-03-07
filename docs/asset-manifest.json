@@ -1,11 +1,12 @@
 {
-  "version": 1772913312,
+  "version": 1772913669,
   "files": [
     ".gitignore",
     ".nojekyll",
     "AGENTS.md",
     "README.md",
     "TODO_elements.md",
+    "UI.md",
     "app/__init__.py",
     "app/audio.py",
     "app/bootstrap.py",
@@ -57,6 +58,8 @@
     "app/models.py",
     "app/player_sync.py",
     "app/questing.py",
+    "app/rendering/__init__.py",
+    "app/rendering/title_panorama.py",
     "app/shop.py",
     "app/state.py",
     "app/ui/__init__.py",
@@ -69,8 +72,10 @@
     "app/venues.py",
     "asset-manifest.json",
     "audio.js",
+    "battle_scene.py",
     "build-time.txt",
     "color_map.py",
+    "data/.opponents.json.un~",
     "data/abilities.json",
     "data/characters.json",
     "data/colors.json",
@@ -89,6 +94,7 @@
     "data/npcs.json",
     "data/objects.json",
     "data/opponents.json",
+    "data/opponents.json~",
     "data/players.json",
     "data/portal_screen.json",
     "data/quest_events.json",
@@ -162,11 +168,8 @@
     "todo_opponent_rework.md",
     "todo_testing.md",
     "todo_venues.md",
-    "battle_scene.py",
     "ui_v07.py",
     "ui_v07_esp.py",
-    "ui_v07_pt_br.py",
-    "app/rendering/__init__.py",
-    "app/rendering/title_panorama.py"
+    "ui_v07_pt_br.py"
   ]
 }
