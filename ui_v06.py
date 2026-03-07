@@ -1945,10 +1945,24 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Roomie",
-            body_text="I can reinforce the team. Let's keep everyone energized.",
+            body_text="I have been working on my Concentric spell.",
             center_x=50,
             center_y=17,
             max_body_width=42,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_roomy_3b":
+        return UIBoxSpec(
+            role="story",
+            border_style="double",
+            title="Roomie",
+            body_text="It is a spell to recover MP, and it can come in handy in longer battles, when we need extra magic points.",
+            center_x=50,
+            center_y=17,
+            max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -1959,10 +1973,24 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Perfect. Roomie joins us. Four hearts, one team!",
+            body_text="A spell to recover spell points you say?",
             center_x=50,
             center_y=17,
             max_body_width=42,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_roomy_4b":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Mushy",
+            body_text="If we combine that with our other spells, we can really compound our punch power.",
+            center_x=50,
+            center_y=17,
+            max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -2015,10 +2043,24 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Sharoom",
-            body_text="Let's do this!",
+            body_text="Keep an eye on your life. We don't want your hit points to reach 0.",
             center_x=50,
             center_y=17,
-            max_body_width=28,
+            max_body_width=44,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_sharoom_5":
+        return UIBoxSpec(
+            role="story",
+            border_style="double",
+            title="Sharoom",
+            body_text="Let me know when you need a Healing Touch, as that is my specialty.",
+            center_x=50,
+            center_y=17,
+            max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -2029,10 +2071,38 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Uh oh, more crows. Let's take them together!",
+            body_text="Your Mycostaff holds 3 charge of the Magic Spark spell. It will automatically recharge after each battle.",
             center_x=50,
             center_y=17,
-            max_body_width=40,
+            max_body_width=48,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_more_crows_2":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Mushy",
+            body_text="We can also use my Mushroom Tea to temporarily boost our Attack and Defense points, giving us an edge in battle.",
+            center_x=50,
+            center_y=17,
+            max_body_width=50,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_more_crows_3":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Mushy",
+            body_text="Watch out, here come some more crows!",
+            center_x=50,
+            center_y=17,
+            max_body_width=42,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -2107,18 +2177,18 @@ def _position_screen_box_for_actors(
     if screen in ("story_4", "story_5", "story_6", "story_11") and primary_placements:
         idx = 1 if len(primary_placements) >= 2 else 0
         return _anchor_box_next_to_actor(spec, primary_placements[idx], prefer="left")
-    if screen in ("story_sharoom_1", "story_more_crows") and len(secondary_placements) >= 2:
+    if screen in ("story_sharoom_1", "story_more_crows", "story_more_crows_2", "story_more_crows_3") and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
     if screen == "story_sharoom_3" and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
-    if screen == "story_sharoom_4" and primary_placements:
+    if screen in ("story_sharoom_4", "story_sharoom_5") and primary_placements:
         return _anchor_box_next_to_actor(spec, primary_placements[0], prefer="left")
     if screen == "story_roomy_2" and len(secondary_placements) >= 2:
         idx = 2 if len(secondary_placements) >= 3 else 1
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
-    if screen == "story_roomy_3" and primary_placements:
+    if screen in ("story_roomy_3", "story_roomy_3b") and primary_placements:
         return _anchor_box_next_to_actor(spec, primary_placements[0], prefer="left")
-    if screen == "story_roomy_4" and len(secondary_placements) >= 2:
+    if screen in ("story_roomy_4", "story_roomy_4b") and len(secondary_placements) >= 2:
         idx = 2 if len(secondary_placements) >= 3 else 1
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen in ("story_7", "story_9", "story_battle_cmd_player") and secondary_placements:
@@ -2129,6 +2199,9 @@ def _position_screen_box_for_actors(
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen == "story_battle_cmd_sharoom" and secondary_placements:
         return _anchor_box_next_to_actor(spec, secondary_placements[0], prefer="right")
+    if screen == "story_battle_cmd_roomy" and secondary_placements:
+        idx = 3 if len(secondary_placements) >= 4 else max(0, len(secondary_placements) - 1)
+        return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen == "story_battle_cmd_roomy" and secondary_placements:
         idx = 3 if len(secondary_placements) >= 4 else max(0, len(secondary_placements) - 1)
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
@@ -4815,8 +4888,14 @@ def main() -> None:
                         begin_transition("story_roomy_3")
                 elif screen == "story_roomy_3":
                     if confirm:
+                        begin_transition("story_roomy_3b")
+                elif screen == "story_roomy_3b":
+                    if confirm:
                         begin_transition("story_roomy_4")
                 elif screen == "story_roomy_4":
+                    if confirm:
+                        begin_transition("story_roomy_4b")
+                elif screen == "story_roomy_4b":
                     if confirm:
                         flow["battle_stage"] = 4
                         flow["battle_primary_hp"] = [26]
@@ -4872,6 +4951,12 @@ def main() -> None:
                         begin_transition("root_menu")
                 elif screen == "story_more_crows":
                     if confirm:
+                        begin_transition("story_more_crows_2")
+                elif screen == "story_more_crows_2":
+                    if confirm:
+                        begin_transition("story_more_crows_3")
+                elif screen == "story_more_crows_3":
+                    if confirm:
                         flow["battle_stage"] = 2
                         flow["battle_primary_hp"] = [10, 10]
                         flow["battle_primary_hp_max"] = [10, 10]
@@ -4897,6 +4982,9 @@ def main() -> None:
                     if confirm:
                         begin_transition("story_sharoom_4")
                 elif screen == "story_sharoom_4":
+                    if confirm:
+                        begin_transition("story_sharoom_5")
+                elif screen == "story_sharoom_5":
                     if confirm:
                         flow["battle_stage"] = 3
                         flow["battle_primary_hp"] = [10, 10, 10]
@@ -5184,7 +5272,7 @@ def main() -> None:
                                         "rows": tg.get("rows", []),
                                     }
                                 ]
-                elif screen in ("story_roomy_2", "story_roomy_3", "story_roomy_4"):
+                elif screen in ("story_roomy_2", "story_roomy_3", "story_roomy_3b", "story_roomy_4", "story_roomy_4b"):
                     primary_sprites = [roomie_sprite]
                     secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite]
                 elif screen == "story_roomy_lineup_shift":
@@ -5210,7 +5298,7 @@ def main() -> None:
                                 if isinstance(rows, list):
                                     tmp.append({"x": x, "y": y, "rows": rows})
                             story_transition_actors = tmp
-                elif screen in ("story_sharoom_3", "story_sharoom_4"):
+                elif screen in ("story_sharoom_3", "story_sharoom_4", "story_sharoom_5"):
                     primary_sprites = [sharoom_sprite]
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
                 else:
