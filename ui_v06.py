@@ -1544,13 +1544,13 @@ def _draw_avatar_overlay(
 def _actor_action_options(actor_key: str) -> List[str]:
     key = str(actor_key).strip().lower()
     if key == "player":
-        return ["Magic Spark", "Attack", "Defend"]
+        return ["Attack", "Magic Spark", "Defend"]
     if key == "mushy":
-        return ["Mushroom Tea", "Attack", "Defend"]
+        return ["Attack", "Mushroom Tea", "Defend"]
     if key == "sharoom":
-        return ["Healing Touch", "Attack", "Defend"]
+        return ["Attack", "Healing Touch", "Defend"]
     if key == "roomy":
-        return ["Concentric", "Attack", "Defend"]
+        return ["Attack", "Concentric", "Defend"]
     return ["Attack", "Defend"]
 
 
@@ -3732,9 +3732,9 @@ def main() -> None:
         "battle_player_cmd_idx": 0,
         "battle_mushy_cmd_idx": 0,
         "battle_sharoom_cmd_idx": 0,
-        "battle_player_action": "Magic Spark",
-        "battle_mushy_action": "Mushroom Tea",
-        "battle_sharoom_action": "Healing Touch",
+        "battle_player_action": "Attack",
+        "battle_mushy_action": "Attack",
+        "battle_sharoom_action": "Attack",
         "battle_secondary_boost_atk": [0, 0],
         "battle_secondary_boost_def": [0, 0],
         "battle_player_target": 0,
@@ -4157,9 +4157,9 @@ def main() -> None:
                         flow["battle_player_cmd_idx"] = 0
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Magic Spark"
-                        flow["battle_mushy_action"] = "Mushroom Tea"
-                        flow["battle_sharoom_action"] = "Healing Touch"
+                        flow["battle_player_action"] = "Attack"
+                        flow["battle_mushy_action"] = "Attack"
+                        flow["battle_sharoom_action"] = "Attack"
                         flow["battle_secondary_boost_atk"] = [0, 0]
                         flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_player_target"] = 0
@@ -4311,8 +4311,8 @@ def main() -> None:
                         flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_player_cmd_idx"] = 0
                         flow["battle_mushy_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Magic Spark"
-                        flow["battle_mushy_action"] = "Mushroom Tea"
+                        flow["battle_player_action"] = "Attack"
+                        flow["battle_mushy_action"] = "Attack"
                         flow["battle_target_cursor"] = _first_alive([10, 10], 0)
                         flow["battle_queue"] = []
                         flow["battle_queue_index"] = 0
@@ -4341,9 +4341,9 @@ def main() -> None:
                         flow["battle_player_cmd_idx"] = 0
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Magic Spark"
-                        flow["battle_mushy_action"] = "Mushroom Tea"
-                        flow["battle_sharoom_action"] = "Healing Touch"
+                        flow["battle_player_action"] = "Attack"
+                        flow["battle_mushy_action"] = "Attack"
+                        flow["battle_sharoom_action"] = "Attack"
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
