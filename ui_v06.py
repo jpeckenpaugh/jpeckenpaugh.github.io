@@ -692,6 +692,25 @@ def ui_border_gradient_code(x: int, y: int, width: int, height: int) -> str:
     return f"\x1b[38;2;{r};{g};{b}m"
 
 
+def battle_log_border_gradient_code(x: int, y: int, width: int, height: int) -> str:
+    # Battle log style: white -> black -> grey.
+    if width <= 1 and height <= 1:
+        return "\x1b[38;2;128;128;128m"
+    t = ((x / max(1, width - 1)) + (y / max(1, height - 1))) / 2.0
+    if t <= 0.5:
+        tt = t / 0.5
+        start = (245, 245, 245)
+        end = (0, 0, 0)
+    else:
+        tt = (t - 0.5) / 0.5
+        start = (0, 0, 0)
+        end = (128, 128, 128)
+    r = int(start[0] + (end[0] - start[0]) * tt)
+    g = int(start[1] + (end[1] - start[1]) * tt)
+    b = int(start[2] + (end[2] - start[2]) * tt)
+    return f"\x1b[38;2;{r};{g};{b}m"
+
+
 def _ui_border_glyphs(style: str) -> UIBoxBorderGlyphs:
     key = str(style).strip().lower()
     if key == "double":
@@ -2071,7 +2090,7 @@ def _battle_actor_name(side: str, idx: int, stage: int, player_name: str) -> str
     side_key = str(side).strip().lower()
     i = int(idx)
     if side_key == "primary":
-        return f"Baby Crow {i + 1}"
+        return "Baby Crow"
     if stage >= 3:
         if i == 0:
             return "Sharoom"
@@ -2189,14 +2208,14 @@ def _draw_battle_log_panel(
     h = max(5, int(height))
     x0 = max(0, SCREEN_W - w)
     y0 = max(0, SCREEN_H - h)
-    tl, tr, bl, br = "\u2554", "\u2557", "\u255a", "\u255d"
-    hz, vt = "\u2550", "\u2551"
+    tl, tr, bl, br = "\u250c", "\u2510", "\u2514", "\u2518"
+    hz, vt = "\u2500", "\u2502"
     text_color = "\x1b[38;2;245;245;245m"
     for dx in range(w):
         x = x0 + dx
         if 0 <= x < SCREEN_W and 0 <= y0 < SCREEN_H:
             ch = tl if dx == 0 else (tr if dx == w - 1 else hz)
-            g = ui_border_gradient_code(dx, 0, w, h)
+            g = battle_log_border_gradient_code(dx, 0, w, h)
             canvas[y0][x] = f"{g}{ch}{ANSI_RESET}"
     for dy in range(1, h - 1):
         y = y0 + dy
@@ -2207,7 +2226,7 @@ def _draw_battle_log_panel(
             if not (0 <= x < SCREEN_W):
                 continue
             if dx == 0 or dx == w - 1:
-                g = ui_border_gradient_code(dx, dy, w, h)
+                g = battle_log_border_gradient_code(dx, dy, w, h)
                 canvas[y][x] = f"{g}{vt}{ANSI_RESET}"
             else:
                 canvas[y][x] = " "
@@ -2216,7 +2235,7 @@ def _draw_battle_log_panel(
         x = x0 + dx
         if 0 <= x < SCREEN_W and 0 <= yb < SCREEN_H:
             ch = bl if dx == 0 else (br if dx == w - 1 else hz)
-            g = ui_border_gradient_code(dx, h - 1, w, h)
+            g = battle_log_border_gradient_code(dx, h - 1, w, h)
             canvas[yb][x] = f"{g}{ch}{ANSI_RESET}"
     if not lines:
         return
@@ -3275,6 +3294,10 @@ def render(
     if show_title_logo and isinstance(title_logo, dict):
         _overlay_title_logo(canvas, title_logo)
 
+    # Keep battle log below other active UI boxes.
+    if isinstance(battle_log_lines, list):
+        _draw_battle_log_panel(canvas, battle_log_lines, width=40, height=10)
+
     if isinstance(ui_box_specs, list):
         for spec in ui_box_specs:
             if isinstance(spec, UIBoxSpec):
@@ -3311,9 +3334,6 @@ def render(
                 selected,
                 blink_selected_on=blink_on,
             )
-
-    if isinstance(battle_log_lines, list):
-        _draw_battle_log_panel(canvas, battle_log_lines, width=40, height=10)
 
     # Vertical wipe-in from bottom.
     progress = max(0.0, min(1.0, wipe_progress))
