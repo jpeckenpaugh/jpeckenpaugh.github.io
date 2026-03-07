@@ -90,6 +90,8 @@ class UIBoxSpec:
     wrap_mode: str = "normal"
     border_gradient: bool = True
     anchor: str = "center"
+    preserve_body_whitespace: bool = False
+    blink_body_rows: List[int] | None = None
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,7 @@ class UIBoxLayout:
     title_start: int
     title_end: int
     action_row_index: int
+    blink_line_indices: set[int]
 
 
 def read_key_nonblocking() -> str | None:
@@ -672,12 +675,15 @@ def _balanced_wrap_lines(text: str, width: int) -> List[str]:
     return lines
 
 
-def _wrap_ui_body(text: str, width: int, mode: str) -> List[str]:
+def _wrap_ui_body(text: str, width: int, mode: str, preserve_whitespace: bool = False) -> List[str]:
     out: List[str] = []
     wrap_mode = str(mode).strip().lower()
     for para in str(text).splitlines():
-        line = para.strip()
-        if not line:
+        line = str(para).rstrip("\n")
+        test_line = line if preserve_whitespace else line.strip()
+        if not preserve_whitespace:
+            line = test_line
+        if not test_line:
             out.append("")
             continue
         if wrap_mode == "balanced":
@@ -694,6 +700,19 @@ def _format_ui_body_line(text: str, width: int, align: str) -> str:
     if mode == "right":
         return text.rjust(width)
     return text.ljust(width)
+
+
+def _format_select_lines(options: List[str], selected_index: int) -> List[str]:
+    clean = [str(opt) for opt in options]
+    max_len = max((len(opt) for opt in clean), default=0)
+    out: List[str] = []
+    for idx, opt in enumerate(clean):
+        core = opt.ljust(max_len)
+        if idx == selected_index:
+            out.append(f"[ {core} ]")
+        else:
+            out.append(f"  {core}  ")
+    return out
 
 
 def _resolve_ui_box_origin(box_w: int, box_h: int, spec: UIBoxSpec) -> tuple[int, int]:
@@ -728,7 +747,7 @@ def _resolve_ui_box_origin(box_w: int, box_h: int, spec: UIBoxSpec) -> tuple[int
 def _build_ui_box_layout(spec: UIBoxSpec) -> UIBoxLayout:
     glyphs = _ui_border_glyphs(spec.border_style)
     max_w = max(8, min(SCREEN_W - 4, int(spec.max_body_width)))
-    wrapped = _wrap_ui_body(spec.body_text, max_w, spec.wrap_mode)
+    wrapped = _wrap_ui_body(spec.body_text, max_w, spec.wrap_mode, preserve_whitespace=bool(spec.preserve_body_whitespace))
     body_w = max((len(line) for line in wrapped), default=0)
 
     actions = spec.actions if isinstance(spec.actions, list) else []
@@ -774,6 +793,17 @@ def _build_ui_box_layout(spec: UIBoxSpec) -> UIBoxLayout:
     x0, y0 = _resolve_ui_box_origin(box_w, box_h, spec)
     title_start = 1 + title_left
     title_end = title_start + len(title_token)
+    blink_line_indices: set[int] = set()
+    if isinstance(spec.blink_body_rows, list):
+        body_start = 1 + max(0, int(spec.padding_y))
+        for row in spec.blink_body_rows:
+            try:
+                r = int(row)
+            except Exception:
+                continue
+            line_idx = body_start + r
+            if 0 <= line_idx < box_h:
+                blink_line_indices.add(line_idx)
     return UIBoxLayout(
         spec=spec,
         lines=lines,
@@ -784,6 +814,7 @@ def _build_ui_box_layout(spec: UIBoxSpec) -> UIBoxLayout:
         title_start=title_start,
         title_end=title_end,
         action_row_index=action_row_index,
+        blink_line_indices=blink_line_indices,
     )
 
 
@@ -792,12 +823,14 @@ def _draw_ui_box_layout(
     layout: UIBoxLayout,
     visible_w: int | None = None,
     visible_h: int | None = None,
+    blink_on: bool = True,
 ) -> None:
     spec = layout.spec
     text_color = "\x1b[38;2;245;245;245m"
     title_color = "\x1b[38;2;255;255;255m"
     key_green = "\x1b[38;2;56;186;72m"
     key_red = "\x1b[38;2;220;70;70m"
+    dim_text = "\x1b[38;2;150;150;150m"
     border_flat = "\x1b[38;2;210;210;210m"
 
     vw = layout.box_w if visible_w is None else max(2, min(layout.box_w, int(visible_w)))
@@ -835,18 +868,20 @@ def _draw_ui_box_layout(
             elif dy == layout.action_row_index and ch == "S":
                 canvas[y][x] = f"{key_red}S{ANSI_RESET}"
             else:
-                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+                use_color = dim_text if (dy in layout.blink_line_indices and not blink_on) else text_color
+                canvas[y][x] = f"{use_color}{ch}{ANSI_RESET}"
 
 
-def draw_ui_box(canvas: List[List[str]], spec: UIBoxSpec) -> None:
+def draw_ui_box(canvas: List[List[str]], spec: UIBoxSpec, blink_on: bool = True) -> None:
     layout = _build_ui_box_layout(spec)
-    _draw_ui_box_layout(canvas, layout)
+    _draw_ui_box_layout(canvas, layout, blink_on=blink_on)
 
 
 def draw_ui_box_animated(
     canvas: List[List[str]],
     spec: UIBoxSpec,
     progress: float,
+    blink_on: bool = True,
 ) -> None:
     layout = _build_ui_box_layout(spec)
     p = max(0.0, min(1.0, float(progress)))
@@ -883,6 +918,7 @@ def draw_ui_box_animated(
     text_color = "\x1b[38;2;245;245;245m"
     key_green = "\x1b[38;2;56;186;72m"
     key_red = "\x1b[38;2;220;70;70m"
+    dim_text = "\x1b[38;2;150;150;150m"
 
     # Title behavior: during width-phase, reveal "[ Title ]" progressively on top border.
     top_row_override: List[str] | None = None
@@ -969,7 +1005,8 @@ def draw_ui_box_animated(
             elif dy == layout.action_row_index and ch == "S":
                 canvas[y][x] = f"{key_red}S{ANSI_RESET}"
             else:
-                canvas[y][x] = f"{text_color}{ch}{ANSI_RESET}"
+                use_color = dim_text if (dy in layout.blink_line_indices and not blink_on) else text_color
+                canvas[y][x] = f"{use_color}{ch}{ANSI_RESET}"
 
 
 def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
@@ -1345,9 +1382,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec:
     if screen == "root_menu":
         options = ["New Game", "Saved Game", "Asset Explorer"]
         cursor = int(flow.get("menu_cursor", 0)) % len(options)
-        lines: List[str] = []
-        for idx, opt in enumerate(options):
-            lines.append(f"[ {opt} ]" if idx == cursor else f"  {opt}")
+        lines = _format_select_lines(options, cursor)
         return UIBoxSpec(
             role="menu",
             border_style="heavy",
@@ -1358,6 +1393,8 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec:
             max_body_width=34,
             actions=["[ A / Confirm ]", "[ S / Back ]"],
             body_align="left",
+            preserve_body_whitespace=True,
+            blink_body_rows=[cursor],
         )
 
     if screen == "avatar_select":
@@ -1379,12 +1416,8 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec:
         idx = int(flow.get("name_choice_index", 0)) % max(1, len(names))
         name = str(names[idx])
         focus = int(flow.get("name_focus", 0))
-        preset_line = f"< {name} >"
-        custom_line = "Custom..."
-        if focus == 0:
-            preset_line = f"[ {preset_line} ]"
-        else:
-            custom_line = f"[ {custom_line} ]"
+        select_lines = _format_select_lines([f"< {name} >", "Custom..."], focus)
+        preset_line, custom_line = select_lines[0], select_lines[1]
         return UIBoxSpec(
             role="name_select",
             border_style="heavy",
@@ -1400,6 +1433,8 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec:
             body_align="center",
             wrap_mode="balanced",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
+            preserve_body_whitespace=True,
+            blink_body_rows=[focus],
         )
 
     if screen == "name_input":
@@ -1428,6 +1463,25 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec:
             max_body_width=72,
             body_align="left",
             actions=["[ A / Key ]", "[ S / Cancel ]"],
+            preserve_body_whitespace=True,
+        )
+
+    if screen == "fortune_select":
+        options = ["Poor (10 GP)", "Well-Off (100 GP)", "Royalty (1000 GP)"]
+        cursor = int(flow.get("fortune_cursor", 1)) % len(options)
+        lines = _format_select_lines(options, cursor)
+        return UIBoxSpec(
+            role="fortune_select",
+            border_style="heavy",
+            title="Choose Fortune",
+            body_text="\n".join(lines + ["", "Select your starting gold."]),
+            center_x=50,
+            center_y=17,
+            max_body_width=42,
+            body_align="left",
+            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            preserve_body_whitespace=True,
+            blink_body_rows=[cursor],
         )
 
     if screen == "start_confirm":
@@ -1438,7 +1492,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec:
             body_text=(
                 f"Avatar: {flow.get('avatar_label', 'Adventurer')}\n"
                 f"Name: {flow.get('selected_name', 'WARRIOR')}\n"
-                "Fortune: Well-Off (100 GP)\n\n"
+                f"Fortune: {flow.get('fortune_choice', 'Well-Off (100 GP)')}\n\n"
                 "Start this new game setup?"
             ),
             center_x=50,
@@ -2098,9 +2152,11 @@ def render(
     if isinstance(ui_box_specs, list):
         for spec in ui_box_specs:
             if isinstance(spec, UIBoxSpec):
-                draw_ui_box(canvas, spec)
+                box_blink_on = bool((int(float(blink_phase) * 2.0) % 2) == 0)
+                draw_ui_box(canvas, spec, blink_on=box_blink_on)
     if isinstance(ui_active_box, UIBoxSpec):
-        draw_ui_box_animated(canvas, ui_active_box, ui_active_box_progress)
+        box_blink_on = bool((int(float(blink_phase) * 2.0) % 2) == 0)
+        draw_ui_box_animated(canvas, ui_active_box, ui_active_box_progress, blink_on=box_blink_on)
     if isinstance(ui_avatar_overlay, dict) and isinstance(ui_active_box, UIBoxSpec):
         left_rows = ui_avatar_overlay.get("left_rows", [])
         right_rows = ui_avatar_overlay.get("right_rows", [])
@@ -2222,6 +2278,8 @@ def main() -> None:
         "name_focus": 0,
         "typed_name": "",
         "selected_name": player_cards[0]["names"][0],
+        "fortune_cursor": 1,
+        "fortune_choice": "Well-Off (100 GP)",
         "name_shift": True,
         "key_row": 0,
         "key_col": 0,
@@ -2322,7 +2380,7 @@ def main() -> None:
                         if focus == 0:
                             idx = int(flow.get("name_choice_index", 0)) % max(1, len(flow["name_choices"]))
                             flow["selected_name"] = str(flow["name_choices"][idx])
-                            begin_transition("start_confirm")
+                            begin_transition("fortune_select")
                         else:
                             flow["typed_name"] = str(flow.get("selected_name", ""))[:16]
                             flow["name_shift"] = True
@@ -2356,19 +2414,32 @@ def main() -> None:
                         flow["name_shift"] = shift
                         if done:
                             flow["selected_name"] = name[:16]
-                            begin_transition("start_confirm")
+                            begin_transition("fortune_select")
                         elif cancel:
                             begin_transition("name_select")
                     elif back:
                         begin_transition("name_select")
                     flow["key_row"] = row
                     flow["key_col"] = col
+                elif screen == "fortune_select":
+                    cursor = int(flow.get("fortune_cursor", 1))
+                    if key == "up":
+                        flow["fortune_cursor"] = (cursor - 1) % 3
+                    elif key == "down":
+                        flow["fortune_cursor"] = (cursor + 1) % 3
+                    elif confirm:
+                        options = ["Poor (10 GP)", "Well-Off (100 GP)", "Royalty (1000 GP)"]
+                        pick = options[int(flow.get("fortune_cursor", 1)) % len(options)]
+                        flow["fortune_choice"] = pick
+                        begin_transition("start_confirm")
+                    elif back:
+                        begin_transition("name_select")
                 elif screen == "start_confirm":
                     if confirm:
                         flow["message_text"] = "New game created. (Demo)"
                         begin_transition("info")
                     elif back:
-                        begin_transition("name_select")
+                        begin_transition("fortune_select")
                 elif screen == "info":
                     if confirm or back:
                         begin_transition("root_menu")
@@ -2376,6 +2447,7 @@ def main() -> None:
             split_label = f"{zones['sky_bg'].height}/{zones['ground_bg'].height}"
             active_spec = _build_screen_spec(flow)
             step_count = ui_box_step_count(active_spec)
+            ui_ready = wipe_progress >= 1.0
             if anim_mode == "open":
                 anim_progress = 1.0
             else:
@@ -2413,28 +2485,29 @@ def main() -> None:
                 world_scene_label=world_scene_label,
                 title_logo=title_logo,
                 show_title_logo=True,
-                ui_active_box=active_spec,
-                ui_active_box_progress=anim_progress,
-                ui_avatar_overlay=avatar_overlay,
+                ui_active_box=(active_spec if ui_ready else None),
+                ui_active_box_progress=(anim_progress if ui_ready else 0.0),
+                ui_avatar_overlay=(avatar_overlay if ui_ready else None),
                 blink_phase=now,
             )
             print(ANSI_HOME + frame, end="", flush=True)
 
             # Transition animation is now input-driven.
-            if anim_mode == "opening":
-                anim_step = min(step_count, anim_step + 2)
-                if anim_step >= step_count:
-                    anim_mode = "open"
-            elif anim_mode == "closing":
-                anim_step = max(0, anim_step - 2)
-                if anim_step <= 0:
-                    nxt = str(flow.get("next_screen") or flow.get("screen"))
-                    flow["screen"] = nxt
-                    flow["next_screen"] = None
-                    anim_mode = "opening"
-                    anim_step = 0
-            else:
-                anim_step = step_count
+            if ui_ready:
+                if anim_mode == "opening":
+                    anim_step = min(step_count, anim_step + 2)
+                    if anim_step >= step_count:
+                        anim_mode = "open"
+                elif anim_mode == "closing":
+                    anim_step = max(0, anim_step - 2)
+                    if anim_step <= 0:
+                        nxt = str(flow.get("next_screen") or flow.get("screen"))
+                        flow["screen"] = nxt
+                        flow["next_screen"] = None
+                        anim_mode = "opening"
+                        anim_step = 0
+                else:
+                    anim_step = step_count
             time.sleep(0.05)
     except KeyboardInterrupt:
         pass
