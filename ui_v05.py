@@ -2817,6 +2817,9 @@ def render(
             if idx in hidden_primary:
                 # Keep slot spacing, but do not render defeated actor artwork.
                 continue
+            if story_target_primary_index is not None and idx == int(story_target_primary_index) and not story_target_blink:
+                # Selection feedback: flash the selected opponent artwork itself.
+                continue
             for dy, row in enumerate(rows):
                 y = y0 + dy
                 if y < 0 or y >= SCREEN_H:
@@ -2852,17 +2855,6 @@ def render(
             w = max((len(r) for r in rows), default=0) if isinstance(rows, list) else 0
             h = len(rows) if isinstance(rows, list) else 0
             return (int(actor.get("x", 0)) + (w // 2), int(actor.get("y", 0)) + (h // 2))
-
-        if story_target_primary_index is not None and story_target_blink:
-            t_idx = int(story_target_primary_index)
-            if 0 <= t_idx < len(primary_placements):
-                actor = primary_placements[t_idx]
-                rows = actor.get("rows", [])
-                w = max((len(r) for r in rows), default=0) if isinstance(rows, list) else 0
-                x = int(actor.get("x", 0)) + (w // 2)
-                y = int(actor.get("y", 0)) - 2
-                if 0 <= y < SCREEN_H and 0 <= x < SCREEN_W:
-                    canvas[y][x] = f"\x1b[38;2;255;255;120mv{ANSI_RESET}"
 
         def _actor_from_side(side: str, idx: int) -> dict | None:
             side_key = str(side).strip().lower()
