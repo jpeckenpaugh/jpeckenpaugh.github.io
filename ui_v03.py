@@ -2394,6 +2394,7 @@ def render(
     story_mp_hud: dict | None = None,
     story_melt_primary_index: int | None = None,
     story_melt_progress: float = 0.0,
+    story_hidden_primary_indices: List[int] | None = None,
 ) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
@@ -2492,6 +2493,7 @@ def render(
     if world_layer_level >= 2 and primary_zone is not None:
         pri_sprites = primary_actor_sprites if primary_actor_sprites is not None else ([mushy_sprite] if mushy_sprite else [])
         primary_placements = layout_actor_strip(primary_zone, pri_sprites, spacing=1, stagger_rows=primary_actor_stagger)
+        hidden_primary = set(int(i) for i in (story_hidden_primary_indices or []))
         for idx, actor in enumerate(primary_placements):
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
@@ -2500,6 +2502,9 @@ def render(
                 continue
             if story_melt_primary_index is not None and idx == int(story_melt_primary_index):
                 _draw_defeat_dissolve(canvas, actor, story_melt_progress)
+                continue
+            if idx in hidden_primary:
+                # Keep slot spacing, but do not render defeated actor artwork.
                 continue
             for dy, row in enumerate(rows):
                 y = y0 + dy
@@ -3014,10 +3019,8 @@ def main() -> None:
             primary_sprites: List[List[List[str]]] = []
             secondary_sprites: List[List[List[str]]] = []
             if scene_world_layer_level >= 3:
-                if int(flow.get("crow_hp", 10)) <= 0 and story_action not in ("cast2", "melt"):
-                    primary_sprites = [mushy_sprite]
-                else:
-                    primary_sprites = [mushy_sprite, crow_sprite]
+                # Keep fixed slot count to prevent actor reflow when crow is defeated.
+                primary_sprites = [mushy_sprite, crow_sprite]
                 secondary_sprites = [selected_player_sprite]
 
             primary_placements_for_ui: List[dict] = []
@@ -3111,6 +3114,9 @@ def main() -> None:
                 }
             story_melt_idx = 1 if story_action == "melt" and len(primary_sprites) >= 2 else None
             story_melt_progress = min(1.0, float(flow.get("story_action_t", 0.0)) / 1.0) if story_action == "melt" else 0.0
+            story_hidden_primary_indices: List[int] = []
+            if int(flow.get("crow_hp", 10)) <= 0 and story_action not in ("cast2", "melt"):
+                story_hidden_primary_indices.append(1)
 
             frame = render(
                 clouds=clouds,
@@ -3142,6 +3148,7 @@ def main() -> None:
                 story_mp_hud=story_mp_hud,
                 story_melt_primary_index=story_melt_idx,
                 story_melt_progress=story_melt_progress,
+                story_hidden_primary_indices=story_hidden_primary_indices,
             )
             print(ANSI_HOME + frame, end="", flush=True)
 
