@@ -1623,7 +1623,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             actions=["[ A / Continue ]"],
         )
 
-    if screen in ("story_2", "story_battle_resolve"):
+    if screen in ("story_2", "story_battle_resolve", "story_lineup_shift"):
         return None
 
     message = str(flow.get("message_text", ""))
@@ -2531,6 +2531,7 @@ def render(
     story_melt_primary_index: int | None = None,
     story_melt_progress: float = 0.0,
     story_hidden_primary_indices: List[int] | None = None,
+    story_transition_actors: List[dict] | None = None,
 ) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
@@ -2662,6 +2663,25 @@ def render(
             for dy, row in enumerate(rows):
                 y = y0 + dy
                 if y < 0 or y >= SCREEN_H:
+                    continue
+                for dx, cell in enumerate(row):
+                    x = x0 + dx
+                    if 0 <= x < SCREEN_W and cell != " ":
+                        canvas[y][x] = cell
+
+    # Optional formation tween actors (used during lineup transitions).
+    if isinstance(story_transition_actors, list):
+        for actor in story_transition_actors:
+            if not isinstance(actor, dict):
+                continue
+            x0 = int(actor.get("x", 0))
+            y0 = int(actor.get("y", 0))
+            rows = actor.get("rows", [])
+            if not isinstance(rows, list):
+                continue
+            for dy, row in enumerate(rows):
+                y = y0 + dy
+                if y < 0 or y >= SCREEN_H or not isinstance(row, list):
                     continue
                 for dx, cell in enumerate(row):
                     x = x0 + dx
@@ -2953,6 +2973,7 @@ def main() -> None:
         "battle_action_t": 0.0,
         "battle_melt_index": None,
         "battle_melt_t": 0.0,
+        "lineup_transition": None,
     }
     anim_mode = "opening"  # opening | open | closing
     anim_step = 0
@@ -2961,6 +2982,33 @@ def main() -> None:
         flow["next_screen"] = target
         nonlocal anim_mode
         anim_mode = "closing"
+
+    def _compute_story_formation_positions(player_sprite: List[List[str]], formation: str) -> Dict[str, dict]:
+        out: Dict[str, dict] = {}
+        ground_zone = zones.get("ground_bg")
+        if not isinstance(ground_zone, LayoutZone):
+            return out
+        primary_zone = build_primary_zone(_treeline_lowest_row(ground_zone.y, world_anchor_stagger) + 1)
+        secondary_zone = build_secondary_zone()
+        if formation == "pre":
+            pri = layout_actor_strip(primary_zone, [mushy_sprite, crow_sprite], spacing=1, stagger_rows=1)
+            sec = layout_actor_strip(secondary_zone, [player_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
+            if sec:
+                out["player"] = {"x": int(sec[0]["x"]), "y": int(sec[0]["y"]), "rows": player_sprite}
+            if len(pri) >= 1:
+                out["mushy"] = {"x": int(pri[0]["x"]), "y": int(pri[0]["y"]), "rows": mushy_sprite}
+            if len(pri) >= 2:
+                out["crow1"] = {"x": int(pri[1]["x"]), "y": int(pri[1]["y"]), "rows": crow_sprite}
+        else:
+            pri = layout_actor_strip(primary_zone, [crow_sprite], spacing=1, stagger_rows=1)
+            sec = layout_actor_strip(secondary_zone, [player_sprite, mushy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
+            if sec:
+                out["player"] = {"x": int(sec[0]["x"]), "y": int(sec[0]["y"]), "rows": player_sprite}
+            if len(sec) >= 2:
+                out["mushy"] = {"x": int(sec[1]["x"]), "y": int(sec[1]["y"]), "rows": mushy_sprite}
+            if pri:
+                out["crow1"] = {"x": int(pri[0]["x"]), "y": int(pri[0]["y"]), "rows": crow_sprite}
+        return out
 
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
@@ -3057,6 +3105,13 @@ def main() -> None:
                                 flow["battle_staff_charges"] = post_charges
                             flow["battle_queue_index"] = qidx + 1
                             flow["battle_action_t"] = 0.0
+            elif anim_mode == "open" and screen == "story_lineup_shift":
+                trans = flow.get("lineup_transition")
+                if isinstance(trans, dict):
+                    trans["t"] = float(trans.get("t", 0.0)) + dt
+                    if float(trans.get("t", 0.0)) >= float(trans.get("duration", 1.0)):
+                        flow["lineup_transition"] = None
+                        begin_transition("story_battle_cmd_player")
 
             if anim_mode == "open" and flow.get("story_action") is None:
                 if str(flow.get("screen", "root_menu")) == "story_2" and current_sky_rows == target_sky_rows:
@@ -3214,7 +3269,26 @@ def main() -> None:
                     if confirm:
                         pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
                         flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
-                        begin_transition("story_battle_cmd_player")
+                        player_sprite_for_shift = selected_card.get("sprite", [])
+                        start_pos = _compute_story_formation_positions(player_sprite_for_shift, "pre")
+                        end_pos = _compute_story_formation_positions(player_sprite_for_shift, "post")
+                        actor_ids = [aid for aid in ("player", "mushy", "crow1") if aid in start_pos and aid in end_pos]
+                        flow["lineup_transition"] = {
+                            "t": 0.0,
+                            "duration": 1.0,
+                            "actors": [
+                                {
+                                    "id": aid,
+                                    "rows": start_pos[aid]["rows"],
+                                    "sx": int(start_pos[aid]["x"]),
+                                    "sy": int(start_pos[aid]["y"]),
+                                    "ex": int(end_pos[aid]["x"]),
+                                    "ey": int(end_pos[aid]["y"]),
+                                }
+                                for aid in actor_ids
+                            ],
+                        }
+                        begin_transition("story_lineup_shift")
                 elif screen == "story_battle_cmd_player":
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
                     cursor = int(flow.get("battle_target_cursor", 0))
@@ -3278,12 +3352,37 @@ def main() -> None:
             selected_player_sprite = player_cards[selected_idx].get("sprite", [])
             primary_sprites: List[List[List[str]]] = []
             secondary_sprites: List[List[List[str]]] = []
+            story_transition_actors: List[dict] | None = None
             battle_screens = {"story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "story_battle_victory"}
             if scene_world_layer_level >= 3:
                 if screen in battle_screens:
                     enemy_count = max(1, len([int(v) for v in flow.get("battle_primary_hp", [10])]))
                     primary_sprites = [crow_sprite for _ in range(enemy_count)]
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
+                elif screen == "story_lineup_shift":
+                    primary_sprites = []
+                    secondary_sprites = []
+                    trans = flow.get("lineup_transition")
+                    if isinstance(trans, dict):
+                        t = max(0.0, min(1.0, float(trans.get("t", 0.0)) / max(0.001, float(trans.get("duration", 1.0)))))
+                        # Smoothstep easing for softer start/end.
+                        te = t * t * (3.0 - (2.0 * t))
+                        actors = trans.get("actors", [])
+                        if isinstance(actors, list):
+                            tmp: List[dict] = []
+                            for a in actors:
+                                if not isinstance(a, dict):
+                                    continue
+                                sx = int(a.get("sx", 0))
+                                sy = int(a.get("sy", 0))
+                                ex = int(a.get("ex", sx))
+                                ey = int(a.get("ey", sy))
+                                x = int(round(sx + ((ex - sx) * te)))
+                                y = int(round(sy + ((ey - sy) * te)))
+                                rows = a.get("rows", [])
+                                if isinstance(rows, list):
+                                    tmp.append({"x": x, "y": y, "rows": rows})
+                            story_transition_actors = tmp
                 elif screen == "story_more_crows":
                     primary_sprites = []
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
@@ -3432,6 +3531,7 @@ def main() -> None:
                 story_melt_primary_index=story_melt_idx,
                 story_melt_progress=story_melt_progress,
                 story_hidden_primary_indices=story_hidden_primary_indices,
+                story_transition_actors=story_transition_actors,
             )
             print(ANSI_HOME + frame, end="", flush=True)
 
