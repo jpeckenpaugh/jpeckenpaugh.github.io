@@ -1908,11 +1908,31 @@ def _next_alive_index(hp_values: List[int], current: int, step: int) -> int:
     return alive[(pos + step) % len(alive)]
 
 
+# v06 combat notes (physical attacks):
+# 1) Per-hit luck roll for attacker and defender.
+# 2) luck roll is uniform integer in [0, Luck].
+# 3) attack_total = base_atk + attacker_luck_roll.
+# 4) defense_total = base_def + defender_luck_roll.
+# 5) damage = max(0, attack_total - defense_total).
+def _roll_physical_damage(
+    rng: random.Random,
+    attacker_atk: int,
+    attacker_luck: int,
+    defender_def: int,
+    defender_luck: int,
+) -> int:
+    atk_roll = rng.randint(0, max(0, int(attacker_luck)))
+    def_roll = rng.randint(0, max(0, int(defender_luck)))
+    atk_total = int(attacker_atk) + atk_roll
+    def_total = int(defender_def) + def_roll
+    return max(0, atk_total - def_total)
+
+
 def _build_battle_round_actions(flow: dict) -> List[dict]:
     rng = random.Random(time.monotonic_ns())
     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
-    sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [12, 10])]
-    sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [10, 0])]
+    sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+    sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
     staff_charges = max(0, int(flow.get("battle_staff_charges", 3)))
     stage = int(flow.get("battle_stage", 1))
     player_idx = 1 if stage >= 3 else 0
@@ -1927,7 +1947,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             target = _first_alive(pri_hp, 0)
         if pri_hp[target] <= 0:
             target = _first_alive(pri_hp, target)
-        dmg = rng.randint(1, 3)
+        dmg = _roll_physical_damage(rng, attacker_atk=2, attacker_luck=2, defender_def=0, defender_luck=2)
         pre_hp = pri_hp[target]
         post_hp = max(0, pre_hp - dmg)
         queue.append(
@@ -1996,7 +2016,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             target = _first_alive(pri_hp, 0)
         if pri_hp[target] <= 0:
             target = _first_alive(pri_hp, target)
-        dmg = rng.randint(1, 3)
+        dmg = _roll_physical_damage(rng, attacker_atk=2, attacker_luck=2, defender_def=0, defender_luck=2)
         pre_hp = pri_hp[target]
         post_hp = max(0, pre_hp - dmg)
         queue.append(
@@ -2019,7 +2039,16 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
         if not alive_sec:
             break
         target = alive_sec[rng.randrange(len(alive_sec))]
-        dmg = rng.randint(1, 3)
+        if stage >= 3 and target == sharoom_idx:
+            def_base = 2
+            def_luck = 2
+        elif target == player_idx:
+            def_base = 1
+            def_luck = 2
+        else:
+            def_base = 2
+            def_luck = 2
+        dmg = _roll_physical_damage(rng, attacker_atk=3, attacker_luck=2, defender_def=def_base, defender_luck=def_luck)
         pre_hp = sec_hp[target]
         post_hp = max(0, pre_hp - dmg)
         queue.append(
@@ -3225,10 +3254,10 @@ def main() -> None:
         "story_action_t": 0.0,
         "battle_stage": 1,
         "battle_primary_hp": [10],          # stage 1 starts with one baby crow
-        "battle_secondary_hp": [14, 10],    # player, mushy
-        "battle_secondary_hp_max": [14, 10],
-        "battle_secondary_mp": [10, 0],     # player, mushy
-        "battle_secondary_mp_max": [10, 0],
+        "battle_secondary_hp": [20, 10],    # player, mushy
+        "battle_secondary_hp_max": [20, 10],
+        "battle_secondary_mp": [0, 6],      # player, mushy
+        "battle_secondary_mp_max": [0, 6],
         "battle_staff_charges": 3,          # Mycostaff charges for Magic Spark
         "battle_player_target": 0,
         "battle_mushy_target": 0,
@@ -3369,7 +3398,7 @@ def main() -> None:
             story_action = flow.get("story_action")
             if anim_mode == "open" and screen in ("story_battle_resolve", "story_battle3_resolve"):
                 pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
-                sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [14, 10])]
+                sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
                 melt_index = flow.get("battle_melt_index")
                 if melt_index is not None:
                     flow["battle_melt_t"] = float(flow.get("battle_melt_t", 0.0)) + dt
@@ -3413,7 +3442,7 @@ def main() -> None:
                                 sec_hp[t_idx] = post_hp
                                 flow["battle_secondary_hp"] = sec_hp
                             if str(action.get("kind")) == "spell":
-                                sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [10, 0])]
+                                sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
                                 s_idx = int(action.get("source_index", 0))
                                 post_mp = max(0, int(action.get("post_mp", 0)))
                                 post_charges = max(0, int(action.get("post_charges", int(flow.get("battle_staff_charges", 0)))))
@@ -3597,10 +3626,10 @@ def main() -> None:
                         flow["story_action_t"] = 0.0
                         flow["battle_stage"] = 1
                         flow["battle_primary_hp"] = [10]
-                        flow["battle_secondary_hp"] = [14, 10]
-                        flow["battle_secondary_hp_max"] = [14, 10]
-                        flow["battle_secondary_mp"] = [10, 0]
-                        flow["battle_secondary_mp_max"] = [10, 0]
+                        flow["battle_secondary_hp"] = [20, 10]
+                        flow["battle_secondary_hp_max"] = [20, 10]
+                        flow["battle_secondary_mp"] = [0, 6]
+                        flow["battle_secondary_mp_max"] = [0, 6]
                         flow["battle_staff_charges"] = 3
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
@@ -3729,10 +3758,10 @@ def main() -> None:
                     if confirm:
                         flow["battle_stage"] = 3
                         flow["battle_primary_hp"] = [10, 10, 10]
-                        flow["battle_secondary_hp"] = [12, 14, 10]  # Sharoom, Player, Mushy
-                        flow["battle_secondary_hp_max"] = [12, 14, 10]
-                        flow["battle_secondary_mp"] = [10, 10, 0]
-                        flow["battle_secondary_mp_max"] = [10, 10, 0]
+                        flow["battle_secondary_hp"] = [10, 20, 10]  # Sharoom, Player, Mushy
+                        flow["battle_secondary_hp_max"] = [10, 20, 10]
+                        flow["battle_secondary_mp"] = [6, 0, 6]
+                        flow["battle_secondary_mp_max"] = [6, 0, 6]
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
@@ -4019,9 +4048,9 @@ def main() -> None:
                     "selected": pidx,
                 }
             if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
-                sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [14, 10])]
+                sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
                 sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
-                sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [10, 0])]
+                sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
                 sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
                 actor_idx = 0
                 if screen == "story_battle_cmd_mushy":
