@@ -4533,9 +4533,12 @@ def render(
 
 def main() -> None:
     base = os.getcwd()
-    data_root = os.path.join(base, "legecay", "data")
-    if not os.path.isdir(data_root):
+    if os.environ.get("LOKARTA_WEB") == "1":
         data_root = os.path.join(base, "data")
+    else:
+        data_root = os.path.join(base, "legacy", "data")
+        if not os.path.isdir(data_root):
+            data_root = os.path.join(base, "data")
     objects_path = os.path.join(data_root, "objects.json")
     colors_path = os.path.join(data_root, "colors.json")
     players_path = os.path.join(data_root, "players.json")
@@ -6283,3 +6286,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

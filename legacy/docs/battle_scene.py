@@ -294,6 +294,26 @@ def dialog_box_lines(entry: dict, choice_cursor: int, max_inner_width: int = 44)
 
 
 def read_key_nonblocking() -> str | None:
+    if os.environ.get("LOKARTA_WEB") == "1":
+        try:
+            from app.input import read_keypress_timeout
+
+            raw = read_keypress_timeout(0.0)
+            if not raw:
+                return None
+            k = str(raw).strip()
+            mapping = {
+                "LEFT": "left",
+                "RIGHT": "right",
+                "UP": "up",
+                "DOWN": "down",
+                "ENTER": "\n",
+            }
+            if k in mapping:
+                return mapping[k]
+            return k.lower()[:1] if k else None
+        except Exception:
+            return None
     if os.name == "nt":
         import msvcrt
 
@@ -760,10 +780,10 @@ def render(
 
 def main() -> None:
     base = os.getcwd()
-    objects_path = os.path.join(base, "legecay", "data", "objects.json")
-    colors_path = os.path.join(base, "legecay", "data", "colors.json")
-    scenes_path = os.path.join(base, "legecay", "data", "scenes.json")
-    opponents_path = os.path.join(base, "legecay", "data", "opponents.json")
+    objects_path = os.path.join(base, "legacy", "data", "objects.json")
+    colors_path = os.path.join(base, "legacy", "data", "colors.json")
+    scenes_path = os.path.join(base, "legacy", "data", "scenes.json")
+    opponents_path = os.path.join(base, "legacy", "data", "opponents.json")
 
     objects = load_json(objects_path)
     colors = load_json(colors_path)
@@ -866,3 +886,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -294,6 +294,26 @@ def dialog_box_lines(entry: dict, choice_cursor: int, max_inner_width: int = 44)
 
 
 def read_key_nonblocking() -> str | None:
+    if os.environ.get("LOKARTA_WEB") == "1":
+        try:
+            from app.input import read_keypress_timeout
+
+            raw = read_keypress_timeout(0.0)
+            if not raw:
+                return None
+            k = str(raw).strip()
+            mapping = {
+                "LEFT": "left",
+                "RIGHT": "right",
+                "UP": "up",
+                "DOWN": "down",
+                "ENTER": "\n",
+            }
+            if k in mapping:
+                return mapping[k]
+            return k.lower()[:1] if k else None
+        except Exception:
+            return None
     if os.name == "nt":
         import msvcrt
 
