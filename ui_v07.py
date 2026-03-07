@@ -2090,10 +2090,24 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="Here, take one of my feathers, and you can use it to summon me once per battle.",
+            body_text="Here, take one of my feathers. Just call when you need a hand and I will swoop in.",
             center_x=50,
             center_y=17,
             max_body_width=50,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_hawk_post_3":
+        return UIBoxSpec(
+            role="story",
+            border_style="double",
+            title="Hawking",
+            body_text="Just try to call too often. Maybe once per battle is good for now.",
+            center_x=50,
+            center_y=17,
+            max_body_width=48,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Accept Hawking Feather ]"],
@@ -2108,6 +2122,20 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             center_x=50,
             center_y=17,
             max_body_width=54,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_post_hawk_fairy_intro":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Roomy",
+            body_text="Uh oh, here come those fairies...",
+            center_x=50,
+            center_y=17,
+            max_body_width=40,
             wrap_mode="balanced",
             body_align="left",
             actions=["[ A / Continue ]"],
@@ -2294,7 +2322,7 @@ def _position_screen_box_for_actors(
     if screen in ("story_roomy_4", "story_roomy_4b") and len(secondary_placements) >= 2:
         idx = 2 if len(secondary_placements) >= 3 else 1
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
-    if screen in ("story_hawk_intro_1", "story_hawk_intro_2", "story_hawk_intro_5", "story_hawk_post_1", "story_hawk_post_2") and primary_placements:
+    if screen in ("story_hawk_intro_1", "story_hawk_intro_2", "story_hawk_intro_5", "story_hawk_post_1", "story_hawk_post_2", "story_hawk_post_3") and primary_placements:
         return _anchor_box_next_to_actor(spec, primary_placements[0], prefer="left")
     if screen in ("story_hawk_intro_3", "story_hawk_intro_4") and secondary_placements:
         return _anchor_box_next_to_actor(spec, secondary_placements[0], prefer="right")
@@ -2314,7 +2342,7 @@ def _position_screen_box_for_actors(
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen in ("story_battle_victory", "story_more_crows") and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
-    if screen == "story_hawk_victory" and len(secondary_placements) >= 2:
+    if screen in ("story_hawk_victory", "story_post_hawk_fairy_intro") and len(secondary_placements) >= 2:
         idx = 1 if len(secondary_placements) >= 2 else 0
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     return spec
@@ -2369,6 +2397,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
     staff_charges = max(0, int(flow.get("battle_staff_charges", 3)))
     stage = int(flow.get("battle_stage", 1))
+    round_num = max(1, int(flow.get("battle_round", 1)))
     player_idx = 1 if stage >= 3 else 0
     mushy_idx = 2 if stage >= 3 else 1
     sharoom_idx = 0 if stage >= 3 else -1
@@ -2386,9 +2415,23 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
         sec_boost_atk.extend([0] * (len(sec_hp) - len(sec_boost_atk)))
     if len(sec_boost_def) < len(sec_hp):
         sec_boost_def.extend([0] * (len(sec_hp) - len(sec_boost_def)))
-    pri_base_atk = [4 if stage >= 4 else 3 for _ in pri_hp]
-    pri_base_def = [1 if stage >= 4 else 0 for _ in pri_hp]
-    pri_base_luck = [3 if stage >= 4 else 2 for _ in pri_hp]
+    pri_kind = [str(v).strip().lower() for v in flow.get("battle_primary_kind", (["baby_crow", "hawk", "baby_crow"] if stage >= 4 else []))]
+    if len(pri_kind) < len(pri_hp):
+        pri_kind.extend(["baby_crow"] * (len(pri_hp) - len(pri_kind)))
+    hawk_idx = pri_kind.index("hawk") if (stage >= 4 and "hawk" in pri_kind) else -1
+    pri_base_atk: List[int] = []
+    pri_base_def: List[int] = []
+    pri_base_luck: List[int] = []
+    for i in range(len(pri_hp)):
+        kind = pri_kind[i] if i < len(pri_kind) else "baby_crow"
+        if stage >= 4 and kind == "hawk":
+            pri_base_atk.append(4)
+            pri_base_def.append(1)
+            pri_base_luck.append(3)
+        else:
+            pri_base_atk.append(3)
+            pri_base_def.append(0)
+            pri_base_luck.append(2)
     queue: List[dict] = []
     defending: set[int] = set()
     defended_was_attacked: set[int] = set()
@@ -2426,6 +2469,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 "pre_hp": pre_hp,
                 "post_hp": post_hp,
                 "total": int(pri_hp_max[target]) if target < len(pri_hp_max) else 10,
+                "surrender_on_zero": bool(stage >= 4 and hawk_idx >= 0 and target == hawk_idx),
             }
         )
         pri_hp[target] = post_hp
@@ -2491,6 +2535,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                     "uses_mp": uses_mp,
                     "pre_charges": pre_charges,
                     "post_charges": post_charges,
+                    "surrender_on_zero": bool(stage >= 4 and hawk_idx >= 0 and target == hawk_idx),
                 }
             )
             pri_hp[target] = post_hp
@@ -2521,7 +2566,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                     "post_hp": post_hp,
                     "total": int(pri_hp_max[target]) if target < len(pri_hp_max) else 10,
                     "effects": [{"type": "set_battle_summon_used", "value": 1}],
-                    "surrender_on_zero": bool(int(stage) >= 4),
+                    "surrender_on_zero": bool(int(stage) >= 4 and hawk_idx >= 0 and target == hawk_idx),
                 }
             )
             pri_hp[target] = post_hp
@@ -2648,7 +2693,63 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             continue
         _enqueue_physical_from_secondary(actor_idx, target_key)
 
+    if stage >= 4:
+        # Summoned baby crows may flee based on HP thresholds.
+        for enemy_idx in _alive_indices(pri_hp):
+            if enemy_idx == hawk_idx:
+                continue
+            hp_now = pri_hp[enemy_idx]
+            hp_cap = max(1, int(pri_hp_max[enemy_idx] if enemy_idx < len(pri_hp_max) else 10))
+            ratio = float(hp_now) / float(hp_cap)
+            flee_p = 0.75 if ratio < 0.25 else (0.50 if ratio < 0.50 else 0.0)
+            if flee_p > 0.0 and rng.random() < flee_p:
+                queue.append(
+                    {
+                        "kind": "flee",
+                        "source_side": "primary",
+                        "source_index": enemy_idx,
+                        "target_side": "primary",
+                        "target_index": enemy_idx,
+                        "damage": 0,
+                        "pre_hp": hp_now,
+                        "post_hp": 0,
+                        "total": hp_cap,
+                    }
+                )
+                pri_hp[enemy_idx] = 0
+
+        # Birdcall rounds: 2, 6, 14, 30... while Hawking is still active.
+        if hawk_idx >= 0 and hawk_idx < len(pri_hp) and pri_hp[hawk_idx] > 0:
+            next_round = max(2, int(flow.get("battle_hawk_birdcall_next_round", 2)))
+            gap = max(1, int(flow.get("battle_hawk_birdcall_gap", 4)))
+            if round_num >= next_round:
+                crow_slots = [i for i, kind in enumerate(pri_kind[: len(pri_hp)]) if kind == "baby_crow"]
+                active_summons = len([i for i in crow_slots if pri_hp[i] > 0])
+                if active_summons < 2:
+                    open_slot = next((i for i in crow_slots if pri_hp[i] <= 0), -1)
+                    if open_slot >= 0:
+                        summon_hp = max(1, int(pri_hp_max[open_slot] if open_slot < len(pri_hp_max) else 10))
+                        queue.append(
+                            {
+                                "kind": "birdcall",
+                                "source_side": "primary",
+                                "source_index": 0,
+                                "target_side": "primary",
+                                "target_index": open_slot,
+                                "damage": 0,
+                                "pre_hp": 0,
+                                "post_hp": summon_hp,
+                                "total": summon_hp,
+                            }
+                        )
+                        pri_hp[open_slot] = summon_hp
+                flow["battle_hawk_birdcall_next_round"] = next_round + gap
+                flow["battle_hawk_birdcall_gap"] = gap * 2
+
+    birdcall_used = any(str(item.get("kind", "")) == "birdcall" for item in queue)
     for crow_idx in _alive_indices(pri_hp):
+        if stage >= 4 and crow_idx == hawk_idx and birdcall_used:
+            continue
         alive_sec = _alive_indices(sec_hp)
         if not alive_sec:
             break
@@ -2717,6 +2818,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
 
     flow["battle_secondary_boost_atk"] = [max(0, int(v) - 1) for v in sec_boost_atk[: len(sec_hp)]]
     flow["battle_secondary_boost_def"] = [max(0, int(v) - 1) for v in sec_boost_def[: len(sec_hp)]]
+    flow["battle_round"] = round_num + 1
     return queue
 
 
@@ -2724,8 +2826,10 @@ def _battle_actor_name(side: str, idx: int, stage: int, player_name: str) -> str
     side_key = str(side).strip().lower()
     i = int(idx)
     if side_key == "primary":
+        if stage >= 5:
+            return "Baby Fairy"
         if stage >= 4:
-            return "Hawking"
+            return "Hawking" if i == 1 else "Baby Crow"
         return "Baby Crow"
     if stage >= 4:
         if i == 0:
@@ -2784,11 +2888,15 @@ def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List
         lines = [f"{src} uses Healing Touch on the whole team."]
     elif kind == "concentric":
         lines = [f"{src} uses Concentric to restore team MP."]
+    elif kind == "birdcall":
+        lines = [f"{src} uses Birdcall. A Baby Crow joins the fight."]
+    elif kind == "flee":
+        lines = [f"{src} flees from the fight."]
     elif kind == "summon":
         lines = [f"{src} summons Hawking Feather strike on {dst} for {damage} damage."]
     else:
         lines = [f"{src} acts."]
-    if pre_hp > 0 and post_hp <= 0:
+    if pre_hp > 0 and post_hp <= 0 and kind not in ("flee", "birdcall"):
         if bool(action.get("surrender_on_zero", False)):
             lines.append(f"{dst} surrenders.")
         else:
@@ -2802,7 +2910,10 @@ def _battle_log_start(flow: dict, stage: int) -> None:
     flow["battle_log_active"] = None
     flow["battle_log_active_chars"] = 0
     flow["battle_summon_used"] = False
-    if int(stage) >= 4:
+    flow["battle_round"] = 1
+    if int(stage) >= 5:
+        opener = "Battle begins: Sharoom, Player, Mushy, and Roomy vs 3 Baby Fairies."
+    elif int(stage) >= 4:
         opener = "Miniboss battle begins: Sharoom, Player, Mushy, and Roomy vs Hawking."
     elif int(stage) >= 3:
         opener = "Battle begins: Sharoom, Player, and Mushy vs 3 Baby Crows."
@@ -3168,6 +3279,40 @@ def _draw_spell_throw(
                 rng = random.Random(seed)
                 color = palette[rng.randrange(len(palette))]
                 canvas[gy][gx] = f"{color}*{ANSI_RESET}"
+
+
+def _draw_hawking_swoop(
+    canvas: List[List[str]],
+    hawk_rows: List[List[str]],
+    target_actor: dict,
+    progress: float,
+) -> None:
+    if not isinstance(hawk_rows, list) or not hawk_rows:
+        return
+    t_rows = target_actor.get("rows", [])
+    if not isinstance(t_rows, list) or not t_rows:
+        return
+    tw = max((len(r) for r in t_rows), default=0)
+    th = len(t_rows)
+    hw = max((len(r) for r in hawk_rows), default=0)
+    hh = len(hawk_rows)
+    tx = int(target_actor.get("x", 0)) + (tw // 2) - (hw // 2)
+    ty = int(target_actor.get("y", 0)) + (th // 2) - (hh // 2)
+    p = max(0.0, min(1.0, float(progress)))
+    sx = SCREEN_W + 4
+    sy = -max(2, hh + 2)
+    t = min(1.0, p / 0.72)
+    x = int(round(sx + ((tx - sx) * t)))
+    y = int(round(sy + ((ty - sy) * t)))
+    if 0.72 <= p < 0.84:
+        # One blink while overlapping the target before impact.
+        blink_on = (int((p - 0.72) / 0.06) % 2) == 0
+        if not blink_on:
+            return
+        x, y = tx, ty
+    elif p >= 0.84:
+        x, y = tx, ty
+    _draw_sprite(canvas, hawk_rows, x, y)
 
 
 def _draw_spell_barrage(
@@ -3739,6 +3884,7 @@ def render(
     story_spell: dict | None = None,
     story_primary_hp: List[int] | None = None,
     story_primary_hp_total: int = 10,
+    story_primary_hp_totals: List[int] | None = None,
     story_secondary_hp: List[int] | None = None,
     story_secondary_hp_total: List[int] | None = None,
     story_secondary_mp: List[int] | None = None,
@@ -3939,7 +4085,13 @@ def render(
             src_actor = _actor_from_side(s_side, s_idx)
             dst_actor = _actor_from_side(t_side, t_idx)
             if isinstance(src_actor, dict) and isinstance(dst_actor, dict):
-                _draw_spell_throw(canvas, _center_of(src_actor), _center_of(dst_actor), prog)
+                effect = str(story_spell.get("effect", "spell")).strip().lower()
+                if effect == "summon":
+                    hawk_rows = story_spell.get("summon_rows", [])
+                    if isinstance(hawk_rows, list) and hawk_rows:
+                        _draw_hawking_swoop(canvas, hawk_rows, dst_actor, prog)
+                else:
+                    _draw_spell_throw(canvas, _center_of(src_actor), _center_of(dst_actor), prog)
 
         if isinstance(story_damage_hud, dict):
             t_side = str(story_damage_hud.get("target_side", "primary"))
@@ -3982,13 +4134,15 @@ def render(
 
         # Planning-phase HUD: show HP bars above all opponents while selecting targets.
         if isinstance(story_primary_hp, list):
-            total = max(1, int(story_primary_hp_total))
+            totals = story_primary_hp_totals if isinstance(story_primary_hp_totals, list) else []
+            total_default = max(1, int(story_primary_hp_total))
             hidden_idx = set(int(i) for i in (story_hidden_primary_indices or []))
             for idx, hp_val in enumerate(story_primary_hp):
                 if idx < 0 or idx >= len(primary_placements):
                     continue
                 if idx in hidden_idx or int(hp_val) <= 0:
                     continue
+                total = max(1, int(totals[idx] if idx < len(totals) else total_default))
                 actor = primary_placements[idx]
                 rows = actor.get("rows", [])
                 w = max((len(r) for r in rows), default=0) if isinstance(rows, list) else 0
@@ -4223,6 +4377,7 @@ def main() -> None:
     roomie_sprite = build_mushroom_variant_sprite(opponents, color_codes, "w")
     crow_sprite = build_opponent_sprite(opponents, "baby_crow", color_codes)
     hawk_sprite = build_opponent_sprite(opponents, "hawk", color_codes)
+    fairy_baby_sprite = build_opponent_sprite(opponents, "fairy_baby", color_codes)
 
     flow = {
         "screen": "root_menu",
@@ -4247,12 +4402,16 @@ def main() -> None:
         "battle_stage": 1,
         "battle_primary_hp": [10],          # stage 1 starts with one baby crow
         "battle_primary_hp_max": [10],
+        "battle_primary_kind": ["baby_crow"],
         "battle_secondary_hp": [20, 10],    # player, mushy
         "battle_secondary_hp_max": [20, 10],
         "battle_secondary_mp": [0, 6],      # player, mushy
         "battle_secondary_mp_max": [0, 6],
         "battle_staff_charges": 3,          # Mycostaff charges for Magic Spark
         "battle_summon_used": False,
+        "battle_round": 1,
+        "battle_hawk_birdcall_next_round": 2,
+        "battle_hawk_birdcall_gap": 4,
         "unlock_summon_hawking": False,
         "player_items": [],
         "battle_player_cmd_idx": 0,
@@ -4471,7 +4630,11 @@ def main() -> None:
                     queue = flow.get("battle_queue", [])
                     qidx = int(flow.get("battle_queue_index", 0))
                     if qidx >= len(queue):
-                        if not _alive_indices(pri_hp):
+                        stage_now = int(flow.get("battle_stage", 1))
+                        kinds_now = [str(v).strip().lower() for v in flow.get("battle_primary_kind", [])]
+                        hawk_i = kinds_now.index("hawk") if ("hawk" in kinds_now and len(kinds_now) <= len(pri_hp) + 2) else -1
+                        hawking_surrendered = stage_now == 4 and hawk_i >= 0 and hawk_i < len(pri_hp) and int(pri_hp[hawk_i]) <= 0
+                        if hawking_surrendered or not _alive_indices(pri_hp):
                             # Recharge Mycostaff after each completed battle.
                             flow["battle_staff_charges"] = 3
                             if int(flow.get("battle_stage", 1)) == 1:
@@ -4480,8 +4643,10 @@ def main() -> None:
                                 begin_transition("story_sharoom_1")
                             elif int(flow.get("battle_stage", 1)) == 3:
                                 begin_transition("story_battle_victory")
-                            else:
+                            elif int(flow.get("battle_stage", 1)) == 4:
                                 begin_transition("story_hawk_post_1")
+                            else:
+                                begin_transition("root_menu")
                         else:
                             flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
                             _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
@@ -4504,7 +4669,7 @@ def main() -> None:
                                     pri_hp[t_idx] = post_hp
                                     flow["battle_primary_hp"] = pri_hp
                                     stage_now = int(flow.get("battle_stage", 1))
-                                    should_melt = not (stage_now >= 4 and bool(action.get("surrender_on_zero", False)))
+                                    should_melt = action_kind != "flee" and not (stage_now >= 4 and bool(action.get("surrender_on_zero", False)))
                                     if pre_hp > 0 and post_hp <= 0 and should_melt:
                                         flow["battle_melt_index"] = t_idx
                                         flow["battle_melt_t"] = 0.0
@@ -4620,7 +4785,7 @@ def main() -> None:
                     trans["t"] = float(trans.get("t", 0.0)) + dt
                     if float(trans.get("t", 0.0)) >= float(trans.get("duration", 1.0)):
                         flow["roomy_lineup_transition"] = None
-                        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
+                        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26, 0, 0])]
                         flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
                         begin_transition("story_hawk_intro_1")
 
@@ -4751,12 +4916,16 @@ def main() -> None:
                         flow["battle_stage"] = 1
                         flow["battle_primary_hp"] = [10]
                         flow["battle_primary_hp_max"] = [10]
+                        flow["battle_primary_kind"] = ["baby_crow"]
                         flow["battle_secondary_hp"] = [20, 10]
                         flow["battle_secondary_hp_max"] = [20, 10]
                         flow["battle_secondary_mp"] = [0, 6]
                         flow["battle_secondary_mp_max"] = [0, 6]
                         flow["battle_staff_charges"] = 3
                         flow["battle_summon_used"] = False
+                        flow["battle_round"] = 1
+                        flow["battle_hawk_birdcall_next_round"] = 2
+                        flow["battle_hawk_birdcall_gap"] = 4
                         flow["unlock_summon_hawking"] = False
                         flow["player_items"] = []
                         flow["battle_player_cmd_idx"] = 0
@@ -4930,7 +5099,7 @@ def main() -> None:
                             begin_transition("story_battle_ally_target")
                         else:
                             if int(flow.get("battle_stage", 1)) >= 4:
-                                pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
+                                pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26, 0, 0])]
                                 flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_sharoom_target", 0)))
                                 begin_transition("story_battle_cmd_roomy")
                             else:
@@ -4943,7 +5112,7 @@ def main() -> None:
                     elif back:
                         begin_transition("story_battle_cmd_mushy")
                 elif screen == "story_battle_cmd_roomy":
-                    pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
+                    pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26, 0, 0])]
                     options = _actor_action_options("roomy")
                     cmd_idx = int(flow.get("battle_roomy_cmd_idx", 0)) % len(options)
                     cursor = int(flow.get("battle_target_cursor", 0))
@@ -5014,7 +5183,7 @@ def main() -> None:
                             flow["battle_sharoom_spell_target_mode"] = mode
                             flow["battle_sharoom_spell_target"] = int(flow.get("battle_ally_target_cursor", 0))
                             if int(flow.get("battle_stage", 1)) >= 4:
-                                pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
+                                pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26, 0, 0])]
                                 flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_sharoom_target", 0)))
                                 begin_transition("story_battle_cmd_roomy")
                             else:
@@ -5052,8 +5221,12 @@ def main() -> None:
                 elif screen == "story_roomy_4b":
                     if confirm:
                         flow["battle_stage"] = 4
-                        flow["battle_primary_hp"] = [26]
-                        flow["battle_primary_hp_max"] = [26]
+                        flow["battle_primary_hp"] = [0, 26, 0]
+                        flow["battle_primary_hp_max"] = [10, 26, 10]
+                        flow["battle_primary_kind"] = ["baby_crow", "hawk", "baby_crow"]
+                        flow["battle_round"] = 1
+                        flow["battle_hawk_birdcall_next_round"] = 2
+                        flow["battle_hawk_birdcall_gap"] = 4
                         flow["battle_secondary_hp"] = [10, 20, 10, 11]  # Sharoom, Player, Mushy, Roomy
                         flow["battle_secondary_hp_max"] = [10, 20, 10, 11]
                         flow["battle_secondary_mp"] = [6, 0, 6, 8]
@@ -5099,10 +5272,6 @@ def main() -> None:
                             ],
                         }
                         begin_transition("story_roomy_lineup_shift")
-                elif screen == "story_hawk_victory":
-                    if confirm:
-                        target_sky_rows = 25
-                        begin_transition("root_menu")
                 elif screen == "story_hawk_intro_1":
                     if confirm:
                         begin_transition("story_hawk_intro_2")
@@ -5125,6 +5294,9 @@ def main() -> None:
                         begin_transition("story_hawk_post_2")
                 elif screen == "story_hawk_post_2":
                     if confirm:
+                        begin_transition("story_hawk_post_3")
+                elif screen == "story_hawk_post_3":
+                    if confirm:
                         flow["unlock_summon_hawking"] = True
                         items = flow.get("player_items", [])
                         if not isinstance(items, list):
@@ -5133,6 +5305,38 @@ def main() -> None:
                             items.append("Hawking Feather")
                         flow["player_items"] = items
                         begin_transition("story_hawk_victory")
+                elif screen == "story_hawk_victory":
+                    if confirm:
+                        begin_transition("story_post_hawk_fairy_intro")
+                elif screen == "story_post_hawk_fairy_intro":
+                    if confirm:
+                        flow["battle_stage"] = 5
+                        flow["battle_primary_hp"] = [10, 10, 10]
+                        flow["battle_primary_hp_max"] = [10, 10, 10]
+                        flow["battle_primary_kind"] = ["fairy_baby", "fairy_baby", "fairy_baby"]
+                        flow["battle_secondary_hp"] = [10, 20, 10, 11]
+                        flow["battle_secondary_hp_max"] = [10, 20, 10, 11]
+                        flow["battle_secondary_mp"] = [6, 0, 6, 8]
+                        flow["battle_secondary_mp_max"] = [6, 0, 6, 8]
+                        flow["battle_secondary_boost_atk"] = [0, 0, 0, 0]
+                        flow["battle_secondary_boost_def"] = [0, 0, 0, 0]
+                        flow["battle_player_cmd_idx"] = 0
+                        flow["battle_mushy_cmd_idx"] = 0
+                        flow["battle_sharoom_cmd_idx"] = 0
+                        flow["battle_roomy_cmd_idx"] = 0
+                        flow["battle_player_action"] = "Attack"
+                        flow["battle_mushy_action"] = "Attack"
+                        flow["battle_sharoom_action"] = "Attack"
+                        flow["battle_roomy_action"] = "Attack"
+                        flow["battle_target_cursor"] = _first_alive(flow["battle_primary_hp"], 0)
+                        flow["battle_queue"] = []
+                        flow["battle_queue_index"] = 0
+                        flow["battle_action_t"] = 0.0
+                        flow["battle_melt_index"] = None
+                        flow["battle_melt_t"] = 0.0
+                        _battle_log_start(flow, 5)
+                        _reset_battle_command_picks(flow, 5)
+                        begin_transition("story_battle_cmd_player")
                 elif screen == "story_more_crows":
                     if confirm:
                         begin_transition("story_more_crows_2")
@@ -5144,6 +5348,7 @@ def main() -> None:
                         flow["battle_stage"] = 2
                         flow["battle_primary_hp"] = [10, 10]
                         flow["battle_primary_hp_max"] = [10, 10]
+                        flow["battle_primary_kind"] = ["baby_crow", "baby_crow"]
                         flow["battle_secondary_boost_atk"] = [0, 0]
                         flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_player_cmd_idx"] = 0
@@ -5173,6 +5378,7 @@ def main() -> None:
                         flow["battle_stage"] = 3
                         flow["battle_primary_hp"] = [10, 10, 10]
                         flow["battle_primary_hp_max"] = [10, 10, 10]
+                        flow["battle_primary_kind"] = ["baby_crow", "baby_crow", "baby_crow"]
                         flow["battle_secondary_hp"] = [10, 20, 10]  # Sharoom, Player, Mushy
                         flow["battle_secondary_hp_max"] = [10, 20, 10]
                         flow["battle_secondary_mp"] = [6, 0, 6]
@@ -5246,19 +5452,24 @@ def main() -> None:
                 "story_battle_resolve",
                 "story_battle3_resolve",
                 "story_battle_victory",
-                "story_hawk_victory",
             }
             battle_log_screens = set(battle_screens)
             if scene_world_layer_level >= 3:
                 if screen in battle_screens:
                     enemy_count = max(1, len([int(v) for v in flow.get("battle_primary_hp", [10])]))
-                    if int(flow.get("battle_stage", 1)) >= 4:
-                        primary_sprites = [hawk_sprite for _ in range(enemy_count)]
+                    stage_now = int(flow.get("battle_stage", 1))
+                    if stage_now >= 5:
+                        primary_sprites = [fairy_baby_sprite for _ in range(enemy_count)]
+                    elif stage_now >= 4:
+                        kinds = [str(v).strip().lower() for v in flow.get("battle_primary_kind", ["baby_crow", "hawk", "baby_crow"])]
+                        if len(kinds) < enemy_count:
+                            kinds.extend(["baby_crow"] * (enemy_count - len(kinds)))
+                        primary_sprites = [(hawk_sprite if kinds[i] == "hawk" else crow_sprite) for i in range(enemy_count)]
                     else:
                         primary_sprites = [crow_sprite for _ in range(enemy_count)]
-                    if int(flow.get("battle_stage", 1)) >= 4:
+                    if stage_now >= 4:
                         secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite, roomie_sprite]
-                    elif int(flow.get("battle_stage", 1)) >= 3:
+                    elif stage_now >= 3:
                         secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite]
                     else:
                         secondary_sprites = [selected_player_sprite, mushy_sprite]
@@ -5491,8 +5702,14 @@ def main() -> None:
                 ):
                     primary_sprites = [hawk_sprite]
                     secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite, roomie_sprite]
-                elif screen in ("story_hawk_post_1", "story_hawk_post_2"):
+                elif screen in ("story_hawk_post_1", "story_hawk_post_2", "story_hawk_post_3"):
                     primary_sprites = [hawk_sprite]
+                    secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite, roomie_sprite]
+                elif screen == "story_hawk_victory":
+                    primary_sprites = [hawk_sprite]
+                    secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite, roomie_sprite]
+                elif screen == "story_post_hawk_fairy_intro":
+                    primary_sprites = []
                     secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite, roomie_sprite]
                 elif screen in ("story_sharoom_3", "story_sharoom_4", "story_sharoom_5"):
                     primary_sprites = [sharoom_sprite]
@@ -5608,6 +5825,7 @@ def main() -> None:
             story_primary_hp = None
             primary_hp_max_vals = [int(v) for v in flow.get("battle_primary_hp_max", [10])]
             story_primary_hp_total = max(1, max(primary_hp_max_vals) if primary_hp_max_vals else 10)
+            story_primary_hp_totals = list(primary_hp_max_vals)
             if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_cmd_roomy"):
                 story_primary_hp = list(pri_hp_now)
             if screen in ("story_battle_resolve", "story_battle3_resolve"):
@@ -5635,7 +5853,10 @@ def main() -> None:
                             "target_side": str(action.get("target_side", "primary")),
                             "target_index": int(action.get("target_index", 0)),
                             "progress": prog,
+                            "effect": "summon" if kind == "summon" else "spell",
                         }
+                        if kind == "summon":
+                            story_spell["summon_rows"] = hawk_sprite
                         if bool(action.get("uses_mp", False)):
                             story_mp_hud = {
                                 "source_side": str(action.get("source_side", "secondary")),
@@ -5646,19 +5867,24 @@ def main() -> None:
                                 "total": 10,
                                 "cost": int(action.get("mp_cost", 2)),
                             }
-                    elif kind == "physical":
+                    elif kind in ("physical", "summon"):
+                        if kind == "physical":
+                            smash_prog = prog
+                        else:
+                            local = max(0.0, min(1.0, (prog - 0.84) / 0.16))
+                            smash_prog = 0.5 + (0.5 * local)
                         story_smash = {
                             "source_side": str(action.get("source_side", "secondary")),
                             "source_index": int(action.get("source_index", 0)),
                             "target_side": str(action.get("target_side", "primary")),
                             "target_index": int(action.get("target_index", 0)),
-                            "progress": prog,
+                            "progress": smash_prog,
                         }
             melt_idx_raw = flow.get("battle_melt_index")
             story_melt_idx = int(melt_idx_raw) if melt_idx_raw is not None else None
             story_melt_progress = min(1.0, float(flow.get("battle_melt_t", 0.0)) / 0.8) if melt_idx_raw is not None else 0.0
             story_hidden_primary_indices: List[int] = []
-            hawk_keep_visible = screen in ("story_hawk_intro_1", "story_hawk_intro_2", "story_hawk_intro_3", "story_hawk_intro_4", "story_hawk_intro_5", "story_hawk_post_1", "story_hawk_post_2", "story_hawk_victory")
+            hawk_keep_visible = screen in ("story_hawk_intro_1", "story_hawk_intro_2", "story_hawk_intro_3", "story_hawk_intro_4", "story_hawk_intro_5", "story_hawk_post_1", "story_hawk_post_2", "story_hawk_post_3", "story_hawk_victory")
             if screen in battle_screens:
                 for idx, hp in enumerate(pri_hp_now):
                     if int(flow.get("battle_stage", 1)) >= 4 and hawk_keep_visible:
@@ -5699,6 +5925,7 @@ def main() -> None:
                 story_spell=story_spell,
                 story_primary_hp=story_primary_hp,
                 story_primary_hp_total=story_primary_hp_total,
+                story_primary_hp_totals=story_primary_hp_totals,
                 story_secondary_hp=story_secondary_hp,
                 story_secondary_hp_total=story_secondary_hp_total,
                 story_secondary_mp=story_secondary_mp,
