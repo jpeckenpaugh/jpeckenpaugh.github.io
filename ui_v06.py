@@ -1597,7 +1597,12 @@ def _alive_secondary_target_indices(flow: dict, actor_key: str, action: str, sta
         return []
     a = str(actor_key).strip().lower()
     act = str(action).strip()
-    caster_idx = 1 if int(stage) >= 3 and a == "player" else (2 if int(stage) >= 3 and a == "mushy" else (0 if int(stage) >= 3 and a == "sharoom" else (0 if a == "player" else 1)))
+    if int(stage) >= 4:
+        caster_idx = 1 if a == "player" else (2 if a == "mushy" else (0 if a == "sharoom" else (3 if a == "roomy" else 0)))
+    elif int(stage) >= 3:
+        caster_idx = 1 if a == "player" else (2 if a == "mushy" else (0 if a == "sharoom" else 0))
+    else:
+        caster_idx = 0 if a == "player" else 1
     if a == "mushy" and act == "Mushroom Tea":
         # Mushroom Tea can target any living teammate, including the caster.
         return alive
@@ -1616,6 +1621,9 @@ def _reset_battle_command_picks(flow: dict, stage: int) -> None:
     if int(stage) >= 3:
         flow["battle_sharoom_cmd_idx"] = 0
         flow["battle_sharoom_action"] = _actor_action_options("sharoom")[0]
+    if int(stage) >= 4:
+        flow["battle_roomy_cmd_idx"] = 0
+        flow["battle_roomy_action"] = _actor_action_options("roomy")[0]
 
 
 def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
@@ -1860,6 +1868,24 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             preserve_body_whitespace=True,
         )
 
+    if screen == "story_battle_cmd_roomy":
+        options = _actor_action_options("roomy")
+        cursor = int(flow.get("battle_roomy_cmd_idx", 0)) % len(options)
+        lines = _format_select_lines(options, cursor)
+        return UIBoxSpec(
+            role="battle_select",
+            border_style="double",
+            title="Roomy",
+            body_text="\n" + "\n".join(lines),
+            center_x=50,
+            center_y=17,
+            max_body_width=34,
+            body_align="left",
+            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            blink_body_rows=[1 + cursor],
+            preserve_body_whitespace=True,
+        )
+
     if screen == "story_battle_ally_target":
         actor_key = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
         action = str(flow.get("battle_ally_action", "Mushroom Tea"))
@@ -1942,6 +1968,20 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             actions=["[ A / Continue ]"],
         )
 
+    if screen == "story_hawk_victory":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Roomy",
+            body_text="That hawk was fierce. Great teamwork, everyone.",
+            center_x=50,
+            center_y=17,
+            max_body_width=42,
+            wrap_mode="balanced",
+            body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
     if screen == "story_sharoom_1":
         return UIBoxSpec(
             role="story",
@@ -2004,6 +2044,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         "story_sharoom_entrance",
         "story_roomy_entrance",
         "story_sharoom_lineup_shift",
+        "story_roomy_lineup_shift",
         "story_battle2_entrance",
         "story_battle3_entrance",
         "story_battle_resolve",
@@ -2088,8 +2129,14 @@ def _position_screen_box_for_actors(
         return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen == "story_battle_cmd_sharoom" and secondary_placements:
         return _anchor_box_next_to_actor(spec, secondary_placements[0], prefer="right")
+    if screen == "story_battle_cmd_roomy" and secondary_placements:
+        idx = 3 if len(secondary_placements) >= 4 else max(0, len(secondary_placements) - 1)
+        return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     if screen in ("story_battle_victory", "story_more_crows") and len(secondary_placements) >= 2:
         return _anchor_box_next_to_actor(spec, secondary_placements[1], prefer="right")
+    if screen == "story_hawk_victory" and len(secondary_placements) >= 2:
+        idx = 2 if len(secondary_placements) >= 3 else 1
+        return _anchor_box_next_to_actor(spec, secondary_placements[idx], prefer="right")
     return spec
 
 
@@ -2135,6 +2182,7 @@ def _roll_physical_damage(
 def _build_battle_round_actions(flow: dict) -> List[dict]:
     rng = random.Random(time.monotonic_ns())
     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
+    pri_hp_max = [int(v) for v in flow.get("battle_primary_hp_max", pri_hp)]
     sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
     sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
     sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
@@ -2144,6 +2192,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     player_idx = 1 if stage >= 3 else 0
     mushy_idx = 2 if stage >= 3 else 1
     sharoom_idx = 0 if stage >= 3 else -1
+    roomy_idx = 3 if stage >= 4 else -1
     sec_base_atk = [2 for _ in sec_hp]
     sec_base_def = [2 for _ in sec_hp]
     sec_base_luck = [2 for _ in sec_hp]
@@ -2157,9 +2206,9 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
         sec_boost_atk.extend([0] * (len(sec_hp) - len(sec_boost_atk)))
     if len(sec_boost_def) < len(sec_hp):
         sec_boost_def.extend([0] * (len(sec_hp) - len(sec_boost_def)))
-    pri_base_atk = [3 for _ in pri_hp]
-    pri_base_def = [0 for _ in pri_hp]
-    pri_base_luck = [2 for _ in pri_hp]
+    pri_base_atk = [4 if stage >= 4 else 3 for _ in pri_hp]
+    pri_base_def = [1 if stage >= 4 else 0 for _ in pri_hp]
+    pri_base_luck = [3 if stage >= 4 else 2 for _ in pri_hp]
     queue: List[dict] = []
     defending: set[int] = set()
     defended_was_attacked: set[int] = set()
@@ -2196,6 +2245,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 "damage": dmg,
                 "pre_hp": pre_hp,
                 "post_hp": post_hp,
+                "total": int(pri_hp_max[target]) if target < len(pri_hp_max) else 10,
             }
         )
         pri_hp[target] = post_hp
@@ -2208,6 +2258,8 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
         turn_order.append(("player", player_idx, "battle_player_target"))
     if 0 <= mushy_idx < len(sec_hp):
         turn_order.append(("mushy", mushy_idx, "battle_mushy_target"))
+    if stage >= 4 and 0 <= roomy_idx < len(sec_hp):
+        turn_order.append(("roomy", roomy_idx, "battle_roomy_target"))
 
     for actor_key, actor_idx, target_key in turn_order:
         if actor_idx < 0 or actor_idx >= len(sec_hp) or sec_hp[actor_idx] <= 0:
@@ -2252,6 +2304,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                     "damage": dmg,
                     "pre_hp": pre_hp,
                     "post_hp": post_hp,
+                    "total": int(pri_hp_max[target]) if target < len(pri_hp_max) else 10,
                     "pre_mp": pre_mp,
                     "post_mp": post_mp,
                     "mp_cost": 2 if uses_mp else 0,
@@ -2414,6 +2467,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 "damage": dmg,
                 "pre_hp": pre_hp,
                 "post_hp": post_hp,
+                "total": int(sec_hp_max[target]) if target < len(sec_hp_max) else max(1, pre_hp),
             }
         )
         sec_hp[target] = post_hp
@@ -2461,7 +2515,19 @@ def _battle_actor_name(side: str, idx: int, stage: int, player_name: str) -> str
     side_key = str(side).strip().lower()
     i = int(idx)
     if side_key == "primary":
+        if stage >= 4:
+            return "Hawk"
         return "Baby Crow"
+    if stage >= 4:
+        if i == 0:
+            return "Sharoom"
+        if i == 1:
+            return player_name
+        if i == 2:
+            return "Mushy"
+        if i == 3:
+            return "Roomy"
+        return f"Ally {i + 1}"
     if stage >= 3:
         if i == 0:
             return "Sharoom"
@@ -2520,7 +2586,9 @@ def _battle_log_start(flow: dict, stage: int) -> None:
     flow["battle_log_pending"] = []
     flow["battle_log_active"] = None
     flow["battle_log_active_chars"] = 0
-    if int(stage) >= 3:
+    if int(stage) >= 4:
+        opener = "Battle begins: Sharoom, Player, Mushy, and Roomy vs Hawk."
+    elif int(stage) >= 3:
         opener = "Battle begins: Sharoom, Player, and Mushy vs 3 Baby Crows."
     elif int(stage) == 2:
         opener = "Battle begins: Player and Mushy vs 2 Baby Crows."
@@ -3938,6 +4006,7 @@ def main() -> None:
     sharoom_sprite = build_mushroom_variant_sprite(opponents, color_codes, "i")
     roomie_sprite = build_mushroom_variant_sprite(opponents, color_codes, "w")
     crow_sprite = build_opponent_sprite(opponents, "baby_crow", color_codes)
+    hawk_sprite = build_opponent_sprite(opponents, "hawk", color_codes)
 
     flow = {
         "screen": "root_menu",
@@ -3961,6 +4030,7 @@ def main() -> None:
         "story_action_t": 0.0,
         "battle_stage": 1,
         "battle_primary_hp": [10],          # stage 1 starts with one baby crow
+        "battle_primary_hp_max": [10],
         "battle_secondary_hp": [20, 10],    # player, mushy
         "battle_secondary_hp_max": [20, 10],
         "battle_secondary_mp": [0, 6],      # player, mushy
@@ -3969,9 +4039,11 @@ def main() -> None:
         "battle_player_cmd_idx": 0,
         "battle_mushy_cmd_idx": 0,
         "battle_sharoom_cmd_idx": 0,
+        "battle_roomy_cmd_idx": 0,
         "battle_player_action": "Attack",
         "battle_mushy_action": "Attack",
         "battle_sharoom_action": "Attack",
+        "battle_roomy_action": "Attack",
         "battle_secondary_boost_atk": [0, 0],
         "battle_secondary_boost_def": [0, 0],
         "battle_mushy_spell_target": 0,
@@ -3987,6 +4059,7 @@ def main() -> None:
         "battle_player_target": 0,
         "battle_mushy_target": 0,
         "battle_sharoom_target": 0,
+        "battle_roomy_target": 0,
         "battle_target_cursor": 0,
         "battle_queue": [],
         "battle_queue_index": 0,
@@ -4004,6 +4077,7 @@ def main() -> None:
         "roomy_entrance": None,
         "battle3_entrance": None,
         "sharoom_lineup_transition": None,
+        "roomy_lineup_transition": None,
     }
     anim_mode = "opening"  # opening | open | closing
     anim_step = 0
@@ -4083,6 +4157,44 @@ def main() -> None:
             end[cid] = {"x": cx, "y": cy, "rows": rows}
         return (start, end)
 
+    def _compute_roomy_hawk_shift_positions(player_sprite: List[List[str]]) -> tuple[Dict[str, dict], Dict[str, dict]]:
+        start: Dict[str, dict] = {}
+        end: Dict[str, dict] = {}
+        ground_zone = zones.get("ground_bg")
+        if not isinstance(ground_zone, LayoutZone):
+            return (start, end)
+        primary_zone = build_primary_zone(_treeline_lowest_row(ground_zone.y, world_anchor_stagger) + 1)
+        secondary_zone = build_secondary_zone()
+        start_pri = layout_actor_strip(primary_zone, [roomie_sprite], spacing=1, stagger_rows=1)
+        start_sec = layout_actor_strip(secondary_zone, [sharoom_sprite, player_sprite, mushy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
+        end_pri = layout_actor_strip(primary_zone, [hawk_sprite], spacing=1, stagger_rows=1)
+        end_sec = layout_actor_strip(secondary_zone, [sharoom_sprite, player_sprite, mushy_sprite, roomie_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
+        if start_pri:
+            start["roomy"] = {"x": int(start_pri[0]["x"]), "y": int(start_pri[0]["y"]), "rows": roomie_sprite}
+        if len(start_sec) >= 1:
+            start["sharoom"] = {"x": int(start_sec[0]["x"]), "y": int(start_sec[0]["y"]), "rows": sharoom_sprite}
+        if len(start_sec) >= 2:
+            start["player"] = {"x": int(start_sec[1]["x"]), "y": int(start_sec[1]["y"]), "rows": player_sprite}
+        if len(start_sec) >= 3:
+            start["mushy"] = {"x": int(start_sec[2]["x"]), "y": int(start_sec[2]["y"]), "rows": mushy_sprite}
+        if len(end_sec) >= 1:
+            end["sharoom"] = {"x": int(end_sec[0]["x"]), "y": int(end_sec[0]["y"]), "rows": sharoom_sprite}
+        if len(end_sec) >= 2:
+            end["player"] = {"x": int(end_sec[1]["x"]), "y": int(end_sec[1]["y"]), "rows": player_sprite}
+        if len(end_sec) >= 3:
+            end["mushy"] = {"x": int(end_sec[2]["x"]), "y": int(end_sec[2]["y"]), "rows": mushy_sprite}
+        if len(end_sec) >= 4:
+            end["roomy"] = {"x": int(end_sec[3]["x"]), "y": int(end_sec[3]["y"]), "rows": roomie_sprite}
+        if end_pri:
+            hawk = end_pri[0]
+            hx = int(hawk["x"])
+            hy = int(hawk["y"])
+            hrows = hawk["rows"]
+            hh = len(hrows) if isinstance(hrows, list) else 0
+            start["hawk"] = {"x": hx, "y": -max(2, hh + 2), "rows": hrows}
+            end["hawk"] = {"x": hx, "y": hy, "rows": hrows}
+        return (start, end)
+
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
         last_tick = time.monotonic()
@@ -4147,8 +4259,10 @@ def main() -> None:
                                 begin_transition("story_more_crows")
                             elif int(flow.get("battle_stage", 1)) == 2:
                                 begin_transition("story_sharoom_1")
-                            else:
+                            elif int(flow.get("battle_stage", 1)) == 3:
                                 begin_transition("story_battle_victory")
+                            else:
+                                begin_transition("story_hawk_victory")
                         else:
                             flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
                             _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
@@ -4273,6 +4387,17 @@ def main() -> None:
                     if float(trans.get("t", 0.0)) >= float(trans.get("duration", 1.0)):
                         flow["sharoom_lineup_transition"] = None
                         pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
+                        flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
+                        _battle_log_start(flow, int(flow.get("battle_stage", 1)))
+                        _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
+                        begin_transition("story_battle_cmd_player")
+            elif anim_mode == "open" and screen == "story_roomy_lineup_shift":
+                trans = flow.get("roomy_lineup_transition")
+                if isinstance(trans, dict):
+                    trans["t"] = float(trans.get("t", 0.0)) + dt
+                    if float(trans.get("t", 0.0)) >= float(trans.get("duration", 1.0)):
+                        flow["roomy_lineup_transition"] = None
+                        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
                         flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
                         _battle_log_start(flow, int(flow.get("battle_stage", 1)))
                         _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
@@ -4404,6 +4529,7 @@ def main() -> None:
                         flow["story_action_t"] = 0.0
                         flow["battle_stage"] = 1
                         flow["battle_primary_hp"] = [10]
+                        flow["battle_primary_hp_max"] = [10]
                         flow["battle_secondary_hp"] = [20, 10]
                         flow["battle_secondary_hp_max"] = [20, 10]
                         flow["battle_secondary_mp"] = [0, 6]
@@ -4412,9 +4538,11 @@ def main() -> None:
                         flow["battle_player_cmd_idx"] = 0
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
+                        flow["battle_roomy_cmd_idx"] = 0
                         flow["battle_player_action"] = "Attack"
                         flow["battle_mushy_action"] = "Attack"
                         flow["battle_sharoom_action"] = "Attack"
+                        flow["battle_roomy_action"] = "Attack"
                         flow["battle_secondary_boost_atk"] = [0, 0]
                         flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_mushy_spell_target"] = 0
@@ -4424,6 +4552,7 @@ def main() -> None:
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
+                        flow["battle_roomy_target"] = 0
                         flow["battle_target_cursor"] = 0
                         flow["battle_queue"] = []
                         flow["battle_queue_index"] = 0
@@ -4573,14 +4702,47 @@ def main() -> None:
                             flow["battle_ally_target_cursor"] = targets[0] if targets else 0
                             begin_transition("story_battle_ally_target")
                         else:
-                            flow["battle_queue"] = _build_battle_round_actions(flow)
-                            flow["battle_queue_index"] = 0
-                            flow["battle_action_t"] = 0.0
-                            flow["battle_melt_index"] = None
-                            flow["battle_melt_t"] = 0.0
-                            begin_transition("story_battle3_resolve")
+                            if int(flow.get("battle_stage", 1)) >= 4:
+                                pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
+                                flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_sharoom_target", 0)))
+                                begin_transition("story_battle_cmd_roomy")
+                            else:
+                                flow["battle_queue"] = _build_battle_round_actions(flow)
+                                flow["battle_queue_index"] = 0
+                                flow["battle_action_t"] = 0.0
+                                flow["battle_melt_index"] = None
+                                flow["battle_melt_t"] = 0.0
+                                begin_transition("story_battle3_resolve")
                     elif back:
                         begin_transition("story_battle_cmd_mushy")
+                elif screen == "story_battle_cmd_roomy":
+                    pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
+                    options = _actor_action_options("roomy")
+                    cmd_idx = int(flow.get("battle_roomy_cmd_idx", 0)) % len(options)
+                    cursor = int(flow.get("battle_target_cursor", 0))
+                    if key == "up":
+                        cmd_idx = (cmd_idx - 1) % len(options)
+                        flow["battle_roomy_cmd_idx"] = cmd_idx
+                    elif key == "down":
+                        cmd_idx = (cmd_idx + 1) % len(options)
+                        flow["battle_roomy_cmd_idx"] = cmd_idx
+                    elif key == "left" and options[cmd_idx] == "Attack":
+                        flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
+                    elif key == "right" and options[cmd_idx] == "Attack":
+                        flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
+                    elif confirm:
+                        pick = options[cmd_idx]
+                        flow["battle_roomy_action"] = pick
+                        if pick == "Attack":
+                            flow["battle_roomy_target"] = int(flow.get("battle_target_cursor", 0))
+                        flow["battle_queue"] = _build_battle_round_actions(flow)
+                        flow["battle_queue_index"] = 0
+                        flow["battle_action_t"] = 0.0
+                        flow["battle_melt_index"] = None
+                        flow["battle_melt_t"] = 0.0
+                        begin_transition("story_battle3_resolve")
+                    elif back:
+                        begin_transition("story_battle_cmd_sharoom")
                 elif screen == "story_battle_ally_target":
                     actor_key = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
                     action_name = str(flow.get("battle_ally_action", ""))
@@ -4624,12 +4786,17 @@ def main() -> None:
                         elif actor_key == "sharoom":
                             flow["battle_sharoom_spell_target_mode"] = mode
                             flow["battle_sharoom_spell_target"] = int(flow.get("battle_ally_target_cursor", 0))
-                            flow["battle_queue"] = _build_battle_round_actions(flow)
-                            flow["battle_queue_index"] = 0
-                            flow["battle_action_t"] = 0.0
-                            flow["battle_melt_index"] = None
-                            flow["battle_melt_t"] = 0.0
-                            begin_transition("story_battle3_resolve")
+                            if int(flow.get("battle_stage", 1)) >= 4:
+                                pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26])]
+                                flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_sharoom_target", 0)))
+                                begin_transition("story_battle_cmd_roomy")
+                            else:
+                                flow["battle_queue"] = _build_battle_round_actions(flow)
+                                flow["battle_queue_index"] = 0
+                                flow["battle_action_t"] = 0.0
+                                flow["battle_melt_index"] = None
+                                flow["battle_melt_t"] = 0.0
+                                begin_transition("story_battle3_resolve")
                         else:
                             begin_transition("story_battle_cmd_player")
                     elif back:
@@ -4651,12 +4818,63 @@ def main() -> None:
                         begin_transition("story_roomy_4")
                 elif screen == "story_roomy_4":
                     if confirm:
+                        flow["battle_stage"] = 4
+                        flow["battle_primary_hp"] = [26]
+                        flow["battle_primary_hp_max"] = [26]
+                        flow["battle_secondary_hp"] = [10, 20, 10, 11]  # Sharoom, Player, Mushy, Roomy
+                        flow["battle_secondary_hp_max"] = [10, 20, 10, 11]
+                        flow["battle_secondary_mp"] = [6, 0, 6, 8]
+                        flow["battle_secondary_mp_max"] = [6, 0, 6, 8]
+                        flow["battle_secondary_boost_atk"] = [0, 0, 0, 0]
+                        flow["battle_secondary_boost_def"] = [0, 0, 0, 0]
+                        flow["battle_mushy_spell_target"] = 1
+                        flow["battle_mushy_spell_target_mode"] = "single"
+                        flow["battle_sharoom_spell_target"] = 1
+                        flow["battle_sharoom_spell_target_mode"] = "single"
+                        flow["battle_player_cmd_idx"] = 0
+                        flow["battle_mushy_cmd_idx"] = 0
+                        flow["battle_sharoom_cmd_idx"] = 0
+                        flow["battle_roomy_cmd_idx"] = 0
+                        flow["battle_player_action"] = "Attack"
+                        flow["battle_mushy_action"] = "Attack"
+                        flow["battle_sharoom_action"] = "Attack"
+                        flow["battle_roomy_action"] = "Attack"
+                        flow["battle_player_target"] = 0
+                        flow["battle_mushy_target"] = 0
+                        flow["battle_sharoom_target"] = 0
+                        flow["battle_roomy_target"] = 0
+                        flow["battle_queue"] = []
+                        flow["battle_queue_index"] = 0
+                        flow["battle_action_t"] = 0.0
+                        flow["battle_melt_index"] = None
+                        flow["battle_melt_t"] = 0.0
+                        start_pos, end_pos = _compute_roomy_hawk_shift_positions(selected_card.get("sprite", []))
+                        actor_ids = [aid for aid in ("roomy", "sharoom", "player", "mushy", "hawk") if aid in start_pos and aid in end_pos]
+                        flow["roomy_lineup_transition"] = {
+                            "t": 0.0,
+                            "duration": 1.0,
+                            "actors": [
+                                {
+                                    "id": aid,
+                                    "rows": start_pos[aid]["rows"],
+                                    "sx": int(start_pos[aid]["x"]),
+                                    "sy": int(start_pos[aid]["y"]),
+                                    "ex": int(end_pos[aid]["x"]),
+                                    "ey": int(end_pos[aid]["y"]),
+                                }
+                                for aid in actor_ids
+                            ],
+                        }
+                        begin_transition("story_roomy_lineup_shift")
+                elif screen == "story_hawk_victory":
+                    if confirm:
                         target_sky_rows = 25
                         begin_transition("root_menu")
                 elif screen == "story_more_crows":
                     if confirm:
                         flow["battle_stage"] = 2
                         flow["battle_primary_hp"] = [10, 10]
+                        flow["battle_primary_hp_max"] = [10, 10]
                         flow["battle_secondary_boost_atk"] = [0, 0]
                         flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_player_cmd_idx"] = 0
@@ -4682,6 +4900,7 @@ def main() -> None:
                     if confirm:
                         flow["battle_stage"] = 3
                         flow["battle_primary_hp"] = [10, 10, 10]
+                        flow["battle_primary_hp_max"] = [10, 10, 10]
                         flow["battle_secondary_hp"] = [10, 20, 10]  # Sharoom, Player, Mushy
                         flow["battle_secondary_hp_max"] = [10, 20, 10]
                         flow["battle_secondary_mp"] = [6, 0, 6]
@@ -4695,12 +4914,15 @@ def main() -> None:
                         flow["battle_player_cmd_idx"] = 0
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
+                        flow["battle_roomy_cmd_idx"] = 0
                         flow["battle_player_action"] = "Attack"
                         flow["battle_mushy_action"] = "Attack"
                         flow["battle_sharoom_action"] = "Attack"
+                        flow["battle_roomy_action"] = "Attack"
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
+                        flow["battle_roomy_target"] = 0
                         flow["battle_queue"] = []
                         flow["battle_queue_index"] = 0
                         flow["battle_action_t"] = 0.0
@@ -4747,17 +4969,24 @@ def main() -> None:
                 "story_battle_cmd_player",
                 "story_battle_cmd_mushy",
                 "story_battle_cmd_sharoom",
+                "story_battle_cmd_roomy",
                 "story_battle_ally_target",
                 "story_battle_resolve",
                 "story_battle3_resolve",
                 "story_battle_victory",
+                "story_hawk_victory",
             }
             battle_log_screens = set(battle_screens)
             if scene_world_layer_level >= 3:
                 if screen in battle_screens:
                     enemy_count = max(1, len([int(v) for v in flow.get("battle_primary_hp", [10])]))
-                    primary_sprites = [crow_sprite for _ in range(enemy_count)]
-                    if int(flow.get("battle_stage", 1)) >= 3:
+                    if int(flow.get("battle_stage", 1)) >= 4:
+                        primary_sprites = [hawk_sprite for _ in range(enemy_count)]
+                    else:
+                        primary_sprites = [crow_sprite for _ in range(enemy_count)]
+                    if int(flow.get("battle_stage", 1)) >= 4:
+                        secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite, roomie_sprite]
+                    elif int(flow.get("battle_stage", 1)) >= 3:
                         secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite]
                     else:
                         secondary_sprites = [selected_player_sprite, mushy_sprite]
@@ -4961,6 +5190,29 @@ def main() -> None:
                 elif screen == "story_roomy_4":
                     primary_sprites = []
                     secondary_sprites = [roomie_sprite, sharoom_sprite, selected_player_sprite, mushy_sprite]
+                elif screen == "story_roomy_lineup_shift":
+                    primary_sprites = []
+                    secondary_sprites = []
+                    trans = flow.get("roomy_lineup_transition")
+                    if isinstance(trans, dict):
+                        t = max(0.0, min(1.0, float(trans.get("t", 0.0)) / max(0.001, float(trans.get("duration", 1.0)))))
+                        te = t * t * (3.0 - (2.0 * t))
+                        actors = trans.get("actors", [])
+                        if isinstance(actors, list):
+                            tmp: List[dict] = []
+                            for a in actors:
+                                if not isinstance(a, dict):
+                                    continue
+                                sx = int(a.get("sx", 0))
+                                sy = int(a.get("sy", 0))
+                                ex = int(a.get("ex", sx))
+                                ey = int(a.get("ey", sy))
+                                x = int(round(sx + ((ex - sx) * te)))
+                                y = int(round(sy + ((ey - sy) * te)))
+                                rows = a.get("rows", [])
+                                if isinstance(rows, list):
+                                    tmp.append({"x": x, "y": y, "rows": rows})
+                            story_transition_actors = tmp
                 elif screen in ("story_sharoom_3", "story_sharoom_4"):
                     primary_sprites = [sharoom_sprite]
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
@@ -5015,7 +5267,7 @@ def main() -> None:
                     "right_label": right.get("label", "Right"),
                     "selected": pidx,
                 }
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_cmd_roomy"):
                 sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
                 sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
@@ -5027,6 +5279,8 @@ def main() -> None:
                     actor_idx = 1 if len(sec_hp) >= 3 else 0
                 elif screen == "story_battle_cmd_sharoom":
                     actor_idx = 0
+                elif screen == "story_battle_cmd_roomy":
+                    actor_idx = 3 if len(sec_hp) >= 4 else max(0, len(sec_hp) - 1)
                 if 0 <= actor_idx < len(sec_hp):
                     hp_total = sec_hp_max[actor_idx] if actor_idx < len(sec_hp_max) else max(1, sec_hp[actor_idx])
                     mp_total = sec_mp_max[actor_idx] if actor_idx < len(sec_mp_max) else (sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0)
@@ -5039,7 +5293,7 @@ def main() -> None:
 
             pri_hp_now = [int(v) for v in flow.get("battle_primary_hp", [10])]
             story_target_index = None
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_cmd_roomy"):
                 t = int(flow.get("battle_target_cursor", 0))
                 if 0 <= t < len(pri_hp_now) and pri_hp_now[t] > 0:
                     story_target_index = t
@@ -5071,8 +5325,9 @@ def main() -> None:
             story_mp_hud = None
             story_smash = None
             story_primary_hp = None
-            story_primary_hp_total = 10
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
+            primary_hp_max_vals = [int(v) for v in flow.get("battle_primary_hp_max", [10])]
+            story_primary_hp_total = max(1, max(primary_hp_max_vals) if primary_hp_max_vals else 10)
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_cmd_roomy"):
                 story_primary_hp = list(pri_hp_now)
             if screen in ("story_battle_resolve", "story_battle3_resolve"):
                 queue = flow.get("battle_queue", [])
@@ -5089,7 +5344,7 @@ def main() -> None:
                             "progress": prog,
                             "pre_hp": int(action.get("pre_hp", 0)),
                             "post_hp": int(action.get("post_hp", 0)),
-                            "total": 10,
+                            "total": int(action.get("total", story_primary_hp_total)),
                             "damage": int(action.get("damage", 0)),
                         }
                     if kind == "spell":
