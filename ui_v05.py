@@ -3275,6 +3275,8 @@ def main() -> None:
                     qidx = int(flow.get("battle_queue_index", 0))
                     if qidx >= len(queue):
                         if not _alive_indices(pri_hp):
+                            # Recharge Mycostaff after each completed battle.
+                            flow["battle_staff_charges"] = 3
                             if int(flow.get("battle_stage", 1)) == 1:
                                 begin_transition("story_more_crows")
                             elif int(flow.get("battle_stage", 1)) == 2:
@@ -3908,7 +3910,7 @@ def main() -> None:
 
             pri_hp_now = [int(v) for v in flow.get("battle_primary_hp", [10])]
             story_target_index = None
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy"):
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
                 t = int(flow.get("battle_target_cursor", 0))
                 if 0 <= t < len(pri_hp_now) and pri_hp_now[t] > 0:
                     story_target_index = t
@@ -3916,7 +3918,7 @@ def main() -> None:
             story_damage_hud = None
             story_mp_hud = None
             story_smash = None
-            if screen == "story_battle_resolve":
+            if screen in ("story_battle_resolve", "story_battle3_resolve"):
                 queue = flow.get("battle_queue", [])
                 qidx = int(flow.get("battle_queue_index", 0))
                 if qidx < len(queue):
