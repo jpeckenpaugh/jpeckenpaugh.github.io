@@ -1712,18 +1712,26 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
     sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [12, 10])]
     sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [10, 0])]
+    staff_charges = max(0, int(flow.get("battle_staff_charges", 3)))
     queue: List[dict] = []
 
     # 1) Player casts Magic Spark.
-    if sec_hp[0] > 0 and sec_mp[0] >= 4 and _alive_indices(pri_hp):
+    can_cast = sec_hp[0] > 0 and _alive_indices(pri_hp) and (staff_charges > 0 or sec_mp[0] >= 2)
+    if can_cast:
         target = int(flow.get("battle_player_target", 0))
         if target < 0 or target >= len(pri_hp):
             target = _first_alive(pri_hp, 0)
         if pri_hp[target] <= 0:
             target = _first_alive(pri_hp, target)
-        dmg = rng.randint(4, 6)
+        dmg = rng.randint(5, 8)
         pre_hp = pri_hp[target]
         post_hp = max(0, pre_hp - dmg)
+        uses_charge = staff_charges > 0
+        uses_mp = not uses_charge
+        pre_mp = sec_mp[0]
+        post_mp = max(0, sec_mp[0] - 2) if uses_mp else sec_mp[0]
+        pre_charges = staff_charges
+        post_charges = max(0, staff_charges - 1) if uses_charge else staff_charges
         queue.append(
             {
                 "kind": "spell",
@@ -1734,13 +1742,17 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 "damage": dmg,
                 "pre_hp": pre_hp,
                 "post_hp": post_hp,
-                "pre_mp": sec_mp[0],
-                "post_mp": max(0, sec_mp[0] - 4),
-                "mp_cost": 4,
+                "pre_mp": pre_mp,
+                "post_mp": post_mp,
+                "mp_cost": 2 if uses_mp else 0,
+                "uses_mp": uses_mp,
+                "pre_charges": pre_charges,
+                "post_charges": post_charges,
             }
         )
         pri_hp[target] = post_hp
-        sec_mp[0] = max(0, sec_mp[0] - 4)
+        sec_mp[0] = post_mp
+        staff_charges = post_charges
 
     # 2) Mushy physical.
     if sec_hp[1] > 0 and _alive_indices(pri_hp):
@@ -2932,6 +2944,7 @@ def main() -> None:
         "battle_primary_hp": [10],          # stage 1 starts with one baby crow
         "battle_secondary_hp": [14, 10],    # player, mushy
         "battle_secondary_mp": [10, 0],     # player, mushy
+        "battle_staff_charges": 3,          # Mycostaff charges for Magic Spark
         "battle_player_target": 0,
         "battle_mushy_target": 0,
         "battle_target_cursor": 0,
@@ -3037,9 +3050,11 @@ def main() -> None:
                                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [10, 0])]
                                 s_idx = int(action.get("source_index", 0))
                                 post_mp = max(0, int(action.get("post_mp", 0)))
+                                post_charges = max(0, int(action.get("post_charges", int(flow.get("battle_staff_charges", 0)))))
                                 if 0 <= s_idx < len(sec_mp):
                                     sec_mp[s_idx] = post_mp
                                     flow["battle_secondary_mp"] = sec_mp
+                                flow["battle_staff_charges"] = post_charges
                             flow["battle_queue_index"] = qidx + 1
                             flow["battle_action_t"] = 0.0
 
@@ -3170,6 +3185,7 @@ def main() -> None:
                         flow["battle_primary_hp"] = [10]
                         flow["battle_secondary_hp"] = [14, 10]
                         flow["battle_secondary_mp"] = [10, 0]
+                        flow["battle_staff_charges"] = 3
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_target_cursor"] = 0
@@ -3357,15 +3373,16 @@ def main() -> None:
                             "target_index": int(action.get("target_index", 0)),
                             "progress": prog,
                         }
-                        story_mp_hud = {
-                            "source_side": str(action.get("source_side", "secondary")),
-                            "source_index": int(action.get("source_index", 0)),
-                            "progress": prog,
-                            "pre_mp": int(action.get("pre_mp", 0)),
-                            "post_mp": int(action.get("post_mp", 0)),
-                            "total": 10,
-                            "cost": int(action.get("mp_cost", 4)),
-                        }
+                        if bool(action.get("uses_mp", False)):
+                            story_mp_hud = {
+                                "source_side": str(action.get("source_side", "secondary")),
+                                "source_index": int(action.get("source_index", 0)),
+                                "progress": prog,
+                                "pre_mp": int(action.get("pre_mp", 0)),
+                                "post_mp": int(action.get("post_mp", 0)),
+                                "total": 10,
+                                "cost": int(action.get("mp_cost", 2)),
+                            }
                     else:
                         story_smash = {
                             "source_side": str(action.get("source_side", "secondary")),
