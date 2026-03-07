@@ -93,6 +93,7 @@ class UIBoxSpec:
     anchor: str = "center"
     preserve_body_whitespace: bool = False
     blink_body_rows: List[int] | None = None
+    dim_body_rows: List[int] | None = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +108,7 @@ class UIBoxLayout:
     title_end: int
     action_row_index: int
     blink_line_indices: set[int]
+    dim_line_indices: set[int]
 
 
 def read_key_nonblocking() -> str | None:
@@ -798,6 +800,40 @@ def _format_select_lines(options: List[str], selected_index: int) -> List[str]:
     return out
 
 
+def _format_select_lines_with_disabled(options: List[str], selected_index: int, enabled_flags: List[bool]) -> tuple[List[str], List[int]]:
+    clean = [str(opt) for opt in options]
+    tags = []
+    for idx, opt in enumerate(clean):
+        en = bool(enabled_flags[idx]) if idx < len(enabled_flags) else True
+        tags.append(opt if en else f"{opt} (Disabled)")
+    max_len = max((len(opt) for opt in tags), default=0)
+    out: List[str] = []
+    disabled_rows: List[int] = []
+    for idx, opt in enumerate(tags):
+        core = opt.ljust(max_len)
+        en = bool(enabled_flags[idx]) if idx < len(enabled_flags) else True
+        if idx == selected_index and en:
+            out.append(f"[ {core} ]")
+        else:
+            out.append(f"  {core}  ")
+        if not en:
+            disabled_rows.append(idx)
+    return out, disabled_rows
+
+
+def _next_enabled_option_index(enabled_flags: List[bool], current: int, step: int) -> int:
+    if not enabled_flags:
+        return 0
+    if not any(bool(v) for v in enabled_flags):
+        return max(0, min(len(enabled_flags) - 1, int(current)))
+    idx = int(current) % len(enabled_flags)
+    for _ in range(len(enabled_flags)):
+        idx = (idx + int(step)) % len(enabled_flags)
+        if bool(enabled_flags[idx]):
+            return idx
+    return idx
+
+
 def _resolve_ui_box_origin(box_w: int, box_h: int, spec: UIBoxSpec) -> tuple[int, int]:
     if spec.x is not None and spec.y is not None:
         x0 = max(0, min(SCREEN_W - box_w, int(spec.x)))
@@ -877,6 +913,7 @@ def _build_ui_box_layout(spec: UIBoxSpec) -> UIBoxLayout:
     title_start = 1 + title_left
     title_end = title_start + len(title_token)
     blink_line_indices: set[int] = set()
+    dim_line_indices: set[int] = set()
     if isinstance(spec.blink_body_rows, list):
         body_start = 1 + max(0, int(spec.padding_y))
         for row in spec.blink_body_rows:
@@ -887,6 +924,16 @@ def _build_ui_box_layout(spec: UIBoxSpec) -> UIBoxLayout:
             line_idx = body_start + r
             if 0 <= line_idx < box_h:
                 blink_line_indices.add(line_idx)
+    if isinstance(spec.dim_body_rows, list):
+        body_start = 1 + max(0, int(spec.padding_y))
+        for row in spec.dim_body_rows:
+            try:
+                r = int(row)
+            except Exception:
+                continue
+            line_idx = body_start + r
+            if 0 <= line_idx < box_h:
+                dim_line_indices.add(line_idx)
     return UIBoxLayout(
         spec=spec,
         lines=lines,
@@ -898,6 +945,7 @@ def _build_ui_box_layout(spec: UIBoxSpec) -> UIBoxLayout:
         title_end=title_end,
         action_row_index=action_row_index,
         blink_line_indices=blink_line_indices,
+        dim_line_indices=dim_line_indices,
     )
 
 
@@ -951,7 +999,12 @@ def _draw_ui_box_layout(
             elif dy == layout.action_row_index and ch == "S":
                 canvas[y][x] = f"{key_red}S{ANSI_RESET}"
             else:
-                use_color = dim_text if (dy in layout.blink_line_indices and not blink_on) else text_color
+                if dy in layout.dim_line_indices:
+                    use_color = dim_text
+                elif dy in layout.blink_line_indices and not blink_on:
+                    use_color = dim_text
+                else:
+                    use_color = text_color
                 canvas[y][x] = f"{use_color}{ch}{ANSI_RESET}"
 
 
@@ -1169,7 +1222,12 @@ def draw_ui_box_animated(
             elif dy == layout.action_row_index and ch == "S":
                 canvas[y][x] = f"{key_red}S{ANSI_RESET}"
             else:
-                use_color = dim_text if (dy in layout.blink_line_indices and not blink_on) else text_color
+                if dy in layout.dim_line_indices:
+                    use_color = dim_text
+                elif dy in layout.blink_line_indices and not blink_on:
+                    use_color = dim_text
+                else:
+                    use_color = text_color
                 canvas[y][x] = f"{use_color}{ch}{ANSI_RESET}"
 
 
@@ -1500,6 +1558,23 @@ def _draw_sprite(canvas: List[List[str]], rows: List[List[str]], x0: int, y0: in
                 canvas[y][x] = cell
 
 
+def _grey_sprite_rows(rows: List[List[str]]) -> List[List[str]]:
+    out: List[List[str]] = []
+    grey = "\x1b[38;2;170;170;170m"
+    for row in rows:
+        if not isinstance(row, list):
+            continue
+        out_row: List[str] = []
+        for cell in row:
+            ch = _strip_ansi(cell)
+            if ch == " ":
+                out_row.append(" ")
+            else:
+                out_row.append(f"{grey}{ch}{ANSI_RESET}")
+        out.append(out_row)
+    return out
+
+
 def _draw_avatar_overlay(
     canvas: List[List[str]],
     spec: UIBoxSpec,
@@ -1565,6 +1640,44 @@ def _action_label(flow: dict, actor_key: str) -> str:
     if not options:
         return "Attack"
     return options[idx % len(options)]
+
+
+def _action_is_available(flow: dict, actor_key: str, action: str) -> bool:
+    key = str(actor_key).strip().lower()
+    act = str(action).strip()
+    stage = int(flow.get("battle_stage", 1))
+    sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+    idx = 0
+    if stage >= 4:
+        if key == "sharoom":
+            idx = 0
+        elif key == "player":
+            idx = 1
+        elif key == "mushy":
+            idx = 2
+        elif key == "roomy":
+            idx = 3
+    elif stage >= 3:
+        if key == "sharoom":
+            idx = 0
+        elif key == "player":
+            idx = 1
+        elif key == "mushy":
+            idx = 2
+    else:
+        idx = 0 if key == "player" else 1
+    mp = sec_mp[idx] if 0 <= idx < len(sec_mp) else 0
+    if key == "player" and act == "Magic Spark":
+        return bool(int(flow.get("battle_staff_charges", 0)) > 0 or mp >= 2)
+    if key == "player" and act == "Summon Hawking":
+        return bool(flow.get("unlock_summon_hawking", False)) and not bool(flow.get("battle_summon_used", False))
+    if act in ("Mushroom Tea", "Healing Touch", "Concentric"):
+        return mp >= 2
+    return True
+
+
+def _action_enabled_flags(flow: dict, actor_key: str, options: List[str]) -> List[bool]:
+    return [_action_is_available(flow, actor_key, opt) for opt in options]
 
 
 def _spell_targeting_meta(actor_key: str, action: str) -> dict | None:
@@ -1821,8 +1934,12 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
 
     if screen == "story_battle_cmd_player":
         options = _actor_action_options("player", bool(flow.get("unlock_summon_hawking", False)))
+        enabled = _action_enabled_flags(flow, "player", options)
         cursor = int(flow.get("battle_player_cmd_idx", 0)) % len(options)
-        lines = _format_select_lines(options, cursor)
+        if enabled and not enabled[cursor] and any(enabled):
+            cursor = next((i for i, v in enumerate(enabled) if v), cursor)
+            flow["battle_player_cmd_idx"] = cursor
+        lines, disabled_rows = _format_select_lines_with_disabled(options, cursor, enabled)
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
@@ -1834,13 +1951,18 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
             blink_body_rows=[1 + cursor],
+            dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
         )
 
     if screen == "story_battle_cmd_mushy":
         options = _actor_action_options("mushy")
+        enabled = _action_enabled_flags(flow, "mushy", options)
         cursor = int(flow.get("battle_mushy_cmd_idx", 0)) % len(options)
-        lines = _format_select_lines(options, cursor)
+        if enabled and not enabled[cursor] and any(enabled):
+            cursor = next((i for i, v in enumerate(enabled) if v), cursor)
+            flow["battle_mushy_cmd_idx"] = cursor
+        lines, disabled_rows = _format_select_lines_with_disabled(options, cursor, enabled)
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
@@ -1852,13 +1974,18 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
             blink_body_rows=[1 + cursor],
+            dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
         )
 
     if screen == "story_battle_cmd_sharoom":
         options = _actor_action_options("sharoom")
+        enabled = _action_enabled_flags(flow, "sharoom", options)
         cursor = int(flow.get("battle_sharoom_cmd_idx", 0)) % len(options)
-        lines = _format_select_lines(options, cursor)
+        if enabled and not enabled[cursor] and any(enabled):
+            cursor = next((i for i, v in enumerate(enabled) if v), cursor)
+            flow["battle_sharoom_cmd_idx"] = cursor
+        lines, disabled_rows = _format_select_lines_with_disabled(options, cursor, enabled)
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
@@ -1870,13 +1997,18 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
             blink_body_rows=[1 + cursor],
+            dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
         )
 
     if screen == "story_battle_cmd_roomy":
         options = _actor_action_options("roomy")
+        enabled = _action_enabled_flags(flow, "roomy", options)
         cursor = int(flow.get("battle_roomy_cmd_idx", 0)) % len(options)
-        lines = _format_select_lines(options, cursor)
+        if enabled and not enabled[cursor] and any(enabled):
+            cursor = next((i for i, v in enumerate(enabled) if v), cursor)
+            flow["battle_roomy_cmd_idx"] = cursor
+        lines, disabled_rows = _format_select_lines_with_disabled(options, cursor, enabled)
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
@@ -1888,6 +2020,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
             blink_body_rows=[1 + cursor],
+            dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
         )
 
@@ -2138,6 +2271,20 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             max_body_width=40,
             wrap_mode="balanced",
             body_align="left",
+            actions=["[ A / Continue ]"],
+        )
+
+    if screen == "story_second_chance":
+        return UIBoxSpec(
+            role="story",
+            border_style="heavy",
+            title="Second Chance",
+            body_text="A light shines down from heaven, and hope returns.",
+            center_x=50,
+            center_y=17,
+            max_body_width=50,
+            wrap_mode="balanced",
+            body_align="center",
             actions=["[ A / Continue ]"],
         )
 
@@ -2935,6 +3082,46 @@ def _battle_log_enqueue(flow: dict, lines: List[str]) -> None:
         if text:
             pending.append(text)
     flow["battle_log_pending"] = pending
+
+
+def _restore_party_post_battle(flow: dict) -> None:
+    sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+    sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
+    sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+    sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
+    out_hp: List[int] = []
+    out_mp: List[int] = []
+    n = max(len(sec_hp), len(sec_hp_max), len(sec_mp), len(sec_mp_max))
+    for i in range(n):
+        hp = sec_hp[i] if i < len(sec_hp) else 0
+        hp_max = max(1, sec_hp_max[i] if i < len(sec_hp_max) else max(1, hp))
+        mp = sec_mp[i] if i < len(sec_mp) else 0
+        mp_max = max(0, sec_mp_max[i] if i < len(sec_mp_max) else max(0, mp))
+        if hp <= 0:
+            out_hp.append(max(1, hp_max // 2))
+            out_mp.append(max(0, mp_max // 2))
+        else:
+            out_hp.append(hp_max)
+            out_mp.append(mp_max)
+    flow["battle_secondary_hp"] = out_hp
+    flow["battle_secondary_mp"] = out_mp
+
+
+def _apply_second_chance(flow: dict) -> None:
+    sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+    sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
+    sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+    sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
+    out_hp: List[int] = []
+    out_mp: List[int] = []
+    n = max(len(sec_hp), len(sec_hp_max), len(sec_mp), len(sec_mp_max))
+    for i in range(n):
+        hp_max = max(1, sec_hp_max[i] if i < len(sec_hp_max) else 1)
+        mp_max = max(0, sec_mp_max[i] if i < len(sec_mp_max) else 0)
+        out_hp.append(max(1, hp_max // 2))
+        out_mp.append(max(0, mp_max // 2))
+    flow["battle_secondary_hp"] = out_hp
+    flow["battle_secondary_mp"] = out_mp
 
 
 def _battle_log_tick(flow: dict, dt: float) -> None:
@@ -4630,6 +4817,9 @@ def main() -> None:
                     queue = flow.get("battle_queue", [])
                     qidx = int(flow.get("battle_queue_index", 0))
                     if qidx >= len(queue):
+                        if not _alive_indices(sec_hp):
+                            begin_transition("story_second_chance")
+                            continue
                         stage_now = int(flow.get("battle_stage", 1))
                         kinds_now = [str(v).strip().lower() for v in flow.get("battle_primary_kind", [])]
                         hawk_i = kinds_now.index("hawk") if ("hawk" in kinds_now and len(kinds_now) <= len(pri_hp) + 2) else -1
@@ -4637,6 +4827,7 @@ def main() -> None:
                         if hawking_surrendered or not _alive_indices(pri_hp):
                             # Recharge Mycostaff after each completed battle.
                             flow["battle_staff_charges"] = 3
+                            _restore_party_post_battle(flow)
                             if int(flow.get("battle_stage", 1)) == 1:
                                 begin_transition("story_more_crows")
                             elif int(flow.get("battle_stage", 1)) == 2:
@@ -5000,18 +5191,24 @@ def main() -> None:
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
                     options = _actor_action_options("player", bool(flow.get("unlock_summon_hawking", False)))
                     cmd_idx = int(flow.get("battle_player_cmd_idx", 0)) % len(options)
+                    enabled = _action_enabled_flags(flow, "player", options)
+                    if enabled and not enabled[cmd_idx] and any(enabled):
+                        cmd_idx = next((i for i, v in enumerate(enabled) if v), cmd_idx)
+                        flow["battle_player_cmd_idx"] = cmd_idx
                     cursor = int(flow.get("battle_target_cursor", 0))
                     if key == "up":
-                        cmd_idx = (cmd_idx - 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, -1)
                         flow["battle_player_cmd_idx"] = cmd_idx
                     elif key == "down":
-                        cmd_idx = (cmd_idx + 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_player_cmd_idx"] = cmd_idx
-                    elif key == "left" and options[cmd_idx] in ("Attack", "Magic Spark", "Summon Hawking"):
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Magic Spark", "Summon Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and options[cmd_idx] in ("Attack", "Magic Spark", "Summon Hawking"):
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Magic Spark", "Summon Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
+                        if not enabled[cmd_idx]:
+                            continue
                         pick = options[cmd_idx]
                         flow["battle_player_action"] = pick
                         if pick in ("Attack", "Magic Spark", "Summon Hawking"):
@@ -5027,18 +5224,24 @@ def main() -> None:
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
                     options = _actor_action_options("mushy")
                     cmd_idx = int(flow.get("battle_mushy_cmd_idx", 0)) % len(options)
+                    enabled = _action_enabled_flags(flow, "mushy", options)
+                    if enabled and not enabled[cmd_idx] and any(enabled):
+                        cmd_idx = next((i for i, v in enumerate(enabled) if v), cmd_idx)
+                        flow["battle_mushy_cmd_idx"] = cmd_idx
                     cursor = int(flow.get("battle_target_cursor", 0))
                     if key == "up":
-                        cmd_idx = (cmd_idx - 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, -1)
                         flow["battle_mushy_cmd_idx"] = cmd_idx
                     elif key == "down":
-                        cmd_idx = (cmd_idx + 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_mushy_cmd_idx"] = cmd_idx
-                    elif key == "left" and options[cmd_idx] == "Attack":
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and options[cmd_idx] == "Attack":
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
+                        if not enabled[cmd_idx]:
+                            continue
                         pick = options[cmd_idx]
                         flow["battle_mushy_action"] = pick
                         meta = _spell_targeting_meta("mushy", pick)
@@ -5070,18 +5273,24 @@ def main() -> None:
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
                     options = _actor_action_options("sharoom")
                     cmd_idx = int(flow.get("battle_sharoom_cmd_idx", 0)) % len(options)
+                    enabled = _action_enabled_flags(flow, "sharoom", options)
+                    if enabled and not enabled[cmd_idx] and any(enabled):
+                        cmd_idx = next((i for i, v in enumerate(enabled) if v), cmd_idx)
+                        flow["battle_sharoom_cmd_idx"] = cmd_idx
                     cursor = int(flow.get("battle_target_cursor", 0))
                     if key == "up":
-                        cmd_idx = (cmd_idx - 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, -1)
                         flow["battle_sharoom_cmd_idx"] = cmd_idx
                     elif key == "down":
-                        cmd_idx = (cmd_idx + 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_sharoom_cmd_idx"] = cmd_idx
-                    elif key == "left" and options[cmd_idx] == "Attack":
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and options[cmd_idx] == "Attack":
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
+                        if not enabled[cmd_idx]:
+                            continue
                         pick = options[cmd_idx]
                         flow["battle_sharoom_action"] = pick
                         meta = _spell_targeting_meta("sharoom", pick)
@@ -5115,18 +5324,24 @@ def main() -> None:
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [26, 0, 0])]
                     options = _actor_action_options("roomy")
                     cmd_idx = int(flow.get("battle_roomy_cmd_idx", 0)) % len(options)
+                    enabled = _action_enabled_flags(flow, "roomy", options)
+                    if enabled and not enabled[cmd_idx] and any(enabled):
+                        cmd_idx = next((i for i, v in enumerate(enabled) if v), cmd_idx)
+                        flow["battle_roomy_cmd_idx"] = cmd_idx
                     cursor = int(flow.get("battle_target_cursor", 0))
                     if key == "up":
-                        cmd_idx = (cmd_idx - 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, -1)
                         flow["battle_roomy_cmd_idx"] = cmd_idx
                     elif key == "down":
-                        cmd_idx = (cmd_idx + 1) % len(options)
+                        cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_roomy_cmd_idx"] = cmd_idx
-                    elif key == "left" and options[cmd_idx] == "Attack":
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and options[cmd_idx] == "Attack":
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
+                        if not enabled[cmd_idx]:
+                            continue
                         pick = options[cmd_idx]
                         flow["battle_roomy_action"] = pick
                         if pick == "Attack":
@@ -5305,6 +5520,28 @@ def main() -> None:
                             items.append("Hawking Feather")
                         flow["player_items"] = items
                         begin_transition("story_hawk_victory")
+                elif screen == "story_second_chance":
+                    if confirm:
+                        _apply_second_chance(flow)
+                        pri_hp_sc = [int(v) for v in flow.get("battle_primary_hp", [10])]
+                        if _alive_indices(pri_hp_sc):
+                            flow["battle_target_cursor"] = _first_alive(pri_hp_sc, 0)
+                            _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
+                            begin_transition("story_battle_cmd_player")
+                        else:
+                            flow["battle_staff_charges"] = 3
+                            _restore_party_post_battle(flow)
+                            stage_sc = int(flow.get("battle_stage", 1))
+                            if stage_sc == 1:
+                                begin_transition("story_more_crows")
+                            elif stage_sc == 2:
+                                begin_transition("story_sharoom_1")
+                            elif stage_sc == 3:
+                                begin_transition("story_battle_victory")
+                            elif stage_sc == 4:
+                                begin_transition("story_hawk_post_1")
+                            else:
+                                begin_transition("root_menu")
                 elif screen == "story_hawk_victory":
                     if confirm:
                         begin_transition("story_post_hawk_fairy_intro")
@@ -5451,6 +5688,7 @@ def main() -> None:
                 "story_battle_ally_target",
                 "story_battle_resolve",
                 "story_battle3_resolve",
+                "story_second_chance",
                 "story_battle_victory",
             }
             battle_log_screens = set(battle_screens)
@@ -5473,6 +5711,10 @@ def main() -> None:
                         secondary_sprites = [sharoom_sprite, selected_player_sprite, mushy_sprite]
                     else:
                         secondary_sprites = [selected_player_sprite, mushy_sprite]
+                    sec_hp_state = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+                    for i in range(min(len(secondary_sprites), len(sec_hp_state))):
+                        if sec_hp_state[i] <= 0:
+                            secondary_sprites[i] = _grey_sprite_rows(secondary_sprites[i])
                 elif screen == "story_battle2_entrance":
                     primary_sprites = []
                     secondary_sprites = [selected_player_sprite, mushy_sprite]
