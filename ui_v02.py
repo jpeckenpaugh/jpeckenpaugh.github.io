@@ -1232,6 +1232,238 @@ def ui_box_step_count(spec: UIBoxSpec) -> int:
     return max(1, h_ticks + w_ticks)
 
 
+NAME_KEYBOARD = [
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+    ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"],
+    ["K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"],
+    ["U", "V", "W", "X", "Y", "Z", "-", "'", "SPACE", "DEL"],
+    ["SHIFT", "DONE", "CANCEL"],
+]
+
+
+def _display_keyboard_rows(shift: bool) -> List[List[str]]:
+    out: List[List[str]] = []
+    for row in NAME_KEYBOARD:
+        drow: List[str] = []
+        for token in row:
+            if len(token) == 1 and token.isalpha():
+                drow.append(token.upper() if shift else token.lower())
+            else:
+                drow.append(token)
+        out.append(drow)
+    return out
+
+
+def _apply_name_key(name: str, key_token: str, shift: bool) -> tuple[str, bool, bool, bool]:
+    # Returns: (updated_name, updated_shift, done, cancel)
+    token = str(key_token)
+    if token == "SHIFT":
+        return (name, not shift, False, False)
+    if token == "DEL":
+        return (name[:-1], shift, False, False)
+    if token == "SPACE":
+        if len(name) < 16:
+            return (name + " ", shift, False, False)
+        return (name, shift, False, False)
+    if token == "DONE":
+        if name.strip():
+            return (name, shift, True, False)
+        return (name, shift, False, False)
+    if token == "CANCEL":
+        return (name, shift, False, True)
+    if len(token) == 1 and len(name) < 16:
+        return (name + token, shift, False, False)
+    return (name, shift, False, False)
+
+
+def _draw_text(canvas: List[List[str]], x0: int, y: int, text: str, color: str) -> None:
+    if y < 0 or y >= SCREEN_H:
+        return
+    for i, ch in enumerate(str(text)):
+        x = x0 + i
+        if 0 <= x < SCREEN_W:
+            if ch == " ":
+                canvas[y][x] = " "
+            else:
+                canvas[y][x] = f"{color}{ch}{ANSI_RESET}"
+
+
+def _draw_sprite(canvas: List[List[str]], rows: List[List[str]], x0: int, y0: int) -> None:
+    for dy, row in enumerate(rows):
+        y = y0 + dy
+        if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+            continue
+        for dx, cell in enumerate(row):
+            x = x0 + dx
+            if 0 <= x < SCREEN_W and cell != " ":
+                canvas[y][x] = cell
+
+
+def _draw_avatar_overlay(
+    canvas: List[List[str]],
+    spec: UIBoxSpec,
+    left_sprite: List[List[str]],
+    right_sprite: List[List[str]],
+    left_label: str,
+    right_label: str,
+    selected: int,
+    blink_selected_on: bool = True,
+) -> None:
+    layout = _build_ui_box_layout(spec)
+    center_x = layout.x0 + (layout.box_w // 2)
+    left_w, left_h = _sprite_size(left_sprite)
+    right_w, right_h = _sprite_size(right_sprite)
+    top_y = layout.y0 + 6
+
+    left_cx = center_x - 16
+    right_cx = center_x + 16
+    left_x = left_cx - (left_w // 2)
+    right_x = right_cx - (right_w // 2)
+    if selected == 0:
+        if blink_selected_on:
+            _draw_sprite(canvas, left_sprite, left_x, top_y)
+        _draw_sprite(canvas, right_sprite, right_x, top_y)
+    elif selected == 1:
+        _draw_sprite(canvas, left_sprite, left_x, top_y)
+        if blink_selected_on:
+            _draw_sprite(canvas, right_sprite, right_x, top_y)
+    else:
+        _draw_sprite(canvas, left_sprite, left_x, top_y)
+        _draw_sprite(canvas, right_sprite, right_x, top_y)
+
+    label_y = top_y + max(left_h, right_h) + 1
+    dim = "\x1b[38;2;210;210;210m"
+    bright = "\x1b[38;2;245;245;245m"
+    left_text = f"[ {left_label} ]" if selected == 0 else f"  {left_label}  "
+    right_text = f"[ {right_label} ]" if selected == 1 else f"  {right_label}  "
+    _draw_text(canvas, left_cx - (len(left_text) // 2), label_y, left_text, bright if selected == 0 else dim)
+    _draw_text(canvas, right_cx - (len(right_text) // 2), label_y, right_text, bright if selected == 1 else dim)
+
+
+def _build_screen_spec(flow: dict) -> UIBoxSpec:
+    screen = str(flow.get("screen", "root_menu"))
+    if screen == "root_menu":
+        options = ["New Game", "Saved Game", "Asset Explorer"]
+        cursor = int(flow.get("menu_cursor", 0)) % len(options)
+        lines: List[str] = []
+        for idx, opt in enumerate(options):
+            lines.append(f"[ {opt} ]" if idx == cursor else f"  {opt}")
+        return UIBoxSpec(
+            role="menu",
+            border_style="heavy",
+            title="Title Menu",
+            body_text="\n".join(lines + ["", "Use Up/Down and A/S."]),
+            center_x=50,
+            center_y=17,
+            max_body_width=34,
+            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            body_align="left",
+        )
+
+    if screen == "avatar_select":
+        label = str(flow.get("avatar_label", "Adventurer"))
+        return UIBoxSpec(
+            role="avatar_select",
+            border_style="double",
+            title="Choose Adventurer",
+            body_text=f"Slot 1  Avatar: {label}\n\nUse Left/Right to toggle.",
+            center_x=50,
+            center_y=17,
+            max_body_width=62,
+            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            body_align="left",
+        )
+
+    if screen == "name_select":
+        names = flow.get("name_choices", ["WARRIOR"])
+        idx = int(flow.get("name_choice_index", 0)) % max(1, len(names))
+        name = str(names[idx])
+        focus = int(flow.get("name_focus", 0))
+        preset_line = f"< {name} >"
+        custom_line = "Custom..."
+        if focus == 0:
+            preset_line = f"[ {preset_line} ]"
+        else:
+            custom_line = f"[ {custom_line} ]"
+        return UIBoxSpec(
+            role="name_select",
+            border_style="heavy",
+            title="Say Your Name",
+            body_text=(
+                f"{preset_line}\n"
+                f"{custom_line}\n\n"
+                "Left/Right cycles preset names."
+            ),
+            center_x=50,
+            center_y=17,
+            max_body_width=46,
+            body_align="center",
+            wrap_mode="balanced",
+            actions=["[ A / Confirm ]", "[ S / Back ]"],
+        )
+
+    if screen == "name_input":
+        typed = str(flow.get("typed_name", ""))[:16]
+        shift = bool(flow.get("name_shift", True))
+        key_rows = _display_keyboard_rows(shift)
+        cur_row = int(flow.get("key_row", 0))
+        cur_col = int(flow.get("key_col", 0))
+        lines = [f"Name: {typed}_", ""]
+        for r, row in enumerate(key_rows):
+            parts: List[str] = []
+            for c, token in enumerate(row):
+                t = token
+                if r == cur_row and c == cur_col:
+                    parts.append(f"[{t}]")
+                else:
+                    parts.append(f" {t} ")
+            lines.append(" ".join(parts))
+        return UIBoxSpec(
+            role="name_input",
+            border_style="double",
+            title="Custom Name",
+            body_text="\n".join(lines + ["", "Arrows move. A selects key."]),
+            center_x=50,
+            center_y=17,
+            max_body_width=72,
+            body_align="left",
+            actions=["[ A / Key ]", "[ S / Cancel ]"],
+        )
+
+    if screen == "start_confirm":
+        return UIBoxSpec(
+            role="start_confirm",
+            border_style="heavy",
+            title="Begin Adventure",
+            body_text=(
+                f"Avatar: {flow.get('avatar_label', 'Adventurer')}\n"
+                f"Name: {flow.get('selected_name', 'WARRIOR')}\n"
+                "Fortune: Well-Off (100 GP)\n\n"
+                "Start this new game setup?"
+            ),
+            center_x=50,
+            center_y=17,
+            max_body_width=52,
+            body_align="left",
+            wrap_mode="balanced",
+            actions=["[ A / Start ]", "[ S / Back ]"],
+        )
+
+    message = str(flow.get("message_text", ""))
+    return UIBoxSpec(
+        role="info",
+        border_style="light",
+        title="Notice",
+        body_text=message or "Demo placeholder.",
+        center_x=50,
+        center_y=17,
+        max_body_width=50,
+        body_align="center",
+        wrap_mode="balanced",
+        actions=["[ A / OK ]", "[ S / Back ]"],
+    )
+
+
 def _draw_ui_text_box(canvas: List[List[str]], text: str, primary_zone: LayoutZone, secondary_zone: LayoutZone) -> None:
     text = str(text).strip()
     if not text:
@@ -1698,6 +1930,8 @@ def render(
     ui_box_specs: List[UIBoxSpec] | None = None,
     ui_active_box: UIBoxSpec | None = None,
     ui_active_box_progress: float = 1.0,
+    ui_avatar_overlay: dict | None = None,
+    blink_phase: float = 0.0,
 ) -> str:
     canvas = [[" " for _ in range(SCREEN_W)] for _ in range(SCREEN_H)]
 
@@ -1867,6 +2101,24 @@ def render(
                 draw_ui_box(canvas, spec)
     if isinstance(ui_active_box, UIBoxSpec):
         draw_ui_box_animated(canvas, ui_active_box, ui_active_box_progress)
+    if isinstance(ui_avatar_overlay, dict) and isinstance(ui_active_box, UIBoxSpec):
+        left_rows = ui_avatar_overlay.get("left_rows", [])
+        right_rows = ui_avatar_overlay.get("right_rows", [])
+        left_label = str(ui_avatar_overlay.get("left_label", "Left"))
+        right_label = str(ui_avatar_overlay.get("right_label", "Right"))
+        selected = int(ui_avatar_overlay.get("selected", 0))
+        blink_on = bool((int(float(blink_phase) * 2.0) % 2) == 0)
+        if isinstance(left_rows, list) and isinstance(right_rows, list):
+            _draw_avatar_overlay(
+                canvas,
+                ui_active_box,
+                left_rows,
+                right_rows,
+                left_label,
+                right_label,
+                selected,
+                blink_selected_on=blink_on,
+            )
 
     # Vertical wipe-in from bottom.
     progress = max(0.0, min(1.0, wipe_progress))
@@ -1893,12 +2145,16 @@ def main() -> None:
     base = os.getcwd()
     objects_path = os.path.join(base, "legecay", "data", "objects.json")
     colors_path = os.path.join(base, "legecay", "data", "colors.json")
+    players_path = os.path.join(base, "legecay", "data", "players.json")
     objects = load_json(objects_path)
     colors = load_json(colors_path)
+    players = load_json(players_path)
     if not isinstance(objects, dict):
         raise RuntimeError("objects.json is not a JSON object")
     if not isinstance(colors, dict):
         raise RuntimeError("colors.json is not a JSON object")
+    if not isinstance(players, dict):
+        raise RuntimeError("players.json is not a JSON object")
     color_codes = _build_color_codes(colors)
 
     templates = cloud_templates(objects)
@@ -1926,11 +2182,58 @@ def main() -> None:
     world_scene_label = "cottage"
     world_center_object_id = "house"
     world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
-    ui_sequence = build_new_game_workflow_specs()
-    ui_seq_index = 0
-    ui_anim_opening = True
-    ui_anim_step = 0
-    ui_open_hold_remaining = 0.0
+
+    preferred_ids = ["player_01", "player_02"]
+    ordered_ids: List[str] = []
+    for pid in preferred_ids:
+        if isinstance(players.get(pid), dict):
+            ordered_ids.append(pid)
+    for pid in sorted(players.keys()):
+        if isinstance(players.get(pid), dict) and pid not in ordered_ids:
+            ordered_ids.append(pid)
+    if not ordered_ids:
+        ordered_ids = ["player_01", "player_02"]
+    if len(ordered_ids) == 1:
+        ordered_ids.append(ordered_ids[0])
+    ordered_ids = ordered_ids[:2]
+
+    player_cards: List[dict] = []
+    for pid in ordered_ids:
+        entry = players.get(pid, {}) if isinstance(players, dict) else {}
+        label = str(entry.get("label", pid) if isinstance(entry, dict) else pid)
+        names = entry.get("names", []) if isinstance(entry, dict) else []
+        if not isinstance(names, list):
+            names = []
+        clean_names = [str(n).strip()[:16] for n in names if str(n).strip()]
+        if not clean_names:
+            clean_names = [label.upper()[:16] or "WARRIOR"]
+        sprite = build_player_sprite(players, pid, color_codes)
+        player_cards.append({"id": pid, "label": label, "names": clean_names, "sprite": sprite})
+
+    flow = {
+        "screen": "root_menu",
+        "next_screen": None,
+        "menu_cursor": 0,
+        "player_cards": player_cards,
+        "player_index": 0,
+        "avatar_label": player_cards[0]["label"],
+        "name_choices": list(player_cards[0]["names"]),
+        "name_choice_index": 0,
+        "name_focus": 0,
+        "typed_name": "",
+        "selected_name": player_cards[0]["names"][0],
+        "name_shift": True,
+        "key_row": 0,
+        "key_col": 0,
+        "message_text": "",
+    }
+    anim_mode = "opening"  # opening | open | closing
+    anim_step = 0
+
+    def begin_transition(target: str) -> None:
+        flow["next_screen"] = target
+        nonlocal anim_mode
+        anim_mode = "closing"
 
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
@@ -1951,21 +2254,146 @@ def main() -> None:
             key = read_key_nonblocking()
             if key == "q":
                 break
-            if key == "right":
-                ui_seq_index = (ui_seq_index + 1) % len(ui_sequence)
-                ui_anim_opening = True
-                ui_anim_step = 0
-                ui_open_hold_remaining = 0.0
-            if key == "left":
-                ui_seq_index = (ui_seq_index - 1) % len(ui_sequence)
-                ui_anim_opening = True
-                ui_anim_step = 0
-                ui_open_hold_remaining = 0.0
+
+            screen = str(flow.get("screen", "root_menu"))
+            confirm = key in ("a", "\r", "\n")
+            back = key == "s"
+            player_cards = flow["player_cards"]
+            selected_card = player_cards[int(flow.get("player_index", 0)) % len(player_cards)]
+
+            if anim_mode == "open" and key is not None:
+                if screen == "root_menu":
+                    cursor = int(flow.get("menu_cursor", 0))
+                    if key == "up":
+                        flow["menu_cursor"] = (cursor - 1) % 3
+                    elif key == "down":
+                        flow["menu_cursor"] = (cursor + 1) % 3
+                    elif confirm:
+                        if cursor == 0:
+                            flow["player_index"] = 0
+                            selected = flow["player_cards"][0]
+                            flow["avatar_label"] = selected["label"]
+                            flow["name_choices"] = list(selected["names"])
+                            flow["name_choice_index"] = 0
+                            flow["name_focus"] = 0
+                            flow["selected_name"] = selected["names"][0]
+                            begin_transition("avatar_select")
+                        elif cursor == 1:
+                            flow["message_text"] = "Saved Game menu selected. (Demo placeholder)"
+                            begin_transition("info")
+                        else:
+                            flow["message_text"] = "Asset Explorer selected. (Demo placeholder)"
+                            begin_transition("info")
+                elif screen == "avatar_select":
+                    idx = int(flow.get("player_index", 0))
+                    if key in ("left", "up"):
+                        idx = 1 if idx == 0 else 0
+                        flow["player_index"] = idx
+                        flow["avatar_label"] = player_cards[idx]["label"]
+                        flow["name_choices"] = list(player_cards[idx]["names"])
+                        flow["name_choice_index"] = 0
+                    elif key in ("right", "down"):
+                        idx = 1 if idx == 0 else 0
+                        flow["player_index"] = idx
+                        flow["avatar_label"] = player_cards[idx]["label"]
+                        flow["name_choices"] = list(player_cards[idx]["names"])
+                        flow["name_choice_index"] = 0
+                    elif confirm:
+                        selected = player_cards[idx]
+                        flow["avatar_label"] = selected["label"]
+                        flow["name_choices"] = list(selected["names"])
+                        flow["name_choice_index"] = 0
+                        flow["name_focus"] = 0
+                        flow["selected_name"] = selected["names"][0]
+                        begin_transition("name_select")
+                    elif back:
+                        begin_transition("root_menu")
+                elif screen == "name_select":
+                    focus = int(flow.get("name_focus", 0))
+                    if key in ("up", "down"):
+                        flow["name_focus"] = 1 - focus
+                    elif focus == 0 and key == "left":
+                        count = max(1, len(flow["name_choices"]))
+                        flow["name_choice_index"] = (int(flow.get("name_choice_index", 0)) - 1) % count
+                    elif focus == 0 and key == "right":
+                        count = max(1, len(flow["name_choices"]))
+                        flow["name_choice_index"] = (int(flow.get("name_choice_index", 0)) + 1) % count
+                    elif confirm:
+                        if focus == 0:
+                            idx = int(flow.get("name_choice_index", 0)) % max(1, len(flow["name_choices"]))
+                            flow["selected_name"] = str(flow["name_choices"][idx])
+                            begin_transition("start_confirm")
+                        else:
+                            flow["typed_name"] = str(flow.get("selected_name", ""))[:16]
+                            flow["name_shift"] = True
+                            flow["key_row"] = 0
+                            flow["key_col"] = 0
+                            begin_transition("name_input")
+                    elif back:
+                        begin_transition("avatar_select")
+                elif screen == "name_input":
+                    row = int(flow.get("key_row", 0))
+                    col = int(flow.get("key_col", 0))
+                    if key == "up":
+                        row = (row - 1) % len(NAME_KEYBOARD)
+                        col = min(col, len(NAME_KEYBOARD[row]) - 1)
+                    elif key == "down":
+                        row = (row + 1) % len(NAME_KEYBOARD)
+                        col = min(col, len(NAME_KEYBOARD[row]) - 1)
+                    elif key == "left":
+                        col = (col - 1) % len(NAME_KEYBOARD[row])
+                    elif key == "right":
+                        col = (col + 1) % len(NAME_KEYBOARD[row])
+                    elif confirm:
+                        display_rows = _display_keyboard_rows(bool(flow.get("name_shift", True)))
+                        token = display_rows[row][col]
+                        name, shift, done, cancel = _apply_name_key(
+                            str(flow.get("typed_name", "")),
+                            token,
+                            bool(flow.get("name_shift", True)),
+                        )
+                        flow["typed_name"] = name[:16]
+                        flow["name_shift"] = shift
+                        if done:
+                            flow["selected_name"] = name[:16]
+                            begin_transition("start_confirm")
+                        elif cancel:
+                            begin_transition("name_select")
+                    elif back:
+                        begin_transition("name_select")
+                    flow["key_row"] = row
+                    flow["key_col"] = col
+                elif screen == "start_confirm":
+                    if confirm:
+                        flow["message_text"] = "New game created. (Demo)"
+                        begin_transition("info")
+                    elif back:
+                        begin_transition("name_select")
+                elif screen == "info":
+                    if confirm or back:
+                        begin_transition("root_menu")
 
             split_label = f"{zones['sky_bg'].height}/{zones['ground_bg'].height}"
-            active_spec = ui_sequence[ui_seq_index]
+            active_spec = _build_screen_spec(flow)
             step_count = ui_box_step_count(active_spec)
-            anim_progress = ui_anim_step / max(1, step_count)
+            if anim_mode == "open":
+                anim_progress = 1.0
+            else:
+                anim_progress = anim_step / max(1, step_count)
+
+            avatar_overlay = None
+            if str(flow.get("screen")) == "avatar_select":
+                pidx = int(flow.get("player_index", 0)) % len(player_cards)
+                left = player_cards[0]
+                right = player_cards[1]
+                avatar_overlay = {
+                    "left_rows": left.get("sprite", []),
+                    "right_rows": right.get("sprite", []),
+                    "left_label": left.get("label", "Left"),
+                    "right_label": right.get("label", "Right"),
+                    "selected": pidx,
+                }
+
             frame = render(
                 clouds=clouds,
                 ground_rows=ground_rows,
@@ -1987,23 +2415,26 @@ def main() -> None:
                 show_title_logo=True,
                 ui_active_box=active_spec,
                 ui_active_box_progress=anim_progress,
+                ui_avatar_overlay=avatar_overlay,
+                blink_phase=now,
             )
             print(ANSI_HOME + frame, end="", flush=True)
 
-            # Box animation sequence: in/out for each box in order.
-            if ui_anim_opening:
-                ui_anim_step = min(step_count, ui_anim_step + 2)
-                if ui_anim_step >= step_count:
-                    ui_anim_opening = False
-                    ui_open_hold_remaining = 1.0
+            # Transition animation is now input-driven.
+            if anim_mode == "opening":
+                anim_step = min(step_count, anim_step + 2)
+                if anim_step >= step_count:
+                    anim_mode = "open"
+            elif anim_mode == "closing":
+                anim_step = max(0, anim_step - 2)
+                if anim_step <= 0:
+                    nxt = str(flow.get("next_screen") or flow.get("screen"))
+                    flow["screen"] = nxt
+                    flow["next_screen"] = None
+                    anim_mode = "opening"
+                    anim_step = 0
             else:
-                if ui_open_hold_remaining > 0.0:
-                    ui_open_hold_remaining = max(0.0, ui_open_hold_remaining - dt)
-                else:
-                    ui_anim_step = max(0, ui_anim_step - 2)
-                    if ui_anim_step <= 0:
-                        ui_anim_opening = True
-                        ui_seq_index = (ui_seq_index + 1) % len(ui_sequence)
+                anim_step = step_count
             time.sleep(0.05)
     except KeyboardInterrupt:
         pass
