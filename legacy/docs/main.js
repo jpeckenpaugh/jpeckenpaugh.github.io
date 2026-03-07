@@ -1,6 +1,7 @@
 const statusEl = document.getElementById("status");
 const termEl = document.getElementById("terminal");
 const keyboardEl = document.getElementById("virtual-keyboard");
+const modeSelectEl = document.getElementById("mode-select");
 const languageSelectEl = document.getElementById("language-select");
 const manifestUrl = new URL("asset-manifest.json", window.location.href);
 manifestUrl.searchParams.set("v", Date.now().toString());
@@ -26,6 +27,7 @@ initTipsModal();
 initDebugModal();
 initBuildTime();
 initDocsMenu();
+initModePicker();
 initLanguagePicker();
 
 async function initTerminal() {
@@ -219,6 +221,7 @@ async function bootPyodide() {
       "import os",
       "os.environ['LOKARTA_WEB'] = '1'",
       `os.environ['LOKARTA_DEMO_LANG'] = '${getSelectedLanguage()}'`,
+      `os.environ['LOKARTA_LEGACY'] = '${isLegacyMode() ? "1" : "0"}'`,
       "os.environ['COLUMNS'] = '100'",
       "os.environ['LINES'] = '30'",
       "import app.input as input_mod",
@@ -261,6 +264,53 @@ function getLangFromUrl() {
   return "";
 }
 
+function isLegacyMode() {
+  const fromUrl = getLegacyFromUrl();
+  if (fromUrl !== null) return fromUrl;
+  if (!modeSelectEl) return false;
+  return (modeSelectEl.value || "demo") === "legacy";
+}
+
+function getLegacyFromUrl() {
+  const qp = new URLSearchParams(window.location.search);
+  const raw = (qp.get("legacy") || "").toLowerCase().trim();
+  if (!raw) return null;
+  return ["1", "true", "yes", "on"].includes(raw);
+}
+
+function syncModeAndLangToUrl(modeValue, langValue) {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("lang", langValue);
+  if (modeValue === "legacy") {
+    nextUrl.searchParams.set("legacy", "true");
+  } else {
+    nextUrl.searchParams.delete("legacy");
+  }
+  return nextUrl;
+}
+
+function initModePicker() {
+  if (!modeSelectEl) return;
+  const legacyFromUrl = getLegacyFromUrl();
+  const savedMode = window.localStorage.getItem("lokarta_demo_mode");
+  if (legacyFromUrl === true) {
+    modeSelectEl.value = "legacy";
+    window.localStorage.setItem("lokarta_demo_mode", "legacy");
+  } else if (legacyFromUrl === false) {
+    modeSelectEl.value = "demo";
+    window.localStorage.setItem("lokarta_demo_mode", "demo");
+  } else if (savedMode === "legacy" || savedMode === "demo") {
+    modeSelectEl.value = savedMode;
+  }
+  modeSelectEl.addEventListener("change", () => {
+    const modeValue = (modeSelectEl.value || "demo") === "legacy" ? "legacy" : "demo";
+    window.localStorage.setItem("lokarta_demo_mode", modeValue);
+    const nextUrl = syncModeAndLangToUrl(modeValue, getSelectedLanguage());
+    setStatus(`Mode set to ${modeValue === "legacy" ? "Legacy" : "Demo"}. Reloading...`);
+    window.setTimeout(() => window.location.assign(nextUrl.toString()), 120);
+  });
+}
+
 function initLanguagePicker() {
   if (!languageSelectEl) return;
   const fromUrl = getLangFromUrl();
@@ -274,8 +324,8 @@ function initLanguagePicker() {
   languageSelectEl.addEventListener("change", () => {
     const selected = getSelectedLanguage();
     window.localStorage.setItem("lokarta_demo_lang", selected);
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("lang", selected);
+    const modeValue = modeSelectEl && modeSelectEl.value === "legacy" ? "legacy" : "demo";
+    const nextUrl = syncModeAndLangToUrl(modeValue, selected);
     const labels = {
       en: "English",
       es: "Español",
