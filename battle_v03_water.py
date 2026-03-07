@@ -27,7 +27,7 @@ LAYER_FOREGROUND = 8
 LAYER_UI = 12
 SKY_ROWS_OPTIONS = [5, 10, 15, 20, 25]
 DEFAULT_SKY_ROWS = 15
-UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
+UI_DEMO_TEXT = "Talvez seja apenas uma coincidência. Temos que nos concentrar aqui e agora para por um fim em todo esse desequilibrio no rio."
 UI_DIALOG_TEXT = "So what do you say... Are you ready to challenge them?"
 DEMO_BATTLE_LOG_LINES = [
     "Mushy casts Magic Spark on 4 Fairy Warriors.",
@@ -154,8 +154,8 @@ def build_ground_rows(
 
     density = max(0.0, min(0.4, pebble_density))
     total_rows = max(0, row_count)
-    water_start_row = int(total_rows * 0.45)
-    max_water_width = max(10, SCREEN_W // 2)
+    water_start_row = int(total_rows * 0.30)
+    max_water_width = max(18, int(SCREEN_W * 0.70))
     for y in range(total_rows):
         row: List[str] = []
         for x in range(SCREEN_W):
@@ -170,7 +170,7 @@ def build_ground_rows(
         # Bottom-right diagonal water wedge.
         if y >= water_start_row:
             depth = y - water_start_row
-            width = min(max_water_width, 8 + (depth * 4))
+            width = min(max_water_width, 12 + (depth * 5))
             x0 = max(0, SCREEN_W - width)
             for x in range(x0, SCREEN_W):
                 wg = water_pattern[x % max(1, len(water_pattern))]
@@ -1166,6 +1166,26 @@ def _barrage_demo_state(clock: float) -> dict:
             "start": 7.7,
             "duration": 0.95,
         },
+        {
+            "id": "dolphin_retaliate",
+            "type": "physical",
+            "source_side": "primary",
+            "source_idx": 1,
+            "target_side": "primary",
+            "targets": [{"idx": 0, "dmg": 4}],
+            "start": 9.2,
+            "duration": 0.95,
+        },
+        {
+            "id": "piranaha_defeated",
+            "type": "status",
+            "source_side": "primary",
+            "source_idx": 1,
+            "target_side": "primary",
+            "targets": [{"idx": 0, "dmg": 0}],
+            "start": 10.3,
+            "duration": 0.8,
+        },
     ]
     final_pause = 2.0
     total = events[-1]["start"] + events[-1]["duration"] + final_pause
@@ -1259,7 +1279,13 @@ def _barrage_demo_state(clock: float) -> dict:
             break
         break
 
-    show_confused = confused or active_event_id in ("frog_poison", "confused_notice", "confused_self_hit")
+    confused_until = 9.2
+    # Piranaha (primary idx 0) is defeated when Dolphin retaliation resolves.
+    kill_time = 9.2 + 0.95
+    melt_progress_by_idx: Dict[int, float] = {}
+    if t >= kill_time:
+        melt_progress_by_idx[0] = max(0.0, min(1.0, (t - kill_time) / 0.8))
+    show_confused = (t < confused_until) and (confused or active_event_id in ("frog_poison", "confused_notice", "confused_self_hit"))
     return {
         "loop_t": t,
         "total": total,
@@ -1269,6 +1295,8 @@ def _barrage_demo_state(clock: float) -> dict:
         "recent_actions": recent_actions,
         "hp_primary": hp_primary,
         "hp_secondary": hp_secondary,
+        "hp_now": hp_primary,
+        "melt_progress_by_idx": melt_progress_by_idx,
         "show_confused": show_confused,
         "confused_actor_side": "primary",
         "confused_actor_idx": 0,
@@ -1284,8 +1312,10 @@ def _battle_log_lines_for_barrage(clock: float) -> List[str]:
         (5.1, "Frog casts Confusing Poison on Piranaha."),
         (6.4, "Piranaha is confused."),
         (7.7, "Confused Piranaha attacks Pink Dolphin."),
+        (9.2, "Pink Dolphin retaliates against Piranaha."),
+        (10.3, "Piranaha is defeated by Pink Dolphin."),
     ]
-    total = 10.65
+    total = 13.1
     t = float(clock) % max(0.001, total)
 
     chars_per_sec = 38.0
@@ -1998,12 +2028,34 @@ def render(
 
     hide_attacker = False
     hide_attacker_idx: int | None = None
+    hide_secondary_idxs: set[int] = set()
+    hide_primary_idxs: set[int] = set()
     show_hit_impact = False
     impact_frame_hint = 0
     physical_state: dict | None = None
     barrage_state: dict | None = None
     if world_layer_level == 6:
         barrage_state = _barrage_demo_state(spell_clock)
+        if isinstance(barrage_state, dict):
+            active_actions = barrage_state.get("active_actions", [])
+            if isinstance(active_actions, list):
+                for act in active_actions:
+                    if not isinstance(act, dict):
+                        continue
+                    if str(act.get("type", "")) != "physical":
+                        continue
+                    p = max(0.0, min(1.0, float(act.get("progress", 0.0))))
+                    hide_now, _show_now, _frame_now = _physical_hit_state_progress(p)
+                    if not hide_now:
+                        continue
+                    s_side = str(act.get("source_side", "secondary"))
+                    s_idx = int(act.get("source_idx", -1))
+                    if s_idx < 0:
+                        continue
+                    if s_side == "secondary":
+                        hide_secondary_idxs.add(s_idx)
+                    else:
+                        hide_primary_idxs.add(s_idx)
     if world_layer_level == 7:
         physical_state = _physical_demo_state(spell_clock)
         if physical_state.get("phase") == "attack":
@@ -2024,6 +2076,8 @@ def render(
         )
         for idx, actor in enumerate(secondary_placements):
             if hide_attacker and hide_attacker_idx is not None and idx == hide_attacker_idx:
+                continue
+            if idx in hide_secondary_idxs:
                 continue
             x0 = int(actor.get("x", 0))
             y0 = int(actor.get("y", 0))
@@ -2052,6 +2106,8 @@ def render(
         if death_elapsed is not None:
             melt_progress = max(0.0, min(1.0, float(death_elapsed) / 1.0))
         for idx, actor in enumerate(primary_placements):
+            if idx in hide_primary_idxs:
+                continue
             if world_layer_level == 6 and isinstance(barrage_melt, dict) and idx in barrage_melt:
                 p = float(barrage_melt[idx])
                 if p < 1.0:
@@ -2134,6 +2190,11 @@ def render(
                 action_type = str(action.get("type", ""))
                 if action_type in ("spell", "poison"):
                     _draw_spell_throw(canvas, _center(src_actor), _center(dst_actor), progress)
+                elif action_type == "physical" and smash_frames:
+                    _hide_blink, show_burst, frame_idx_hint = _physical_hit_state_progress(progress)
+                    if show_burst:
+                        frame_idx = min(max(0, frame_idx_hint), len(smash_frames) - 1)
+                        _draw_smash_frame(canvas, smash_frames[frame_idx], _center(dst_actor))
                 damage = max(0, int(action.get("damage", 0)))
                 if damage > 0:
                     _draw_physical_damage_hud_step(
@@ -2453,6 +2514,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
