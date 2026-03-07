@@ -1541,6 +1541,38 @@ def _draw_avatar_overlay(
     _draw_text(canvas, right_cx - (len(right_text) // 2), label_y, right_text, bright if selected == 1 else dim)
 
 
+def _actor_action_options(actor_key: str) -> List[str]:
+    key = str(actor_key).strip().lower()
+    if key == "player":
+        return ["Magic Spark", "Attack", "Defend"]
+    if key == "mushy":
+        return ["Mushroom Tea", "Attack", "Defend"]
+    if key == "sharoom":
+        return ["Healing Touch", "Attack", "Defend"]
+    if key == "roomy":
+        return ["Concentric", "Attack", "Defend"]
+    return ["Attack", "Defend"]
+
+
+def _action_label(flow: dict, actor_key: str) -> str:
+    options = _actor_action_options(actor_key)
+    idx_key = f"battle_{actor_key}_cmd_idx"
+    idx = int(flow.get(idx_key, 0))
+    if not options:
+        return "Attack"
+    return options[idx % len(options)]
+
+
+def _reset_battle_command_picks(flow: dict, stage: int) -> None:
+    flow["battle_player_cmd_idx"] = 0
+    flow["battle_player_action"] = _actor_action_options("player")[0]
+    flow["battle_mushy_cmd_idx"] = 0
+    flow["battle_mushy_action"] = _actor_action_options("mushy")[0]
+    if int(stage) >= 3:
+        flow["battle_sharoom_cmd_idx"] = 0
+        flow["battle_sharoom_action"] = _actor_action_options("sharoom")[0]
+
+
 def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
     screen = str(flow.get("screen", "root_menu"))
     if screen == "root_menu":
@@ -1730,45 +1762,57 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         )
 
     if screen == "story_battle_cmd_player":
+        options = _actor_action_options("player")
+        cursor = int(flow.get("battle_player_cmd_idx", 0)) % len(options)
+        lines = _format_select_lines(options, cursor)
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
             title=str(flow.get("selected_name", flow.get("avatar_label", "Player"))),
-            body_text="\n\nAttack",
+            body_text="\n" + "\n".join(lines),
             center_x=50,
             center_y=17,
-            max_body_width=28,
+            max_body_width=32,
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
-            blink_body_rows=[0],
+            blink_body_rows=[1 + cursor],
+            preserve_body_whitespace=True,
         )
 
     if screen == "story_battle_cmd_mushy":
+        options = _actor_action_options("mushy")
+        cursor = int(flow.get("battle_mushy_cmd_idx", 0)) % len(options)
+        lines = _format_select_lines(options, cursor)
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
             title="Mushy",
-            body_text="\n\nAttack",
+            body_text="\n" + "\n".join(lines),
             center_x=50,
             center_y=17,
-            max_body_width=28,
+            max_body_width=32,
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
-            blink_body_rows=[0],
+            blink_body_rows=[1 + cursor],
+            preserve_body_whitespace=True,
         )
 
     if screen == "story_battle_cmd_sharoom":
+        options = _actor_action_options("sharoom")
+        cursor = int(flow.get("battle_sharoom_cmd_idx", 0)) % len(options)
+        lines = _format_select_lines(options, cursor)
         return UIBoxSpec(
             role="battle_select",
             border_style="double",
             title="Sharoom",
-            body_text="\n\nAttack",
+            body_text="\n" + "\n".join(lines),
             center_x=50,
             center_y=17,
-            max_body_width=28,
+            max_body_width=34,
             body_align="left",
             actions=["[ A / Confirm ]", "[ S / Back ]"],
-            blink_body_rows=[0],
+            blink_body_rows=[1 + cursor],
+            preserve_body_whitespace=True,
         )
 
     if screen == "story_battle_victory":
@@ -1971,28 +2015,60 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
     sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
     sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+    sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
+    sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
     staff_charges = max(0, int(flow.get("battle_staff_charges", 3)))
     stage = int(flow.get("battle_stage", 1))
     player_idx = 1 if stage >= 3 else 0
     mushy_idx = 2 if stage >= 3 else 1
     sharoom_idx = 0 if stage >= 3 else -1
+    sec_base_atk = [2 for _ in sec_hp]
+    sec_base_def = [2 for _ in sec_hp]
+    sec_base_luck = [2 for _ in sec_hp]
+    if 0 <= player_idx < len(sec_hp):
+        sec_base_atk[player_idx] = 1
+        sec_base_def[player_idx] = 1
+        sec_base_luck[player_idx] = 2
+    sec_boost_atk = [max(0, int(v)) for v in flow.get("battle_secondary_boost_atk", [0 for _ in sec_hp])]
+    sec_boost_def = [max(0, int(v)) for v in flow.get("battle_secondary_boost_def", [0 for _ in sec_hp])]
+    if len(sec_boost_atk) < len(sec_hp):
+        sec_boost_atk.extend([0] * (len(sec_hp) - len(sec_boost_atk)))
+    if len(sec_boost_def) < len(sec_hp):
+        sec_boost_def.extend([0] * (len(sec_hp) - len(sec_boost_def)))
+    pri_base_atk = [3 for _ in pri_hp]
+    pri_base_def = [0 for _ in pri_hp]
+    pri_base_luck = [2 for _ in pri_hp]
     queue: List[dict] = []
+    defending: set[int] = set()
+    defended_was_attacked: set[int] = set()
 
-    # Stage 3: Sharoom behaves like Mushy (physical attack).
-    if stage >= 3 and 0 <= sharoom_idx < len(sec_hp) and sec_hp[sharoom_idx] > 0 and _alive_indices(pri_hp):
-        target = int(flow.get("battle_sharoom_target", 0))
+    def _valid_enemy_target(raw_target: int) -> int:
+        target = int(raw_target)
         if target < 0 or target >= len(pri_hp):
             target = _first_alive(pri_hp, 0)
-        if pri_hp[target] <= 0:
+        if 0 <= target < len(pri_hp) and pri_hp[target] <= 0:
             target = _first_alive(pri_hp, target)
-        dmg = _roll_physical_damage(rng, attacker_atk=2, attacker_luck=2, defender_def=0, defender_luck=2)
+        return target
+
+    def _enqueue_physical_from_secondary(actor_idx: int, flow_target_key: str) -> bool:
+        if not _alive_indices(pri_hp) or actor_idx < 0 or actor_idx >= len(sec_hp) or sec_hp[actor_idx] <= 0:
+            return False
+        target = _valid_enemy_target(int(flow.get(flow_target_key, 0)))
+        atk_val = sec_base_atk[actor_idx] + sec_boost_atk[actor_idx]
+        dmg = _roll_physical_damage(
+            rng,
+            attacker_atk=atk_val,
+            attacker_luck=sec_base_luck[actor_idx],
+            defender_def=pri_base_def[target],
+            defender_luck=pri_base_luck[target],
+        )
         pre_hp = pri_hp[target]
         post_hp = max(0, pre_hp - dmg)
         queue.append(
             {
                 "kind": "physical",
                 "source_side": "secondary",
-                "source_index": sharoom_idx,
+                "source_index": actor_idx,
                 "target_side": "primary",
                 "target_index": target,
                 "damage": dmg,
@@ -2001,92 +2077,209 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             }
         )
         pri_hp[target] = post_hp
+        return True
 
-    # Player casts Magic Spark.
-    can_cast = (
-        0 <= player_idx < len(sec_hp)
-        and 0 <= player_idx < len(sec_mp)
-        and sec_hp[player_idx] > 0
-        and _alive_indices(pri_hp)
-        and (staff_charges > 0 or sec_mp[player_idx] >= 2)
-    )
-    if can_cast:
-        target = int(flow.get("battle_player_target", 0))
-        if target < 0 or target >= len(pri_hp):
-            target = _first_alive(pri_hp, 0)
-        if pri_hp[target] <= 0:
-            target = _first_alive(pri_hp, target)
-        dmg = rng.randint(5, 8)
-        pre_hp = pri_hp[target]
-        post_hp = max(0, pre_hp - dmg)
-        uses_charge = staff_charges > 0
-        uses_mp = not uses_charge
-        pre_mp = sec_mp[player_idx]
-        post_mp = max(0, sec_mp[player_idx] - 2) if uses_mp else sec_mp[player_idx]
-        pre_charges = staff_charges
-        post_charges = max(0, staff_charges - 1) if uses_charge else staff_charges
-        queue.append(
-            {
-                "kind": "spell",
-                "source_side": "secondary",
-                "source_index": player_idx,
-                "target_side": "primary",
-                "target_index": target,
-                "damage": dmg,
-                "pre_hp": pre_hp,
-                "post_hp": post_hp,
-                "pre_mp": pre_mp,
-                "post_mp": post_mp,
-                "mp_cost": 2 if uses_mp else 0,
-                "uses_mp": uses_mp,
-                "pre_charges": pre_charges,
-                "post_charges": post_charges,
-            }
-        )
-        pri_hp[target] = post_hp
-        sec_mp[player_idx] = post_mp
-        staff_charges = post_charges
+    turn_order: List[tuple[str, int, str]] = []
+    if stage >= 3 and 0 <= sharoom_idx < len(sec_hp):
+        turn_order.append(("sharoom", sharoom_idx, "battle_sharoom_target"))
+    if 0 <= player_idx < len(sec_hp):
+        turn_order.append(("player", player_idx, "battle_player_target"))
+    if 0 <= mushy_idx < len(sec_hp):
+        turn_order.append(("mushy", mushy_idx, "battle_mushy_target"))
 
-    # Mushy physical.
-    if 0 <= mushy_idx < len(sec_hp) and sec_hp[mushy_idx] > 0 and _alive_indices(pri_hp):
-        target = int(flow.get("battle_mushy_target", 0))
-        if target < 0 or target >= len(pri_hp):
-            target = _first_alive(pri_hp, 0)
-        if pri_hp[target] <= 0:
-            target = _first_alive(pri_hp, target)
-        dmg = _roll_physical_damage(rng, attacker_atk=2, attacker_luck=2, defender_def=0, defender_luck=2)
-        pre_hp = pri_hp[target]
-        post_hp = max(0, pre_hp - dmg)
-        queue.append(
-            {
-                "kind": "physical",
-                "source_side": "secondary",
-                "source_index": mushy_idx,
-                "target_side": "primary",
-                "target_index": target,
-                "damage": dmg,
-                "pre_hp": pre_hp,
-                "post_hp": post_hp,
-            }
-        )
-        pri_hp[target] = post_hp
+    for actor_key, actor_idx, target_key in turn_order:
+        if actor_idx < 0 or actor_idx >= len(sec_hp) or sec_hp[actor_idx] <= 0:
+            continue
+        action = str(flow.get(f"battle_{actor_key}_action", "Attack")).strip()
+        if action == "Defend":
+            defending.add(actor_idx)
+            queue.append(
+                {
+                    "kind": "defend",
+                    "source_side": "secondary",
+                    "source_index": actor_idx,
+                }
+            )
+            continue
+        if action == "Attack":
+            _enqueue_physical_from_secondary(actor_idx, target_key)
+            continue
+        if actor_key == "player" and action == "Magic Spark":
+            can_cast = _alive_indices(pri_hp) and (staff_charges > 0 or (actor_idx < len(sec_mp) and sec_mp[actor_idx] >= 2))
+            if not can_cast:
+                _enqueue_physical_from_secondary(actor_idx, target_key)
+                continue
+            target = _valid_enemy_target(int(flow.get(target_key, 0)))
+            dmg = rng.randint(5, 8)
+            pre_hp = pri_hp[target]
+            post_hp = max(0, pre_hp - dmg)
+            uses_charge = staff_charges > 0
+            uses_mp = not uses_charge
+            pre_mp = sec_mp[actor_idx]
+            post_mp = max(0, sec_mp[actor_idx] - 2) if uses_mp else sec_mp[actor_idx]
+            pre_charges = staff_charges
+            post_charges = max(0, staff_charges - 1) if uses_charge else staff_charges
+            queue.append(
+                {
+                    "kind": "spell",
+                    "spell_name": "Magic Spark",
+                    "source_side": "secondary",
+                    "source_index": actor_idx,
+                    "target_side": "primary",
+                    "target_index": target,
+                    "damage": dmg,
+                    "pre_hp": pre_hp,
+                    "post_hp": post_hp,
+                    "pre_mp": pre_mp,
+                    "post_mp": post_mp,
+                    "mp_cost": 2 if uses_mp else 0,
+                    "uses_mp": uses_mp,
+                    "pre_charges": pre_charges,
+                    "post_charges": post_charges,
+                }
+            )
+            pri_hp[target] = post_hp
+            sec_mp[actor_idx] = post_mp
+            staff_charges = post_charges
+            continue
+        if actor_key == "mushy" and action == "Mushroom Tea":
+            if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
+                _enqueue_physical_from_secondary(actor_idx, target_key)
+                continue
+            allies = [i for i, hp in enumerate(sec_hp) if hp > 0 and i != actor_idx]
+            if not allies:
+                allies = [actor_idx]
+            target_ally = min(
+                allies,
+                key=lambda i: (sec_hp[i] / max(1, sec_hp_max[i]), sec_hp[i]),
+            )
+            pre_mp = sec_mp[actor_idx]
+            post_mp = max(0, pre_mp - 2)
+            pre_atk = sec_boost_atk[target_ally]
+            pre_def = sec_boost_def[target_ally]
+            post_atk = pre_atk + 3
+            post_def = pre_def + 3
+            sec_mp[actor_idx] = post_mp
+            sec_boost_atk[target_ally] = post_atk
+            sec_boost_def[target_ally] = post_def
+            queue.append(
+                {
+                    "kind": "mushroom_tea",
+                    "source_side": "secondary",
+                    "source_index": actor_idx,
+                    "target_side": "secondary",
+                    "target_index": target_ally,
+                    "pre_mp": pre_mp,
+                    "post_mp": post_mp,
+                    "mp_cost": 2,
+                    "effects": [
+                        {"type": "set_secondary_mp", "index": actor_idx, "value": post_mp},
+                        {"type": "set_secondary_boost_atk", "index": target_ally, "value": post_atk},
+                        {"type": "set_secondary_boost_def", "index": target_ally, "value": post_def},
+                    ],
+                }
+            )
+            continue
+        if actor_key == "sharoom" and action == "Healing Touch":
+            if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
+                _enqueue_physical_from_secondary(actor_idx, target_key)
+                continue
+            injured = [i for i, hp in enumerate(sec_hp) if hp > 0 and hp < sec_hp_max[i]]
+            pre_mp = sec_mp[actor_idx]
+            post_mp = max(0, pre_mp - 2)
+            sec_mp[actor_idx] = post_mp
+            effects = [{"type": "set_secondary_mp", "index": actor_idx, "value": post_mp}]
+            if len(injured) >= 2:
+                heals: List[dict] = []
+                for i in injured:
+                    pre = sec_hp[i]
+                    post = min(sec_hp_max[i], pre + 2)
+                    sec_hp[i] = post
+                    heals.append({"index": i, "pre_hp": pre, "post_hp": post, "amount": max(0, post - pre)})
+                    effects.append({"type": "set_secondary_hp", "index": i, "value": post})
+                queue.append(
+                    {
+                        "kind": "healing_touch_team",
+                        "source_side": "secondary",
+                        "source_index": actor_idx,
+                        "pre_mp": pre_mp,
+                        "post_mp": post_mp,
+                        "mp_cost": 2,
+                        "heals": heals,
+                        "effects": effects,
+                    }
+                )
+            else:
+                target_ally = injured[0] if injured else actor_idx
+                pre = sec_hp[target_ally]
+                post = min(sec_hp_max[target_ally], pre + 5)
+                sec_hp[target_ally] = post
+                effects.append({"type": "set_secondary_hp", "index": target_ally, "value": post})
+                queue.append(
+                    {
+                        "kind": "healing_touch_single",
+                        "source_side": "secondary",
+                        "source_index": actor_idx,
+                        "target_side": "secondary",
+                        "target_index": target_ally,
+                        "pre_mp": pre_mp,
+                        "post_mp": post_mp,
+                        "mp_cost": 2,
+                        "heal_amount": max(0, post - pre),
+                        "pre_hp": pre,
+                        "post_hp": post,
+                        "effects": effects,
+                    }
+                )
+            continue
+        if actor_key == "roomy" and action == "Concentric":
+            if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
+                _enqueue_physical_from_secondary(actor_idx, target_key)
+                continue
+            pre_mp = sec_mp[actor_idx]
+            post_mp = max(0, pre_mp - 2)
+            sec_mp[actor_idx] = post_mp
+            restores: List[dict] = []
+            effects = [{"type": "set_secondary_mp", "index": actor_idx, "value": post_mp}]
+            for i in range(len(sec_mp)):
+                if i == actor_idx or sec_hp[i] <= 0:
+                    continue
+                pre = sec_mp[i]
+                post = min(sec_mp_max[i], pre + 1)
+                sec_mp[i] = post
+                restores.append({"index": i, "pre_mp": pre, "post_mp": post, "amount": max(0, post - pre)})
+                effects.append({"type": "set_secondary_mp", "index": i, "value": post})
+            queue.append(
+                {
+                    "kind": "concentric",
+                    "source_side": "secondary",
+                    "source_index": actor_idx,
+                    "pre_mp": pre_mp,
+                    "post_mp": post_mp,
+                    "mp_cost": 2,
+                    "restores": restores,
+                    "effects": effects,
+                }
+            )
+            continue
+        _enqueue_physical_from_secondary(actor_idx, target_key)
 
-    # 3) Each living crow attacks random living ally.
     for crow_idx in _alive_indices(pri_hp):
         alive_sec = _alive_indices(sec_hp)
         if not alive_sec:
             break
         target = alive_sec[rng.randrange(len(alive_sec))]
-        if stage >= 3 and target == sharoom_idx:
-            def_base = 2
-            def_luck = 2
-        elif target == player_idx:
-            def_base = 1
-            def_luck = 2
-        else:
-            def_base = 2
-            def_luck = 2
-        dmg = _roll_physical_damage(rng, attacker_atk=3, attacker_luck=2, defender_def=def_base, defender_luck=def_luck)
+        def_luck = sec_base_luck[target] * (3 if target in defending else 1)
+        if target in defending:
+            defended_was_attacked.add(target)
+        def_val = sec_base_def[target] + sec_boost_def[target]
+        dmg = _roll_physical_damage(
+            rng,
+            attacker_atk=pri_base_atk[crow_idx],
+            attacker_luck=pri_base_luck[crow_idx],
+            defender_def=def_val,
+            defender_luck=def_luck,
+        )
         pre_hp = sec_hp[target]
         post_hp = max(0, pre_hp - dmg)
         queue.append(
@@ -2102,6 +2295,43 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             }
         )
         sec_hp[target] = post_hp
+
+    for idx in sorted(defending):
+        if idx in defended_was_attacked or idx < 0 or idx >= len(sec_hp) or sec_hp[idx] <= 0:
+            continue
+        if idx < len(sec_mp_max) and sec_mp_max[idx] > 0 and sec_mp[idx] < sec_mp_max[idx]:
+            pre = sec_mp[idx]
+            post = min(sec_mp_max[idx], pre + 1)
+            sec_mp[idx] = post
+            queue.append(
+                {
+                    "kind": "defend_convert",
+                    "source_side": "secondary",
+                    "source_index": idx,
+                    "convert_stat": "MP",
+                    "pre_value": pre,
+                    "post_value": post,
+                    "effects": [{"type": "set_secondary_mp", "index": idx, "value": post}],
+                }
+            )
+        elif idx < len(sec_hp_max) and sec_hp[idx] < sec_hp_max[idx]:
+            pre = sec_hp[idx]
+            post = min(sec_hp_max[idx], pre + 1)
+            sec_hp[idx] = post
+            queue.append(
+                {
+                    "kind": "defend_convert",
+                    "source_side": "secondary",
+                    "source_index": idx,
+                    "convert_stat": "HP",
+                    "pre_value": pre,
+                    "post_value": post,
+                    "effects": [{"type": "set_secondary_hp", "index": idx, "value": post}],
+                }
+            )
+
+    flow["battle_secondary_boost_atk"] = [max(0, int(v) - 1) for v in sec_boost_atk[: len(sec_hp)]]
+    flow["battle_secondary_boost_def"] = [max(0, int(v) - 1) for v in sec_boost_def[: len(sec_hp)]]
     return queue
 
 
@@ -2140,8 +2370,24 @@ def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List
     dst = _battle_actor_name(target_side, target_idx, stage, player_name)
     if kind == "spell":
         lines = [f"{src} casts Magic Spark on {dst} for {damage} damage."]
-    else:
+    elif kind == "physical":
         lines = [f"{src} attacks {dst} for {damage} damage."]
+    elif kind == "defend":
+        lines = [f"{src} takes a defensive stance."]
+    elif kind == "defend_convert":
+        stat = str(action.get("convert_stat", "HP"))
+        lines = [f"{src} converts defend into +1 {stat}."]
+    elif kind == "mushroom_tea":
+        lines = [f"{src} uses Mushroom Tea on {dst}, boosting Attack and Defense."]
+    elif kind == "healing_touch_single":
+        heal_amount = max(0, int(action.get("heal_amount", 0)))
+        lines = [f"{src} uses Healing Touch on {dst}, restoring {heal_amount} HP."]
+    elif kind == "healing_touch_team":
+        lines = [f"{src} uses Healing Touch on the whole team."]
+    elif kind == "concentric":
+        lines = [f"{src} uses Concentric to restore team MP."]
+    else:
+        lines = [f"{src} acts."]
     if pre_hp > 0 and post_hp <= 0:
         lines.append(f"{dst} has been defeated.")
     return lines
@@ -3483,6 +3729,14 @@ def main() -> None:
         "battle_secondary_mp": [0, 6],      # player, mushy
         "battle_secondary_mp_max": [0, 6],
         "battle_staff_charges": 3,          # Mycostaff charges for Magic Spark
+        "battle_player_cmd_idx": 0,
+        "battle_mushy_cmd_idx": 0,
+        "battle_sharoom_cmd_idx": 0,
+        "battle_player_action": "Magic Spark",
+        "battle_mushy_action": "Mushroom Tea",
+        "battle_sharoom_action": "Healing Touch",
+        "battle_secondary_boost_atk": [0, 0],
+        "battle_secondary_boost_def": [0, 0],
         "battle_player_target": 0,
         "battle_mushy_target": 0,
         "battle_sharoom_target": 0,
@@ -3649,28 +3903,32 @@ def main() -> None:
                                 begin_transition("story_battle_victory")
                         else:
                             flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
+                            _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
                             begin_transition("story_battle_cmd_player")
                     else:
                         action = queue[qidx]
                         action_t = float(flow.get("battle_action_t", 0.0)) + dt
                         flow["battle_action_t"] = action_t
-                        duration = 1.2 if str(action.get("kind")) == "spell" else 1.0
+                        action_kind = str(action.get("kind", "physical"))
+                        duration = 1.2 if action_kind == "spell" else 0.9
                         if action_t >= duration:
                             # Apply this action once at completion.
-                            t_side = str(action.get("target_side", "primary"))
-                            t_idx = int(action.get("target_index", 0))
-                            post_hp = max(0, int(action.get("post_hp", 0)))
-                            pre_hp = max(0, int(action.get("pre_hp", 0)))
-                            if t_side == "primary" and 0 <= t_idx < len(pri_hp):
-                                pri_hp[t_idx] = post_hp
-                                flow["battle_primary_hp"] = pri_hp
-                                if pre_hp > 0 and post_hp <= 0:
-                                    flow["battle_melt_index"] = t_idx
-                                    flow["battle_melt_t"] = 0.0
-                            elif t_side == "secondary" and 0 <= t_idx < len(sec_hp):
-                                sec_hp[t_idx] = post_hp
-                                flow["battle_secondary_hp"] = sec_hp
-                            if str(action.get("kind")) == "spell":
+                            has_hp_transition = ("pre_hp" in action) and ("post_hp" in action) and ("target_side" in action) and ("target_index" in action)
+                            if has_hp_transition:
+                                t_side = str(action.get("target_side", "primary"))
+                                t_idx = int(action.get("target_index", 0))
+                                post_hp = max(0, int(action.get("post_hp", 0)))
+                                pre_hp = max(0, int(action.get("pre_hp", 0)))
+                                if t_side == "primary" and 0 <= t_idx < len(pri_hp):
+                                    pri_hp[t_idx] = post_hp
+                                    flow["battle_primary_hp"] = pri_hp
+                                    if pre_hp > 0 and post_hp <= 0:
+                                        flow["battle_melt_index"] = t_idx
+                                        flow["battle_melt_t"] = 0.0
+                                elif t_side == "secondary" and 0 <= t_idx < len(sec_hp):
+                                    sec_hp[t_idx] = post_hp
+                                    flow["battle_secondary_hp"] = sec_hp
+                            if action_kind == "spell":
                                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
                                 s_idx = int(action.get("source_index", 0))
                                 post_mp = max(0, int(action.get("post_mp", 0)))
@@ -3679,6 +3937,33 @@ def main() -> None:
                                     sec_mp[s_idx] = post_mp
                                     flow["battle_secondary_mp"] = sec_mp
                                 flow["battle_staff_charges"] = post_charges
+                            effects = action.get("effects", [])
+                            if isinstance(effects, list) and effects:
+                                sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+                                sec_boost_atk = [int(v) for v in flow.get("battle_secondary_boost_atk", [0 for _ in sec_hp])]
+                                sec_boost_def = [int(v) for v in flow.get("battle_secondary_boost_def", [0 for _ in sec_hp])]
+                                if len(sec_boost_atk) < len(sec_hp):
+                                    sec_boost_atk.extend([0] * (len(sec_hp) - len(sec_boost_atk)))
+                                if len(sec_boost_def) < len(sec_hp):
+                                    sec_boost_def.extend([0] * (len(sec_hp) - len(sec_boost_def)))
+                                for eff in effects:
+                                    if not isinstance(eff, dict):
+                                        continue
+                                    eff_type = str(eff.get("type", ""))
+                                    idx = int(eff.get("index", -1))
+                                    val = int(eff.get("value", 0))
+                                    if eff_type == "set_secondary_hp" and 0 <= idx < len(sec_hp):
+                                        sec_hp[idx] = max(0, val)
+                                    elif eff_type == "set_secondary_mp" and 0 <= idx < len(sec_mp):
+                                        sec_mp[idx] = max(0, val)
+                                    elif eff_type == "set_secondary_boost_atk" and 0 <= idx < len(sec_boost_atk):
+                                        sec_boost_atk[idx] = max(0, val)
+                                    elif eff_type == "set_secondary_boost_def" and 0 <= idx < len(sec_boost_def):
+                                        sec_boost_def[idx] = max(0, val)
+                                flow["battle_secondary_hp"] = sec_hp
+                                flow["battle_secondary_mp"] = sec_mp
+                                flow["battle_secondary_boost_atk"] = sec_boost_atk[: len(sec_hp)]
+                                flow["battle_secondary_boost_def"] = sec_boost_def[: len(sec_hp)]
                             stage_now = int(flow.get("battle_stage", 1))
                             player_name = str(flow.get("selected_name", "Player")).strip() or "Player"
                             _battle_log_enqueue(flow, _battle_action_log_lines(action, stage_now, player_name))
@@ -3691,6 +3976,7 @@ def main() -> None:
                     if float(trans.get("t", 0.0)) >= float(trans.get("duration", 1.0)):
                         flow["lineup_transition"] = None
                         _battle_log_start(flow, int(flow.get("battle_stage", 1)))
+                        _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
                         begin_transition("story_battle_cmd_player")
             elif anim_mode == "open" and screen == "story_actor_entrance":
                 ent = flow.get("actor_entrance")
@@ -3706,6 +3992,7 @@ def main() -> None:
                     if float(ent.get("t", 0.0)) >= float(ent.get("duration", 1.0)):
                         flow["battle2_entrance"] = None
                         _battle_log_start(flow, int(flow.get("battle_stage", 1)))
+                        _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
                         begin_transition("story_battle_cmd_player")
             elif anim_mode == "open" and screen == "story_sharoom_entrance":
                 ent = flow.get("sharoom_entrance")
@@ -3733,6 +4020,7 @@ def main() -> None:
                         pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
                         flow["battle_target_cursor"] = _first_alive(pri_hp, 0)
                         _battle_log_start(flow, int(flow.get("battle_stage", 1)))
+                        _reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
                         begin_transition("story_battle_cmd_player")
 
             if anim_mode == "open" and flow.get("story_action") is None:
@@ -3866,6 +4154,14 @@ def main() -> None:
                         flow["battle_secondary_mp"] = [0, 6]
                         flow["battle_secondary_mp_max"] = [0, 6]
                         flow["battle_staff_charges"] = 3
+                        flow["battle_player_cmd_idx"] = 0
+                        flow["battle_mushy_cmd_idx"] = 0
+                        flow["battle_sharoom_cmd_idx"] = 0
+                        flow["battle_player_action"] = "Magic Spark"
+                        flow["battle_mushy_action"] = "Mushroom Tea"
+                        flow["battle_sharoom_action"] = "Healing Touch"
+                        flow["battle_secondary_boost_atk"] = [0, 0]
+                        flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
@@ -3921,26 +4217,48 @@ def main() -> None:
                         begin_transition("story_lineup_shift")
                 elif screen == "story_battle_cmd_player":
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
+                    options = _actor_action_options("player")
+                    cmd_idx = int(flow.get("battle_player_cmd_idx", 0)) % len(options)
                     cursor = int(flow.get("battle_target_cursor", 0))
-                    if key in ("left", "up"):
+                    if key == "up":
+                        cmd_idx = (cmd_idx - 1) % len(options)
+                        flow["battle_player_cmd_idx"] = cmd_idx
+                    elif key == "down":
+                        cmd_idx = (cmd_idx + 1) % len(options)
+                        flow["battle_player_cmd_idx"] = cmd_idx
+                    elif key == "left" and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key in ("right", "down"):
+                    elif key == "right" and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
-                        flow["battle_player_target"] = int(flow.get("battle_target_cursor", 0))
+                        pick = options[cmd_idx]
+                        flow["battle_player_action"] = pick
+                        if pick == "Attack":
+                            flow["battle_player_target"] = int(flow.get("battle_target_cursor", 0))
                         flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_player_target", 0)))
                         begin_transition("story_battle_cmd_mushy")
                     elif back:
                         begin_transition("story_6")
                 elif screen == "story_battle_cmd_mushy":
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
+                    options = _actor_action_options("mushy")
+                    cmd_idx = int(flow.get("battle_mushy_cmd_idx", 0)) % len(options)
                     cursor = int(flow.get("battle_target_cursor", 0))
-                    if key in ("left", "up"):
+                    if key == "up":
+                        cmd_idx = (cmd_idx - 1) % len(options)
+                        flow["battle_mushy_cmd_idx"] = cmd_idx
+                    elif key == "down":
+                        cmd_idx = (cmd_idx + 1) % len(options)
+                        flow["battle_mushy_cmd_idx"] = cmd_idx
+                    elif key == "left" and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key in ("right", "down"):
+                    elif key == "right" and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
-                        flow["battle_mushy_target"] = int(flow.get("battle_target_cursor", 0))
+                        pick = options[cmd_idx]
+                        flow["battle_mushy_action"] = pick
+                        if pick == "Attack":
+                            flow["battle_mushy_target"] = int(flow.get("battle_target_cursor", 0))
                         if int(flow.get("battle_stage", 1)) >= 3:
                             flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_mushy_target", 0)))
                             begin_transition("story_battle_cmd_sharoom")
@@ -3955,13 +4273,24 @@ def main() -> None:
                         begin_transition("story_battle_cmd_player")
                 elif screen == "story_battle_cmd_sharoom":
                     pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
+                    options = _actor_action_options("sharoom")
+                    cmd_idx = int(flow.get("battle_sharoom_cmd_idx", 0)) % len(options)
                     cursor = int(flow.get("battle_target_cursor", 0))
-                    if key in ("left", "up"):
+                    if key == "up":
+                        cmd_idx = (cmd_idx - 1) % len(options)
+                        flow["battle_sharoom_cmd_idx"] = cmd_idx
+                    elif key == "down":
+                        cmd_idx = (cmd_idx + 1) % len(options)
+                        flow["battle_sharoom_cmd_idx"] = cmd_idx
+                    elif key == "left" and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key in ("right", "down"):
+                    elif key == "right" and options[cmd_idx] == "Attack":
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
-                        flow["battle_sharoom_target"] = int(flow.get("battle_target_cursor", 0))
+                        pick = options[cmd_idx]
+                        flow["battle_sharoom_action"] = pick
+                        if pick == "Attack":
+                            flow["battle_sharoom_target"] = int(flow.get("battle_target_cursor", 0))
                         flow["battle_queue"] = _build_battle_round_actions(flow)
                         flow["battle_queue_index"] = 0
                         flow["battle_action_t"] = 0.0
@@ -3978,6 +4307,12 @@ def main() -> None:
                     if confirm:
                         flow["battle_stage"] = 2
                         flow["battle_primary_hp"] = [10, 10]
+                        flow["battle_secondary_boost_atk"] = [0, 0]
+                        flow["battle_secondary_boost_def"] = [0, 0]
+                        flow["battle_player_cmd_idx"] = 0
+                        flow["battle_mushy_cmd_idx"] = 0
+                        flow["battle_player_action"] = "Magic Spark"
+                        flow["battle_mushy_action"] = "Mushroom Tea"
                         flow["battle_target_cursor"] = _first_alive([10, 10], 0)
                         flow["battle_queue"] = []
                         flow["battle_queue_index"] = 0
@@ -4001,6 +4336,14 @@ def main() -> None:
                         flow["battle_secondary_hp_max"] = [10, 20, 10]
                         flow["battle_secondary_mp"] = [6, 0, 6]
                         flow["battle_secondary_mp_max"] = [6, 0, 6]
+                        flow["battle_secondary_boost_atk"] = [0, 0, 0]
+                        flow["battle_secondary_boost_def"] = [0, 0, 0]
+                        flow["battle_player_cmd_idx"] = 0
+                        flow["battle_mushy_cmd_idx"] = 0
+                        flow["battle_sharoom_cmd_idx"] = 0
+                        flow["battle_player_action"] = "Magic Spark"
+                        flow["battle_mushy_action"] = "Mushroom Tea"
+                        flow["battle_sharoom_action"] = "Healing Touch"
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
@@ -4329,17 +4672,18 @@ def main() -> None:
                 if qidx < len(queue):
                     action = queue[qidx]
                     kind = str(action.get("kind", "physical"))
-                    duration = 1.2 if kind == "spell" else 1.0
+                    duration = 1.2 if kind == "spell" else 0.9
                     prog = min(1.0, float(flow.get("battle_action_t", 0.0)) / max(0.001, duration))
-                    story_damage_hud = {
-                        "target_side": str(action.get("target_side", "primary")),
-                        "target_index": int(action.get("target_index", 0)),
-                        "progress": prog,
-                        "pre_hp": int(action.get("pre_hp", 0)),
-                        "post_hp": int(action.get("post_hp", 0)),
-                        "total": 10,
-                        "damage": int(action.get("damage", 0)),
-                    }
+                    if kind in ("spell", "physical"):
+                        story_damage_hud = {
+                            "target_side": str(action.get("target_side", "primary")),
+                            "target_index": int(action.get("target_index", 0)),
+                            "progress": prog,
+                            "pre_hp": int(action.get("pre_hp", 0)),
+                            "post_hp": int(action.get("post_hp", 0)),
+                            "total": 10,
+                            "damage": int(action.get("damage", 0)),
+                        }
                     if kind == "spell":
                         story_spell = {
                             "source_side": str(action.get("source_side", "secondary")),
@@ -4358,7 +4702,7 @@ def main() -> None:
                                 "total": 10,
                                 "cost": int(action.get("mp_cost", 2)),
                             }
-                    else:
+                    elif kind == "physical":
                         story_smash = {
                             "source_side": str(action.get("source_side", "secondary")),
                             "source_index": int(action.get("source_index", 0)),
