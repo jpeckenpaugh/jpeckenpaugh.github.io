@@ -29,13 +29,13 @@ LAYER_UI = 12
 SKY_ROWS_OPTIONS = [5, 10, 15, 20, 25]
 DEFAULT_SKY_ROWS = 15
 UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
-UI_DIALOG_TEXT = "So what do you say... Are you ready to challenge them?"
+UI_DIALOG_TEXT = "Entao, o que voce diz... Esta pronto para desafia-los?"
 DEMO_BATTLE_LOG_LINES = [
-    "Mushy casts Magic Spark on 4 Fairy Warriors.",
-    "Beba casts Magic Spark on 4 Fairy Warriors.",
-    "Fairy Warrior has been defeated.",
-    "Fairy Warrior has been defeated.",
-    "Fairy 1 casts Healing Light on Fairy 3.",
+    "Mushy conjura Faisca Magica em 4 Guerreiras Fada.",
+    "Beba conjura Faisca Magica em 4 Guerreiras Fada.",
+    "Guerreira Fada foi derrotada.",
+    "Guerreira Fada foi derrotada.",
+    "Fada 1 conjura Luz Curativa em Fada 3.",
 ]
 WORLD_SCENE_VARIANTS = [
     ("cottage", "house"),
@@ -1327,8 +1327,8 @@ def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
             UIBoxSpec(
                 role="notification",
                 border_style="double",
-                title="Notification",
-                body_text="Status effects resolved. Turn order updated.",
+                title="Notificacao",
+                body_text="Efeitos de status resolvidos. Ordem de turno atualizada.",
                 x=2,
                 y=12,
                 max_body_width=44,
@@ -1338,18 +1338,18 @@ def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
                 role="prompt",
                 border_style="double",
                 title="Beba",
-                body_text="So what do you say... Are you ready to challenge them?",
+                body_text="Entao, o que voce diz... Esta pronto para desafia-los?",
                 center_x=54,
                 center_y=18,
                 max_body_width=54,
                 wrap_mode="balanced",
                 body_align="center",
-                actions=["[ A / Confirm ]", "[ S / Cancel ]"],
+                actions=["[ A / Confirmar ]", "[ S / Cancelar ]"],
             ),
             UIBoxSpec(
                 role="history",
                 border_style="heavy",
-                title="Battle Log",
+                title="Registro de Batalha",
                 body_text="\n".join(DEMO_BATTLE_LOG_LINES[-3:]),
                 x=58,
                 y=18,
@@ -1361,8 +1361,8 @@ def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
             UIBoxSpec(
                 role="notification",
                 border_style="heavy",
-                title="Notice",
-                body_text="Magic Spark is now attuned to Water affinity.",
+                title="Aviso",
+                body_text="Faisca Magica agora esta alinhada ao elemento Agua.",
                 x=3,
                 y=13,
                 max_body_width=42,
@@ -1371,14 +1371,14 @@ def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
             UIBoxSpec(
                 role="prompt",
                 border_style="light",
-                title="Action Prompt",
-                body_text="Use current loadout for the next encounter?",
+                title="Aviso de Acao",
+                body_text="Usar esta configuracao para o proximo encontro?",
                 center_x=50,
                 center_y=18,
                 max_body_width=46,
                 wrap_mode="balanced",
                 body_align="center",
-                actions=["[ A / Yes ]", "[ S / No ]"],
+                actions=["[ A / Sim ]", "[ S / Nao ]"],
             ),
             UIBoxSpec(
                 role="history",
@@ -1394,8 +1394,8 @@ def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
         UIBoxSpec(
             role="notification",
             border_style="light",
-            title="Notification",
-            body_text="Quest progress updated: 2 objectives remaining.",
+            title="Notificacao",
+            body_text="Progresso da missao atualizado: 2 objetivos restantes.",
             x=2,
             y=12,
             max_body_width=44,
@@ -1404,18 +1404,18 @@ def build_ui_demo_specs(variant: int) -> List[UIBoxSpec]:
             role="prompt",
             border_style="heavy",
             title="Beba",
-            body_text="So what do you say... Are you ready to challenge them?",
+            body_text="Entao, o que voce diz... Esta pronto para desafia-los?",
             center_x=50,
             center_y=18,
             max_body_width=52,
             wrap_mode="balanced",
             body_align="center",
-            actions=["[ A / Confirm ]", "[ S / Cancel ]"],
+            actions=["[ A / Confirmar ]", "[ S / Cancelar ]"],
         ),
         UIBoxSpec(
             role="history",
             border_style="double",
-            title="Battle Log",
+            title="Registro de Batalha",
             body_text="\n".join(DEMO_BATTLE_LOG_LINES),
             x=58,
             y=17,
@@ -1429,8 +1429,8 @@ def build_ui_animation_specs() -> List[UIBoxSpec]:
         UIBoxSpec(
             role="notification",
             border_style="light",
-            title="Notification",
-            body_text="Quest progress updated.",
+            title="Notificacao",
+            body_text="Progresso da missao atualizado.",
             center_x=17,
             center_y=17,
             max_body_width=22,
@@ -1441,21 +1441,21 @@ def build_ui_animation_specs() -> List[UIBoxSpec]:
         UIBoxSpec(
             role="prompt",
             border_style="heavy",
-            title="Prompt",
-            body_text="Engage this battle now?",
+            title="Pergunta",
+            body_text="Entrar nesta batalha agora?",
             center_x=50,
             center_y=17,
             max_body_width=24,
             body_align="center",
             wrap_mode="balanced",
-            actions=["[ A / Confirm ]", "[ S / Cancel ]"],
+            actions=["[ A / Confirmar ]", "[ S / Cancelar ]"],
             anchor="center",
         ),
         UIBoxSpec(
             role="history",
             border_style="double",
-            title="History",
-            body_text="Mushy casts Magic Spark.\nFairy Warrior is defeated.",
+            title="Historico",
+            body_text="Mushy conjura Faisca Magica.\nGuerreira Fada foi derrotada.",
             center_x=83,
             center_y=17,
             max_body_width=22,
@@ -1471,26 +1471,26 @@ def build_new_game_workflow_specs() -> List[UIBoxSpec]:
         UIBoxSpec(
             role="menu",
             border_style="heavy",
-            title="Title Menu",
+            title="Menu Principal",
             body_text=(
-                "[ New Game ]\n"
-                "  Saved Game\n"
-                "  Asset Explorer\n"
+                "[ Novo Jogo ]\n"
+                "  Jogo Salvo\n"
+                "  Explorador de Recursos\n"
                 "\n"
-                "Use Up/Down to choose."
+                "Use Cima/Baixo para escolher."
             ),
             center_x=50,
             center_y=17,
             max_body_width=36,
             body_align="left",
             wrap_mode="normal",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             anchor="center",
         ),
         UIBoxSpec(
             role="avatar_select",
             border_style="double",
-            title="Choose Adventurer",
+            title="Escolher Aventureiro",
             body_text=(
                 "Slot 1\n"
                 "\n"
@@ -1499,41 +1499,41 @@ def build_new_game_workflow_specs() -> List[UIBoxSpec]:
                 " /|\\                  (o o)\n"
                 " / \\                   /|\\\n"
                 "\n"
-                "Use Left/Right to toggle avatar."
+                "Use Esquerda/Direita para alternar avatar."
             ),
             center_x=50,
             center_y=17,
             max_body_width=58,
             body_align="left",
             wrap_mode="normal",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             anchor="center",
         ),
         UIBoxSpec(
             role="name_toggle",
             border_style="heavy",
-            title="Say Your Name",
+            title="Diga Seu Nome",
             body_text=(
-                "Preset Name:\n"
+                "Nome Predefinido:\n"
                 "< MUSHY >\n"
                 "\n"
-                "Use Left/Right to cycle preset names,\n"
-                "or choose Custom..."
+                "Use Esquerda/Direita para percorrer nomes predefinidos,\n"
+                "ou escolha Personalizado..."
             ),
             center_x=50,
             center_y=17,
             max_body_width=48,
             body_align="center",
             wrap_mode="balanced",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             anchor="center",
         ),
         UIBoxSpec(
             role="name_custom",
             border_style="double",
-            title="Custom Name",
+            title="Nome Personalizado",
             body_text=(
-                "Name: MUSHY_\n"
+                "Nome: MUSHY_\n"
                 "\n"
                 "1 2 3 4 5 6 7 8 9 0\n"
                 "A B C D E F G H I J\n"
@@ -1541,33 +1541,33 @@ def build_new_game_workflow_specs() -> List[UIBoxSpec]:
                 "U V W X Y Z - ' SPACE DEL\n"
                 "SHIFT  DONE  CANCEL\n"
                 "\n"
-                "Arrows move. A selects. S cancels."
+                "Setas movem. A seleciona. S cancela."
             ),
             center_x=50,
             center_y=17,
             max_body_width=62,
             body_align="left",
             wrap_mode="normal",
-            actions=["[ A / Key ]", "[ S / Cancel ]"],
+            actions=["[ A / Tecla ]", "[ S / Cancelar ]"],
             anchor="center",
         ),
         UIBoxSpec(
             role="start_confirm",
             border_style="heavy",
-            title="Begin Adventure",
+            title="Iniciar Aventura",
             body_text=(
                 "Avatar: Guy\n"
-                "Name: MUSHY\n"
-                "Fortune: Well-Off (100 GP)\n"
+                "Nome: MUSHY\n"
+                "Fortuna: Bem de Vida (100 GP)\n"
                 "\n"
-                "Start new game with these settings?"
+                "Iniciar novo jogo com estas configuracoes?"
             ),
             center_x=50,
             center_y=17,
             max_body_width=52,
             body_align="left",
             wrap_mode="balanced",
-            actions=["[ A / Start ]", "[ S / Back ]"],
+            actions=["[ A / Iniciar ]", "[ S / Voltar ]"],
             anchor="center",
         ),
     ]
@@ -1727,30 +1727,30 @@ def _actor_action_options(actor_key: str, summon_hawking_unlocked: bool = False,
     key = str(actor_key).strip().lower()
     owner = str(hawking_owner).strip().lower()
     if key == "player":
-        options = ["Attack", "Magic Spark"]
+        options = ["Atacar", "Faisca Magica"]
         if summon_hawking_unlocked and key == owner:
-            options.append("Summon Hawking")
-        options.append("Defend")
+            options.append("Invocar Hawking")
+        options.append("Defender")
         return options
     if key == "mushy":
-        options = ["Attack", "Mushroom Tea"]
+        options = ["Atacar", "Cha de Cogumelo"]
         if summon_hawking_unlocked and key == owner:
-            options.append("Summon Hawking")
-        options.append("Defend")
+            options.append("Invocar Hawking")
+        options.append("Defender")
         return options
     if key == "sharoom":
-        options = ["Attack", "Healing Touch"]
+        options = ["Atacar", "Toque de Cura"]
         if summon_hawking_unlocked and key == owner:
-            options.append("Summon Hawking")
-        options.append("Defend")
+            options.append("Invocar Hawking")
+        options.append("Defender")
         return options
     if key == "roomy":
-        options = ["Attack", "Concentric"]
+        options = ["Atacar", "Concentrico"]
         if summon_hawking_unlocked and key == owner:
-            options.append("Summon Hawking")
-        options.append("Defend")
+            options.append("Invocar Hawking")
+        options.append("Defender")
         return options
-    return ["Attack", "Defend"]
+    return ["Atacar", "Defender"]
 
 
 def _action_label(flow: dict, actor_key: str) -> str:
@@ -1758,7 +1758,7 @@ def _action_label(flow: dict, actor_key: str) -> str:
     idx_key = f"battle_{actor_key}_cmd_idx"
     idx = int(flow.get(idx_key, 0))
     if not options:
-        return "Attack"
+        return "Atacar"
     return options[idx % len(options)]
 
 
@@ -1771,13 +1771,13 @@ def _action_is_available(flow: dict, actor_key: str, action: str) -> bool:
     if idx < 0:
         idx = 0
     mp = sec_mp[idx] if 0 <= idx < len(sec_mp) else 0
-    if key == "player" and act == "Magic Spark":
+    if key == "player" and act == "Faisca Magica":
         return bool(int(flow.get("battle_staff_charges", 0)) > 0 or mp >= 2)
-    if act == "Summon Hawking":
+    if act == "Invocar Hawking":
         if not bool(flow.get("unlock_summon_hawking", False)) or key != _hawking_owner(flow):
             return False
         return (not bool(flow.get("battle_summon_used", False))) or (mp >= 3)
-    if act in ("Mushroom Tea", "Healing Touch", "Concentric"):
+    if act in ("Cha de Cogumelo", "Toque de Cura", "Concentrico"):
         return mp >= 2
     return True
 
@@ -1789,21 +1789,21 @@ def _action_enabled_flags(flow: dict, actor_key: str, options: List[str]) -> Lis
 def _spell_targeting_meta(actor_key: str, action: str) -> dict | None:
     a = str(actor_key).strip().lower()
     act = str(action).strip()
-    if a == "mushy" and act == "Mushroom Tea":
+    if a == "mushy" and act == "Cha de Cogumelo":
         return {
             "side": "ally",
             "supports_all": False,
             "default_mode": "single",
-            "desc": "Mushroom Tea (2 MP): +3 Attack and +3 Defense. Stacks. Decays by 1 each turn.",
+            "desc": "Cha de Cogumelo (2 MP): +3 Ataque e +3 Defesa. Acumula. Diminui 1 por turno.",
         }
-    if a == "sharoom" and act == "Healing Touch":
+    if a == "sharoom" and act == "Toque de Cura":
         return {
             "side": "ally",
             "supports_all": True,
             "default_mode": "single",
-            "desc": "Healing Touch (2 MP): single target heals up to 5 HP, or ALL allies heal up to 2 HP each.",
+            "desc": "Toque de Cura (2 MP): alvo unico cura ate 5 HP, ou TODOS os aliados curam ate 2 HP cada.",
         }
-    if a == "roomy" and act == "Concentric":
+    if a == "roomy" and act == "Concentrico":
         return {
             "side": "ally",
             "supports_all": False,
@@ -1823,10 +1823,10 @@ def _alive_secondary_target_indices(flow: dict, actor_key: str, action: str, sta
     caster_idx = _secondary_actor_index_for_stage(int(stage), a)
     if caster_idx < 0:
         caster_idx = 0
-    if a == "mushy" and act == "Mushroom Tea":
+    if a == "mushy" and act == "Cha de Cogumelo":
         # Mushroom Tea can target any living teammate, including the caster.
         return alive
-    if a == "roomy" and act == "Concentric":
+    if a == "roomy" and act == "Concentrico":
         # Concentric excludes the caster.
         team_only = [i for i in alive if i != caster_idx]
         return team_only or alive
@@ -1878,18 +1878,18 @@ def _apply_party_item_bonuses_for_stage(flow: dict) -> None:
 def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
     screen = str(flow.get("screen", "root_menu"))
     if screen == "root_menu":
-        options = ["New Game", "Saved Game", "Asset Explorer"]
+        options = ["Novo Jogo", "Jogo Salvo", "Explorador de Recursos"]
         cursor = int(flow.get("menu_cursor", 0)) % len(options)
         lines = _format_select_lines(options, cursor)
         return UIBoxSpec(
             role="menu",
             border_style="heavy",
-            title="Title Menu",
-            body_text="\n".join(lines + ["", "Use Up/Down and A/S."]),
+            title="Menu Principal",
+            body_text="\n".join(lines + ["", "Use Cima/Baixo e A/S."]),
             center_x=50,
             center_y=17,
             max_body_width=34,
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             body_align="left",
             preserve_body_whitespace=True,
             blink_body_rows=[cursor],
@@ -1900,12 +1900,12 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         return UIBoxSpec(
             role="avatar_select",
             border_style="double",
-            title="Choose Adventurer",
-            body_text=f"Slot 1  Avatar: {label}\n\nUse Left/Right to toggle.",
+            title="Escolher Aventureiro",
+            body_text=f"Slot 1  Avatar: {label}\n\nUse Esquerda/Direita para alternar.",
             center_x=50,
             center_y=17,
             max_body_width=62,
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             body_align="left",
         )
 
@@ -1919,18 +1919,18 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         return UIBoxSpec(
             role="name_select",
             border_style="heavy",
-            title="Say Your Name",
+            title="Diga Seu Nome",
             body_text=(
                 f"{preset_line}\n"
                 f"{custom_line}\n\n"
-                "Left/Right cycles preset names."
+                "Esquerda/Direita percorre nomes predefinidos."
             ),
             center_x=50,
             center_y=17,
             max_body_width=46,
             body_align="center",
             wrap_mode="balanced",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             preserve_body_whitespace=True,
             blink_body_rows=[focus],
         )
@@ -1941,7 +1941,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         key_rows = _display_keyboard_rows(shift)
         cur_row = int(flow.get("key_row", 0))
         cur_col = int(flow.get("key_col", 0))
-        lines = [f"Name: {typed}_", ""]
+        lines = [f"Nome: {typed}_", ""]
         for r, row in enumerate(key_rows):
             parts: List[str] = []
             for c, token in enumerate(row):
@@ -1954,30 +1954,30 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         return UIBoxSpec(
             role="name_input",
             border_style="double",
-            title="Custom Name",
-            body_text="\n".join(lines + ["", "Arrows move. A selects key."]),
+            title="Nome Personalizado",
+            body_text="\n".join(lines + ["", "Setas movem. A seleciona tecla."]),
             center_x=50,
             center_y=17,
             max_body_width=72,
             body_align="left",
-            actions=["[ A / Key ]", "[ S / Cancel ]"],
+            actions=["[ A / Tecla ]", "[ S / Cancelar ]"],
             preserve_body_whitespace=True,
         )
 
     if screen == "fortune_select":
-        options = ["Poor (10 GP)", "Well-Off (100 GP)", "Royalty (1000 GP)"]
+        options = ["Pobre (10 GP)", "Bem de Vida (100 GP)", "Realeza (1000 GP)"]
         cursor = int(flow.get("fortune_cursor", 1)) % len(options)
         lines = _format_select_lines(options, cursor)
         return UIBoxSpec(
             role="fortune_select",
             border_style="heavy",
-            title="Choose Fortune",
-            body_text="\n".join(lines + ["", "Select your starting gold."]),
+            title="Escolher Fortuna",
+            body_text="\n".join(lines + ["", "Selecione seu ouro inicial."]),
             center_x=50,
             center_y=17,
             max_body_width=42,
             body_align="left",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             preserve_body_whitespace=True,
             blink_body_rows=[cursor],
         )
@@ -1986,36 +1986,36 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         return UIBoxSpec(
             role="start_confirm",
             border_style="heavy",
-            title="Begin Adventure",
+            title="Iniciar Aventura",
             body_text=(
-                f"Avatar: {flow.get('avatar_label', 'Adventurer')}\n"
-                f"Name: {flow.get('selected_name', 'WARRIOR')}\n"
-                f"Fortune: {flow.get('fortune_choice', 'Well-Off (100 GP)')}\n\n"
-                "Start this new game setup?"
+                f"Avatar: {flow.get('avatar_label', 'Aventureiro')}\n"
+                f"Nome: {flow.get('selected_name', 'GUERREIRO')}\n"
+                f"Fortuna: {flow.get('fortune_choice', 'Bem de Vida (100 GP)')}\n\n"
+                "Iniciar esta nova configuracao de jogo?"
             ),
             center_x=50,
             center_y=17,
             max_body_width=52,
             body_align="left",
             wrap_mode="balanced",
-            actions=["[ A / Start ]", "[ S / Back ]"],
+            actions=["[ A / Iniciar ]", "[ S / Voltar ]"],
         )
 
     if screen == "story_1":
         return UIBoxSpec(
             role="story",
             border_style="heavy",
-            title="Story",
+            title="Historia",
             body_text=(
-                "One day as you are walking home you hear a commotion. "
-                "You stumble upon a small magic mushroom and a crow who appear to be fighting."
+                "Um dia, enquanto voce voltava para casa, ouviu uma confusao. "
+                "Voce encontra um pequeno cogumelo magico e um corvo que parecem estar brigando."
             ),
             center_x=50,
             center_y=17,
             max_body_width=52,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_4":
@@ -2023,13 +2023,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Hey you! You seem like a nice person. Would you come help me deal with this pesky crow?",
+            body_text="Ei, voce! Voce parece uma boa pessoa. Pode me ajudar com esse corvo chato?",
             center_x=50,
             center_y=17,
             max_body_width=42,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_5":
@@ -2038,15 +2038,15 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             border_style="double",
             title="Mushy",
             body_text=(
-                "I have a Magic Staff embued with the Magic Spark spell. "
-                "If you can figure out how to use it, we can get rid of this crow together."
+                "Eu tenho um Cajado Magico imbuido com o feitico Faisca Magica. "
+                "Se voce descobrir como usar, podemos expulsar este corvo juntos."
             ),
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Accept Mycostaff ]"],
+            actions=["[ A / Aceitar Mycostaff ]"],
         )
 
     if screen == "story_6":
@@ -2054,13 +2054,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Great! Now let's show this crow who is boss around here.",
+            body_text="Otimo! Agora vamos mostrar para esse corvo quem manda aqui.",
             center_x=50,
             center_y=17,
             max_body_width=40,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_battle_cmd_player":
@@ -2080,7 +2080,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             center_y=17,
             max_body_width=32,
             body_align="left",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             blink_body_rows=[1 + cursor],
             dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
@@ -2103,7 +2103,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             center_y=17,
             max_body_width=32,
             body_align="left",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             blink_body_rows=[1 + cursor],
             dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
@@ -2126,7 +2126,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             center_y=17,
             max_body_width=34,
             body_align="left",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             blink_body_rows=[1 + cursor],
             dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
@@ -2149,7 +2149,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             center_y=17,
             max_body_width=34,
             body_align="left",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             blink_body_rows=[1 + cursor],
             dim_body_rows=[1 + r for r in disabled_rows],
             preserve_body_whitespace=True,
@@ -2157,15 +2157,15 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
 
     if screen == "story_battle_ally_target":
         actor_key = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
-        action = str(flow.get("battle_ally_action", "Mushroom Tea"))
+        action = str(flow.get("battle_ally_action", "Cha de Cogumelo"))
         supports_all = bool(flow.get("battle_ally_supports_all", False))
         mode = str(flow.get("battle_ally_target_mode", "single"))
         desc = str(flow.get("battle_ally_desc", "")).strip()
         who = "Mushy" if actor_key == "mushy" else ("Sharoom" if actor_key == "sharoom" else actor_key.title())
-        mode_line = f"Mode: {'ALL' if mode == 'all' else 'Single'}"
-        hint = "L/R target"
+        mode_line = f"Modo: {'TODOS' if mode == 'all' else 'Unico'}"
+        hint = "E/D alvo"
         if supports_all:
-            hint += "  U/D single/all"
+            hint += "  C/B unico/todos"
         summary = desc.split(".")[0].strip() + "." if desc else ""
         return UIBoxSpec(
             role="battle_select",
@@ -2177,7 +2177,7 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             center_y=2,
             max_body_width=34,
             body_align="left",
-            actions=["[ A / Confirm ]", "[ S / Back ]"],
+            actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
             preserve_body_whitespace=True,
         )
 
@@ -2186,13 +2186,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Next we should seek out Roomie. I think he is looking for a place to stay...",
+            body_text="Depois devemos procurar Roomy. Acho que ele esta buscando um lugar para ficar...",
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_roomy_2":
@@ -2200,13 +2200,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Roomie! Over here. We need your support in this crow war.",
+            body_text="Roomy! Aqui! Precisamos do seu apoio nesta guerra dos corvos.",
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_roomy_3":
@@ -2214,13 +2214,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Roomie",
-            body_text="I have been working on my Concentric spell.",
+            body_text="Tenho trabalhado no meu feitico Concentrico.",
             center_x=50,
             center_y=17,
             max_body_width=42,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_roomy_3b":
@@ -2228,13 +2228,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Roomie",
-            body_text="It is a spell to recover MP, and it can come in handy in longer battles, when we need extra magic points.",
+            body_text="E um feitico para recuperar MP, e pode ajudar muito em batalhas longas, quando precisamos de pontos de magia extras.",
             center_x=50,
             center_y=17,
             max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_roomy_4":
@@ -2242,13 +2242,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="A spell to recover spell points you say?",
+            body_text="Um feitico para recuperar pontos de magia, e isso mesmo?",
             center_x=50,
             center_y=17,
             max_body_width=42,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_roomy_4b":
@@ -2256,13 +2256,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="If we combine that with our other spells, we can really compound our punch power.",
+            body_text="Se combinarmos isso com nossos outros feiticos, podemos aumentar muito nossa forca.",
             center_x=50,
             center_y=17,
             max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_hawk_intro_1":
@@ -2270,13 +2270,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="I am the Hawk King. I've finally found you bird bashing bozos.",
+            body_text="Eu sou o Rei dos Falcoes. Finalmente encontrei voces, boboes que espancam passaros.",
             center_x=50,
             center_y=17,
             max_body_width=48,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_hawk_intro_2":
@@ -2284,13 +2284,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="Why don't you try picking on someone your own size?",
+            body_text="Por que voces nao tentam mexer com alguem do tamanho de voces?",
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_hawk_intro_3":
@@ -2298,13 +2298,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Sharoom",
-            body_text="Our own size? You must be at least 10 times as big as us.",
+            body_text="Do nosso tamanho? Voce deve ser pelo menos 10 vezes maior que nos.",
             center_x=50,
             center_y=17,
             max_body_width=48,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_hawk_intro_4":
@@ -2312,13 +2312,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Sharoom",
-            body_text="But we've got teamwork, and you are all by yourself!",
+            body_text="Mas nos temos trabalho em equipe, e voce esta sozinho!",
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_hawk_intro_5":
@@ -2326,13 +2326,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="Oh you think so, huh?",
+            body_text="Ah, e mesmo?",
             center_x=50,
             center_y=17,
             max_body_width=40,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Battle Start ]"],
+            actions=["[ A / Iniciar Batalha ]"],
         )
 
     if screen == "story_hawk_post_1":
@@ -2340,13 +2340,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="Fine, you win. I guess we can be friends, since you apparently aren't a weakling.",
+            body_text="Tudo bem, voces venceram. Acho que podemos ser amigos, ja que aparentemente voces nao sao fracos.",
             center_x=50,
             center_y=17,
             max_body_width=52,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_hawk_post_2":
@@ -2354,13 +2354,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="Here, take one of my feathers. Just call when you need a hand and I will swoop in.",
+            body_text="Aqui, pegue uma das minhas penas. E so chamar quando precisar de ajuda que eu mergulho na hora.",
             center_x=50,
             center_y=17,
             max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_hawk_post_3":
@@ -2368,13 +2368,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Hawking",
-            body_text="Just assign my feather to whoever should call me in battle.",
+            body_text="So tente nao chamar toda hora. Escolha quem vai usar minha pena em batalha.",
             center_x=50,
             center_y=17,
             max_body_width=48,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Accept Hawking Feather ]"],
+            actions=["[ A / Aceitar Hawking Feather ]"],
         )
 
     if screen == "story_hawk_assign_target":
@@ -2391,13 +2391,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         return UIBoxSpec(
             role="menu",
             border_style="heavy",
-            title="Assign Hawking Feather",
-            body_text="\n".join(lines + ["", "Grants: +4 Max HP, +4 Max MP"]),
+            title="Atribuir Pena de Hawking",
+            body_text="\n".join(lines + ["", "Concede: +4 HP Max, +4 MP Max"]),
             center_x=50,
             center_y=17,
             max_body_width=46,
             body_align="left",
-            actions=["[ A / Assign ]", "[ S / Back ]"],
+            actions=["[ A / Atribuir ]", "[ S / Voltar ]"],
             preserve_body_whitespace=True,
             blink_body_rows=[cursor],
         )
@@ -2406,14 +2406,14 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
         return UIBoxSpec(
             role="story",
             border_style="heavy",
-            title="System",
-            body_text="Hawking Feather assigned. Summon Hawking is now available on that actor's command menu.",
+            title="Sistema",
+            body_text="Pena de Hawking atribuida. Invocar Hawking agora esta disponivel no menu de comando desse ator.",
             center_x=50,
             center_y=17,
             max_body_width=54,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_post_hawk_fairy_intro":
@@ -2421,45 +2421,45 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Roomy",
-            body_text="Uh oh, here come those fairies...",
+            body_text="Ih, la vem aquelas fadas...",
             center_x=50,
             center_y=17,
             max_body_width=40,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_second_chance":
         return UIBoxSpec(
             role="story",
             border_style="heavy",
-            title="Second Chance",
-            body_text="A light shines down from heaven, and hope returns.",
+            title="Segunda Chance",
+            body_text="Uma luz desce do ceu, e a esperanca retorna.",
             center_x=50,
             center_y=17,
             max_body_width=50,
             wrap_mode="balanced",
             body_align="center",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_mp_increase":
         reward_stage = int(flow.get("story_reward_stage_completed", 0))
-        body = "Your magic level increased. Max MP +2."
+        body = "Seu nivel de magia aumentou. MP maximo +2."
         if reward_stage == 2:
-            body += "\n\nMagic Spark spell increased to Level 2. Spell now targets multiple opponents."
+            body += "\n\nFeitico Faisca Magica subiu para o Nivel 2. Agora o feitico atinge varios oponentes."
         return UIBoxSpec(
             role="story",
             border_style="heavy",
-            title="Reward",
+            title="Recompensa",
             body_text=body,
             center_x=50,
             center_y=17,
             max_body_width=42,
             wrap_mode="balanced",
             body_align="center",
-            actions=["[ A / Accept ]"],
+            actions=["[ A / Aceitar ]"],
         )
 
     if screen == "story_hawk_birdcall_taunt":
@@ -2467,13 +2467,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Hawking",
-            body_text="Birds assemble!",
+            body_text="Passaros, reunir!",
             center_x=50,
             center_y=17,
             max_body_width=34,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_crow_flee_taunt":
@@ -2481,13 +2481,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Crow",
-            body_text="Bye, Felicia...",
+            body_text="Tchau, Felicia...",
             center_x=50,
             center_y=17,
             max_body_width=30,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_sharoom_1":
@@ -2495,13 +2495,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Your Mana Points are increasing. That means you can use MP to cast spells in battle when your items run out of charges.",
+            body_text="Seus Pontos de Mana estao aumentando. Isso significa que voce pode usar MP para lancar feiticos em batalha quando os itens ficarem sem cargas.",
             center_x=50,
             center_y=17,
             max_body_width=52,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_sharoom_2":
@@ -2509,13 +2509,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="I have a friend Sharoom who knows some healing magic. She would be a good addition to our little team.",
+            body_text="Tenho uma amiga, Sharoom, que conhece magia de cura. Ela seria uma boa adicao ao nosso pequeno time.",
             center_x=50,
             center_y=17,
             max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_sharoom_3":
@@ -2523,13 +2523,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Sharoom, the time has come! Crow war is on. Come join our fight...",
+            body_text="Sharoom, chegou a hora! A guerra dos corvos comecou. Venha se juntar a nossa luta...",
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_sharoom_4":
@@ -2537,13 +2537,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Sharoom",
-            body_text="Sure I will join your team. I think we can work well together.",
+            body_text="Claro, vou entrar no time de voces. Acho que podemos trabalhar muito bem juntos.",
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_sharoom_5":
@@ -2551,13 +2551,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="double",
             title="Sharoom",
-            body_text="Let me know when you need a Healing Touch, as that is my specialty.",
+            body_text="Me avise quando precisar de um Toque de Cura, pois essa e minha especialidade.",
             center_x=50,
             center_y=17,
             max_body_width=44,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_more_crows":
@@ -2565,13 +2565,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Your Mycostaff holds 3 charge of the Magic Spark spell. It will automatically recharge after each battle.",
+            body_text="Seu Mycostaff tem 3 cargas do feitico Faisca Magica. Ele recarrega automaticamente apos cada batalha.",
             center_x=50,
             center_y=17,
             max_body_width=48,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_more_crows_2":
@@ -2579,13 +2579,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="We can also use my Mushroom Tea to temporarily boost our Attack and Defense points, giving us an edge in battle.",
+            body_text="Tambem podemos usar meu Cha de Cogumelo para aumentar temporariamente nosso Ataque e Defesa, ganhando vantagem na batalha.",
             center_x=50,
             center_y=17,
             max_body_width=50,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen == "story_more_crows_3":
@@ -2593,13 +2593,13 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
             role="story",
             border_style="heavy",
             title="Mushy",
-            body_text="Watch out, here come some more crows!",
+            body_text="Cuidado, vem mais corvos!",
             center_x=50,
             center_y=17,
             max_body_width=42,
             wrap_mode="balanced",
             body_align="left",
-            actions=["[ A / Continue ]"],
+            actions=["[ A / Continuar ]"],
         )
 
     if screen in (
@@ -2621,14 +2621,14 @@ def _build_screen_spec(flow: dict) -> UIBoxSpec | None:
     return UIBoxSpec(
         role="info",
         border_style="light",
-        title="Notice",
-        body_text=message or "Demo placeholder.",
+        title="Aviso",
+        body_text=message or "Espaco reservado da demo.",
         center_x=50,
         center_y=17,
         max_body_width=50,
         body_align="center",
         wrap_mode="balanced",
-        actions=["[ A / OK ]", "[ S / Back ]"],
+        actions=["[ A / Confirmar ]", "[ S / Voltar ]"],
     )
 
 
@@ -2867,8 +2867,8 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
     for actor_key, actor_idx, target_key in turn_order:
         if actor_idx < 0 or actor_idx >= len(sec_hp) or sec_hp[actor_idx] <= 0:
             continue
-        action = str(flow.get(f"battle_{actor_key}_action", "Attack")).strip()
-        if action == "Defend":
+        action = str(flow.get(f"battle_{actor_key}_action", "Atacar")).strip()
+        if action == "Defender":
             defending.add(actor_idx)
             queue.append(
                 {
@@ -2878,10 +2878,10 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 }
             )
             continue
-        if action == "Attack":
+        if action == "Atacar":
             _enqueue_physical_from_secondary(actor_idx, target_key)
             continue
-        if actor_key == "player" and action == "Magic Spark":
+        if actor_key == "player" and action == "Faisca Magica":
             can_cast = _alive_indices(pri_hp) and (staff_charges > 0 or (actor_idx < len(sec_mp) and sec_mp[actor_idx] >= 2))
             if not can_cast:
                 _enqueue_physical_from_secondary(actor_idx, target_key)
@@ -2914,7 +2914,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 queue.append(
                     {
                         "kind": "spell",
-                        "spell_name": "Magic Spark",
+                        "spell_name": "Faisca Magica",
                         "source_side": "secondary",
                         "source_index": actor_idx,
                         "target_side": "primary",
@@ -2937,7 +2937,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             sec_mp[actor_idx] = post_mp
             staff_charges = post_charges
             continue
-        if action == "Summon Hawking":
+        if action == "Invocar Hawking":
             if not _alive_indices(pri_hp):
                 continue
             if not bool(flow.get("unlock_summon_hawking", False)) or actor_key != _hawking_owner(flow):
@@ -2957,7 +2957,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
             queue.append(
                 {
                     "kind": "summon",
-                    "spell_name": "Summon Hawking",
+                    "spell_name": "Invocar Hawking",
                     "source_side": "secondary",
                     "source_index": actor_idx,
                     "target_side": "primary",
@@ -2982,11 +2982,11 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 sec_mp[actor_idx] = post_mp
             pri_hp[target] = post_hp
             continue
-        if actor_key == "mushy" and action == "Mushroom Tea":
+        if actor_key == "mushy" and action == "Cha de Cogumelo":
             if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
                 _enqueue_physical_from_secondary(actor_idx, target_key)
                 continue
-            allies = _alive_secondary_target_indices(flow, "mushy", "Mushroom Tea", stage)
+            allies = _alive_secondary_target_indices(flow, "mushy", "Cha de Cogumelo", stage)
             if not allies:
                 allies = [actor_idx]
             raw_t = int(flow.get("battle_mushy_spell_target", allies[0]))
@@ -3018,12 +3018,12 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                 }
             )
             continue
-        if actor_key == "sharoom" and action == "Healing Touch":
+        if actor_key == "sharoom" and action == "Toque de Cura":
             if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
                 _enqueue_physical_from_secondary(actor_idx, target_key)
                 continue
             mode = str(flow.get("battle_sharoom_spell_target_mode", "single")).strip().lower()
-            valid_targets = _alive_secondary_target_indices(flow, "sharoom", "Healing Touch", stage)
+            valid_targets = _alive_secondary_target_indices(flow, "sharoom", "Toque de Cura", stage)
             pre_mp = sec_mp[actor_idx]
             post_mp = max(0, pre_mp - 2)
             sec_mp[actor_idx] = post_mp
@@ -3072,7 +3072,7 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                     }
                 )
             continue
-        if actor_key == "roomy" and action == "Concentric":
+        if actor_key == "roomy" and action == "Concentrico":
             if actor_idx >= len(sec_mp) or sec_mp[actor_idx] < 2:
                 _enqueue_physical_from_secondary(actor_idx, target_key)
                 continue
@@ -3261,10 +3261,10 @@ def _battle_actor_name(side: str, idx: int, stage: int, player_name: str) -> str
     i = int(idx)
     if side_key == "primary":
         if stage >= 5:
-            return "Baby Fairy"
+            return "Fada Bebe"
         if stage >= 4:
-            return "Hawking" if i == 1 else "Baby Crow"
-        return "Baby Crow"
+            return "Hawking" if i == 1 else "Corvo Bebe"
+        return "Corvo Bebe"
     if stage >= 4:
         if i == 0:
             return "Sharoom"
@@ -3274,7 +3274,7 @@ def _battle_actor_name(side: str, idx: int, stage: int, player_name: str) -> str
             return "Mushy"
         if i == 3:
             return "Roomy"
-        return f"Ally {i + 1}"
+        return f"Aliado {i + 1}"
     if stage >= 3:
         if i == 0:
             return "Sharoom"
@@ -3282,12 +3282,12 @@ def _battle_actor_name(side: str, idx: int, stage: int, player_name: str) -> str
             return player_name
         if i == 2:
             return "Mushy"
-        return f"Ally {i + 1}"
+        return f"Aliado {i + 1}"
     if i == 0:
         return player_name
     if i == 1:
         return "Mushy"
-    return f"Ally {i + 1}"
+    return f"Aliado {i + 1}"
 
 
 def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List[str]:
@@ -3304,7 +3304,7 @@ def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List
     src = _battle_actor_name(source_side, source_idx, stage, player_name)
     dst = _battle_actor_name(target_side, target_idx, stage, player_name)
     if kind == "spell":
-        spell_name = str(action.get("spell_name", "Magic Spark")).strip() or "Magic Spark"
+        spell_name = str(action.get("spell_name", "Faisca Magica")).strip() or "Faisca Magica"
         hits = action.get("hits", [])
         if isinstance(hits, list) and len(hits) > 1:
             names: List[str] = []
@@ -3316,42 +3316,42 @@ def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List
                     continue
                 names.append(_battle_actor_name("primary", hidx, stage, player_name))
             if names:
-                lines = [f"{src} casts {spell_name} on all opponents."]
+                lines = [f"{src} conjura {spell_name} em todos os oponentes."]
             else:
-                lines = [f"{src} casts {spell_name} on {dst} for {damage} damage."]
+                lines = [f"{src} conjura {spell_name} em {dst}, causando {damage} de dano."]
         else:
-            lines = [f"{src} casts {spell_name} on {dst} for {damage} damage."]
+            lines = [f"{src} conjura {spell_name} em {dst}, causando {damage} de dano."]
     elif kind == "physical":
-        lines = [f"{src} attacks {dst} for {damage} damage."]
+        lines = [f"{src} ataca {dst}, causando {damage} de dano."]
     elif kind == "defend":
-        lines = [f"{src} takes a defensive stance."]
+        lines = [f"{src} assume postura defensiva."]
     elif kind == "defend_convert":
         stat = str(action.get("convert_stat", "HP"))
-        lines = [f"{src} converts defend into +1 {stat}."]
+        lines = [f"{src} converte Defesa em +1 {stat}."]
     elif kind == "mushroom_tea":
-        lines = [f"{src} uses Mushroom Tea on {dst}, boosting Attack and Defense."]
+        lines = [f"{src} usa Cha de Cogumelo em {dst}, aumentando Ataque e Defesa."]
     elif kind == "healing_touch_single":
         heal_amount = max(0, int(action.get("heal_amount", 0)))
-        lines = [f"{src} uses Healing Touch on {dst}, restoring {heal_amount} HP."]
+        lines = [f"{src} usa Toque de Cura em {dst}, restaurando {heal_amount} HP."]
     elif kind == "healing_touch_team":
-        lines = [f"{src} uses Healing Touch on the whole team."]
+        lines = [f"{src} usa Toque de Cura em todo o time."]
     elif kind == "concentric":
-        lines = [f"{src} uses Concentric to restore team MP."]
+        lines = [f"{src} usa Concentrico para restaurar o MP do time."]
     elif kind == "birdcall":
         count = len([v for v in action.get("target_indices", []) if isinstance(v, int)])
         if count <= 0:
             count = 1
-        noun = "Baby Crow joins" if count == 1 else f"{count} Baby Crows join"
-        lines = [f"{src} uses Birdcall. {noun} the fight."]
+        noun = "1 Corvo Bebe entra" if count == 1 else f"{count} Corvos Bebe entram"
+        lines = [f"{src} usa Chamado dos Passaros. {noun} na luta."]
     elif kind == "flee":
-        lines = [f"{src} flies away from the fight."]
+        lines = [f"{src} voa para longe da luta."]
     elif kind == "summon":
         if bool(action.get("hawk_carry_target", False)):
-            lines = [f"{src} summons Hawking. {dst} is snatched and carried off!"]
+            lines = [f"{src} invoca Hawking. {dst} foi capturado e carregado embora!"]
         else:
-            lines = [f"{src} summons Hawking. {dst} runs away in terror!"]
+            lines = [f"{src} invoca Hawking. {dst} foge em panico!"]
     else:
-        lines = [f"{src} acts."]
+        lines = [f"{src} age."]
     hits = action.get("hits", [])
     if isinstance(hits, list) and hits and kind not in ("flee", "birdcall", "summon"):
         for hit in hits:
@@ -3363,14 +3363,14 @@ def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List
                 hidx = int(hit.get("target_index", -1))
                 hname = _battle_actor_name("primary", hidx, stage, player_name)
                 if bool(hit.get("surrender_on_zero", False)):
-                    lines.append(f"{hname} surrenders.")
+                    lines.append(f"{hname} se rende.")
                 else:
-                    lines.append(f"{hname} has been defeated.")
+                    lines.append(f"{hname} foi derrotado.")
             elif pre_hp > 0 and post_hp <= 0 and kind not in ("flee", "birdcall", "summon"):
                 if bool(action.get("surrender_on_zero", False)):
-                    lines.append(f"{dst} surrenders.")
+                    lines.append(f"{dst} se rende.")
                 else:
-                    lines.append(f"{dst} has been defeated.")
+                    lines.append(f"{dst} foi derrotado.")
     mp_cost = max(0, int(action.get("mp_cost", 0)))
     pre_mp = int(action.get("pre_mp", -1))
     post_mp = int(action.get("post_mp", -1))
@@ -3388,15 +3388,15 @@ def _battle_log_start(flow: dict, stage: int) -> None:
     flow["battle_round"] = 1
     if int(stage) >= 5:
         enemy_count = max(1, len([int(v) for v in flow.get("battle_primary_hp", [30, 30, 30, 30, 30])]))
-        opener = f"Battle begins: Sharoom, Player, Mushy, and Roomy vs {enemy_count} Baby Fairies."
+        opener = f"A batalha comeca: Sharoom, Jogador, Mushy e Roomy vs {enemy_count} Fadas Bebe."
     elif int(stage) >= 4:
-        opener = "Miniboss battle begins: Sharoom, Player, Mushy, and Roomy vs Hawking."
+        opener = "A batalha de mini-chefe comeca: Sharoom, Jogador, Mushy e Roomy vs Hawking."
     elif int(stage) >= 3:
-        opener = "Battle begins: Sharoom, Player, and Mushy vs 3 Baby Crows."
+        opener = "A batalha comeca: Sharoom, Jogador e Mushy vs 3 Corvos Bebe."
     elif int(stage) == 2:
-        opener = "Battle begins: Player and Mushy vs 2 Baby Crows."
+        opener = "A batalha comeca: Jogador e Mushy vs 2 Corvos Bebe."
     else:
-        opener = "Battle begins: Player and Mushy vs Baby Crow."
+        opener = "A batalha comeca: Jogador e Mushy vs Corvo Bebe."
     flow["battle_log_pending"] = [opener]
 
 
@@ -3663,7 +3663,7 @@ def _draw_ui_dialogue_box(
         return lines
 
     speaker_title = f"{{ {speaker} }}"
-    button_text = "[ A / Confirm ]--[ S / Cancel ]"
+    button_text = "[ A / Confirmar ]--[ S / Cancelar ]"
     wrapped = _balanced_wrap(str(text).strip(), width=52)
     if not wrapped:
         wrapped = [""]
@@ -5058,7 +5058,7 @@ def main() -> None:
         "typed_name": "",
         "selected_name": player_cards[0]["names"][0],
         "fortune_cursor": 1,
-        "fortune_choice": "Well-Off (100 GP)",
+        "fortune_choice": "Bem de Vida (100 GP)",
         "name_shift": True,
         "key_row": 0,
         "key_col": 0,
@@ -5088,10 +5088,10 @@ def main() -> None:
         "battle_mushy_cmd_idx": 0,
         "battle_sharoom_cmd_idx": 0,
         "battle_roomy_cmd_idx": 0,
-        "battle_player_action": "Attack",
-        "battle_mushy_action": "Attack",
-        "battle_sharoom_action": "Attack",
-        "battle_roomy_action": "Attack",
+        "battle_player_action": "Atacar",
+        "battle_mushy_action": "Atacar",
+        "battle_sharoom_action": "Atacar",
+        "battle_roomy_action": "Atacar",
         "battle_secondary_boost_atk": [0, 0],
         "battle_secondary_boost_def": [0, 0],
         "battle_mushy_spell_target": 0,
@@ -5578,10 +5578,10 @@ def main() -> None:
                             flow["selected_name"] = selected["names"][0]
                             begin_transition("avatar_select")
                         elif cursor == 1:
-                            flow["message_text"] = "Saved Game menu selected. (Demo placeholder)"
+                            flow["message_text"] = "Menu Jogo Salvo selecionado. (Demo placeholder)"
                             begin_transition("info")
                         else:
-                            flow["message_text"] = "Asset Explorer selected. (Demo placeholder)"
+                            flow["message_text"] = "Explorador de Recursos selecionado. (Demo placeholder)"
                             begin_transition("info")
                 elif screen == "avatar_select":
                     idx = int(flow.get("player_index", 0))
@@ -5669,7 +5669,7 @@ def main() -> None:
                     elif key == "down":
                         flow["fortune_cursor"] = (cursor + 1) % 3
                     elif confirm:
-                        options = ["Poor (10 GP)", "Well-Off (100 GP)", "Royalty (1000 GP)"]
+                        options = ["Pobre (10 GP)", "Bem de Vida (100 GP)", "Realeza (1000 GP)"]
                         pick = options[int(flow.get("fortune_cursor", 1)) % len(options)]
                         flow["fortune_choice"] = pick
                         begin_transition("start_confirm")
@@ -5702,10 +5702,10 @@ def main() -> None:
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
                         flow["battle_roomy_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Attack"
-                        flow["battle_mushy_action"] = "Attack"
-                        flow["battle_sharoom_action"] = "Attack"
-                        flow["battle_roomy_action"] = "Attack"
+                        flow["battle_player_action"] = "Atacar"
+                        flow["battle_mushy_action"] = "Atacar"
+                        flow["battle_sharoom_action"] = "Atacar"
+                        flow["battle_roomy_action"] = "Atacar"
                         flow["battle_secondary_boost_atk"] = [0, 0]
                         flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_mushy_spell_target"] = 0
@@ -5787,20 +5787,20 @@ def main() -> None:
                     elif key == "down":
                         cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_player_cmd_idx"] = cmd_idx
-                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
-                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] == "Magic Spark" and magic_spark_level < 2:
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] == "Faisca Magica" and magic_spark_level < 2:
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] == "Magic Spark" and magic_spark_level < 2:
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] == "Faisca Magica" and magic_spark_level < 2:
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
                         if not enabled[cmd_idx]:
                             continue
                         pick = options[cmd_idx]
                         flow["battle_player_action"] = pick
-                        if pick in ("Attack", "Magic Spark", "Summon Hawking"):
+                        if pick in ("Atacar", "Faisca Magica", "Invocar Hawking"):
                             flow["battle_player_target"] = int(flow.get("battle_target_cursor", 0))
                         flow["battle_target_cursor"] = _first_alive(pri_hp, int(flow.get("battle_player_target", 0)))
                         begin_transition("story_battle_cmd_mushy")
@@ -5824,9 +5824,9 @@ def main() -> None:
                     elif key == "down":
                         cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_mushy_cmd_idx"] = cmd_idx
-                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
                         if not enabled[cmd_idx]:
@@ -5834,7 +5834,7 @@ def main() -> None:
                         pick = options[cmd_idx]
                         flow["battle_mushy_action"] = pick
                         meta = _spell_targeting_meta("mushy", pick)
-                        if pick in ("Attack", "Summon Hawking"):
+                        if pick in ("Atacar", "Invocar Hawking"):
                             flow["battle_mushy_target"] = int(flow.get("battle_target_cursor", 0))
                         if isinstance(meta, dict) and str(meta.get("side")) == "ally":
                             stage_now = int(flow.get("battle_stage", 1))
@@ -5873,9 +5873,9 @@ def main() -> None:
                     elif key == "down":
                         cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_sharoom_cmd_idx"] = cmd_idx
-                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
                         if not enabled[cmd_idx]:
@@ -5883,7 +5883,7 @@ def main() -> None:
                         pick = options[cmd_idx]
                         flow["battle_sharoom_action"] = pick
                         meta = _spell_targeting_meta("sharoom", pick)
-                        if pick in ("Attack", "Summon Hawking"):
+                        if pick in ("Atacar", "Invocar Hawking"):
                             flow["battle_sharoom_target"] = int(flow.get("battle_target_cursor", 0))
                         if isinstance(meta, dict) and str(meta.get("side")) == "ally":
                             stage_now = int(flow.get("battle_stage", 1))
@@ -5924,16 +5924,16 @@ def main() -> None:
                     elif key == "down":
                         cmd_idx = _next_enabled_option_index(enabled, cmd_idx, 1)
                         flow["battle_roomy_cmd_idx"] = cmd_idx
-                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "left" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, -1)
-                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Attack", "Summon Hawking"):
+                    elif key == "right" and enabled[cmd_idx] and options[cmd_idx] in ("Atacar", "Invocar Hawking"):
                         flow["battle_target_cursor"] = _next_alive_index(pri_hp, cursor, 1)
                     elif confirm:
                         if not enabled[cmd_idx]:
                             continue
                         pick = options[cmd_idx]
                         flow["battle_roomy_action"] = pick
-                        if pick in ("Attack", "Summon Hawking"):
+                        if pick in ("Atacar", "Invocar Hawking"):
                             flow["battle_roomy_target"] = int(flow.get("battle_target_cursor", 0))
                         flow["battle_queue"] = _build_battle_round_actions(flow)
                         flow["battle_queue_index"] = 0
@@ -6048,10 +6048,10 @@ def main() -> None:
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
                         flow["battle_roomy_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Attack"
-                        flow["battle_mushy_action"] = "Attack"
-                        flow["battle_sharoom_action"] = "Attack"
-                        flow["battle_roomy_action"] = "Attack"
+                        flow["battle_player_action"] = "Atacar"
+                        flow["battle_mushy_action"] = "Atacar"
+                        flow["battle_sharoom_action"] = "Atacar"
+                        flow["battle_roomy_action"] = "Atacar"
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
@@ -6175,10 +6175,10 @@ def main() -> None:
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
                         flow["battle_roomy_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Attack"
-                        flow["battle_mushy_action"] = "Attack"
-                        flow["battle_sharoom_action"] = "Attack"
-                        flow["battle_roomy_action"] = "Attack"
+                        flow["battle_player_action"] = "Atacar"
+                        flow["battle_mushy_action"] = "Atacar"
+                        flow["battle_sharoom_action"] = "Atacar"
+                        flow["battle_roomy_action"] = "Atacar"
                         flow["battle_target_cursor"] = _first_alive(flow["battle_primary_hp"], 0)
                         flow["battle_queue"] = []
                         flow["battle_queue_index"] = 0
@@ -6204,8 +6204,8 @@ def main() -> None:
                         flow["battle_secondary_boost_def"] = [0, 0]
                         flow["battle_player_cmd_idx"] = 0
                         flow["battle_mushy_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Attack"
-                        flow["battle_mushy_action"] = "Attack"
+                        flow["battle_player_action"] = "Atacar"
+                        flow["battle_mushy_action"] = "Atacar"
                         flow["battle_target_cursor"] = _first_alive([10, 10], 0)
                         flow["battle_queue"] = []
                         flow["battle_queue_index"] = 0
@@ -6280,10 +6280,10 @@ def main() -> None:
                         flow["battle_mushy_cmd_idx"] = 0
                         flow["battle_sharoom_cmd_idx"] = 0
                         flow["battle_roomy_cmd_idx"] = 0
-                        flow["battle_player_action"] = "Attack"
-                        flow["battle_mushy_action"] = "Attack"
-                        flow["battle_sharoom_action"] = "Attack"
-                        flow["battle_roomy_action"] = "Attack"
+                        flow["battle_player_action"] = "Atacar"
+                        flow["battle_mushy_action"] = "Atacar"
+                        flow["battle_sharoom_action"] = "Atacar"
+                        flow["battle_roomy_action"] = "Atacar"
                         flow["battle_player_target"] = 0
                         flow["battle_mushy_target"] = 0
                         flow["battle_sharoom_target"] = 0
@@ -6704,9 +6704,9 @@ def main() -> None:
                 if screen == "story_battle_cmd_player":
                     options = _actor_action_options("player", bool(flow.get("unlock_summon_hawking", False)), _hawking_owner(flow))
                     cmd_idx = int(flow.get("battle_player_cmd_idx", 0)) % max(1, len(options))
-                    pick = options[cmd_idx] if options else "Attack"
+                    pick = options[cmd_idx] if options else "Atacar"
                     magic_spark_level = max(1, int(flow.get("battle_magic_spark_level", 1)))
-                    if pick == "Magic Spark" and magic_spark_level >= 2:
+                    if pick == "Faisca Magica" and magic_spark_level >= 2:
                         story_target_indices = [i for i, hp in enumerate(pri_hp_now) if hp > 0]
                     else:
                         t = int(flow.get("battle_target_cursor", 0))

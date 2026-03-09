@@ -78,7 +78,10 @@ Runtime behavior:
 ### Web Build Sync
 
 - Make gameplay/code changes in the root tree first.
-- Sync runtime files into `docs/` with `scripts/build.sh` (preserves web-only assets like HTML/CSS/JS).
+- Regenerate web cache/version files with `scripts/build.sh` (or `scripts/build.ps1` on Windows), which updates:
+  - `docs/build-time.txt`
+  - `docs/asset-manifest.json` (`version` + file list used for cache-busting)
+- Sync runtime files into `docs/` as needed (preserves web-only assets like HTML/CSS/JS).
 - `docs/` is the GitHub Pages web root and includes web-only assets; avoid overwriting those files.
 - Web UI includes a tips modal with keyboard guidance and a Browser Note about Pyodide + WebKit constraints.
 - Debug modal explains save incompatibilities and offers a “Clear Saved Games” action (IDBFS reset + reload).
