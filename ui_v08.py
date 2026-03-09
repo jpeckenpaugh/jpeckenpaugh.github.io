@@ -5116,6 +5116,11 @@ def main() -> None:
                             flow["battle_dialog_resume_screen"] = screen
                             begin_transition("story_hawk_birdcall_taunt")
                             continue
+                        if action_kind == "flee" and not bool(action.get("pre_taunt_shown", False)):
+                            action["pre_taunt_shown"] = True
+                            flow["battle_dialog_resume_screen"] = screen
+                            begin_transition("story_crow_flee_taunt")
+                            continue
                         action_t = float(flow.get("battle_action_t", 0.0)) + dt
                         flow["battle_action_t"] = action_t
                         cast_kinds = ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric", "birdcall", "flee")
@@ -5206,8 +5211,7 @@ def main() -> None:
                             flow["battle_queue_index"] = qidx + 1
                             flow["battle_action_t"] = 0.0
                             if action_kind == "flee":
-                                flow["battle_dialog_resume_screen"] = screen
-                                begin_transition("story_crow_flee_taunt")
+                                pass
             elif anim_mode == "open" and screen == "story_lineup_shift":
                 trans = flow.get("lineup_transition")
                 if isinstance(trans, dict):
