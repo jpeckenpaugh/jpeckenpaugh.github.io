@@ -2971,7 +2971,10 @@ def _build_battle_round_actions(flow: dict) -> List[dict]:
                     "mp_cost": mp_cost,
                     "uses_mp": bool(mp_cost > 0),
                     "hawk_carry_target": carry_target,
-                    "effects": [{"type": "set_battle_summon_used", "value": 1}] if free_charge_ready else [],
+                    "effects": (
+                        ([{"type": "set_battle_summon_used", "value": 1}] if free_charge_ready else [])
+                        + ([{"type": "set_secondary_mp", "index": actor_idx, "value": post_mp}] if actor_idx >= 0 else [])
+                    ),
                     "surrender_on_zero": bool(int(stage) >= 4 and hawk_idx >= 0 and target == hawk_idx),
                 }
             )
@@ -3368,6 +3371,11 @@ def _battle_action_log_lines(action: dict, stage: int, player_name: str) -> List
                     lines.append(f"{dst} surrenders.")
                 else:
                     lines.append(f"{dst} has been defeated.")
+    mp_cost = max(0, int(action.get("mp_cost", 0)))
+    pre_mp = int(action.get("pre_mp", -1))
+    post_mp = int(action.get("post_mp", -1))
+    if mp_cost > 0 and pre_mp >= 0 and post_mp >= 0:
+        lines.append(f"[MP Debug] {src} MP {pre_mp} -> {post_mp} (-{mp_cost})")
     return lines
 
 
@@ -5409,7 +5417,7 @@ def main() -> None:
                                     max(0, int(action.get("post_hp", 0))),
                                     bool(action.get("surrender_on_zero", False)),
                                 )
-                            if action_kind == "spell":
+                            if action_kind in ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric"):
                                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
                                 s_idx = int(action.get("source_index", 0))
                                 post_mp = max(0, int(action.get("post_mp", 0)))
@@ -5417,7 +5425,8 @@ def main() -> None:
                                 if 0 <= s_idx < len(sec_mp):
                                     sec_mp[s_idx] = post_mp
                                     flow["battle_secondary_mp"] = sec_mp
-                                flow["battle_staff_charges"] = post_charges
+                                if action_kind == "spell":
+                                    flow["battle_staff_charges"] = post_charges
                             effects = action.get("effects", [])
                             if isinstance(effects, list) and effects:
                                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
