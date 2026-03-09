@@ -170,6 +170,9 @@
     "todo_venues.md",
     "ui_v07.py",
     "ui_v07_esp.py",
-    "ui_v07_pt_br.py"
+    "ui_v07_pt_br.py",
+    "ui_v08.py",
+    "ui_v08_esp.py",
+    "ui_v08_pt_br.py"
   ]
 }

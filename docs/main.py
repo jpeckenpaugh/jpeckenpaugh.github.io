@@ -264,11 +264,11 @@ def main():
     else:
         demo_lang = str(os.environ.get("LOKARTA_DEMO_LANG", "")).strip().lower()
         demo_modules = {
-            "en": "ui_v07",
-            "es": "ui_v07_esp",
-            "pt-br": "ui_v07_pt_br",
-            "pt_br": "ui_v07_pt_br",
-            "pt": "ui_v07_pt_br",
+            "en": "ui_v08",
+            "es": "ui_v08_esp",
+            "pt-br": "ui_v08_pt_br",
+            "pt_br": "ui_v08_pt_br",
+            "pt": "ui_v08_pt_br",
         }
         demo_module = demo_modules.get(demo_lang)
     if demo_module:
