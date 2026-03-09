@@ -1,6 +1,7 @@
 import os
 import random
 import re
+import sys
 import time
 import textwrap
 from dataclasses import dataclass
@@ -154,6 +155,74 @@ def read_key_nonblocking() -> str | None:
         except UnicodeDecodeError:
             return None
     return base_read_key_nonblocking()
+
+
+def _load_audio_catalog(music_path: str) -> tuple[set[str], set[str], set[str]]:
+    songs: set[str] = set()
+    sequences: set[str] = set()
+    sfx_songs: set[str] = set()
+    try:
+        data = load_json(music_path)
+    except Exception:
+        data = {}
+    if isinstance(data, dict):
+        songs_obj = data.get("songs", {})
+        seq_obj = data.get("sequences", {})
+        if isinstance(songs_obj, dict):
+            songs = set(str(k) for k in songs_obj.keys())
+            for k, v in songs_obj.items():
+                if isinstance(v, dict) and bool(v.get("sfx")):
+                    sfx_songs.add(str(k))
+        if isinstance(seq_obj, dict):
+            sequences = set(str(k) for k in seq_obj.keys())
+    return songs, sequences, sfx_songs
+
+
+def _init_audio_manager(music_path: str):
+    audio_cls = None
+    try:
+        from app.audio import AudioManager as _AudioManager  # type: ignore
+
+        audio_cls = _AudioManager
+    except Exception:
+        try:
+            legacy_root = os.path.join(os.getcwd(), "legacy")
+            if legacy_root not in sys.path:
+                sys.path.insert(0, legacy_root)
+            from app.audio import AudioManager as _AudioManager  # type: ignore
+
+            audio_cls = _AudioManager
+        except Exception:
+            audio_cls = None
+    if audio_cls is None:
+        return None
+    try:
+        audio = audio_cls(music_path)
+        audio.set_mode("on")
+        audio.set_defaults(0.7, 0.8, "triangle")
+        return audio
+    except Exception:
+        return None
+
+
+def _audio_play_song_once(audio, songs: set[str], name: str) -> None:
+    if audio is None or name not in songs:
+        return
+    try:
+        audio.play_song_once(name)
+    except Exception:
+        pass
+
+
+def _audio_play_sfx_once(audio, sequences: set[str], sfx_songs: set[str], name: str, root_note: str = "C4") -> None:
+    if audio is None:
+        return
+    if name not in sequences and name not in sfx_songs:
+        return
+    try:
+        audio.play_sfx_once(name, root_note)
+    except Exception:
+        pass
 
 
 def _make_zone(name: str, x: int, y: int, width: int, height: int, layer: int) -> LayoutZone:
@@ -4756,6 +4825,11 @@ def main() -> None:
     colors_path = os.path.join(data_root, "colors.json")
     players_path = os.path.join(data_root, "players.json")
     opponents_path = os.path.join(data_root, "opponents.json")
+    music_path = os.path.join(data_root, "music.json")
+    if not os.path.isfile(music_path):
+        fallback_music = os.path.join(base, "docs", "data", "music.json")
+        if os.path.isfile(fallback_music):
+            music_path = fallback_music
     objects = load_json(objects_path)
     colors = load_json(colors_path)
     players = load_json(players_path)
@@ -4768,6 +4842,8 @@ def main() -> None:
         raise RuntimeError("players.json is not a JSON object")
     if not isinstance(opponents, dict):
         raise RuntimeError("opponents.json is not a JSON object")
+    audio_songs, audio_sequences, audio_sfx_songs = _load_audio_catalog(music_path)
+    audio = _init_audio_manager(music_path)
     color_codes = _build_color_codes(colors)
 
     templates = cloud_templates(objects)
@@ -4907,6 +4983,7 @@ def main() -> None:
         "battle_magic_spark_level": 1,
         "story_reward_stage_completed": 0,
         "battle_dialog_resume_screen": "",
+        "audio_screen_key": "",
         "story_reward_stage2_mp_applied": False,
         "lineup_transition": None,
         "actor_entrance": None,
@@ -5077,6 +5154,38 @@ def main() -> None:
             player_cards = flow["player_cards"]
             selected_card = player_cards[int(flow.get("player_index", 0)) % len(player_cards)]
             story_action = flow.get("story_action")
+
+            if anim_mode == "open":
+                stage_now_for_audio = int(flow.get("battle_stage", 1))
+                battle_audio_screens = {
+                    "story_battle_cmd_player",
+                    "story_battle_cmd_mushy",
+                    "story_battle_cmd_sharoom",
+                    "story_battle_cmd_roomy",
+                    "story_battle_ally_target",
+                    "story_battle_resolve",
+                    "story_battle3_resolve",
+                    "story_second_chance",
+                    "story_battle2_entrance",
+                    "story_battle3_entrance",
+                }
+                if screen == "root_menu":
+                    audio_key = "title"
+                elif screen in ("story_mp_increase", "story_battle_victory", "story_hawk_victory"):
+                    audio_key = f"victory:{stage_now_for_audio}"
+                elif screen in battle_audio_screens:
+                    audio_key = f"battle:{stage_now_for_audio}"
+                else:
+                    audio_key = ""
+                if audio_key and audio_key != str(flow.get("audio_screen_key", "")):
+                    if audio_key.startswith("title:") or audio_key == "title":
+                        _audio_play_song_once(audio, audio_songs, "intro_music")
+                    elif audio_key.startswith("battle:"):
+                        _audio_play_song_once(audio, audio_songs, "battle_minor")
+                    elif audio_key.startswith("victory:"):
+                        _audio_play_song_once(audio, audio_songs, "battle_victory")
+                    flow["audio_screen_key"] = audio_key
+
             if anim_mode == "open" and screen in ("story_battle_resolve", "story_battle3_resolve"):
                 pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10])]
                 sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
@@ -5208,6 +5317,16 @@ def main() -> None:
                             stage_now = int(flow.get("battle_stage", 1))
                             player_name = str(flow.get("selected_name", "Player")).strip() or "Player"
                             _battle_log_enqueue(flow, _battle_action_log_lines(action, stage_now, player_name))
+                            if action_kind == "physical":
+                                _audio_play_sfx_once(audio, audio_sequences, audio_sfx_songs, "attack_sfx", "A4")
+                            elif action_kind in ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric"):
+                                _audio_play_sfx_once(audio, audio_sequences, audio_sfx_songs, "spell_up", "C4")
+                            elif action_kind == "birdcall":
+                                _audio_play_sfx_once(audio, audio_sequences, audio_sfx_songs, "follower_joins_sfx", "C3")
+                            elif action_kind == "flee":
+                                _audio_play_sfx_once(audio, audio_sequences, audio_sfx_songs, "spell_down", "C4")
+                            elif action_kind == "defend_convert":
+                                _audio_play_sfx_once(audio, audio_sequences, audio_sfx_songs, "point_added_sfx", "C4")
                             flow["battle_queue_index"] = qidx + 1
                             flow["battle_action_t"] = 0.0
                             if action_kind == "flee":
@@ -5454,6 +5573,7 @@ def main() -> None:
                         flow["battle_magic_spark_level"] = 1
                         flow["story_reward_stage_completed"] = 0
                         flow["battle_dialog_resume_screen"] = ""
+                        flow["audio_screen_key"] = ""
                         flow["story_reward_stage2_mp_applied"] = False
                         begin_transition("story_1")
                     elif back:
@@ -5921,6 +6041,7 @@ def main() -> None:
                         begin_transition("story_battle2_entrance")
                 elif screen == "story_mp_increase":
                     if confirm:
+                        _audio_play_song_once(audio, audio_songs, "level_up")
                         stage_completed = int(flow.get("story_reward_stage_completed", flow.get("battle_stage", 1)))
                         sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
                         sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
@@ -6651,6 +6772,11 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        try:
+            if audio is not None:
+                audio.stop()
+        except Exception:
+            pass
         print(ANSI_SHOW_CURSOR + ANSI_RESET)
 
 
