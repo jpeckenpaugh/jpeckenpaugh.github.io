@@ -8,6 +8,7 @@ import ui_v08 as ui
 
 
 TITLE_LANDSCAPE_POSITION = 5
+STARTUP_LANDSCAPE_POSITION = 35
 ADDRESS_LANDSCAPE_POSITIONS = {
     "#1 Ave A": 50,
 }
@@ -196,6 +197,13 @@ def current_landscape_position(flow: dict) -> int:
 def current_address_label(flow: dict) -> str:
     position = current_landscape_position(flow)
     return "#1 Ave A" if position >= ADDRESS_LANDSCAPE_POSITIONS["#1 Ave A"] else "Main Street"
+
+
+def startup_landscape_position_for_wipe(wipe_progress: float) -> int:
+    progress = max(0.0, min(1.0, float(wipe_progress)))
+    revealed_rows = int(round(world.SCREEN_H * progress))
+    step_delta = revealed_rows
+    return max(TITLE_LANDSCAPE_POSITION, STARTUP_LANDSCAPE_POSITION - step_delta)
 
 
 def start_camera_transition(flow: dict, target: int, next_screen: str) -> None:
@@ -1108,7 +1116,7 @@ def main() -> None:
     camera_step_seconds = 0.06
     camera_accum = 0.0
     story_transition_actors = None
-    wipe_duration = 1.0
+    wipe_duration = 2.0
     startup_blank_seconds = 0.20
     wipe_started_at = time.monotonic() + startup_blank_seconds
 
@@ -1393,6 +1401,8 @@ def main() -> None:
                         anim_mode = "closing"
 
             position = current_landscape_position(flow)
+            if wipe_progress < 1.0 and str(flow.get("screen", "root_menu")) == "root_menu":
+                position = startup_landscape_position_for_wipe(wipe_progress)
             zones = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
             sky_bottom_anchor = world.sky_bottom_anchor_for_position(position)
             split_label = f"{zones['sky_bg'].height}/{world.landscape_total_ground_visible_from_horizon(position)}"
