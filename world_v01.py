@@ -12,6 +12,14 @@ ADDRESS_LANDSCAPE_POSITIONS = {
     "#1 Ave A": 50,
 }
 
+SIMPLE_SMASH_FRAMES = [
+    [" * ", "***", " * "],
+    ["\\|/", "-*-", "/|\\"],
+    [" x ", "xXx", " x "],
+    ["\\ /", " X ", "/ \\"],
+    [" . ", ".*.", " . "],
+]
+
 
 def build_player_cards(players: dict, color_codes: Dict[str, str]) -> List[dict]:
     preferred_ids = ["player_01", "player_02"]
@@ -377,28 +385,63 @@ def handle_input(flow: dict, key: str | None) -> str | None:
         return None
 
     if screen == "story_battle_cmd_player":
+        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
         options = _battle_options(flow, "player")
+        enabled = ui._action_enabled_flags(flow, "player", options)
         cursor = int(flow.get("battle_player_cmd_idx", 0)) % max(1, len(options))
+        if enabled and not enabled[cursor] and any(enabled):
+            cursor = next((i for i, v in enumerate(enabled) if v), cursor)
+            flow["battle_player_cmd_idx"] = cursor
+        target_cursor = int(flow.get("battle_target_cursor", 0))
         if key == "up":
-            flow["battle_player_cmd_idx"] = (cursor - 1) % len(options)
+            flow["battle_player_cmd_idx"] = ui._next_enabled_option_index(enabled, cursor, -1)
         elif key == "down":
-            flow["battle_player_cmd_idx"] = (cursor + 1) % len(options)
+            flow["battle_player_cmd_idx"] = ui._next_enabled_option_index(enabled, cursor, 1)
+        elif key == "left" and enabled[cursor] and options[cursor] in ("Attack", "Summon Hawking"):
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, -1)
+        elif key == "right" and enabled[cursor] and options[cursor] in ("Attack", "Summon Hawking"):
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, 1)
+        elif key == "left" and enabled[cursor] and options[cursor] == "Magic Spark" and int(flow.get("battle_magic_spark_level", 1)) < 2:
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, -1)
+        elif key == "right" and enabled[cursor] and options[cursor] == "Magic Spark" and int(flow.get("battle_magic_spark_level", 1)) < 2:
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, 1)
         elif confirm:
-            flow["battle_player_action"] = options[cursor]
+            if not enabled[cursor]:
+                return None
+            pick = options[cursor]
+            flow["battle_player_action"] = pick
+            if pick in ("Attack", "Magic Spark", "Summon Hawking"):
+                flow["battle_player_target"] = int(flow.get("battle_target_cursor", 0))
+            flow["battle_target_cursor"] = ui._first_alive(pri_hp, int(flow.get("battle_player_target", 0)))
             return "story_battle_cmd_mushy"
         elif back:
             return "story_6"
         return None
 
     if screen == "story_battle_cmd_mushy":
+        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
         options = _battle_options(flow, "mushy")
+        enabled = ui._action_enabled_flags(flow, "mushy", options)
         cursor = int(flow.get("battle_mushy_cmd_idx", 0)) % max(1, len(options))
+        if enabled and not enabled[cursor] and any(enabled):
+            cursor = next((i for i, v in enumerate(enabled) if v), cursor)
+            flow["battle_mushy_cmd_idx"] = cursor
+        target_cursor = int(flow.get("battle_target_cursor", 0))
         if key == "up":
-            flow["battle_mushy_cmd_idx"] = (cursor - 1) % len(options)
+            flow["battle_mushy_cmd_idx"] = ui._next_enabled_option_index(enabled, cursor, -1)
         elif key == "down":
-            flow["battle_mushy_cmd_idx"] = (cursor + 1) % len(options)
+            flow["battle_mushy_cmd_idx"] = ui._next_enabled_option_index(enabled, cursor, 1)
+        elif key == "left" and enabled[cursor] and options[cursor] in ("Attack", "Summon Hawking"):
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, -1)
+        elif key == "right" and enabled[cursor] and options[cursor] in ("Attack", "Summon Hawking"):
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, 1)
         elif confirm:
-            flow["battle_mushy_action"] = options[cursor]
+            if not enabled[cursor]:
+                return None
+            pick = options[cursor]
+            flow["battle_mushy_action"] = pick
+            if pick in ("Attack", "Summon Hawking"):
+                flow["battle_mushy_target"] = int(flow.get("battle_target_cursor", 0))
             ui._battle_log_start(flow, int(flow.get("battle_stage", 1)))
             flow["battle_queue"] = ui._build_battle_round_actions(flow)
             flow["battle_queue_index"] = 0
@@ -448,7 +491,17 @@ def render(
     show_title: bool = False,
     ui_box_progress: float = 1.0,
     ui_avatar_overlay: dict | None = None,
+    ui_actor_status: dict | None = None,
+    wipe_progress: float = 1.0,
     story_transition_actors: List[dict] | None = None,
+    story_target_primary_index: int | None = None,
+    story_target_primary_blink: bool = False,
+    story_spell: dict | None = None,
+    story_smash: dict | None = None,
+    story_primary_hp: List[int] | None = None,
+    story_primary_hp_totals: List[int] | None = None,
+    story_damage_hud: dict | None = None,
+    battle_log_lines: List[str] | None = None,
 ) -> str:
     canvas = [[" " for _ in range(world.SCREEN_W)] for _ in range(world.SCREEN_H)]
     sky_zone = zones["sky_bg"]
@@ -596,6 +649,14 @@ def render(
 
     primary_placements: List[dict] = []
     secondary_placements: List[dict] = []
+    hidden_secondary_indices: set[int] = set()
+    if isinstance(story_smash, dict):
+        p = max(0.0, min(1.0, float(story_smash.get("progress", 0.0))))
+        if p < 0.5:
+            step = int((p / 0.5) * 4.0)
+            if (step % 2) != 0 and str(story_smash.get("source_side", "secondary")).strip().lower() == "secondary":
+                hidden_secondary_indices.add(int(story_smash.get("source_index", 0)))
+
     if isinstance(story_transition_actors, list) and story_transition_actors:
         for actor in story_transition_actors:
             rows = actor.get("rows", [])
@@ -605,24 +666,110 @@ def render(
     else:
         if secondary_actor_sprites:
             secondary_placements = world.layout_actor_strip(secondary_zone, secondary_actor_sprites, spacing=1, stagger_rows=1, reverse_stagger=True)
-            for actor in secondary_placements:
+            for idx, actor in enumerate(secondary_placements):
+                if idx in hidden_secondary_indices:
+                    continue
                 _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
         if primary_actor_sprites:
             primary_placements = world.layout_actor_strip(primary_zone, primary_actor_sprites, spacing=1, stagger_rows=1)
-            for actor in primary_placements:
+            for idx, actor in enumerate(primary_placements):
+                if story_target_primary_index is not None and idx == int(story_target_primary_index) and not story_target_primary_blink:
+                    continue
                 _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
+
+    if isinstance(story_spell, dict) and primary_placements and secondary_placements:
+        source_side = str(story_spell.get("source_side", "secondary"))
+        target_side = str(story_spell.get("target_side", "primary"))
+        source_index = int(story_spell.get("source_index", 0))
+        target_index = int(story_spell.get("target_index", 0))
+        progress = float(story_spell.get("progress", 0.0))
+
+        def _center_of(actor: dict) -> tuple[int, int]:
+            rows = actor.get("rows", [])
+            w = max((len(row) for row in rows), default=0) if isinstance(rows, list) else 0
+            h = len(rows) if isinstance(rows, list) else 0
+            return (int(actor.get("x", 0)) + (w // 2), int(actor.get("y", 0)) + (h // 2))
+
+        src_list = secondary_placements if source_side == "secondary" else primary_placements
+        dst_list = secondary_placements if target_side == "secondary" else primary_placements
+        if 0 <= source_index < len(src_list) and 0 <= target_index < len(dst_list):
+            ui._draw_spell_throw(canvas, _center_of(src_list[source_index]), _center_of(dst_list[target_index]), progress)
+
+    if isinstance(story_smash, dict) and primary_placements:
+        target_index = int(story_smash.get("target_index", 0))
+        progress = max(0.0, min(1.0, float(story_smash.get("progress", 0.0))))
+        if 0 <= target_index < len(primary_placements) and progress >= 0.5:
+            actor = primary_placements[target_index]
+            rows = actor.get("rows", [])
+            w = max((len(row) for row in rows), default=0) if isinstance(rows, list) else 0
+            h = len(rows) if isinstance(rows, list) else 0
+            center = (int(actor.get("x", 0)) + (w // 2), int(actor.get("y", 0)) + (h // 2))
+            frame_idx = min(len(SIMPLE_SMASH_FRAMES) - 1, int(((progress - 0.5) / 0.5) * len(SIMPLE_SMASH_FRAMES)))
+            ui._draw_smash_frame(canvas, SIMPLE_SMASH_FRAMES[max(0, frame_idx)], center)
+
+    if isinstance(story_damage_hud, dict):
+        target_huds = story_damage_hud.get("target_huds", [])
+        if isinstance(target_huds, list) and target_huds:
+            for hud in target_huds:
+                if not isinstance(hud, dict):
+                    continue
+                t_idx = int(hud.get("target_index", -1))
+                if 0 <= t_idx < len(primary_placements):
+                    ui._draw_damage_hud_step(
+                        canvas,
+                        primary_placements[t_idx],
+                        progress=float(hud.get("progress", story_damage_hud.get("progress", 0.0))),
+                        pre_hp=max(0, int(hud.get("pre_hp", 0))),
+                        post_hp=max(0, int(hud.get("post_hp", 0))),
+                        total=max(1, int(hud.get("total", 10))),
+                        damage=max(0, int(hud.get("damage", 0))),
+                    )
+        else:
+            t_idx = int(story_damage_hud.get("target_index", -1))
+            if 0 <= t_idx < len(primary_placements):
+                ui._draw_damage_hud_step(
+                    canvas,
+                    primary_placements[t_idx],
+                    progress=float(story_damage_hud.get("progress", 0.0)),
+                    pre_hp=max(0, int(story_damage_hud.get("pre_hp", 0))),
+                    post_hp=max(0, int(story_damage_hud.get("post_hp", 0))),
+                    total=max(1, int(story_damage_hud.get("total", 10))),
+                    damage=max(0, int(story_damage_hud.get("damage", 0))),
+                )
+    elif isinstance(story_primary_hp, list):
+        hp_totals = story_primary_hp_totals if isinstance(story_primary_hp_totals, list) else []
+        for idx, actor in enumerate(primary_placements):
+            if idx >= len(story_primary_hp):
+                continue
+            rows = actor.get("rows", [])
+            w = max((len(row) for row in rows), default=0) if isinstance(rows, list) else 0
+            center_x = int(actor.get("x", 0)) + (w // 2)
+            total = max(1, int(hp_totals[idx])) if idx < len(hp_totals) else max(1, int(story_primary_hp[idx]))
+            ui._draw_health_bar_custom(canvas, center_x, int(actor.get("y", 0)) - 4, int(story_primary_hp[idx]), total=total, row_label="HP")
 
     if isinstance(ui_active_box, ui.UIBoxSpec):
         ui_active_box = ui._position_screen_box_for_actors(beat_label, ui_active_box, primary_placements, secondary_placements)
 
     if show_title and isinstance(title_logo, dict):
         ui._overlay_title_logo(canvas, title_logo)
+    if isinstance(battle_log_lines, list):
+        ui._draw_battle_log_panel(canvas, battle_log_lines, width=40, height=10)
     if ui_active_box is not None:
         progress = max(0.0, min(1.0, float(ui_box_progress)))
         if progress < 1.0:
             ui.draw_ui_box_animated(canvas, ui_active_box, progress, blink_on=blink_on)
         else:
             ui.draw_ui_box(canvas, ui_active_box, blink_on=blink_on)
+        if isinstance(ui_actor_status, dict):
+            ui._draw_actor_cmd_status_overlay(
+                canvas,
+                ui_active_box,
+                hp=max(0, int(ui_actor_status.get("hp", 0))),
+                hp_total=max(1, int(ui_actor_status.get("hp_total", 1))),
+                mp=max(0, int(ui_actor_status.get("mp", 0))),
+                mp_total=max(1, int(ui_actor_status.get("mp_total", 1))),
+                progress=progress,
+            )
         if isinstance(ui_avatar_overlay, dict) and progress >= 1.0:
             left_rows = ui_avatar_overlay.get("left_rows", [])
             right_rows = ui_avatar_overlay.get("right_rows", [])
@@ -675,9 +822,11 @@ def main() -> None:
     anim_mode = "opening"
     pending_screen = None
     anim_step = 0
-    camera_step_seconds = 0.03
+    camera_step_seconds = 0.06
     camera_accum = 0.0
     story_transition_actors = None
+    wipe_duration = 1.0
+    wipe_started_at = time.monotonic()
 
     def _tick_stage1_battle(dt: float) -> str | None:
         pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
@@ -747,6 +896,7 @@ def main() -> None:
             now = time.monotonic()
             dt = max(0.0, min(0.2, now - last_tick))
             last_tick = now
+            wipe_progress = min(1.0, max(0.0, (now - wipe_started_at) / wipe_duration))
             for cloud in clouds:
                 speed = float(cloud.get("speed", 1.0))
                 cloud["x"] = float(cloud.get("x", 0.0)) - (speed * dt)
@@ -824,18 +974,18 @@ def main() -> None:
             sky_bottom_anchor = world.sky_bottom_anchor_for_position(position)
             split_label = f"{zones['sky_bg'].height}/{world.landscape_total_ground_visible_from_horizon(position)}"
             screen = str(flow.get("screen", "root_menu"))
-            if screen in ("battle_log", "story_battle_resolve"):
-                ui_box = build_battle_log_spec(ui._battle_log_visible_lines(flow))
-            elif screen == "story_lineup_shift":
+            if screen == "story_lineup_shift":
                 ui_box = None
             else:
                 ui_box = ui._build_screen_spec(flow)
             step_count = ui.ui_box_step_count(ui_box) if isinstance(ui_box, ui.UIBoxSpec) else 1
+            ui_ready = wipe_progress >= 1.0
             if anim_mode == "open" or ui_box is None:
                 ui_progress = 1.0
             else:
                 ui_progress = anim_step / max(1, step_count)
             avatar_overlay = None
+            ui_actor_status = None
             if screen == "avatar_select" and anim_mode == "open":
                 pidx = int(flow.get("player_index", 0)) % len(player_cards)
                 avatar_overlay = {
@@ -845,6 +995,90 @@ def main() -> None:
                     "right_label": player_cards[1].get("label", "Right"),
                     "selected": pidx,
                 }
+
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy"):
+                sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+                sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
+                sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+                sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
+                actor_idx = 1 if screen == "story_battle_cmd_mushy" else 0
+                if 0 <= actor_idx < len(sec_hp):
+                    hp_total = sec_hp_max[actor_idx] if actor_idx < len(sec_hp_max) else max(1, sec_hp[actor_idx])
+                    mp_total = sec_mp_max[actor_idx] if actor_idx < len(sec_mp_max) else (sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0)
+                    ui_actor_status = {
+                        "hp": sec_hp[actor_idx],
+                        "hp_total": max(1, hp_total),
+                        "mp": sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0,
+                        "mp_total": max(1, mp_total),
+                    }
+
+            battle_log_screens = {"story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log", "story_battle_victory"}
+            battle_log_lines = ui._battle_log_visible_lines(flow) if screen in battle_log_screens else None
+            story_target_primary_index = None
+            story_target_primary_blink = bool((int(now * 2.0) % 2) == 0)
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy"):
+                pri_hp_now = [int(v) for v in flow.get("battle_primary_hp", [10])]
+                t = int(flow.get("battle_target_cursor", 0))
+                if 0 <= t < len(pri_hp_now) and pri_hp_now[t] > 0:
+                    story_target_primary_index = t
+            story_spell = None
+            story_smash = None
+            story_damage_hud = None
+            story_primary_hp = list(int(v) for v in flow.get("battle_primary_hp", [10])) if screen in battle_log_screens else None
+            story_primary_hp_totals = list(int(v) for v in flow.get("battle_primary_hp_max", story_primary_hp or [10])) if screen in battle_log_screens else None
+            if screen == "story_battle_resolve":
+                queue = flow.get("battle_queue", [])
+                qidx = int(flow.get("battle_queue_index", 0))
+                if isinstance(queue, list) and 0 <= qidx < len(queue):
+                    action = queue[qidx]
+                    kind = str(action.get("kind", "physical"))
+                    duration = 1.2 if kind in ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric", "birdcall", "flee") else 0.9
+                    if kind == "summon":
+                        duration = 2.4
+                    prog = min(1.0, float(flow.get("battle_action_t", 0.0)) / max(0.001, duration))
+                    if kind in ("spell", "physical"):
+                        hits = action.get("hits", [])
+                        if isinstance(hits, list) and hits:
+                            story_damage_hud = {
+                                "progress": prog,
+                                "target_huds": [
+                                    {
+                                        "target_index": int(hit.get("target_index", 0)),
+                                        "progress": prog,
+                                        "pre_hp": int(hit.get("pre_hp", 0)),
+                                        "post_hp": int(hit.get("post_hp", 0)),
+                                        "total": int(hit.get("total", story_primary_hp_totals[0] if story_primary_hp_totals else 10)),
+                                        "damage": int(hit.get("damage", 0)),
+                                    }
+                                    for hit in hits
+                                    if isinstance(hit, dict)
+                                ],
+                            }
+                        else:
+                            story_damage_hud = {
+                                "target_index": int(action.get("target_index", 0)),
+                                "progress": prog,
+                                "pre_hp": int(action.get("pre_hp", 0)),
+                                "post_hp": int(action.get("post_hp", 0)),
+                                "total": int(action.get("total", story_primary_hp_totals[0] if story_primary_hp_totals else 10)),
+                                "damage": int(action.get("damage", 0)),
+                            }
+                    if kind in ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric", "birdcall"):
+                        story_spell = {
+                            "source_side": str(action.get("source_side", "secondary")),
+                            "source_index": int(action.get("source_index", 0)),
+                            "target_side": str(action.get("target_side", "primary")),
+                            "target_index": int(action.get("target_index", 0)),
+                            "progress": prog,
+                        }
+                    elif kind == "physical":
+                        story_smash = {
+                            "source_side": str(action.get("source_side", "secondary")),
+                            "source_index": int(action.get("source_index", 0)),
+                            "target_side": str(action.get("target_side", "primary")),
+                            "target_index": int(action.get("target_index", 0)),
+                            "progress": prog,
+                        }
 
             frame = render(
                 clouds=clouds,
@@ -858,31 +1092,42 @@ def main() -> None:
                 crossroad_house_sprites=crossroad_house_sprites,
                 primary_actor_sprites=actor_sprites_from_keys(sprite_map, current_primary_keys(flow)),
                 secondary_actor_sprites=actor_sprites_from_keys(sprite_map, current_secondary_keys(flow)),
-                ui_active_box=ui_box if isinstance(ui_box, ui.UIBoxSpec) else None,
+                ui_active_box=(ui_box if (ui_ready and isinstance(ui_box, ui.UIBoxSpec)) else None),
                 beat_label=screen,
                 address_label=current_address_label(flow),
                 blink_on=bool((int(now * 2.0) % 2) == 0),
                 title_logo=title_logo,
                 show_title=show_title_logo(flow),
-                ui_box_progress=ui_progress,
-                ui_avatar_overlay=avatar_overlay,
+                ui_box_progress=(ui_progress if ui_ready else 0.0),
+                ui_avatar_overlay=(avatar_overlay if ui_ready else None),
+                ui_actor_status=(ui_actor_status if ui_ready else None),
+                wipe_progress=wipe_progress,
                 story_transition_actors=story_transition_actors,
+                story_target_primary_index=story_target_primary_index,
+                story_target_primary_blink=story_target_primary_blink,
+                story_spell=story_spell,
+                story_smash=story_smash,
+                story_primary_hp=story_primary_hp,
+                story_primary_hp_totals=story_primary_hp_totals,
+                story_damage_hud=story_damage_hud,
+                battle_log_lines=battle_log_lines,
             )
             print(world.ANSI_HOME + frame, end="", flush=True)
 
-            if anim_mode == "opening":
-                anim_step = min(step_count, anim_step + 4)
-                if anim_step >= step_count:
-                    anim_mode = "open"
-            elif anim_mode == "closing":
-                anim_step = max(0, anim_step - 4)
-                if anim_step <= 0:
-                    flow["screen"] = str(pending_screen or flow.get("screen", "root_menu"))
-                    pending_screen = None
-                    anim_mode = "opening"
-                    anim_step = 0
-            else:
-                anim_step = step_count
+            if ui_ready:
+                if anim_mode == "opening":
+                    anim_step = min(step_count, anim_step + 4)
+                    if anim_step >= step_count:
+                        anim_mode = "open"
+                elif anim_mode == "closing":
+                    anim_step = max(0, anim_step - 4)
+                    if anim_step <= 0:
+                        flow["screen"] = str(pending_screen or flow.get("screen", "root_menu"))
+                        pending_screen = None
+                        anim_mode = "opening"
+                        anim_step = 0
+                else:
+                    anim_step = step_count
 
             time.sleep(0.05)
     except KeyboardInterrupt:
