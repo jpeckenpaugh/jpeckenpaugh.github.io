@@ -443,7 +443,7 @@ def handle_input(flow: dict, key: str | None) -> str | None:
             flow["selected_name"] = flow["name_choices"][flow["name_choice_index"]]
         elif confirm:
             if focus == 0:
-                return "fortune_select"
+                return "story_1"
             flow["message_text"] = "Custom name entry is not wired into this world prototype yet."
             return "info"
         elif back:
@@ -459,7 +459,7 @@ def handle_input(flow: dict, key: str | None) -> str | None:
         elif confirm:
             options = ["Poor (10 GP)", "Well-Off (100 GP)", "Royalty (1000 GP)"]
             flow["fortune_choice"] = options[int(flow.get("fortune_cursor", 1)) % len(options)]
-            return "start_confirm"
+            return "name_select"
         elif back:
             return "name_select"
         return None
@@ -475,7 +475,7 @@ def handle_input(flow: dict, key: str | None) -> str | None:
         if confirm:
             start_camera_transition(flow, ADDRESS_LANDSCAPE_POSITIONS["#1 Ave A"], "story_4")
         elif back:
-            return "start_confirm"
+            return "name_select"
         return None
 
     if screen == "story_4":
