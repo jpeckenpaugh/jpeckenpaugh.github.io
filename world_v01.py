@@ -108,6 +108,11 @@ def build_demo_flow(player_cards: List[dict]) -> dict:
         "battle_melt_index": None,
         "battle_melt_t": 0.0,
         "battle_log_lines": [],
+        "battle_log_committed": [],
+        "battle_log_pending": [],
+        "battle_log_active": None,
+        "battle_log_active_chars": 0,
+        "battle_magic_spark_level": 1,
     }
 
 
@@ -226,7 +231,7 @@ def current_primary_keys(flow: dict) -> List[str]:
     screen = str(flow.get("screen", "root_menu"))
     if screen in ("story_4", "story_5", "story_6"):
         return ["baby_crow", "mushy"]
-    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "battle_log"):
+    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log"):
         return ["baby_crow"]
     return []
 
@@ -237,7 +242,7 @@ def current_secondary_keys(flow: dict) -> List[str]:
     screen = str(flow.get("screen", "root_menu"))
     if screen in ("story_4", "story_5", "story_6"):
         return ["player"]
-    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "battle_log", "story_battle_victory"):
+    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log", "story_battle_victory"):
         return ["player", "mushy"]
     return []
 
@@ -394,8 +399,13 @@ def handle_input(flow: dict, key: str | None) -> str | None:
             flow["battle_mushy_cmd_idx"] = (cursor + 1) % len(options)
         elif confirm:
             flow["battle_mushy_action"] = options[cursor]
-            flow["battle_log_lines"] = build_stage1_battle_log(flow)
-            return "battle_log"
+            ui._battle_log_start(flow, int(flow.get("battle_stage", 1)))
+            flow["battle_queue"] = ui._build_battle_round_actions(flow)
+            flow["battle_queue_index"] = 0
+            flow["battle_action_t"] = 0.0
+            flow["battle_melt_index"] = None
+            flow["battle_melt_t"] = 0.0
+            return "story_battle_resolve"
         elif back:
             return "story_battle_cmd_player"
         return None
@@ -584,6 +594,8 @@ def render(
                 if 0 <= x < world.SCREEN_W and cell != " ":
                     canvas[y][x] = cell
 
+    primary_placements: List[dict] = []
+    secondary_placements: List[dict] = []
     if isinstance(story_transition_actors, list) and story_transition_actors:
         for actor in story_transition_actors:
             rows = actor.get("rows", [])
@@ -592,11 +604,16 @@ def render(
             _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), rows)
     else:
         if secondary_actor_sprites:
-            for actor in world.layout_actor_strip(secondary_zone, secondary_actor_sprites, spacing=1, stagger_rows=1, reverse_stagger=True):
+            secondary_placements = world.layout_actor_strip(secondary_zone, secondary_actor_sprites, spacing=1, stagger_rows=1, reverse_stagger=True)
+            for actor in secondary_placements:
                 _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
         if primary_actor_sprites:
-            for actor in world.layout_actor_strip(primary_zone, primary_actor_sprites, spacing=1, stagger_rows=1):
+            primary_placements = world.layout_actor_strip(primary_zone, primary_actor_sprites, spacing=1, stagger_rows=1)
+            for actor in primary_placements:
                 _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
+
+    if isinstance(ui_active_box, ui.UIBoxSpec):
+        ui_active_box = ui._position_screen_box_for_actors(beat_label, ui_active_box, primary_placements, secondary_placements)
 
     if show_title and isinstance(title_logo, dict):
         ui._overlay_title_logo(canvas, title_logo)
@@ -662,6 +679,67 @@ def main() -> None:
     camera_accum = 0.0
     story_transition_actors = None
 
+    def _tick_stage1_battle(dt: float) -> str | None:
+        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
+        sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+        queue = flow.get("battle_queue", [])
+        qidx = int(flow.get("battle_queue_index", 0))
+        if not isinstance(queue, list):
+            queue = []
+        if qidx >= len(queue):
+            if not ui._alive_indices(sec_hp):
+                flow["message_text"] = "The party was defeated in this prototype run."
+                return "info"
+            if not ui._alive_indices(pri_hp):
+                return "story_battle_victory"
+            flow["battle_target_cursor"] = ui._first_alive(pri_hp, 0)
+            ui._reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
+            return "story_battle_cmd_player"
+
+        action = queue[qidx]
+        action_kind = str(action.get("kind", "physical"))
+        action_t = float(flow.get("battle_action_t", 0.0)) + dt
+        flow["battle_action_t"] = action_t
+        cast_kinds = ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric", "birdcall", "flee")
+        duration = 1.2 if action_kind in cast_kinds else 0.9
+        if action_kind == "summon":
+            duration = 2.4
+        if action_t < duration:
+            return None
+
+        def _apply_hp_transition(t_side: str, t_idx: int, post_hp: int) -> None:
+            if t_side == "primary" and 0 <= t_idx < len(pri_hp):
+                pri_hp[t_idx] = max(0, int(post_hp))
+                flow["battle_primary_hp"] = pri_hp
+            elif t_side == "secondary" and 0 <= t_idx < len(sec_hp):
+                sec_hp[t_idx] = max(0, int(post_hp))
+                flow["battle_secondary_hp"] = sec_hp
+
+        hits = action.get("hits", [])
+        if isinstance(hits, list) and hits and str(action.get("target_side", "primary")) == "primary":
+            for hit in hits:
+                if not isinstance(hit, dict):
+                    continue
+                _apply_hp_transition("primary", int(hit.get("target_index", -1)), int(hit.get("post_hp", 0)))
+        elif ("post_hp" in action) and ("target_side" in action) and ("target_index" in action):
+            _apply_hp_transition(str(action.get("target_side", "primary")), int(action.get("target_index", 0)), int(action.get("post_hp", 0)))
+
+        if action_kind == "spell":
+            sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+            s_idx = int(action.get("source_index", 0))
+            post_mp = max(0, int(action.get("post_mp", 0)))
+            if 0 <= s_idx < len(sec_mp):
+                sec_mp[s_idx] = post_mp
+                flow["battle_secondary_mp"] = sec_mp
+            flow["battle_staff_charges"] = max(0, int(action.get("post_charges", int(flow.get("battle_staff_charges", 0)))))
+
+        player_name = str(flow.get("selected_name", "Player")).strip() or "Player"
+        ui._battle_log_enqueue(flow, ui._battle_action_log_lines(action, int(flow.get("battle_stage", 1)), player_name))
+        flow["battle_queue_index"] = qidx + 1
+        flow["battle_action_t"] = 0.0
+        flow["battle_log_lines"] = ui._battle_log_visible_lines(flow)
+        return None
+
     print(world.ANSI_HIDE_CURSOR + world.ANSI_CLEAR, end="", flush=True)
     try:
         last_tick = time.monotonic()
@@ -675,6 +753,8 @@ def main() -> None:
                 w = int(cloud["template"]["width"])
                 if cloud["x"] + w < 0:
                     cloud["x"] = world.SCREEN_W + (cloud["x"] + w)
+
+            ui._battle_log_tick(flow, dt)
 
             camera_current = int(flow.get("camera_position", TITLE_LANDSCAPE_POSITION))
             camera_target = int(flow.get("camera_target", camera_current))
@@ -692,6 +772,9 @@ def main() -> None:
             else:
                 camera_accum = 0.0
 
+            battle_transition = None
+            if str(flow.get("screen", "root_menu")) == "story_battle_resolve":
+                battle_transition = _tick_stage1_battle(dt)
             if str(flow.get("screen", "root_menu")) == "story_lineup_shift":
                 position = current_landscape_position(flow)
                 zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
@@ -722,7 +805,11 @@ def main() -> None:
             key = world.read_key_nonblocking()
             if key == "q":
                 break
-            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) != "story_lineup_shift":
+            if battle_transition is not None:
+                flow["screen"] = battle_transition
+                anim_mode = "opening"
+                anim_step = 0
+            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) not in ("story_lineup_shift", "story_battle_resolve"):
                 target_screen = handle_input(flow, key)
                 current_screen = str(flow.get("screen", "root_menu"))
                 if target_screen is not None and target_screen != current_screen:
@@ -737,8 +824,8 @@ def main() -> None:
             sky_bottom_anchor = world.sky_bottom_anchor_for_position(position)
             split_label = f"{zones['sky_bg'].height}/{world.landscape_total_ground_visible_from_horizon(position)}"
             screen = str(flow.get("screen", "root_menu"))
-            if screen == "battle_log":
-                ui_box = build_battle_log_spec([str(line) for line in flow.get("battle_log_lines", [])])
+            if screen in ("battle_log", "story_battle_resolve"):
+                ui_box = build_battle_log_spec(ui._battle_log_visible_lines(flow))
             elif screen == "story_lineup_shift":
                 ui_box = None
             else:
