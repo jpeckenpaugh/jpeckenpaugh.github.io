@@ -31,6 +31,8 @@ LANDSCAPE_MAX_SKY_ROWS = 25
 LANDSCAPE_VISIBLE_GROUND_ROWS = 25
 LANDSCAPE_TOTAL_GROUND_ROWS = 50
 LANDSCAPE_STATE_COUNT = LANDSCAPE_TOTAL_GROUND_ROWS // LANDSCAPE_STEP_ROWS
+ROAD_BASE_WIDTH = 7
+ROAD_EXPAND_ROWS = 15
 TREELINE_ROWS = 3
 DEFAULT_LANDSCAPE_POSITION = 15
 UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
@@ -149,6 +151,13 @@ def treeline_band_state(offset: int, hidden_ground_rows: int, ground_top_y: int)
     return (True, ground_top_y + ((hidden - band) // 2))
 
 
+def road_width_for_horizon_distance(distance_from_horizon: int) -> int:
+    distance = max(0, int(distance_from_horizon))
+    perspective_row = min(distance, max(0, ROAD_EXPAND_ROWS - 1))
+    expand_steps = perspective_row // 2
+    return min(SCREEN_W, ROAD_BASE_WIDTH + (expand_steps * 2))
+
+
 def _colorize_glyph(glyph: str, key: str, color_codes: Dict[str, str]) -> str:
     code = color_codes.get(key, "")
     return f"{code}{glyph}{ANSI_RESET}" if code else glyph
@@ -211,9 +220,6 @@ def build_ground_rows(
                 glyph = rng.choice(pebble_glyphs)
                 key = rng.choice(pebble_keys)
                 cell = _colorize_glyph(glyph, key, color_codes)
-            if road_start <= x <= road_end:
-                dirt = rng.choice(road_chars)
-                cell = f"{road_color}{dirt}{ANSI_RESET}"
             row.append(cell)
         rows.append("".join(row))
     return rows
@@ -1069,6 +1075,9 @@ def render(
     draw_world_scene_sprites(draw_backside=True)
 
     # Background ground pass: draw a moving slice through a taller world ground buffer.
+    road_center = (SCREEN_W - 1) // 2
+    road_chars = [".", ",", "'", "`"]
+    road_color = "[38;2;170;170;170m"
     for i in range(ground_zone.height):
         y = ground_zone.y + i
         src_index = ground_slice_start + i
@@ -1077,6 +1086,13 @@ def render(
         for x, cell in enumerate(cells):
             if cell != " ":
                 canvas[y][x] = cell
+        road_width = road_width_for_horizon_distance(i)
+        road_half = road_width // 2
+        road_start = max(0, road_center - road_half)
+        road_end = min(SCREEN_W - 1, road_start + road_width - 1)
+        road_rng = random.Random(9051701 + src_index)
+        for x in range(road_start, road_end + 1):
+            canvas[y][x] = f"{road_color}{road_rng.choice(road_chars)}{ANSI_RESET}"
 
     # Frontside world pass: draw after the ground so the scene sits in front of the landscape.
     draw_world_scene_sprites(draw_backside=False)
