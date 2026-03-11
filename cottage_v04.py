@@ -37,6 +37,7 @@ ROAD_BASE_WIDTH = 7
 ROAD_EXPAND_ROWS = 15
 CROSSROAD_INTERVAL_ROWS = 30
 CROSSROAD_DIRT_ROWS = 5
+MAIN_STREET_NAME = "Main Street"
 TREELINE_ROWS = 3
 DEFAULT_LANDSCAPE_POSITION = 15
 UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
@@ -432,19 +433,36 @@ def build_world_object_sprite(objects_data: object, colors_data: object, object_
     }
 
 
+def avenue_name(index: int) -> str:
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    value = max(0, int(index))
+    if value < len(alphabet):
+        return f"Ave {alphabet[value]}"
+    return f"Ave {alphabet[value % len(alphabet)]}{(value // len(alphabet)) + 1}"
+
+
+def avenue_house_number(index: int) -> int:
+    return max(0, int(index)) + 1
+
+
 def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> List[dict]:
     base_house = build_world_object_sprite(objects_data, colors_data, "house")
     if base_house is None:
         return []
     sprites: List[dict] = []
     street_span = CROSSROAD_DIRT_ROWS + 2
+    street_index = 0
     for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
+        street_name = avenue_name(street_index)
         above_depth = crossroad_start - 1
         below_depth = crossroad_start + street_span
         if above_depth >= 0:
             sprites.append({
                 "side": "right",
                 "horizon_depth": above_depth,
+                "street_name": street_name,
+                "main_street": MAIN_STREET_NAME,
+                "label": f"[#{avenue_house_number(0)} {street_name}]",
                 "width": int(base_house.get("width", 0)),
                 "height": int(base_house.get("height", 0)),
                 "rows": base_house.get("rows", []),
@@ -453,10 +471,14 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
             sprites.append({
                 "side": "left",
                 "horizon_depth": below_depth,
+                "street_name": street_name,
+                "main_street": MAIN_STREET_NAME,
+                "label": f"[#{avenue_house_number(1)} {street_name}]",
                 "width": int(base_house.get("width", 0)),
                 "height": int(base_house.get("height", 0)),
                 "rows": base_house.get("rows", []),
             })
+        street_index += 1
     return sprites
 
 
@@ -1309,6 +1331,15 @@ def render(
                         x = x0 + dx
                         if 0 <= x < SCREEN_W and cell != " ":
                             canvas[y][x] = cell
+                label = str(sprite.get("label", "")).strip()
+                if label:
+                    plaque_y = y0 + max(0, min(max(0, height - 1), 5) - 3)
+                    plaque_x = x0 + max(0, (width - len(label)) // 2)
+                    plaque_color = "[38;2;245;245;245m"
+                    for idx, ch in enumerate(label):
+                        x = plaque_x + idx
+                        if 0 <= x < SCREEN_W and 0 <= plaque_y < SCREEN_H:
+                            canvas[plaque_y][x] = f"{plaque_color}{ch}{ANSI_RESET}"
 
     # Background sky pass: drifting cloud sprites placed inside a 100-row sky layer.
     for cloud in clouds:
