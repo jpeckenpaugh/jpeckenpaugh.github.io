@@ -123,6 +123,8 @@ def build_demo_flow(player_cards: List[dict]) -> dict:
         "battle_magic_spark_level": 1,
         "story_reward_stage_completed": 0,
         "battle2_entrance": None,
+        "sharoom_entrance": None,
+        "sharoom_lineup_transition": None,
     }
 
 
@@ -230,6 +232,37 @@ def _compute_story_formation_positions(zones: Dict[str, world.LayoutZone], playe
     return out
 
 
+
+
+def _compute_sharoom_shift_positions(zones: Dict[str, world.LayoutZone], player_sprite: List[List[str]], mushy_sprite: List[List[str]], sharoom_sprite: List[List[str]], crow_sprite: List[List[str]]) -> tuple[Dict[str, dict], Dict[str, dict]]:
+    start: Dict[str, dict] = {}
+    end: Dict[str, dict] = {}
+    ground_zone = zones.get("ground_bg")
+    if not isinstance(ground_zone, world.LayoutZone):
+        return (start, end)
+    primary_zone = world.build_primary_zone(world._treeline_lowest_row(ground_zone.y, world.TREELINE_ROWS) + 1)
+    secondary_zone = world.build_secondary_zone()
+    start_pri = world.layout_actor_strip(primary_zone, [sharoom_sprite], spacing=1, stagger_rows=1)
+    start_sec = world.layout_actor_strip(secondary_zone, [player_sprite, mushy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
+    end_pri = world.layout_actor_strip(primary_zone, [crow_sprite, crow_sprite, crow_sprite], spacing=1, stagger_rows=1)
+    end_sec = world.layout_actor_strip(secondary_zone, [sharoom_sprite, player_sprite, mushy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
+    if start_pri:
+        start["sharoom"] = {"x": int(start_pri[0]["x"]), "y": int(start_pri[0]["y"]), "rows": sharoom_sprite}
+    if len(start_sec) >= 1:
+        start["player"] = {"x": int(start_sec[0]["x"]), "y": int(start_sec[0]["y"]), "rows": player_sprite}
+    if len(start_sec) >= 2:
+        start["mushy"] = {"x": int(start_sec[1]["x"]), "y": int(start_sec[1]["y"]), "rows": mushy_sprite}
+    if len(end_sec) >= 1:
+        end["sharoom"] = {"x": int(end_sec[0]["x"]), "y": int(end_sec[0]["y"]), "rows": sharoom_sprite}
+    if len(end_sec) >= 2:
+        end["player"] = {"x": int(end_sec[1]["x"]), "y": int(end_sec[1]["y"]), "rows": player_sprite}
+    if len(end_sec) >= 3:
+        end["mushy"] = {"x": int(end_sec[2]["x"]), "y": int(end_sec[2]["y"]), "rows": mushy_sprite}
+    for idx, crow in enumerate(end_pri):
+        cid = f"crow{idx+1}"
+        end[cid] = {"x": int(crow["x"]), "y": int(crow["y"]), "rows": crow_sprite}
+    return (start, end)
+
 def show_title_logo(flow: dict) -> bool:
     screen = str(flow.get("screen", "root_menu"))
     return screen in ("root_menu", "avatar_select", "name_select", "fortune_select", "start_confirm", "info")
@@ -243,7 +276,9 @@ def current_primary_keys(flow: dict) -> List[str]:
         return ["baby_crow", "mushy"]
     if screen == "story_lineup_shift":
         return ["baby_crow", "mushy"]
-    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log"):
+    if screen in ("story_sharoom_3", "story_sharoom_4", "story_sharoom_5", "story_sharoom_lineup_shift"):
+        return ["sharoom"]
+    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_resolve", "battle_log"):
         kinds = flow.get("battle_primary_kind", ["baby_crow"])
         if not isinstance(kinds, list):
             kinds = ["baby_crow"]
@@ -263,7 +298,14 @@ def current_secondary_keys(flow: dict) -> List[str]:
         return ["player"]
     if screen == "story_lineup_shift":
         return ["player"]
-    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log", "story_battle_victory", "story_mp_increase", "story_more_crows", "story_more_crows_2", "story_more_crows_3", "story_battle2_entrance"):
+    if screen == "story_sharoom_lineup_shift":
+        return ["player", "mushy"]
+    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_resolve", "battle_log", "story_battle_victory"):
+        stage = int(flow.get("battle_stage", 1))
+        return ["sharoom", "player", "mushy"] if stage >= 3 else ["player", "mushy"]
+    if screen in ("story_mp_increase", "story_more_crows", "story_more_crows_2", "story_more_crows_3", "story_battle2_entrance", "story_sharoom_1", "story_sharoom_2", "story_sharoom_entrance"):
+        return ["player", "mushy"]
+    if screen in ("story_sharoom_3", "story_sharoom_4", "story_sharoom_5"):
         return ["player", "mushy"]
     return []
 
@@ -455,6 +497,8 @@ def handle_input(flow: dict, key: str | None) -> str | None:
             flow["battle_mushy_action"] = pick
             if pick in ("Attack", "Summon Hawking"):
                 flow["battle_mushy_target"] = int(flow.get("battle_target_cursor", 0))
+            if int(flow.get("battle_stage", 1)) >= 3:
+                return "story_battle_cmd_sharoom"
             ui._battle_log_start(flow, int(flow.get("battle_stage", 1)))
             flow["battle_queue"] = ui._build_battle_round_actions(flow)
             flow["battle_queue_index"] = 0
@@ -464,6 +508,41 @@ def handle_input(flow: dict, key: str | None) -> str | None:
             return "story_battle_resolve"
         elif back:
             return "story_battle_cmd_player"
+        return None
+
+    if screen == "story_battle_cmd_sharoom":
+        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
+        options = _battle_options(flow, "sharoom")
+        enabled = ui._action_enabled_flags(flow, "sharoom", options)
+        cursor = int(flow.get("battle_sharoom_cmd_idx", 0)) % max(1, len(options))
+        if enabled and not enabled[cursor] and any(enabled):
+            cursor = next((i for i, v in enumerate(enabled) if v), cursor)
+            flow["battle_sharoom_cmd_idx"] = cursor
+        target_cursor = int(flow.get("battle_target_cursor", 0))
+        if key == "up":
+            flow["battle_sharoom_cmd_idx"] = ui._next_enabled_option_index(enabled, cursor, -1)
+        elif key == "down":
+            flow["battle_sharoom_cmd_idx"] = ui._next_enabled_option_index(enabled, cursor, 1)
+        elif key == "left" and enabled[cursor] and options[cursor] in ("Attack", "Summon Hawking"):
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, -1)
+        elif key == "right" and enabled[cursor] and options[cursor] in ("Attack", "Summon Hawking"):
+            flow["battle_target_cursor"] = ui._next_alive_index(pri_hp, target_cursor, 1)
+        elif confirm:
+            if not enabled[cursor]:
+                return None
+            pick = options[cursor]
+            flow["battle_sharoom_action"] = pick
+            if pick in ("Attack", "Summon Hawking"):
+                flow["battle_sharoom_target"] = int(flow.get("battle_target_cursor", 0))
+            ui._battle_log_start(flow, int(flow.get("battle_stage", 1)))
+            flow["battle_queue"] = ui._build_battle_round_actions(flow)
+            flow["battle_queue_index"] = 0
+            flow["battle_action_t"] = 0.0
+            flow["battle_melt_index"] = None
+            flow["battle_melt_t"] = 0.0
+            return "story_battle_resolve"
+        elif back:
+            return "story_battle_cmd_mushy"
         return None
 
     if screen == "battle_log":
@@ -492,7 +571,9 @@ def handle_input(flow: dict, key: str | None) -> str | None:
                 flow["battle_magic_spark_level"] = max(2, int(flow.get("battle_magic_spark_level", 1)))
             if stage_completed == 1:
                 return "story_more_crows"
-            flow["message_text"] = "End of current prototype segment after Battle 2."
+            if stage_completed == 2:
+                return "story_sharoom_1"
+            flow["message_text"] = "End of current prototype segment after Battle 3."
             return "info"
         return None
 
@@ -526,6 +607,60 @@ def handle_input(flow: dict, key: str | None) -> str | None:
             flow["battle_melt_t"] = 0.0
             flow["battle2_entrance"] = {"t": 0.0, "duration": 1.0}
             return "story_battle2_entrance"
+        return None
+
+    if screen == "story_sharoom_1":
+        if confirm:
+            return "story_sharoom_2"
+        return None
+
+    if screen == "story_sharoom_2":
+        if confirm:
+            flow["sharoom_entrance"] = {"t": 0.0, "duration": 1.0}
+            return "story_sharoom_entrance"
+        return None
+
+    if screen == "story_sharoom_3":
+        if confirm:
+            return "story_sharoom_4"
+        return None
+
+    if screen == "story_sharoom_4":
+        if confirm:
+            return "story_sharoom_5"
+        return None
+
+    if screen == "story_sharoom_5":
+        if confirm:
+            flow["battle_stage"] = 3
+            flow["battle_primary_hp"] = [10, 10, 10]
+            flow["battle_primary_hp_max"] = [10, 10, 10]
+            flow["battle_primary_kind"] = ["baby_crow", "baby_crow", "baby_crow"]
+            flow["battle_secondary_hp"] = [10, 20, 10]
+            flow["battle_secondary_hp_max"] = [10, 20, 10]
+            flow["battle_secondary_mp"] = [6, 0, 6]
+            flow["battle_secondary_mp_max"] = [6, 0, 6]
+            flow["battle_secondary_boost_atk"] = [0, 0, 0]
+            flow["battle_secondary_boost_def"] = [0, 0, 0]
+            flow["battle_mushy_spell_target"] = 1
+            flow["battle_mushy_spell_target_mode"] = "single"
+            flow["battle_sharoom_spell_target"] = 1
+            flow["battle_sharoom_spell_target_mode"] = "single"
+            flow["battle_player_cmd_idx"] = 0
+            flow["battle_mushy_cmd_idx"] = 0
+            flow["battle_sharoom_cmd_idx"] = 0
+            flow["battle_player_action"] = "Attack"
+            flow["battle_mushy_action"] = "Attack"
+            flow["battle_sharoom_action"] = "Attack"
+            flow["battle_player_target"] = 0
+            flow["battle_mushy_target"] = 0
+            flow["battle_sharoom_target"] = 0
+            flow["battle_queue"] = []
+            flow["battle_queue_index"] = 0
+            flow["battle_action_t"] = 0.0
+            flow["battle_melt_index"] = None
+            flow["battle_melt_t"] = 0.0
+            return "story_sharoom_lineup_shift"
         return None
 
     if screen == "story_battle_victory":
@@ -827,6 +962,8 @@ def render(
             w = max((len(row) for row in rows), default=0) if isinstance(rows, list) else 0
             center_x = int(actor.get("x", 0)) + (w // 2)
             total = max(1, int(hp_totals[idx])) if idx < len(hp_totals) else max(1, int(story_primary_hp[idx]))
+            if int(story_primary_hp[idx]) <= 0:
+                continue
             ui._draw_health_bar_custom(canvas, center_x, int(actor.get("y", 0)) - 4, int(story_primary_hp[idx]), total=total, row_label="HP")
 
     if isinstance(ui_active_box, ui.UIBoxSpec):
@@ -902,6 +1039,7 @@ def main() -> None:
     sprite_map = {
         "player": player_cards[0]["sprite"],
         "mushy": world.build_opponent_sprite(opponents, "mushroom_baby", color_codes),
+        "sharoom": ui.build_mushroom_variant_sprite(opponents, color_codes, "i"),
         "baby_crow": world.build_opponent_sprite(opponents, "baby_crow", color_codes),
     }
     clouds = world.spawn_clouds_full_canvas(world.cloud_templates(objects))
@@ -1029,7 +1167,62 @@ def main() -> None:
             battle_transition = None
             if str(flow.get("screen", "root_menu")) == "story_battle_resolve":
                 battle_transition = _tick_stage1_battle(dt)
-            if str(flow.get("screen", "root_menu")) == "story_battle2_entrance":
+            if str(flow.get("screen", "root_menu")) == "story_sharoom_entrance":
+                position = current_landscape_position(flow)
+                zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
+                ent = flow.get("sharoom_entrance")
+                if isinstance(ent, dict):
+                    ent["t"] = float(ent.get("t", 0.0)) + dt
+                    duration = max(0.001, float(ent.get("duration", 1.0)))
+                    t = max(0.0, min(1.0, float(ent.get("t", 0.0)) / duration))
+                    te = t * t * (3.0 - (2.0 * t))
+                    ground_zone = zones_for_transition.get("ground_bg")
+                    if isinstance(ground_zone, world.LayoutZone):
+                        pz = world.build_primary_zone(world._treeline_lowest_row(ground_zone.y, world.TREELINE_ROWS) + 1)
+                        targets = world.layout_actor_strip(pz, [sprite_map["sharoom"]], spacing=1, stagger_rows=1)
+                        if targets:
+                            tg = targets[0]
+                            tx = int(tg.get("x", 0))
+                            ty = int(tg.get("y", 0))
+                            sx = world.SCREEN_W + 4
+                            sy = ty
+                            story_transition_actors = [{"id": "sharoom", "x": int(round(sx + ((tx - sx) * te))), "y": int(round(sy + ((ty - sy) * te))), "rows": tg.get("rows", [])}]
+                    if t >= 1.0:
+                        flow["sharoom_entrance"] = None
+                        flow["screen"] = "story_sharoom_3"
+                        anim_mode = "opening"
+                        anim_step = 0
+                        story_transition_actors = None
+                else:
+                    story_transition_actors = None
+            elif str(flow.get("screen", "root_menu")) == "story_sharoom_lineup_shift":
+                position = current_landscape_position(flow)
+                zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
+                trans = flow.get("sharoom_lineup_transition")
+                if isinstance(trans, dict):
+                    trans["t"] = float(trans.get("t", 0.0)) + dt
+                    duration = max(0.001, float(trans.get("duration", 1.0)))
+                    progress = max(0.0, min(1.0, float(trans.get("t", 0.0)) / duration))
+                    start = trans.get("start", {})
+                    end = trans.get("end", {})
+                    if isinstance(start, dict) and isinstance(end, dict):
+                        story_transition_actors = _interpolate_positions(start, end, progress)
+                    if progress >= 1.0:
+                        flow["sharoom_lineup_transition"] = None
+                        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
+                        flow["battle_target_cursor"] = ui._first_alive(pri_hp, 0)
+                        ui._battle_log_start(flow, int(flow.get("battle_stage", 1)))
+                        ui._reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
+                        flow["screen"] = "story_battle_cmd_player"
+                        anim_mode = "opening"
+                        anim_step = 0
+                        story_transition_actors = None
+                elif story_transition_actors is None:
+                    player_sprite_for_shift = player_cards[int(flow.get("player_index", 0)) % len(player_cards)].get("sprite", [])
+                    start_pos, end_pos = _compute_sharoom_shift_positions(zones_for_transition, player_sprite_for_shift, sprite_map["mushy"], sprite_map["sharoom"], sprite_map["baby_crow"])
+                    flow["sharoom_lineup_transition"] = {"t": 0.0, "duration": 1.0, "start": start_pos, "end": end_pos}
+                    story_transition_actors = _interpolate_positions(start_pos, end_pos, 0.0)
+            elif str(flow.get("screen", "root_menu")) == "story_battle2_entrance":
                 position = current_landscape_position(flow)
                 zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
                 ent = flow.get("battle2_entrance")
@@ -1099,7 +1292,7 @@ def main() -> None:
                 flow["screen"] = battle_transition
                 anim_mode = "opening"
                 anim_step = 0
-            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) not in ("story_lineup_shift", "story_battle2_entrance", "story_battle_resolve"):
+            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) not in ("story_lineup_shift", "story_sharoom_entrance", "story_sharoom_lineup_shift", "story_battle2_entrance", "story_battle_resolve"):
                 target_screen = handle_input(flow, key)
                 current_screen = str(flow.get("screen", "root_menu"))
                 if target_screen is not None and target_screen != current_screen:
@@ -1114,7 +1307,7 @@ def main() -> None:
             sky_bottom_anchor = world.sky_bottom_anchor_for_position(position)
             split_label = f"{zones['sky_bg'].height}/{world.landscape_total_ground_visible_from_horizon(position)}"
             screen = str(flow.get("screen", "root_menu"))
-            if screen in ("story_lineup_shift", "story_battle2_entrance"):
+            if screen in ("story_lineup_shift", "story_sharoom_entrance", "story_sharoom_lineup_shift", "story_battle2_entrance"):
                 ui_box = None
             else:
                 ui_box = ui._build_screen_spec(flow)
@@ -1136,12 +1329,16 @@ def main() -> None:
                     "selected": pidx,
                 }
 
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy"):
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
                 sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
                 sec_hp_max = [int(v) for v in flow.get("battle_secondary_hp_max", sec_hp)]
                 sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
                 sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
-                actor_idx = 1 if screen == "story_battle_cmd_mushy" else 0
+                stage_now = int(flow.get("battle_stage", 1))
+                if stage_now >= 3:
+                    actor_idx = 0 if screen == "story_battle_cmd_sharoom" else (1 if screen == "story_battle_cmd_player" else 2)
+                else:
+                    actor_idx = 1 if screen == "story_battle_cmd_mushy" else 0
                 if 0 <= actor_idx < len(sec_hp):
                     hp_total = sec_hp_max[actor_idx] if actor_idx < len(sec_hp_max) else max(1, sec_hp[actor_idx])
                     mp_total = sec_mp_max[actor_idx] if actor_idx < len(sec_mp_max) else (sec_mp[actor_idx] if actor_idx < len(sec_mp) else 0)
@@ -1152,7 +1349,7 @@ def main() -> None:
                         "mp_total": max(1, mp_total),
                     }
 
-            battle_log_screens = {"story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log", "story_battle_victory"}
+            battle_log_screens = {"story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_resolve", "battle_log", "story_battle_victory"}
             battle_log_lines = ui._battle_log_visible_lines(flow) if screen in battle_log_screens else None
             melt_idx_raw = flow.get("battle_melt_index")
             story_melt_idx = int(melt_idx_raw) if melt_idx_raw is not None else None
@@ -1165,7 +1362,7 @@ def main() -> None:
                         story_hidden_primary_indices.append(idx)
             story_target_primary_index = None
             story_target_primary_blink = bool((int(now * 2.0) % 2) == 0)
-            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy"):
+            if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom"):
                 pri_hp_now = [int(v) for v in flow.get("battle_primary_hp", [10])]
                 t = int(flow.get("battle_target_cursor", 0))
                 if 0 <= t < len(pri_hp_now) and pri_hp_now[t] > 0:
