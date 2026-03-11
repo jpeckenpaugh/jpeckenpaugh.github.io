@@ -412,6 +412,54 @@ def _colorize_object_rows(art_rows: object, mask_rows: object, color_codes: Dict
     return out
 
 
+def build_world_object_sprite(objects_data: object, colors_data: object, object_id: str) -> dict | None:
+    if not isinstance(objects_data, dict):
+        return None
+    payload = objects_data.get(object_id, {})
+    if not isinstance(payload, dict):
+        return None
+    color_codes = _build_color_codes(colors_data)
+    art = payload.get("art", [])
+    mask = payload.get("color_mask", [])
+    rows = _colorize_object_rows(art, mask, color_codes)
+    if not rows:
+        return None
+    width = len(rows[0])
+    return {
+        "width": width,
+        "height": len(rows),
+        "rows": rows,
+    }
+
+
+def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> List[dict]:
+    base_house = build_world_object_sprite(objects_data, colors_data, "house")
+    if base_house is None:
+        return []
+    sprites: List[dict] = []
+    street_span = CROSSROAD_DIRT_ROWS + 2
+    for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
+        above_depth = crossroad_start - 1
+        below_depth = crossroad_start + street_span
+        if above_depth >= 0:
+            sprites.append({
+                "side": "right",
+                "horizon_depth": above_depth,
+                "width": int(base_house.get("width", 0)),
+                "height": int(base_house.get("height", 0)),
+                "rows": base_house.get("rows", []),
+            })
+        if below_depth < LANDSCAPE_TOTAL_GROUND_ROWS:
+            sprites.append({
+                "side": "left",
+                "horizon_depth": below_depth,
+                "width": int(base_house.get("width", 0)),
+                "height": int(base_house.get("height", 0)),
+                "rows": base_house.get("rows", []),
+            })
+    return sprites
+
+
 def build_world_treeline_sprites(
     objects_data: object,
     colors_data: object,
@@ -1145,6 +1193,7 @@ def render(
     world_anchor_stagger: int = TREELINE_ROWS,
     world_treeline_sprites: List[dict] | None = None,
     border_treeline_sprites: List[dict] | None = None,
+    crossroad_house_sprites: List[dict] | None = None,
     primary_actor_sprites: List[List[List[str]]] | None = None,
     primary_actor_stagger: int = 0,
     secondary_actor_sprites: List[List[List[str]]] | None = None,
@@ -1223,6 +1272,34 @@ def render(
                     x0 = (column_band * 3) + column_jitter - int(road.get("left_push", 0))
                 else:
                     x0 = (SCREEN_W - max(1, width) - (column_band * 3) + column_jitter) + int(road.get("right_push", 0))
+                y0 = y_base - max(0, height - 1)
+                for dy, row in enumerate(rows):
+                    y = y0 + dy
+                    if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+                        continue
+                    for dx, cell in enumerate(row):
+                        x = x0 + dx
+                        if 0 <= x < SCREEN_W and cell != " ":
+                            canvas[y][x] = cell
+        if crossroad_house_sprites:
+            for sprite in crossroad_house_sprites:
+                rows = sprite.get("rows", [])
+                if not isinstance(rows, list):
+                    continue
+                side = str(sprite.get("side", "left"))
+                width = int(sprite.get("width", len(rows[0]) if rows else 0))
+                height = int(sprite.get("height", len(rows)))
+                horizon_depth = max(0, int(sprite.get("horizon_depth", 0)))
+                sprite_is_backside, y_base = horizon_depth_state(horizon_depth, hidden_ground_rows, ground_zone.y)
+                if sprite_is_backside != draw_backside:
+                    continue
+                y_base = max(ground_zone.y, y_base)
+                distance_from_horizon = max(0, y_base - ground_zone.y)
+                road = road_geometry_for_horizon_distance(distance_from_horizon)
+                if side == "left":
+                    x0 = int(road.get("start", 0)) - width - 8
+                else:
+                    x0 = int(road.get("end", SCREEN_W - 1)) + 8
                 y0 = y_base - max(0, height - 1)
                 for dy, row in enumerate(rows):
                     y = y0 + dy
@@ -1454,6 +1531,7 @@ def main() -> None:
     world_scene_label, world_center_object_id = WORLD_SCENE_VARIANTS[world_scene_index]
     world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
     border_treeline_sprites = build_border_treeline_sprites(objects, colors)
+    crossroad_house_sprites = build_crossroad_house_sprites(objects, colors)
     guy_sprite = build_player_sprite(players, "player_01", color_codes)
     chase_sprite = build_opponent_sprite(opponents, "wolf_pup", color_codes)
     mushy_sprite = build_opponent_sprite(opponents, "mushroom_baby", color_codes)
@@ -1502,6 +1580,7 @@ def main() -> None:
                 world_scene_label, world_center_object_id = WORLD_SCENE_VARIANTS[world_scene_index]
                 world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
                 border_treeline_sprites = build_border_treeline_sprites(objects, colors)
+                crossroad_house_sprites = build_crossroad_house_sprites(objects, colors)
             if key == "up":
                 target_landscape_position -= 1
                 if target_landscape_position < LANDSCAPE_STEP_ROWS:
@@ -1529,6 +1608,7 @@ def main() -> None:
                 world_anchor_stagger=world_anchor_stagger,
                 world_treeline_sprites=world_treeline_sprites,
                 border_treeline_sprites=border_treeline_sprites,
+                crossroad_house_sprites=crossroad_house_sprites,
                 primary_actor_sprites=[
                     baby_fairy_sprite,
                     baby_fairy_sprite,
