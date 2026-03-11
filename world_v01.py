@@ -292,7 +292,23 @@ def _layout_primary_story_actors(beat_label: str, primary_zone: world.LayoutZone
             updated["x"] = max(0, int(actor.get("x", 0)) - 6)
             nudged.append(updated)
         return nudged
-    if beat_label in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_resolve", "battle_log", "story_battle_victory"):
+    hawk_fixed_screens = {
+        "story_hawk_intro_1",
+        "story_hawk_intro_2",
+        "story_hawk_intro_3",
+        "story_hawk_intro_4",
+        "story_hawk_intro_5",
+        "story_hawk_birdcall_taunt",
+        "story_crow_flee_taunt",
+        "story_battle_cmd_player",
+        "story_battle_cmd_mushy",
+        "story_battle_cmd_sharoom",
+        "story_battle_cmd_roomy",
+        "story_battle_resolve",
+        "battle_log",
+        "story_battle_victory",
+    }
+    if beat_label in hawk_fixed_screens:
         return _shift_primary_placements_into_view(placements, left_pad=0, right_pad=2)
     return placements
 
@@ -327,7 +343,7 @@ def _compute_sharoom_shift_positions(zones: Dict[str, world.LayoutZone], player_
     return (start, end)
 
 
-def _compute_roomy_hawk_shift_positions(zones: Dict[str, world.LayoutZone], player_sprite: List[List[str]], mushy_sprite: List[List[str]], sharoom_sprite: List[List[str]], roomy_sprite: List[List[str]], hawk_sprite: List[List[str]]) -> tuple[Dict[str, dict], Dict[str, dict]]:
+def _compute_roomy_hawk_shift_positions(zones: Dict[str, world.LayoutZone], player_sprite: List[List[str]], mushy_sprite: List[List[str]], sharoom_sprite: List[List[str]], roomy_sprite: List[List[str]], hawk_sprite: List[List[str]], crow_sprite: List[List[str]]) -> tuple[Dict[str, dict], Dict[str, dict]]:
     start: Dict[str, dict] = {}
     end: Dict[str, dict] = {}
     ground_zone = zones.get("ground_bg")
@@ -337,7 +353,7 @@ def _compute_roomy_hawk_shift_positions(zones: Dict[str, world.LayoutZone], play
     secondary_zone = world.build_secondary_zone()
     start_pri = world.layout_actor_strip(primary_zone, [roomy_sprite], spacing=1, stagger_rows=1)
     start_sec = world.layout_actor_strip(secondary_zone, [sharoom_sprite, player_sprite, mushy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
-    end_pri = world.layout_actor_strip(primary_zone, [hawk_sprite], spacing=1, stagger_rows=1)
+    end_pri = _layout_primary_story_actors("story_hawk_intro_1", primary_zone, [crow_sprite, hawk_sprite, crow_sprite])
     end_sec = world.layout_actor_strip(secondary_zone, [sharoom_sprite, player_sprite, mushy_sprite, roomy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
     if start_pri:
         start["roomy"] = {"x": int(start_pri[0]["x"]), "y": int(start_pri[0]["y"]), "rows": roomy_sprite}
@@ -355,8 +371,8 @@ def _compute_roomy_hawk_shift_positions(zones: Dict[str, world.LayoutZone], play
         end["mushy"] = {"x": int(end_sec[2]["x"]), "y": int(end_sec[2]["y"]), "rows": mushy_sprite}
     if len(end_sec) >= 4:
         end["roomy"] = {"x": int(end_sec[3]["x"]), "y": int(end_sec[3]["y"]), "rows": roomy_sprite}
-    if end_pri:
-        hawk = end_pri[0]
+    if len(end_pri) >= 2:
+        hawk = end_pri[1]
         hx = int(hawk["x"])
         hy = int(hawk["y"])
         hrows = hawk["rows"]
@@ -374,6 +390,9 @@ def current_primary_keys(flow: dict) -> List[str]:
     if isinstance(flow.get("lineup_transition"), dict):
         return []
     screen = str(flow.get("screen", "root_menu"))
+    if screen == "story_mp_increase":
+        reward_stage = int(flow.get("story_reward_stage_completed", flow.get("battle_stage", 1)))
+        return ["baby_crow", "hawk", "baby_crow"] if reward_stage >= 4 else []
     if screen in ("story_4", "story_5", "story_6"):
         return ["baby_crow", "mushy"]
     if screen == "story_lineup_shift":
@@ -410,6 +429,13 @@ def current_secondary_keys(flow: dict) -> List[str]:
     if isinstance(flow.get("lineup_transition"), dict):
         return []
     screen = str(flow.get("screen", "root_menu"))
+    if screen == "story_mp_increase":
+        reward_stage = int(flow.get("story_reward_stage_completed", flow.get("battle_stage", 1)))
+        if reward_stage >= 4:
+            return ["sharoom", "player", "mushy", "roomy"]
+        if reward_stage >= 3:
+            return ["sharoom", "player", "mushy"]
+        return ["player", "mushy"]
     if screen in ("story_4", "story_5", "story_6"):
         return ["player"]
     if screen == "story_lineup_shift":
@@ -1254,7 +1280,13 @@ def render(
             ui._draw_health_bar_custom(canvas, center_x, int(actor.get("y", 0)) - 4, int(story_primary_hp[idx]), total=total, row_label="HP")
 
     if isinstance(ui_active_box, ui.UIBoxSpec):
-        ui_active_box = ui._position_screen_box_for_actors(beat_label, ui_active_box, primary_placements, secondary_placements)
+        if beat_label in ("story_hawk_intro_1", "story_hawk_intro_2", "story_hawk_intro_5", "story_hawk_birdcall_taunt") and len(primary_placements) >= 2:
+            ui_active_box = ui._anchor_box_next_to_actor(ui_active_box, primary_placements[1], prefer="left")
+        elif beat_label == "story_crow_flee_taunt" and primary_placements:
+            flee_idx = next((idx for idx, actor in enumerate(primary_placements) if idx not in hidden_primary), 0)
+            ui_active_box = ui._anchor_box_next_to_actor(ui_active_box, primary_placements[flee_idx], prefer="left")
+        else:
+            ui_active_box = ui._position_screen_box_for_actors(beat_label, ui_active_box, primary_placements, secondary_placements)
 
     if show_title and isinstance(title_logo, dict):
         ui._overlay_title_logo(canvas, title_logo)
@@ -1391,7 +1423,7 @@ def main() -> None:
                 pre_hp = int(pri_hp[t_idx])
                 pri_hp[t_idx] = max(0, int(post_hp))
                 flow["battle_primary_hp"] = pri_hp
-                if pre_hp > 0 and pri_hp[t_idx] <= 0:
+                if action_kind != "flee" and pre_hp > 0 and pri_hp[t_idx] <= 0:
                     flow["battle_melt_index"] = t_idx
                     flow["battle_melt_t"] = 0.0
             elif t_side == "secondary" and 0 <= t_idx < len(sec_hp):
@@ -1565,7 +1597,7 @@ def main() -> None:
                         story_transition_actors = None
                 elif story_transition_actors is None:
                     player_sprite_for_shift = player_cards[int(flow.get("player_index", 0)) % len(player_cards)].get("sprite", [])
-                    start_pos, end_pos = _compute_roomy_hawk_shift_positions(zones_for_transition, player_sprite_for_shift, active_sprite_map["mushy"], active_sprite_map["sharoom"], active_sprite_map["roomy"], active_sprite_map["hawk"])
+                    start_pos, end_pos = _compute_roomy_hawk_shift_positions(zones_for_transition, player_sprite_for_shift, active_sprite_map["mushy"], active_sprite_map["sharoom"], active_sprite_map["roomy"], active_sprite_map["hawk"], active_sprite_map["baby_crow"])
                     flow["roomy_lineup_transition"] = {"t": 0.0, "duration": 1.0, "start": start_pos, "end": end_pos}
                     story_transition_actors = _interpolate_positions(start_pos, end_pos, 0.0)
             elif str(flow.get("screen", "root_menu")) == "story_battle3_entrance":
@@ -1749,6 +1781,10 @@ def main() -> None:
                 for idx, hp in enumerate(pri_hp_for_hide):
                     if hp <= 0 and (story_melt_idx is None or idx != story_melt_idx):
                         story_hidden_primary_indices.append(idx)
+            if screen == "story_mp_increase":
+                reward_stage = int(flow.get("story_reward_stage_completed", flow.get("battle_stage", 1)))
+                if reward_stage >= 4:
+                    story_hidden_primary_indices = [0, 2]
             story_target_primary_index = None
             story_target_primary_blink = bool((int(now * 2.0) % 2) == 0)
             if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_cmd_roomy"):
