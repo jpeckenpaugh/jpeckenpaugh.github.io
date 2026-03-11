@@ -790,6 +790,15 @@ def render(
         x0 = (world.SCREEN_W - len(footer)) // 2
         for idx, ch in enumerate(footer):
             canvas[world.SCREEN_H - 1][x0 + idx] = ch
+
+    # Vertical wipe-in from bottom, matching ui_v08.py startup behavior.
+    progress = max(0.0, min(1.0, float(wipe_progress)))
+    if progress < 1.0:
+        visible_rows = int(round(world.SCREEN_H * progress))
+        top_hidden_rows = max(0, world.SCREEN_H - visible_rows)
+        for y in range(top_hidden_rows):
+            for x in range(world.SCREEN_W):
+                canvas[y][x] = " "
     return "\n".join("".join(row) for row in canvas)
 
 
@@ -826,7 +835,8 @@ def main() -> None:
     camera_accum = 0.0
     story_transition_actors = None
     wipe_duration = 1.0
-    wipe_started_at = time.monotonic()
+    startup_blank_seconds = 0.20
+    wipe_started_at = time.monotonic() + startup_blank_seconds
 
     def _tick_stage1_battle(dt: float) -> str | None:
         pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
