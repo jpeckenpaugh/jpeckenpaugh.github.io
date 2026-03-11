@@ -454,8 +454,8 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
     street_index = 0
     for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
         street_name = avenue_name(street_index)
-        above_depth = crossroad_start - 1
-        below_depth = crossroad_start + street_span
+        above_depth = crossroad_start - 2
+        below_depth = crossroad_start + street_span + 1
         if above_depth >= 0:
             sprites.append({
                 "side": "right",
@@ -1554,7 +1554,7 @@ def main() -> None:
     )
     wipe_duration = 1.0
     wipe_started_at = time.monotonic()
-    show_zone_guides = True
+    show_zone_guides = False
     world_layer_level = 0
     world_mode_count = 10
     world_anchor_stagger = TREELINE_ROWS
