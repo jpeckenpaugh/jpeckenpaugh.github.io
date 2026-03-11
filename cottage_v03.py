@@ -143,12 +143,12 @@ def landscape_is_backside(position: int) -> bool:
     return landscape_hidden_ground_rows(position) > 0
 
 
-def treeline_band_state(offset: int, hidden_ground_rows: int, ground_top_y: int) -> tuple[bool, int]:
-    band = max(0, min(TREELINE_ROWS - 1, int(offset)))
+def horizon_depth_state(depth_index: int, hidden_ground_rows: int, ground_top_y: int) -> tuple[bool, int]:
+    depth = max(0, int(depth_index))
     hidden = max(0, int(hidden_ground_rows))
-    if hidden <= band:
-        return (False, ground_top_y + (band - hidden))
-    return (True, ground_top_y + ((hidden - band) // 2))
+    if hidden <= depth:
+        return (False, ground_top_y + (depth - hidden))
+    return (True, ground_top_y + ((hidden - depth) // 2))
 
 
 def road_width_for_horizon_distance(distance_from_horizon: int) -> int:
@@ -156,6 +156,23 @@ def road_width_for_horizon_distance(distance_from_horizon: int) -> int:
     perspective_row = min(distance, max(0, ROAD_EXPAND_ROWS - 1))
     expand_steps = perspective_row // 2
     return min(SCREEN_W, ROAD_BASE_WIDTH + (expand_steps * 2))
+
+
+def road_geometry_for_horizon_distance(distance_from_horizon: int) -> dict:
+    road_width = road_width_for_horizon_distance(distance_from_horizon)
+    road_half = road_width // 2
+    road_center = (SCREEN_W - 1) // 2
+    road_start = max(0, road_center - road_half)
+    road_end = min(SCREEN_W - 1, road_start + road_width - 1)
+    left_push = road_width // 2
+    right_push = road_width - left_push
+    return {
+        "width": road_width,
+        "start": road_start,
+        "end": road_end,
+        "left_push": left_push,
+        "right_push": right_push,
+    }
 
 
 def build_road_pushed_row(base_cells: List[str], road_width: int, row_seed: int) -> List[str]:
@@ -418,6 +435,47 @@ def build_world_treeline_sprites(
 
     # Draw from left to right for deterministic overdraw.
     sprites.sort(key=lambda s: int(s.get("x", 0)))
+    return sprites
+
+
+def build_border_treeline_sprites(objects_data: object, colors_data: object) -> List[dict]:
+    if not isinstance(objects_data, dict):
+        return []
+    color_codes = _build_color_codes(colors_data)
+    tree_ids = [obj_id for obj_id in ["tree_large", "tree_large_2", "tree_large_3"] if isinstance(objects_data.get(obj_id), dict)]
+    if not tree_ids:
+        return []
+    rng = random.Random(77421)
+    sprites: List[dict] = []
+
+    def make_tree(obj_id: str, side: str, column_band: int, horizon_depth: int, column_jitter: int) -> dict | None:
+        payload = objects_data.get(obj_id, {})
+        if not isinstance(payload, dict):
+            return None
+        art = payload.get("art", [])
+        mask = payload.get("color_mask", [])
+        rows = _colorize_object_rows(art, mask, color_codes)
+        if not rows:
+            return None
+        width = len(rows[0])
+        return {
+            "side": side,
+            "side_column": max(0, min(2, int(column_band))),
+            "side_jitter": max(-1, min(1, int(column_jitter))),
+            "horizon_depth": max(0, int(horizon_depth)),
+            "width": width,
+            "height": len(rows),
+            "rows": rows,
+        }
+
+    for side in ("left", "right"):
+        depth = 0
+        while depth < LANDSCAPE_TOTAL_GROUND_ROWS:
+            tree_id = tree_ids[rng.randrange(len(tree_ids))]
+            sprite = make_tree(tree_id, side, rng.randint(0, 2), depth, rng.randint(-1, 1))
+            if sprite is not None:
+                sprites.append(sprite)
+            depth += rng.randint(5, 7)
     return sprites
 
 
@@ -1039,6 +1097,7 @@ def render(
     world_layer_level: int = 0,
     world_anchor_stagger: int = TREELINE_ROWS,
     world_treeline_sprites: List[dict] | None = None,
+    border_treeline_sprites: List[dict] | None = None,
     primary_actor_sprites: List[List[List[str]]] | None = None,
     primary_actor_stagger: int = 0,
     secondary_actor_sprites: List[List[List[str]]] | None = None,
@@ -1071,28 +1130,59 @@ def render(
     ground_slice_start = landscape_ground_window_start(landscape_position)
 
     def draw_world_scene_sprites(draw_backside: bool) -> None:
-        if world_layer_level < 1 or not world_treeline_sprites:
+        if world_layer_level < 1:
             return
-        for sprite in world_treeline_sprites:
-            rows = sprite.get("rows", [])
-            if not isinstance(rows, list):
-                continue
-            x0 = int(sprite.get("x", 0))
-            height = int(sprite.get("height", len(rows)))
-            offset = min(TREELINE_ROWS - 1, max(0, int(sprite.get("anchor_offset", 0))))
-            sprite_is_backside, y_base = treeline_band_state(offset, hidden_ground_rows, ground_zone.y)
-            if sprite_is_backside != draw_backside:
-                continue
-            y_base = min(ground_zone.y + max(0, ground_zone.height - 1), max(ground_zone.y, y_base))
-            y0 = y_base - max(0, height - 1)
-            for dy, row in enumerate(rows):
-                y = y0 + dy
-                if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+        if world_treeline_sprites:
+            for sprite in world_treeline_sprites:
+                rows = sprite.get("rows", [])
+                if not isinstance(rows, list):
                     continue
-                for dx, cell in enumerate(row):
-                    x = x0 + dx
-                    if 0 <= x < SCREEN_W and cell != " ":
-                        canvas[y][x] = cell
+                x0 = int(sprite.get("x", 0))
+                height = int(sprite.get("height", len(rows)))
+                offset = min(TREELINE_ROWS - 1, max(0, int(sprite.get("anchor_offset", 0))))
+                sprite_is_backside, y_base = horizon_depth_state(offset, hidden_ground_rows, ground_zone.y)
+                if sprite_is_backside != draw_backside:
+                    continue
+                y_base = max(ground_zone.y, y_base)
+                y0 = y_base - max(0, height - 1)
+                for dy, row in enumerate(rows):
+                    y = y0 + dy
+                    if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+                        continue
+                    for dx, cell in enumerate(row):
+                        x = x0 + dx
+                        if 0 <= x < SCREEN_W and cell != " ":
+                            canvas[y][x] = cell
+        if border_treeline_sprites:
+            for sprite in border_treeline_sprites:
+                rows = sprite.get("rows", [])
+                if not isinstance(rows, list):
+                    continue
+                side = str(sprite.get("side", "left"))
+                width = int(sprite.get("width", len(rows[0]) if rows else 0))
+                height = int(sprite.get("height", len(rows)))
+                horizon_depth = max(0, int(sprite.get("horizon_depth", 0)))
+                sprite_is_backside, y_base = horizon_depth_state(horizon_depth, hidden_ground_rows, ground_zone.y)
+                if sprite_is_backside != draw_backside:
+                    continue
+                y_base = max(ground_zone.y, y_base)
+                distance_from_horizon = max(0, y_base - ground_zone.y)
+                road = road_geometry_for_horizon_distance(distance_from_horizon)
+                column_band = max(0, min(2, int(sprite.get("side_column", 0))))
+                column_jitter = max(-1, min(1, int(sprite.get("side_jitter", 0))))
+                if side == "left":
+                    x0 = (column_band * 3) + column_jitter - int(road.get("left_push", 0))
+                else:
+                    x0 = (SCREEN_W - max(1, width) - (column_band * 3) + column_jitter) + int(road.get("right_push", 0))
+                y0 = y_base - max(0, height - 1)
+                for dy, row in enumerate(rows):
+                    y = y0 + dy
+                    if y < 0 or y >= SCREEN_H or not isinstance(row, list):
+                        continue
+                    for dx, cell in enumerate(row):
+                        x = x0 + dx
+                        if 0 <= x < SCREEN_W and cell != " ":
+                            canvas[y][x] = cell
 
     # Background sky pass: drifting cloud sprites.
     for cloud in clouds:
@@ -1312,6 +1402,7 @@ def main() -> None:
     world_scene_index = 0
     world_scene_label, world_center_object_id = WORLD_SCENE_VARIANTS[world_scene_index]
     world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
+    border_treeline_sprites = build_border_treeline_sprites(objects, colors)
     guy_sprite = build_player_sprite(players, "player_01", color_codes)
     chase_sprite = build_opponent_sprite(opponents, "wolf_pup", color_codes)
     mushy_sprite = build_opponent_sprite(opponents, "mushroom_baby", color_codes)
@@ -1359,6 +1450,7 @@ def main() -> None:
                 world_scene_index = (world_scene_index + 1) % len(WORLD_SCENE_VARIANTS)
                 world_scene_label, world_center_object_id = WORLD_SCENE_VARIANTS[world_scene_index]
                 world_treeline_sprites = build_world_treeline_sprites(objects, colors, world_center_object_id)
+                border_treeline_sprites = build_border_treeline_sprites(objects, colors)
             if key == "up":
                 target_landscape_position -= 1
                 if target_landscape_position < LANDSCAPE_STEP_ROWS:
@@ -1385,6 +1477,7 @@ def main() -> None:
                 world_layer_level=world_layer_level,
                 world_anchor_stagger=world_anchor_stagger,
                 world_treeline_sprites=world_treeline_sprites,
+                border_treeline_sprites=border_treeline_sprites,
                 primary_actor_sprites=[
                     baby_fairy_sprite,
                     baby_fairy_sprite,
