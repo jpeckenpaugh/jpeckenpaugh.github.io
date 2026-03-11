@@ -123,6 +123,7 @@ def build_demo_flow(player_cards: List[dict]) -> dict:
         "battle_magic_spark_level": 1,
         "story_reward_stage_completed": 0,
         "battle2_entrance": None,
+        "battle3_entrance": None,
         "sharoom_entrance": None,
         "sharoom_lineup_transition": None,
     }
@@ -135,6 +136,25 @@ def actor_sprites_from_keys(sprite_map: Dict[str, List[List[str]]], keys: List[s
         if isinstance(rows, list) and rows:
             sprites.append(rows)
     return sprites
+
+
+def current_player_sprite(flow: dict) -> List[List[str]]:
+    player_cards = flow.get("player_cards", [])
+    if not isinstance(player_cards, list) or not player_cards:
+        return []
+    idx = int(flow.get("player_index", 0)) % len(player_cards)
+    card = player_cards[idx]
+    if isinstance(card, dict):
+        rows = card.get("sprite", [])
+        if isinstance(rows, list):
+            return rows
+    return []
+
+
+def build_active_sprite_map(base_sprite_map: Dict[str, List[List[str]]], flow: dict) -> Dict[str, List[List[str]]]:
+    active_map = dict(base_sprite_map)
+    active_map["player"] = current_player_sprite(flow)
+    return active_map
 
 
 def build_stage1_battle_log(flow: dict) -> List[str]:
@@ -234,6 +254,41 @@ def _compute_story_formation_positions(zones: Dict[str, world.LayoutZone], playe
 
 
 
+def _shift_primary_placements_into_view(placements: List[dict], left_pad: int = 0, right_pad: int = 0) -> List[dict]:
+    if not placements:
+        return placements
+    min_x = min(int(actor.get("x", 0)) for actor in placements)
+    max_x = max(int(actor.get("x", 0)) + max((len(row) for row in actor.get("rows", [])), default=0) - 1 for actor in placements)
+    shift = 0
+    if max_x > (world.SCREEN_W - 1 - max(0, right_pad)):
+        shift -= max_x - (world.SCREEN_W - 1 - max(0, right_pad))
+    if (min_x + shift) < max(0, left_pad):
+        shift += max(0, left_pad) - (min_x + shift)
+    if shift != 0:
+        shifted: List[dict] = []
+        for actor in placements:
+            updated = dict(actor)
+            updated["x"] = int(actor.get("x", 0)) + shift
+            shifted.append(updated)
+        return shifted
+    return placements
+
+
+def _layout_primary_story_actors(beat_label: str, primary_zone: world.LayoutZone, primary_actor_sprites: List[List[List[str]]]) -> List[dict]:
+    placements = world.layout_actor_strip(primary_zone, primary_actor_sprites, spacing=1, stagger_rows=1)
+    if beat_label in ("story_sharoom_3", "story_sharoom_4", "story_sharoom_5", "story_sharoom_entrance", "story_sharoom_lineup_shift"):
+        placements = _shift_primary_placements_into_view(placements, left_pad=0, right_pad=10)
+        nudged: List[dict] = []
+        for actor in placements:
+            updated = dict(actor)
+            updated["x"] = max(0, int(actor.get("x", 0)) - 6)
+            nudged.append(updated)
+        return nudged
+    if beat_label in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_resolve", "battle_log", "story_battle_victory"):
+        return _shift_primary_placements_into_view(placements, left_pad=0, right_pad=2)
+    return placements
+
+
 def _compute_sharoom_shift_positions(zones: Dict[str, world.LayoutZone], player_sprite: List[List[str]], mushy_sprite: List[List[str]], sharoom_sprite: List[List[str]], crow_sprite: List[List[str]]) -> tuple[Dict[str, dict], Dict[str, dict]]:
     start: Dict[str, dict] = {}
     end: Dict[str, dict] = {}
@@ -242,7 +297,7 @@ def _compute_sharoom_shift_positions(zones: Dict[str, world.LayoutZone], player_
         return (start, end)
     primary_zone = world.build_primary_zone(world._treeline_lowest_row(ground_zone.y, world.TREELINE_ROWS) + 1)
     secondary_zone = world.build_secondary_zone()
-    start_pri = world.layout_actor_strip(primary_zone, [sharoom_sprite], spacing=1, stagger_rows=1)
+    start_pri = _layout_primary_story_actors("story_sharoom_lineup_shift", primary_zone, [sharoom_sprite])
     start_sec = world.layout_actor_strip(secondary_zone, [player_sprite, mushy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
     end_pri = world.layout_actor_strip(primary_zone, [crow_sprite, crow_sprite, crow_sprite], spacing=1, stagger_rows=1)
     end_sec = world.layout_actor_strip(secondary_zone, [sharoom_sprite, player_sprite, mushy_sprite], spacing=1, stagger_rows=1, reverse_stagger=True)
@@ -300,7 +355,7 @@ def current_secondary_keys(flow: dict) -> List[str]:
         return ["player"]
     if screen == "story_sharoom_lineup_shift":
         return ["player", "mushy"]
-    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_resolve", "battle_log", "story_battle_victory"):
+    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_cmd_sharoom", "story_battle_resolve", "battle_log", "story_battle_victory", "story_battle3_entrance"):
         stage = int(flow.get("battle_stage", 1))
         return ["sharoom", "player", "mushy"] if stage >= 3 else ["player", "mushy"]
     if screen in ("story_mp_increase", "story_more_crows", "story_more_crows_2", "story_more_crows_3", "story_battle2_entrance", "story_sharoom_1", "story_sharoom_2", "story_sharoom_entrance"):
@@ -863,7 +918,7 @@ def render(
             if (step % 2) != 0 and str(story_smash.get("source_side", "secondary")).strip().lower() == "secondary":
                 hidden_secondary_indices.add(int(story_smash.get("source_index", 0)))
 
-    transition_mode = "overlay" if beat_label == "story_battle2_entrance" else "replace"
+    transition_mode = "overlay" if beat_label in ("story_battle2_entrance", "story_battle3_entrance", "story_sharoom_entrance") else "replace"
     hidden_primary = set(int(i) for i in (story_hidden_primary_indices or []))
     if secondary_actor_sprites and (transition_mode == "overlay" or not (isinstance(story_transition_actors, list) and story_transition_actors)):
         secondary_placements = world.layout_actor_strip(secondary_zone, secondary_actor_sprites, spacing=1, stagger_rows=1, reverse_stagger=True)
@@ -872,7 +927,7 @@ def render(
                 continue
             _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
     if primary_actor_sprites and (transition_mode == "overlay" or not (isinstance(story_transition_actors, list) and story_transition_actors)):
-        primary_placements = world.layout_actor_strip(primary_zone, primary_actor_sprites, spacing=1, stagger_rows=1)
+        primary_placements = _layout_primary_story_actors(beat_label, primary_zone, primary_actor_sprites)
         for idx, actor in enumerate(primary_placements):
             if idx in hidden_primary:
                 continue
@@ -1037,7 +1092,6 @@ def main() -> None:
     flow = build_demo_flow(player_cards)
     title_logo = ui._logo_cells_from_objects(objects)
     sprite_map = {
-        "player": player_cards[0]["sprite"],
         "mushy": world.build_opponent_sprite(opponents, "mushroom_baby", color_codes),
         "sharoom": ui.build_mushroom_variant_sprite(opponents, color_codes, "i"),
         "baby_crow": world.build_opponent_sprite(opponents, "baby_crow", color_codes),
@@ -1164,6 +1218,7 @@ def main() -> None:
             else:
                 camera_accum = 0.0
 
+            active_sprite_map = build_active_sprite_map(sprite_map, flow)
             battle_transition = None
             if str(flow.get("screen", "root_menu")) == "story_battle_resolve":
                 battle_transition = _tick_stage1_battle(dt)
@@ -1179,7 +1234,7 @@ def main() -> None:
                     ground_zone = zones_for_transition.get("ground_bg")
                     if isinstance(ground_zone, world.LayoutZone):
                         pz = world.build_primary_zone(world._treeline_lowest_row(ground_zone.y, world.TREELINE_ROWS) + 1)
-                        targets = world.layout_actor_strip(pz, [sprite_map["sharoom"]], spacing=1, stagger_rows=1)
+                        targets = _layout_primary_story_actors("story_sharoom_3", pz, [active_sprite_map["sharoom"]])
                         if targets:
                             tg = targets[0]
                             tx = int(tg.get("x", 0))
@@ -1209,6 +1264,44 @@ def main() -> None:
                         story_transition_actors = _interpolate_positions(start, end, progress)
                     if progress >= 1.0:
                         flow["sharoom_lineup_transition"] = None
+                        flow["battle3_entrance"] = {"t": 0.0, "duration": 1.0}
+                        flow["screen"] = "story_battle3_entrance"
+                        anim_mode = "opening"
+                        anim_step = 0
+                        story_transition_actors = None
+                elif story_transition_actors is None:
+                    player_sprite_for_shift = player_cards[int(flow.get("player_index", 0)) % len(player_cards)].get("sprite", [])
+                    start_pos, end_pos = _compute_sharoom_shift_positions(zones_for_transition, player_sprite_for_shift, active_sprite_map["mushy"], active_sprite_map["sharoom"], active_sprite_map["baby_crow"])
+                    flow["sharoom_lineup_transition"] = {"t": 0.0, "duration": 1.0, "start": start_pos, "end": end_pos}
+                    story_transition_actors = _interpolate_positions(start_pos, end_pos, 0.0)
+            elif str(flow.get("screen", "root_menu")) == "story_battle3_entrance":
+                position = current_landscape_position(flow)
+                zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
+                ent = flow.get("battle3_entrance")
+                if isinstance(ent, dict):
+                    ent["t"] = float(ent.get("t", 0.0)) + dt
+                    duration = max(0.001, float(ent.get("duration", 1.0)))
+                    t = max(0.0, min(1.0, float(ent.get("t", 0.0)) / duration))
+                    te = t * t * (3.0 - (2.0 * t))
+                    primary_zone = world.build_primary_zone(world._treeline_lowest_row(zones_for_transition["ground_bg"].y, world.TREELINE_ROWS) + 1)
+                    targets = _layout_primary_story_actors("story_battle_cmd_player", primary_zone, [active_sprite_map["baby_crow"], active_sprite_map["baby_crow"], active_sprite_map["baby_crow"]])
+                    tmp = []
+                    for idx, tg in enumerate(targets):
+                        tx = int(tg.get("x", 0))
+                        ty = int(tg.get("y", 0))
+                        rows = tg.get("rows", [])
+                        th = len(rows) if isinstance(rows, list) else 0
+                        sx = tx
+                        sy = -max(2, th + 2 + (idx * 2))
+                        tmp.append({
+                            "id": f"crow{idx+1}",
+                            "x": int(round(sx + ((tx - sx) * te))),
+                            "y": int(round(sy + ((ty - sy) * te))),
+                            "rows": rows,
+                        })
+                    story_transition_actors = tmp
+                    if t >= 1.0:
+                        flow["battle3_entrance"] = None
                         pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10, 10, 10])]
                         flow["battle_target_cursor"] = ui._first_alive(pri_hp, 0)
                         ui._battle_log_start(flow, int(flow.get("battle_stage", 1)))
@@ -1217,11 +1310,8 @@ def main() -> None:
                         anim_mode = "opening"
                         anim_step = 0
                         story_transition_actors = None
-                elif story_transition_actors is None:
-                    player_sprite_for_shift = player_cards[int(flow.get("player_index", 0)) % len(player_cards)].get("sprite", [])
-                    start_pos, end_pos = _compute_sharoom_shift_positions(zones_for_transition, player_sprite_for_shift, sprite_map["mushy"], sprite_map["sharoom"], sprite_map["baby_crow"])
-                    flow["sharoom_lineup_transition"] = {"t": 0.0, "duration": 1.0, "start": start_pos, "end": end_pos}
-                    story_transition_actors = _interpolate_positions(start_pos, end_pos, 0.0)
+                else:
+                    story_transition_actors = None
             elif str(flow.get("screen", "root_menu")) == "story_battle2_entrance":
                 position = current_landscape_position(flow)
                 zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
@@ -1232,7 +1322,7 @@ def main() -> None:
                     t = max(0.0, min(1.0, float(ent.get("t", 0.0)) / duration))
                     te = t * t * (3.0 - (2.0 * t))
                     primary_zone = world.build_primary_zone(world._treeline_lowest_row(zones_for_transition["ground_bg"].y, world.TREELINE_ROWS) + 1)
-                    targets = world.layout_actor_strip(primary_zone, [sprite_map["baby_crow"], sprite_map["baby_crow"]], spacing=1, stagger_rows=1)
+                    targets = world.layout_actor_strip(primary_zone, [active_sprite_map["baby_crow"], active_sprite_map["baby_crow"]], spacing=1, stagger_rows=1)
                     tmp = []
                     for idx, tg in enumerate(targets):
                         tx = int(tg.get("x", 0))
@@ -1278,8 +1368,8 @@ def main() -> None:
                         story_transition_actors = None
                 elif story_transition_actors is None:
                     player_sprite_for_shift = player_cards[int(flow.get("player_index", 0)) % len(player_cards)].get("sprite", [])
-                    start_pos = _compute_story_formation_positions(zones_for_transition, player_sprite_for_shift, sprite_map["mushy"], sprite_map["baby_crow"], "pre")
-                    end_pos = _compute_story_formation_positions(zones_for_transition, player_sprite_for_shift, sprite_map["mushy"], sprite_map["baby_crow"], "post")
+                    start_pos = _compute_story_formation_positions(zones_for_transition, player_sprite_for_shift, active_sprite_map["mushy"], active_sprite_map["baby_crow"], "pre")
+                    end_pos = _compute_story_formation_positions(zones_for_transition, player_sprite_for_shift, active_sprite_map["mushy"], active_sprite_map["baby_crow"], "post")
                     flow["lineup_transition"] = {"t": 0.0, "duration": 1.0, "start": start_pos, "end": end_pos}
                     story_transition_actors = _interpolate_positions(start_pos, end_pos, 0.0)
             else:
@@ -1292,7 +1382,7 @@ def main() -> None:
                 flow["screen"] = battle_transition
                 anim_mode = "opening"
                 anim_step = 0
-            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) not in ("story_lineup_shift", "story_sharoom_entrance", "story_sharoom_lineup_shift", "story_battle2_entrance", "story_battle_resolve"):
+            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) not in ("story_lineup_shift", "story_sharoom_entrance", "story_sharoom_lineup_shift", "story_battle2_entrance", "story_battle3_entrance", "story_battle_resolve"):
                 target_screen = handle_input(flow, key)
                 current_screen = str(flow.get("screen", "root_menu"))
                 if target_screen is not None and target_screen != current_screen:
@@ -1307,7 +1397,7 @@ def main() -> None:
             sky_bottom_anchor = world.sky_bottom_anchor_for_position(position)
             split_label = f"{zones['sky_bg'].height}/{world.landscape_total_ground_visible_from_horizon(position)}"
             screen = str(flow.get("screen", "root_menu"))
-            if screen in ("story_lineup_shift", "story_sharoom_entrance", "story_sharoom_lineup_shift", "story_battle2_entrance"):
+            if screen in ("story_lineup_shift", "story_sharoom_entrance", "story_sharoom_lineup_shift", "story_battle2_entrance", "story_battle3_entrance"):
                 ui_box = None
             else:
                 ui_box = ui._build_screen_spec(flow)
@@ -1439,8 +1529,8 @@ def main() -> None:
                 world_treeline_sprites=world_treeline_sprites,
                 border_treeline_sprites=border_treeline_sprites,
                 crossroad_house_sprites=crossroad_house_sprites,
-                primary_actor_sprites=actor_sprites_from_keys(sprite_map, current_primary_keys(flow)),
-                secondary_actor_sprites=actor_sprites_from_keys(sprite_map, current_secondary_keys(flow)),
+                primary_actor_sprites=actor_sprites_from_keys(active_sprite_map, current_primary_keys(flow)),
+                secondary_actor_sprites=actor_sprites_from_keys(active_sprite_map, current_secondary_keys(flow)),
                 ui_active_box=(ui_box if (ui_ready and isinstance(ui_box, ui.UIBoxSpec)) else None),
                 beat_label=screen,
                 address_label=current_address_label(flow),
