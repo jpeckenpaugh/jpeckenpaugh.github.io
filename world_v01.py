@@ -121,6 +121,8 @@ def build_demo_flow(player_cards: List[dict]) -> dict:
         "battle_log_active": None,
         "battle_log_active_chars": 0,
         "battle_magic_spark_level": 1,
+        "story_reward_stage_completed": 0,
+        "battle2_entrance": None,
     }
 
 
@@ -239,8 +241,17 @@ def current_primary_keys(flow: dict) -> List[str]:
     screen = str(flow.get("screen", "root_menu"))
     if screen in ("story_4", "story_5", "story_6"):
         return ["baby_crow", "mushy"]
+    if screen == "story_lineup_shift":
+        return ["baby_crow", "mushy"]
     if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log"):
-        return ["baby_crow"]
+        kinds = flow.get("battle_primary_kind", ["baby_crow"])
+        if not isinstance(kinds, list):
+            kinds = ["baby_crow"]
+        out: List[str] = []
+        for kind in kinds:
+            k = str(kind).strip().lower()
+            out.append("baby_crow" if k == "baby_crow" else "baby_crow")
+        return out or ["baby_crow"]
     return []
 
 
@@ -250,7 +261,9 @@ def current_secondary_keys(flow: dict) -> List[str]:
     screen = str(flow.get("screen", "root_menu"))
     if screen in ("story_4", "story_5", "story_6"):
         return ["player"]
-    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log", "story_battle_victory"):
+    if screen == "story_lineup_shift":
+        return ["player"]
+    if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log", "story_battle_victory", "story_mp_increase", "story_more_crows", "story_more_crows_2", "story_more_crows_3", "story_battle2_entrance"):
         return ["player", "mushy"]
     return []
 
@@ -460,6 +473,61 @@ def handle_input(flow: dict, key: str | None) -> str | None:
             return "story_battle_cmd_mushy"
         return None
 
+    if screen == "story_mp_increase":
+        if confirm:
+            stage_completed = int(flow.get("story_reward_stage_completed", flow.get("battle_stage", 1)))
+            sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+            sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
+            pidx = 0
+            if pidx >= len(sec_mp):
+                sec_mp.extend([0] * (pidx + 1 - len(sec_mp)))
+            if pidx >= len(sec_mp_max):
+                sec_mp_max.extend([0] * (pidx + 1 - len(sec_mp_max)))
+            sec_mp_max[pidx] = max(0, int(sec_mp_max[pidx])) + 2
+            for i in range(min(len(sec_mp), len(sec_mp_max))):
+                sec_mp[i] = max(0, int(sec_mp_max[i]))
+            flow["battle_secondary_mp"] = sec_mp
+            flow["battle_secondary_mp_max"] = sec_mp_max
+            if stage_completed >= 2:
+                flow["battle_magic_spark_level"] = max(2, int(flow.get("battle_magic_spark_level", 1)))
+            if stage_completed == 1:
+                return "story_more_crows"
+            flow["message_text"] = "End of current prototype segment after Battle 2."
+            return "info"
+        return None
+
+    if screen == "story_more_crows":
+        if confirm:
+            return "story_more_crows_2"
+        return None
+
+    if screen == "story_more_crows_2":
+        if confirm:
+            return "story_more_crows_3"
+        return None
+
+    if screen == "story_more_crows_3":
+        if confirm:
+            flow["battle_stage"] = 2
+            flow["battle_primary_hp"] = [10, 10]
+            flow["battle_primary_hp_max"] = [10, 10]
+            flow["battle_primary_kind"] = ["baby_crow", "baby_crow"]
+            flow["battle_secondary_boost_atk"] = [0, 0]
+            flow["battle_secondary_boost_def"] = [0, 0]
+            flow["battle_player_cmd_idx"] = 0
+            flow["battle_mushy_cmd_idx"] = 0
+            flow["battle_player_action"] = "Attack"
+            flow["battle_mushy_action"] = "Attack"
+            flow["battle_target_cursor"] = ui._first_alive([10, 10], 0)
+            flow["battle_queue"] = []
+            flow["battle_queue_index"] = 0
+            flow["battle_action_t"] = 0.0
+            flow["battle_melt_index"] = None
+            flow["battle_melt_t"] = 0.0
+            flow["battle2_entrance"] = {"t": 0.0, "duration": 1.0}
+            return "story_battle2_entrance"
+        return None
+
     if screen == "story_battle_victory":
         if confirm:
             flow["message_text"] = "End of world_v01 prototype."
@@ -501,6 +569,9 @@ def render(
     story_primary_hp: List[int] | None = None,
     story_primary_hp_totals: List[int] | None = None,
     story_damage_hud: dict | None = None,
+    story_melt_primary_index: int | None = None,
+    story_melt_progress: float = 0.0,
+    story_hidden_primary_indices: List[int] | None = None,
     battle_log_lines: List[str] | None = None,
 ) -> str:
     canvas = [[" " for _ in range(world.SCREEN_W)] for _ in range(world.SCREEN_H)]
@@ -657,25 +728,31 @@ def render(
             if (step % 2) != 0 and str(story_smash.get("source_side", "secondary")).strip().lower() == "secondary":
                 hidden_secondary_indices.add(int(story_smash.get("source_index", 0)))
 
+    transition_mode = "overlay" if beat_label == "story_battle2_entrance" else "replace"
+    hidden_primary = set(int(i) for i in (story_hidden_primary_indices or []))
+    if secondary_actor_sprites and (transition_mode == "overlay" or not (isinstance(story_transition_actors, list) and story_transition_actors)):
+        secondary_placements = world.layout_actor_strip(secondary_zone, secondary_actor_sprites, spacing=1, stagger_rows=1, reverse_stagger=True)
+        for idx, actor in enumerate(secondary_placements):
+            if idx in hidden_secondary_indices:
+                continue
+            _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
+    if primary_actor_sprites and (transition_mode == "overlay" or not (isinstance(story_transition_actors, list) and story_transition_actors)):
+        primary_placements = world.layout_actor_strip(primary_zone, primary_actor_sprites, spacing=1, stagger_rows=1)
+        for idx, actor in enumerate(primary_placements):
+            if idx in hidden_primary:
+                continue
+            if story_melt_primary_index is not None and idx == int(story_melt_primary_index):
+                ui._draw_defeat_dissolve(canvas, actor, story_melt_progress)
+                continue
+            if story_target_primary_index is not None and idx == int(story_target_primary_index) and not story_target_primary_blink:
+                continue
+            _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
     if isinstance(story_transition_actors, list) and story_transition_actors:
         for actor in story_transition_actors:
             rows = actor.get("rows", [])
             if not isinstance(rows, list):
                 continue
             _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), rows)
-    else:
-        if secondary_actor_sprites:
-            secondary_placements = world.layout_actor_strip(secondary_zone, secondary_actor_sprites, spacing=1, stagger_rows=1, reverse_stagger=True)
-            for idx, actor in enumerate(secondary_placements):
-                if idx in hidden_secondary_indices:
-                    continue
-                _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
-        if primary_actor_sprites:
-            primary_placements = world.layout_actor_strip(primary_zone, primary_actor_sprites, spacing=1, stagger_rows=1)
-            for idx, actor in enumerate(primary_placements):
-                if story_target_primary_index is not None and idx == int(story_target_primary_index) and not story_target_primary_blink:
-                    continue
-                _draw_actor_rows(int(actor.get("x", 0)), int(actor.get("y", 0)), actor.get("rows", []))
 
     if isinstance(story_spell, dict) and primary_placements and secondary_placements:
         source_side = str(story_spell.get("source_side", "secondary"))
@@ -695,11 +772,16 @@ def render(
         if 0 <= source_index < len(src_list) and 0 <= target_index < len(dst_list):
             ui._draw_spell_throw(canvas, _center_of(src_list[source_index]), _center_of(dst_list[target_index]), progress)
 
-    if isinstance(story_smash, dict) and primary_placements:
+    def _actor_from_side(side: str, idx: int) -> dict | None:
+        lookup = secondary_placements if str(side).strip().lower() == "secondary" else primary_placements
+        return lookup[idx] if 0 <= idx < len(lookup) else None
+
+    if isinstance(story_smash, dict):
+        target_side = str(story_smash.get("target_side", "primary"))
         target_index = int(story_smash.get("target_index", 0))
         progress = max(0.0, min(1.0, float(story_smash.get("progress", 0.0))))
-        if 0 <= target_index < len(primary_placements) and progress >= 0.5:
-            actor = primary_placements[target_index]
+        actor = _actor_from_side(target_side, target_index)
+        if isinstance(actor, dict) and progress >= 0.5:
             rows = actor.get("rows", [])
             w = max((len(row) for row in rows), default=0) if isinstance(rows, list) else 0
             h = len(rows) if isinstance(rows, list) else 0
@@ -713,11 +795,11 @@ def render(
             for hud in target_huds:
                 if not isinstance(hud, dict):
                     continue
-                t_idx = int(hud.get("target_index", -1))
-                if 0 <= t_idx < len(primary_placements):
+                actor = _actor_from_side(str(hud.get("target_side", story_damage_hud.get("target_side", "primary"))), int(hud.get("target_index", -1)))
+                if isinstance(actor, dict):
                     ui._draw_damage_hud_step(
                         canvas,
-                        primary_placements[t_idx],
+                        actor,
                         progress=float(hud.get("progress", story_damage_hud.get("progress", 0.0))),
                         pre_hp=max(0, int(hud.get("pre_hp", 0))),
                         post_hp=max(0, int(hud.get("post_hp", 0))),
@@ -725,11 +807,11 @@ def render(
                         damage=max(0, int(hud.get("damage", 0))),
                     )
         else:
-            t_idx = int(story_damage_hud.get("target_index", -1))
-            if 0 <= t_idx < len(primary_placements):
+            actor = _actor_from_side(str(story_damage_hud.get("target_side", "primary")), int(story_damage_hud.get("target_index", -1)))
+            if isinstance(actor, dict):
                 ui._draw_damage_hud_step(
                     canvas,
-                    primary_placements[t_idx],
+                    actor,
                     progress=float(story_damage_hud.get("progress", 0.0)),
                     pre_hp=max(0, int(story_damage_hud.get("pre_hp", 0))),
                     post_hp=max(0, int(story_damage_hud.get("post_hp", 0))),
@@ -850,7 +932,11 @@ def main() -> None:
                 flow["message_text"] = "The party was defeated in this prototype run."
                 return "info"
             if not ui._alive_indices(pri_hp):
-                return "story_battle_victory"
+                flow["battle_staff_charges"] = 3
+                ui._restore_party_post_battle(flow)
+                completed_stage = int(flow.get("battle_stage", 1))
+                flow["story_reward_stage_completed"] = completed_stage
+                return "story_mp_increase"
             flow["battle_target_cursor"] = ui._first_alive(pri_hp, 0)
             ui._reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
             return "story_battle_cmd_player"
@@ -868,8 +954,12 @@ def main() -> None:
 
         def _apply_hp_transition(t_side: str, t_idx: int, post_hp: int) -> None:
             if t_side == "primary" and 0 <= t_idx < len(pri_hp):
+                pre_hp = int(pri_hp[t_idx])
                 pri_hp[t_idx] = max(0, int(post_hp))
                 flow["battle_primary_hp"] = pri_hp
+                if pre_hp > 0 and pri_hp[t_idx] <= 0:
+                    flow["battle_melt_index"] = t_idx
+                    flow["battle_melt_t"] = 0.0
             elif t_side == "secondary" and 0 <= t_idx < len(sec_hp):
                 sec_hp[t_idx] = max(0, int(post_hp))
                 flow["battle_secondary_hp"] = sec_hp
@@ -915,6 +1005,10 @@ def main() -> None:
                     cloud["x"] = world.SCREEN_W + (cloud["x"] + w)
 
             ui._battle_log_tick(flow, dt)
+            if flow.get("battle_melt_index") is not None:
+                flow["battle_melt_t"] = float(flow.get("battle_melt_t", 0.0)) + dt
+                if float(flow.get("battle_melt_t", 0.0)) >= 0.8:
+                    flow["battle_melt_t"] = 0.8
 
             camera_current = int(flow.get("camera_position", TITLE_LANDSCAPE_POSITION))
             camera_target = int(flow.get("camera_target", camera_current))
@@ -935,7 +1029,43 @@ def main() -> None:
             battle_transition = None
             if str(flow.get("screen", "root_menu")) == "story_battle_resolve":
                 battle_transition = _tick_stage1_battle(dt)
-            if str(flow.get("screen", "root_menu")) == "story_lineup_shift":
+            if str(flow.get("screen", "root_menu")) == "story_battle2_entrance":
+                position = current_landscape_position(flow)
+                zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
+                ent = flow.get("battle2_entrance")
+                if isinstance(ent, dict):
+                    ent["t"] = float(ent.get("t", 0.0)) + dt
+                    duration = max(0.001, float(ent.get("duration", 1.0)))
+                    t = max(0.0, min(1.0, float(ent.get("t", 0.0)) / duration))
+                    te = t * t * (3.0 - (2.0 * t))
+                    primary_zone = world.build_primary_zone(world._treeline_lowest_row(zones_for_transition["ground_bg"].y, world.TREELINE_ROWS) + 1)
+                    targets = world.layout_actor_strip(primary_zone, [sprite_map["baby_crow"], sprite_map["baby_crow"]], spacing=1, stagger_rows=1)
+                    tmp = []
+                    for idx, tg in enumerate(targets):
+                        tx = int(tg.get("x", 0))
+                        ty = int(tg.get("y", 0))
+                        rows = tg.get("rows", [])
+                        th = len(rows) if isinstance(rows, list) else 0
+                        sx = tx
+                        sy = -max(2, th + 2 + (idx * 2))
+                        tmp.append({
+                            "id": f"crow{idx+1}",
+                            "x": int(round(sx + ((tx - sx) * te))),
+                            "y": int(round(sy + ((ty - sy) * te))),
+                            "rows": rows,
+                        })
+                    story_transition_actors = tmp
+                    if t >= 1.0:
+                        flow["battle2_entrance"] = None
+                        ui._battle_log_start(flow, int(flow.get("battle_stage", 1)))
+                        ui._reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
+                        flow["screen"] = "story_battle_cmd_player"
+                        anim_mode = "opening"
+                        anim_step = 0
+                        story_transition_actors = None
+                else:
+                    story_transition_actors = None
+            elif str(flow.get("screen", "root_menu")) == "story_lineup_shift":
                 position = current_landscape_position(flow)
                 zones_for_transition = world.build_scene_zones(sky_rows=world.landscape_sky_rows(position))
                 trans = flow.get("lineup_transition")
@@ -969,7 +1099,7 @@ def main() -> None:
                 flow["screen"] = battle_transition
                 anim_mode = "opening"
                 anim_step = 0
-            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) not in ("story_lineup_shift", "story_battle_resolve"):
+            if anim_mode == "open" and flow.get("camera_transition_screen") is None and str(flow.get("screen", "root_menu")) not in ("story_lineup_shift", "story_battle2_entrance", "story_battle_resolve"):
                 target_screen = handle_input(flow, key)
                 current_screen = str(flow.get("screen", "root_menu"))
                 if target_screen is not None and target_screen != current_screen:
@@ -984,7 +1114,7 @@ def main() -> None:
             sky_bottom_anchor = world.sky_bottom_anchor_for_position(position)
             split_label = f"{zones['sky_bg'].height}/{world.landscape_total_ground_visible_from_horizon(position)}"
             screen = str(flow.get("screen", "root_menu"))
-            if screen == "story_lineup_shift":
+            if screen in ("story_lineup_shift", "story_battle2_entrance"):
                 ui_box = None
             else:
                 ui_box = ui._build_screen_spec(flow)
@@ -1024,6 +1154,15 @@ def main() -> None:
 
             battle_log_screens = {"story_battle_cmd_player", "story_battle_cmd_mushy", "story_battle_resolve", "battle_log", "story_battle_victory"}
             battle_log_lines = ui._battle_log_visible_lines(flow) if screen in battle_log_screens else None
+            melt_idx_raw = flow.get("battle_melt_index")
+            story_melt_idx = int(melt_idx_raw) if melt_idx_raw is not None else None
+            story_melt_progress = min(1.0, float(flow.get("battle_melt_t", 0.0)) / 0.8) if melt_idx_raw is not None else 0.0
+            story_hidden_primary_indices = []
+            if screen in battle_log_screens:
+                pri_hp_for_hide = [int(v) for v in flow.get("battle_primary_hp", [10])]
+                for idx, hp in enumerate(pri_hp_for_hide):
+                    if hp <= 0 and (story_melt_idx is None or idx != story_melt_idx):
+                        story_hidden_primary_indices.append(idx)
             story_target_primary_index = None
             story_target_primary_blink = bool((int(now * 2.0) % 2) == 0)
             if screen in ("story_battle_cmd_player", "story_battle_cmd_mushy"):
@@ -1051,8 +1190,10 @@ def main() -> None:
                         if isinstance(hits, list) and hits:
                             story_damage_hud = {
                                 "progress": prog,
+                                "target_side": str(action.get("target_side", "primary")),
                                 "target_huds": [
                                     {
+                                        "target_side": str(action.get("target_side", "primary")),
                                         "target_index": int(hit.get("target_index", 0)),
                                         "progress": prog,
                                         "pre_hp": int(hit.get("pre_hp", 0)),
@@ -1066,6 +1207,7 @@ def main() -> None:
                             }
                         else:
                             story_damage_hud = {
+                                "target_side": str(action.get("target_side", "primary")),
                                 "target_index": int(action.get("target_index", 0)),
                                 "progress": prog,
                                 "pre_hp": int(action.get("pre_hp", 0)),
@@ -1120,6 +1262,9 @@ def main() -> None:
                 story_primary_hp=story_primary_hp,
                 story_primary_hp_totals=story_primary_hp_totals,
                 story_damage_hud=story_damage_hud,
+                story_melt_primary_index=story_melt_idx,
+                story_melt_progress=story_melt_progress,
+                story_hidden_primary_indices=story_hidden_primary_indices,
                 battle_log_lines=battle_log_lines,
             )
             print(world.ANSI_HOME + frame, end="", flush=True)
