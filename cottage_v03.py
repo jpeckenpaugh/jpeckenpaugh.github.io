@@ -29,7 +29,7 @@ LANDSCAPE_STEP_ROWS = 5
 LANDSCAPE_MIN_SKY_ROWS = 5
 LANDSCAPE_MAX_SKY_ROWS = 25
 LANDSCAPE_VISIBLE_GROUND_ROWS = 25
-LANDSCAPE_TOTAL_GROUND_ROWS = 50
+LANDSCAPE_TOTAL_GROUND_ROWS = 200
 LANDSCAPE_STATE_COUNT = LANDSCAPE_TOTAL_GROUND_ROWS // LANDSCAPE_STEP_ROWS
 ROAD_BASE_WIDTH = 7
 ROAD_EXPAND_ROWS = 15
@@ -469,7 +469,7 @@ def build_border_treeline_sprites(objects_data: object, colors_data: object) -> 
         }
 
     for side in ("left", "right"):
-        depth = 0
+        depth = rng.randint(5, 7)
         while depth < LANDSCAPE_TOTAL_GROUND_ROWS:
             tree_id = tree_ids[rng.randrange(len(tree_ids))]
             sprite = make_tree(tree_id, side, rng.randint(0, 2), depth, rng.randint(-1, 1))
