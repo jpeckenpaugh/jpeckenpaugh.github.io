@@ -35,6 +35,8 @@ SKY_LAYER_HEIGHT = 124
 SKY_LAYER_BASE_BOTTOM = 24
 ROAD_BASE_WIDTH = 7
 ROAD_EXPAND_ROWS = 15
+CROSSROAD_INTERVAL_ROWS = 30
+CROSSROAD_DIRT_ROWS = 5
 TREELINE_ROWS = 3
 DEFAULT_LANDSCAPE_POSITION = 15
 UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
@@ -177,7 +179,7 @@ def road_geometry_for_horizon_distance(distance_from_horizon: int) -> dict:
     }
 
 
-def build_road_pushed_row(base_cells: List[str], road_width: int, row_seed: int) -> List[str]:
+def build_road_pushed_row(base_cells: List[str], road_width: int, row_seed: int, crossroad_phase: str | None = None) -> List[str]:
     cells = list(base_cells[:SCREEN_W])
     if len(cells) < SCREEN_W:
         cells.extend([" "] * (SCREEN_W - len(cells)))
@@ -207,11 +209,54 @@ def build_road_pushed_row(base_cells: List[str], road_width: int, row_seed: int)
     for x in range(road_start, road_end + 1):
         out[x] = f"{road_color}{road_rng.choice(road_chars)}{ANSI_RESET}"
     if road_start - 1 >= 0:
-        left_idx = road_rng.randrange(len(stone_glyphs))
-        out[road_start - 1] = f"{stone_colors[left_idx]}{stone_glyphs[left_idx]}{ANSI_RESET}"
+        if crossroad_phase is None:
+            left_idx = road_rng.randrange(len(stone_glyphs))
+            out[road_start - 1] = f"{stone_colors[left_idx]}{stone_glyphs[left_idx]}{ANSI_RESET}"
+        else:
+            out[road_start - 1] = f"{road_color}{road_rng.choice(road_chars)}{ANSI_RESET}"
     if road_end + 1 < SCREEN_W:
-        right_idx = road_rng.randrange(len(stone_glyphs))
-        out[road_end + 1] = f"{stone_colors[right_idx]}{stone_glyphs[right_idx]}{ANSI_RESET}"
+        if crossroad_phase is None:
+            right_idx = road_rng.randrange(len(stone_glyphs))
+            out[road_end + 1] = f"{stone_colors[right_idx]}{stone_glyphs[right_idx]}{ANSI_RESET}"
+        else:
+            out[road_end + 1] = f"{road_color}{road_rng.choice(road_chars)}{ANSI_RESET}"
+    return out
+
+
+def crossroad_row_phase(world_row: int) -> str | None:
+    row = int(world_row)
+    if row < CROSSROAD_INTERVAL_ROWS:
+        return None
+    offset = row % CROSSROAD_INTERVAL_ROWS
+    if offset == 0 or offset == CROSSROAD_DIRT_ROWS + 1:
+        return "stone"
+    if 1 <= offset <= CROSSROAD_DIRT_ROWS:
+        return "dirt"
+    return None
+
+
+def overlay_crossroad_row(base_cells: List[str], world_row: int, row_seed: int) -> List[str]:
+    phase = crossroad_row_phase(world_row)
+    if phase is None:
+        return list(base_cells)
+    out = list(base_cells[:SCREEN_W])
+    if len(out) < SCREEN_W:
+        out.extend([" "] * (SCREEN_W - len(out)))
+    rng = random.Random(row_seed)
+    if phase == "stone":
+        stone_glyphs = ["o", "O"]
+        stone_colors = [
+            "[38;2;185;185;185m",
+            "[38;2;140;140;140m",
+        ]
+        for x in range(SCREEN_W):
+            idx = rng.randrange(len(stone_glyphs))
+            out[x] = f"{stone_colors[idx]}{stone_glyphs[idx]}{ANSI_RESET}"
+        return out
+    dirt_chars = [".", ",", "'", "`"]
+    dirt_color = "[38;2;170;170;170m"
+    for x in range(SCREEN_W):
+        out[x] = f"{dirt_color}{rng.choice(dirt_chars)}{ANSI_RESET}"
     return out
 
 
@@ -1164,6 +1209,8 @@ def render(
                 width = int(sprite.get("width", len(rows[0]) if rows else 0))
                 height = int(sprite.get("height", len(rows)))
                 horizon_depth = max(0, int(sprite.get("horizon_depth", 0)))
+                if crossroad_row_phase(horizon_depth) is not None:
+                    continue
                 sprite_is_backside, y_base = horizon_depth_state(horizon_depth, hidden_ground_rows, ground_zone.y)
                 if sprite_is_backside != draw_backside:
                     continue
@@ -1211,7 +1258,9 @@ def render(
         src = ground_rows[src_index] if 0 <= src_index < len(ground_rows) else ""
         cells = ansi_line_to_cells(src, SCREEN_W)
         road_width = road_width_for_horizon_distance(i)
-        row_cells = build_road_pushed_row(cells, road_width, 9051701 + src_index)
+        crossroad_phase = crossroad_row_phase(src_index)
+        row_cells = overlay_crossroad_row(cells, src_index, 12051701 + src_index)
+        row_cells = build_road_pushed_row(row_cells, road_width, 9051701 + src_index, crossroad_phase=crossroad_phase)
         for x, cell in enumerate(row_cells):
             if cell != " ":
                 canvas[y][x] = cell
