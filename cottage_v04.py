@@ -441,10 +441,6 @@ def avenue_name(index: int) -> str:
     return f"Ave {alphabet[value % len(alphabet)]}{(value // len(alphabet)) + 1}"
 
 
-def avenue_house_number(index: int) -> int:
-    return max(0, int(index)) + 1
-
-
 def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> List[dict]:
     base_house = build_world_object_sprite(objects_data, colors_data, "house")
     if base_house is None:
@@ -452,32 +448,36 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
     sprites: List[dict] = []
     street_span = CROSSROAD_DIRT_ROWS + 2
     street_index = 0
+    house_width = int(base_house.get("width", 0))
+
+    def add_house(side: str, horizon_depth: int, label: str, side_slot: int, lateral_offset: int = 0) -> None:
+        sprites.append({
+            "side": side,
+            "side_slot": max(0, int(side_slot)),
+            "side_offset": int(lateral_offset),
+            "horizon_depth": max(0, min(LANDSCAPE_TOTAL_GROUND_ROWS - 1, int(horizon_depth))),
+            "street_name": street_name,
+            "main_street": MAIN_STREET_NAME,
+            "label": label,
+            "width": house_width,
+            "height": int(base_house.get("height", 0)),
+            "rows": base_house.get("rows", []),
+        })
+
     for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
         street_name = avenue_name(street_index)
         above_depth = crossroad_start - 2
         below_depth = crossroad_start + street_span + 1
         if above_depth >= 0:
-            sprites.append({
-                "side": "right",
-                "horizon_depth": above_depth,
-                "street_name": street_name,
-                "main_street": MAIN_STREET_NAME,
-                "label": f"[#{avenue_house_number(0)} {street_name}]",
-                "width": int(base_house.get("width", 0)),
-                "height": int(base_house.get("height", 0)),
-                "rows": base_house.get("rows", []),
-            })
+            add_house("left", above_depth, f"[#8 {street_name}]", 0, lateral_offset=-4)
+            add_house("left", above_depth, f"[#6 {street_name}]", 1, lateral_offset=-10)
+            add_house("right", above_depth, f"[#10 {street_name}]", 0, lateral_offset=0)
+            add_house("right", above_depth, f"[#12 {street_name}]", 1, lateral_offset=6)
         if below_depth < LANDSCAPE_TOTAL_GROUND_ROWS:
-            sprites.append({
-                "side": "left",
-                "horizon_depth": below_depth,
-                "street_name": street_name,
-                "main_street": MAIN_STREET_NAME,
-                "label": f"[#{avenue_house_number(1)} {street_name}]",
-                "width": int(base_house.get("width", 0)),
-                "height": int(base_house.get("height", 0)),
-                "rows": base_house.get("rows", []),
-            })
+            add_house("left", below_depth, f"[#9 {street_name}]", 0, lateral_offset=0)
+            add_house("left", below_depth, f"[#7 {street_name}]", 1, lateral_offset=-6)
+            add_house("right", below_depth, f"[#11 {street_name}]", 0, lateral_offset=4)
+            add_house("right", below_depth, f"[#13 {street_name}]", 1, lateral_offset=10)
         street_index += 1
     return sprites
 
