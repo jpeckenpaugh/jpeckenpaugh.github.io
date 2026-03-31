@@ -311,14 +311,60 @@ def read_key_nonblocking() -> str | None:
             return ch.decode("utf-8").lower()
         except UnicodeDecodeError:
             return None
-    ready, _, _ = select.select([sys.stdin], [], [], 0)
+
+    def _read_posix_escape_sequence(timeout_sec: float = 0.015) -> str | None:
+        fd = sys.stdin.fileno()
+        deadline = time.monotonic() + max(0.0, float(timeout_sec))
+        seq = ""
+        while len(seq) < 3:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.0:
+                break
+            ready, _, _ = select.select([fd], [], [], remaining)
+            if not ready:
+                break
+            try:
+                chunk = os.read(fd, 1).decode("utf-8", errors="ignore")
+            except Exception:
+                break
+            if not chunk:
+                break
+            seq += chunk
+            if chunk.isalpha() or chunk == "~":
+                break
+        if not seq:
+            return None
+        tail = seq[-1]
+        if tail == "A":
+            return "up"
+        if tail == "B":
+            return "down"
+        if tail == "C":
+            return "right"
+        if tail == "D":
+            return "left"
+        return None
+
+    fd = sys.stdin.fileno()
+    ready, _, _ = select.select([fd], [], [], 0)
     if not ready:
         return None
     try:
-        ch = sys.stdin.read(1)
+        ch = os.read(fd, 1).decode("utf-8", errors="ignore")
     except Exception:
         return None
-    return ch.lower() if ch else None
+    if not ch:
+        return None
+    if ch in ("\r", "\n"):
+        return "\n"
+    if ch == "\x1b":
+        return _read_posix_escape_sequence()
+    if ch in ("[", "O"):
+        tail = _read_posix_escape_sequence(timeout_sec=0.005)
+        if tail is not None:
+            return tail
+        return None
+    return ch.lower()
 
 
 def overlay_dialog_box(canvas: List[List[str]], lines: List[str], x0: int, y0: int) -> None:
@@ -866,4 +912,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

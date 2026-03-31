@@ -1,5 +1,7 @@
 import copy
 import os
+import select
+import sys
 import time
 from typing import Dict, List
 
@@ -20,6 +22,86 @@ SIMPLE_SMASH_FRAMES = [
     ["\\ /", " X ", "/ \\"],
     [" . ", ".*.", " . "],
 ]
+
+
+def _read_posix_escape_sequence(timeout_sec: float = 0.015) -> str | None:
+    fd = sys.stdin.fileno()
+    deadline = time.monotonic() + max(0.0, float(timeout_sec))
+    seq = ""
+    while len(seq) < 3:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0.0:
+            break
+        ready, _, _ = select.select([fd], [], [], remaining)
+        if not ready:
+            break
+        try:
+            ch = os.read(fd, 1).decode("utf-8", errors="ignore")
+        except Exception:
+            break
+        if not ch:
+            break
+        seq += ch
+        if ch.isalpha() or ch == "~":
+            break
+    if not seq:
+        return None
+    tail = seq[-1]
+    if tail == "A":
+        return "up"
+    if tail == "B":
+        return "down"
+    if tail == "C":
+        return "right"
+    if tail == "D":
+        return "left"
+    return None
+
+
+def read_key_nonblocking() -> str | None:
+    if os.name == "nt":
+        import msvcrt
+
+        if not msvcrt.kbhit():
+            return None
+        ch = msvcrt.getch()
+        if ch in (b"\x00", b"\xe0"):
+            ext = msvcrt.getch()
+            if ext == b"H":
+                return "up"
+            if ext == b"P":
+                return "down"
+            if ext == b"K":
+                return "left"
+            if ext == b"M":
+                return "right"
+            return None
+        try:
+            return ch.decode("utf-8").lower()
+        except UnicodeDecodeError:
+            return None
+
+    fd = sys.stdin.fileno()
+    ready, _, _ = select.select([fd], [], [], 0)
+    if not ready:
+        return None
+    try:
+        ch = os.read(fd, 1).decode("utf-8", errors="ignore")
+    except Exception:
+        return None
+    if not ch:
+        return None
+    if ch in ("\r", "\n"):
+        return "\n"
+    if ch == "\x1b":
+        return _read_posix_escape_sequence()
+    if ch in ("[", "O"):
+        # Some terminals can split ESC and the remainder; recover common arrow tails.
+        tail = _read_posix_escape_sequence(timeout_sec=0.005)
+        if tail is not None:
+            return tail
+        return None
+    return ch.lower()
 
 
 def build_player_cards(players: dict, color_codes: Dict[str, str]) -> List[dict]:
@@ -1455,6 +1537,22 @@ def main() -> None:
         flow["battle_log_lines"] = ui._battle_log_visible_lines(flow)
         return None
 
+    posix_stdin_restore: tuple[int, list] | None = None
+    if os.name != "nt" and sys.stdin.isatty():
+        try:
+            import termios
+            import tty
+
+            fd = sys.stdin.fileno()
+            old = termios.tcgetattr(fd)
+            tty.setcbreak(fd)
+            raw = termios.tcgetattr(fd)
+            raw[3] &= ~termios.ECHO
+            termios.tcsetattr(fd, termios.TCSADRAIN, raw)
+            posix_stdin_restore = (fd, old)
+        except Exception:
+            posix_stdin_restore = None
+
     print(world.ANSI_HIDE_CURSOR + world.ANSI_CLEAR, end="", flush=True)
     try:
         last_tick = time.monotonic()
@@ -1701,7 +1799,7 @@ def main() -> None:
             else:
                 story_transition_actors = None
 
-            key = world.read_key_nonblocking()
+            key = read_key_nonblocking()
             if key == "q":
                 break
             if battle_transition is not None:
@@ -1919,6 +2017,14 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        if posix_stdin_restore is not None:
+            try:
+                import termios
+
+                fd, old = posix_stdin_restore
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            except Exception:
+                pass
         print(world.ANSI_SHOW_CURSOR + world.ANSI_RESET)
 
 

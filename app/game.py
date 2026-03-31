@@ -1,3 +1,6 @@
+import os
+import sys
+
 from app.io.input_adapter import InputAdapter
 from app.io.renderer import Renderer
 from app.scenes.asset_explorer import AssetExplorerScene
@@ -39,25 +42,51 @@ class GameApp:
             self.running = False
 
     def run(self) -> None:
+        posix_stdin_restore: tuple[int, list] | None = None
+        if os.name != "nt" and sys.stdin.isatty():
+            try:
+                import termios
+                import tty
+
+                fd = sys.stdin.fileno()
+                old = termios.tcgetattr(fd)
+                tty.setcbreak(fd)
+                raw = termios.tcgetattr(fd)
+                raw[3] &= ~termios.ECHO
+                termios.tcsetattr(fd, termios.TCSADRAIN, raw)
+                posix_stdin_restore = (fd, old)
+            except Exception:
+                posix_stdin_restore = None
+
         force_render = True
-        while self.running:
-            scene = self.active_scene()
-            timeout = scene.input_timeout_seconds()
-            if force_render or scene.needs_redraw(self):
-                frame = scene.render(self)
-                self.renderer.render_text(frame)
-                force_render = False
-            if timeout is None:
-                key = self.input.read_key()
-            else:
-                key = self.input.read_key_timeout(timeout)
-                if key is None:
-                    continue
-            result = scene.handle_input(self, key)
-            previous_scene_id = self.session.current_scene_id
-            self.apply_result(result)
-            force_render = True
-            if self.session.current_scene_id != previous_scene_id:
+        try:
+            while self.running:
+                scene = self.active_scene()
+                timeout = scene.input_timeout_seconds()
+                if force_render or scene.needs_redraw(self):
+                    frame = scene.render(self)
+                    self.renderer.render_text(frame)
+                    force_render = False
+                if timeout is None:
+                    key = self.input.read_key()
+                else:
+                    key = self.input.read_key_timeout(timeout)
+                    if key is None:
+                        continue
+                result = scene.handle_input(self, key)
+                previous_scene_id = self.session.current_scene_id
+                self.apply_result(result)
                 force_render = True
-        self.renderer.clear()
-        print("Exited game.")
+                if self.session.current_scene_id != previous_scene_id:
+                    force_render = True
+        finally:
+            if posix_stdin_restore is not None:
+                try:
+                    import termios
+
+                    fd, old = posix_stdin_restore
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old)
+                except Exception:
+                    pass
+            self.renderer.clear()
+            print("Exited game.")

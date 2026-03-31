@@ -6,6 +6,38 @@ from typing import Optional
 
 
 class InputAdapter:
+    def _read_posix_escape_sequence(self, fd: int, timeout_seconds: float = 0.015) -> Optional[str]:
+        deadline = time.monotonic() + max(0.0, float(timeout_seconds))
+        seq = ""
+        while len(seq) < 3:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.0:
+                break
+            ready, _, _ = select.select([fd], [], [], remaining)
+            if not ready:
+                break
+            try:
+                chunk = os.read(fd, 1).decode("utf-8", errors="ignore")
+            except Exception:
+                break
+            if not chunk:
+                break
+            seq += chunk
+            if chunk.isalpha() or chunk == "~":
+                break
+        if not seq:
+            return None
+        tail = seq[-1]
+        if tail == "A":
+            return "up"
+        if tail == "B":
+            return "down"
+        if tail == "C":
+            return "right"
+        if tail == "D":
+            return "left"
+        return None
+
     def read_key_timeout(self, timeout_seconds: Optional[float]) -> Optional[str]:
         if timeout_seconds is None:
             return self.read_key()
@@ -20,9 +52,8 @@ class InputAdapter:
                 time.sleep(0.01)
             return None
 
-        import select
-
-        ready, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        fd = sys.stdin.fileno()
+        ready, _, _ = select.select([fd], [], [], timeout_seconds)
         if ready:
             return self.read_key()
         return None
@@ -56,39 +87,22 @@ class InputAdapter:
             except UnicodeDecodeError:
                 return "unknown"
 
-        import termios
-        import tty
-
         fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
         try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-            if ch == "\x1b":
-                ready, _, _ = select.select([sys.stdin], [], [], 0.01)
-                if not ready:
-                    return "back"
-                n1 = sys.stdin.read(1)
-                if n1 == "[":
-                    ready, _, _ = select.select([sys.stdin], [], [], 0.01)
-                    if not ready:
-                        return "back"
-                    n2 = sys.stdin.read(1)
-                    if n2 == "A":
-                        return "up"
-                    if n2 == "B":
-                        return "down"
-                    if n2 == "D":
-                        return "left"
-                    if n2 == "C":
-                        return "right"
-                return "back"
-            if ch in ("\r", "\n"):
-                return "options"
-            if ch in ("a", "A"):
-                return "confirm"
-            if ch in ("s", "S"):
-                return "back"
-            return ch.lower()
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            ch = os.read(fd, 1).decode("utf-8", errors="ignore")
+        except Exception:
+            return "unknown"
+        if not ch:
+            return "unknown"
+        if ch == "\x1b":
+            arrow = self._read_posix_escape_sequence(fd)
+            if arrow is not None:
+                return arrow
+            return "back"
+        if ch in ("\r", "\n"):
+            return "options"
+        if ch in ("a", "A"):
+            return "confirm"
+        if ch in ("s", "S"):
+            return "back"
+        return ch.lower()

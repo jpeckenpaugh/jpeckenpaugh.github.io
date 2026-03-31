@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from typing import Dict, List
 
@@ -511,6 +512,22 @@ def main() -> None:
     border_treeline_sprites = [recenter_border_sprite_x(sprite) for sprite in world.build_border_treeline_sprites(objects, colors)]
     crossroad_house_sprites = world.build_crossroad_house_sprites(objects, colors)
 
+    posix_stdin_restore: tuple[int, list] | None = None
+    if os.name != "nt" and sys.stdin.isatty():
+        try:
+            import termios
+            import tty
+
+            fd = sys.stdin.fileno()
+            old = termios.tcgetattr(fd)
+            tty.setcbreak(fd)
+            raw = termios.tcgetattr(fd)
+            raw[3] &= ~termios.ECHO
+            termios.tcsetattr(fd, termios.TCSADRAIN, raw)
+            posix_stdin_restore = (fd, old)
+        except Exception:
+            posix_stdin_restore = None
+
     print(world.ANSI_HIDE_CURSOR + world.ANSI_CLEAR, end="", flush=True)
     try:
         last_tick = time.monotonic()
@@ -601,6 +618,14 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        if posix_stdin_restore is not None:
+            try:
+                import termios
+
+                fd, old = posix_stdin_restore
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            except Exception:
+                pass
         print(world.ANSI_SHOW_CURSOR + world.ANSI_RESET)
 
 
