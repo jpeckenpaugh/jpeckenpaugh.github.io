@@ -292,6 +292,7 @@ def render(
     avatar_rows: List[List[str]],
     address_label: str,
     scene_label: str,
+    center_object_id: str,
     camera_x: int,
 ) -> str:
     canvas = [[" " for _ in range(world.SCREEN_W)] for _ in range(world.SCREEN_H)]
@@ -317,7 +318,8 @@ def render(
             if sprite_is_backside != draw_backside:
                 continue
             y_base = max(ground_zone.y, y_base)
-            y0 = y_base - max(0, height - 1)
+            y_offset = 1 if center_object_id in {"house", "house_02"} else 0
+            y0 = y_base - max(0, height - 1) + y_offset
             target.append({
                 "x": x0,
                 "y": y0,
@@ -372,7 +374,7 @@ def render(
                 x0 = int(road.get("start", 0)) - width - 8 - (side_slot * side_gap) + side_offset - camera_x
             else:
                 x0 = int(road.get("end", TRAVEL_WORLD_WIDTH - 1)) + 8 + (side_slot * side_gap) + side_offset - camera_x
-            y0 = y_base - max(0, height - 1)
+            y0 = y_base - max(0, height - 1) + 1
             label = str(sprite.get("label", "")).strip()
             target.append({
                 "x": x0,
@@ -382,8 +384,8 @@ def render(
                 "horizon_depth": horizon_depth,
                 "z_bias": 0,
                 "label": label,
-                "label_y": y0 + max(0, min(max(0, height - 1), 5) - 3),
-                "label_x": x0 + max(0, (width - len(label)) // 2) if label else x0,
+                "label_y": y0 + max(0, min(max(0, height - 1), 5) - 3) + 1,
+                "label_x": (x0 + max(0, (width - len(label)) // 2) - 1) if label else x0,
             })
 
     for cloud in clouds:
@@ -611,6 +613,7 @@ def main() -> None:
                 avatar_rows=avatar_rows,
                 address_label=current_address_label(landscape_position),
                 scene_label=scene_label,
+                center_object_id=center_object_id,
                 camera_x=camera_x,
             )
             print(world.ANSI_HOME + frame, end="", flush=True)
