@@ -1,0 +1,14 @@
+{
+  "player": {
+    "name": "Nico",
+    "level": 1,
+    "hp": 20,
+    "max_hp": 20,
+    "gold": 100,
+    "avatar_id": "player_01",
+    "location": "Town"
+  },
+  "current_scene_id": "title",
+  "selected_slot": 13,
+  "last_message": "New game created."
+}

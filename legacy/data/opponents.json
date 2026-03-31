@@ -324,16 +324,16 @@
       },
       "arrival": "pokes up from the dirt",
       "art": [
-        "  __",
-        ".'__'.",
-        "'(..)'",
-        "  )("
+        " ╭───╮ ",
+        "╭╯┉┉┉╰╮",
+        "╰(◎─◎)╯",
+        "  )◡(  "
       ],
       "color_map": [
-        "  qq",
-        "qqssqq",
-        "qsggsq",
-        "  ss"
+        " qQqQq ",
+        "qQgGgQq",
+        "qSBbBSq",
+        "  srs  "
       ]
     },
     "mushroom_teen": {
@@ -347,20 +347,22 @@
       "desc": "A young mushroom with steady resolve.",
       "arrival": "steps from the moss",
       "art": [
-        "  _.-=-._",
-        ".'._____.'.",
-        "'_(_o-o_)_'",
-        "   \\(_)/",
-        "    )'(",
-        "   (''')"
+        "   ▁▂▁   ",
+        " ╭╯┄┄┄╰╮ ",
+        "╭╯◠◡◠◡◠╰╮",
+        "╰((◎ ◎))╯",
+        "  ╲╰┬╯╱  ",
+        "   )◡(   ",
+        "  (▁▁▁)  "
       ],
       "color_map": [
-        "  qqqqqqq",
-        "qqzssssszqq",
-        "qqszgggzsqq",
-        "   sSsSs",
-        "    szs",
-        "   szZzs"
+        "   qQq   ",
+        " QqgGgqQ",
+        "qQqQqQqQq",
+        "qsSB!BSsq",
+        "  sbbbs  ",
+        "   srs   ",
+        "  sSsSs  "
       ]
     },
     "wolf": {

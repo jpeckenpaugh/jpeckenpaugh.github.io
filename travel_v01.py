@@ -93,7 +93,38 @@ def all_window_bounds(mask_rows: List[str]) -> tuple[int, int, int, int] | None:
     return (min_x, max_x, min_y, max_y)
 
 
-def default_house_occupant_pose(mask_rows: List[str], occupant_rows: List[List[str]]) -> dict:
+def house_row_spans(art_rows: List[str]) -> List[tuple[int, int] | None]:
+    spans: List[tuple[int, int] | None] = []
+    for row in art_rows:
+        line = str(row)
+        filled = [idx for idx, ch in enumerate(line) if ch != " "]
+        spans.append((filled[0], filled[-1]) if filled else None)
+    return spans
+
+
+def can_place_house_occupant_pose(art_rows: List[str], occupant_rows: List[List[str]], pose: dict) -> bool:
+    spans = house_row_spans(art_rows)
+    occ_h = len(occupant_rows)
+    occ_x0 = int(pose.get("x0", 0))
+    occ_y0 = max(0, len(art_rows) - occ_h - int(pose.get("floor_offset", 1)))
+    for local_y, occ_row in enumerate(occupant_rows):
+        house_y = occ_y0 + local_y
+        if house_y < 0 or house_y >= len(spans):
+            return False
+        span = spans[house_y]
+        if span is None:
+            return False
+        min_x, max_x = span
+        for local_x, cell in enumerate(occ_row):
+            if cell == " ":
+                continue
+            house_x = occ_x0 + local_x
+            if house_x < min_x or house_x > max_x:
+                return False
+    return True
+
+
+def default_house_occupant_pose(art_rows: List[str], mask_rows: List[str], occupant_rows: List[List[str]]) -> dict:
     occ_h = len(occupant_rows)
     occ_w = max((len(row) for row in occupant_rows), default=0)
     first_bounds = first_window_bounds(mask_rows)
@@ -101,24 +132,37 @@ def default_house_occupant_pose(mask_rows: List[str], occupant_rows: List[List[s
     if first_bounds is not None:
         min_x, max_x, _min_y, _max_y = first_bounds
         occ_x0 = ((min_x + max_x) // 2) - (occ_w // 2)
-    return {"x0": occ_x0, "floor_offset": 0, "height": occ_h, "width": occ_w}
+    pose = {"x0": occ_x0, "floor_offset": 1, "height": occ_h, "width": occ_w}
+    return clamp_house_occupant_pose(art_rows, mask_rows, occupant_rows, pose)
 
 
-def clamp_house_occupant_pose(mask_rows: List[str], occupant_rows: List[List[str]], pose: dict) -> dict:
+def clamp_house_occupant_pose(art_rows: List[str], mask_rows: List[str], occupant_rows: List[List[str]], pose: dict) -> dict:
     bounds = all_window_bounds(mask_rows)
     occ_h = len(occupant_rows)
     occ_w = max((len(row) for row in occupant_rows), default=0)
     x0 = int(pose.get("x0", 0))
-    floor_offset = max(0, min(3, int(pose.get("floor_offset", 0))))
+    floor_offset = max(1, min(3, int(pose.get("floor_offset", 1))))
     if bounds is not None and occ_w > 0:
         min_x, max_x, _min_y, _max_y = bounds
         x0 = max(min_x - occ_w + 1, min(max_x, x0))
-    return {"x0": x0, "floor_offset": floor_offset, "height": occ_h, "width": occ_w}
+    candidate = {"x0": x0, "floor_offset": floor_offset, "height": occ_h, "width": occ_w}
+    if can_place_house_occupant_pose(art_rows, occupant_rows, candidate):
+        return candidate
+    for test_floor in range(floor_offset, 0, -1):
+        test_candidate = {"x0": x0, "floor_offset": test_floor, "height": occ_h, "width": occ_w}
+        if can_place_house_occupant_pose(art_rows, occupant_rows, test_candidate):
+            return test_candidate
+    for delta in range(1, max(1, occ_w) + 8):
+        for test_x0 in (x0 - delta, x0 + delta):
+            test_candidate = {"x0": test_x0, "floor_offset": floor_offset, "height": occ_h, "width": occ_w}
+            if can_place_house_occupant_pose(art_rows, occupant_rows, test_candidate):
+                return clamp_house_occupant_pose(art_rows, mask_rows, occupant_rows, test_candidate)
+    return candidate
 
 
-def step_house_occupant_pose(mask_rows: List[str], occupant_rows: List[List[str]], pose: dict, rng: random.Random) -> dict:
+def step_house_occupant_pose(art_rows: List[str], mask_rows: List[str], occupant_rows: List[List[str]], pose: dict, rng: random.Random) -> dict:
     if rng.random() >= 0.5:
-        return clamp_house_occupant_pose(mask_rows, occupant_rows, pose)
+        return clamp_house_occupant_pose(art_rows, mask_rows, occupant_rows, pose)
     updated = dict(pose)
     direction = rng.choice(["left", "right", "up", "down"])
     if direction == "left":
@@ -129,7 +173,8 @@ def step_house_occupant_pose(mask_rows: List[str], occupant_rows: List[List[str]
         updated["floor_offset"] = int(updated.get("floor_offset", 0)) + 1
     else:
         updated["floor_offset"] = int(updated.get("floor_offset", 0)) - 1
-    return clamp_house_occupant_pose(mask_rows, occupant_rows, updated)
+    updated = clamp_house_occupant_pose(art_rows, mask_rows, occupant_rows, updated)
+    return updated if can_place_house_occupant_pose(art_rows, occupant_rows, updated) else pose
 
 
 def draw_house_sprite(
@@ -151,11 +196,18 @@ def draw_house_sprite(
     opaque_space = f"\x1b[37m {world.ANSI_RESET}"
     occ_rows = occupant_rows if isinstance(occupant_rows, list) else []
     occ_h = len(occ_rows)
-    occ_w = max((len(row) for row in occ_rows), default=0)
     occ_x0 = 0
     occ_y0 = 0
     if occ_rows:
-        pose = clamp_house_occupant_pose([str(row) for row in mask_rows], occ_rows, occupant_pose or default_house_occupant_pose([str(row) for row in mask_rows], occ_rows))
+        art_rows = drawable.get("art_rows", [])
+        if not isinstance(art_rows, list):
+            art_rows = []
+        pose = clamp_house_occupant_pose(
+            [str(row) for row in art_rows],
+            [str(row) for row in mask_rows],
+            occ_rows,
+            occupant_pose or default_house_occupant_pose([str(row) for row in art_rows], [str(row) for row in mask_rows], occ_rows),
+        )
         occ_x0 = int(pose.get("x0", 0))
         occ_y0 = max(0, len(rows) - occ_h - int(pose.get("floor_offset", 0)))
 
@@ -529,6 +581,7 @@ def render(
                 "x": x0,
                 "y": y0,
                 "rows": rows,
+                "art_rows": sprite.get("art", []),
                 "mask_rows": sprite.get("mask_rows", []),
                 "house_sprite": True,
                 "base_y": y_base,
@@ -677,8 +730,13 @@ def main() -> None:
     border_treeline_sprites = [recenter_border_sprite_x(sprite) for sprite in world.build_border_treeline_sprites(objects, colors)]
     crossroad_house_sprites = world.build_crossroad_house_sprites(objects, colors)
     target_house = next((sprite for sprite in crossroad_house_sprites if str(sprite.get("label", "")).strip() == MUSHROOM_HOUSE_LABEL), None)
+    target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
     target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
-    mushroom_pose = default_house_occupant_pose(target_mask_rows, mushroom_rows) if isinstance(target_mask_rows, list) else {"x0": 0, "floor_offset": 0}
+    mushroom_pose = (
+        default_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows)
+        if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list)
+        else {"x0": 0, "floor_offset": 1}
+    )
     mushroom_motion_rng = random.Random()
     mushroom_motion_accum = 0.0
 
@@ -728,8 +786,8 @@ def main() -> None:
             mushroom_motion_accum += dt
             while mushroom_motion_accum >= 1.0:
                 mushroom_motion_accum -= 1.0
-                if isinstance(target_mask_rows, list) and target_mask_rows:
-                    mushroom_pose = step_house_occupant_pose(target_mask_rows, mushroom_rows, mushroom_pose, mushroom_motion_rng)
+                if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
+                    mushroom_pose = step_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows, mushroom_pose, mushroom_motion_rng)
             for cloud in clouds:
                 speed = float(cloud.get("speed", 1.0))
                 cloud["x"] = float(cloud.get("x", 0.0)) - (speed * dt)
@@ -774,9 +832,10 @@ def main() -> None:
                 border_treeline_sprites = [recenter_border_sprite_x(sprite) for sprite in world.build_border_treeline_sprites(objects, colors)]
                 crossroad_house_sprites = world.build_crossroad_house_sprites(objects, colors)
                 target_house = next((sprite for sprite in crossroad_house_sprites if str(sprite.get("label", "")).strip() == MUSHROOM_HOUSE_LABEL), None)
+                target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
                 target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
-                if isinstance(target_mask_rows, list) and target_mask_rows:
-                    mushroom_pose = clamp_house_occupant_pose(target_mask_rows, mushroom_rows, mushroom_pose)
+                if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
+                    mushroom_pose = clamp_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows, mushroom_pose)
 
             frame = render(
                 clouds=clouds,
