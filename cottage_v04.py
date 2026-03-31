@@ -442,12 +442,19 @@ def avenue_name(index: int) -> str:
 
 
 def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> List[dict]:
+    if not isinstance(objects_data, dict):
+        return []
+    house_payload = objects_data.get("house_02", {})
+    if not isinstance(house_payload, dict):
+        return []
     base_house = build_world_object_sprite(objects_data, colors_data, "house_02")
     if base_house is None:
         return []
     sprites: List[dict] = []
     street_index = 0
     house_width = int(base_house.get("width", 0))
+    house_art = house_payload.get("art", [])
+    house_mask = house_payload.get("color_mask", [])
 
     def add_house(side: str, horizon_depth: int, label: str, side_slot: int, lateral_offset: int = 0) -> None:
         sprites.append({
@@ -461,6 +468,8 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
             "width": house_width,
             "height": int(base_house.get("height", 0)),
             "rows": base_house.get("rows", []),
+            "art": list(house_art) if isinstance(house_art, list) else [],
+            "mask_rows": list(house_mask) if isinstance(house_mask, list) else [],
         })
 
     for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
