@@ -465,7 +465,7 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
 
     for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
         street_name = avenue_name(street_index)
-        above_depth = crossroad_start - 2
+        above_depth = crossroad_start - 3
         if above_depth >= 0:
             # Keep all avenue houses on the north side instead of splitting by parity.
             add_house("left", above_depth, f"[#6 {street_name}]", 3, lateral_offset=-16)

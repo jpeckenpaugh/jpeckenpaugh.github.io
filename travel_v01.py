@@ -307,6 +307,17 @@ def render(
 
     def draw_world_scene_sprites(draw_backside: bool) -> None:
         target = backside_drawables if draw_backside else foreground_drawables
+        blocked_border_tree_lines: set[int] = set()
+
+        for sprite in crossroad_house_sprites:
+            horizon_depth = max(0, int(sprite.get("horizon_depth", 0)))
+            sprite_is_backside, house_y_base = world.horizon_depth_state(horizon_depth, hidden_ground_rows, ground_zone.y)
+            if sprite_is_backside != draw_backside:
+                continue
+            house_y_base = max(ground_zone.y, house_y_base)
+            blocked_border_tree_lines.add(house_y_base)
+            blocked_border_tree_lines.add(house_y_base + 1)
+
         for sprite in world_treeline_sprites:
             rows = sprite.get("rows", [])
             if not isinstance(rows, list):
@@ -342,6 +353,8 @@ def render(
             if sprite_is_backside != draw_backside:
                 continue
             y_base = max(ground_zone.y, y_base)
+            if y_base in blocked_border_tree_lines:
+                continue
             x0 = int(sprite.get("x", 0)) - camera_x
             y0 = y_base - max(0, height - 1)
             target.append({
