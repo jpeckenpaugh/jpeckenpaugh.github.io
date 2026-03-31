@@ -43,7 +43,7 @@ DEFAULT_LANDSCAPE_POSITION = 15
 UI_DEMO_TEXT = "Eenie, Meenie, Miney, Mo.\nWho here dares to be our foe!?"
 UI_DIALOG_TEXT = "So what do you say... Are you ready to challenge them?"
 WORLD_SCENE_VARIANTS = [
-    ("cottage", "house"),
+    ("cottage", "house_02"),
     ("fairy_castle", "fairy_castle"),
     ("bridge", "bridge"),
     ("mushroom_house", "mushroom_house"),
@@ -442,11 +442,10 @@ def avenue_name(index: int) -> str:
 
 
 def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> List[dict]:
-    base_house = build_world_object_sprite(objects_data, colors_data, "house")
+    base_house = build_world_object_sprite(objects_data, colors_data, "house_02")
     if base_house is None:
         return []
     sprites: List[dict] = []
-    street_span = CROSSROAD_DIRT_ROWS + 2
     street_index = 0
     house_width = int(base_house.get("width", 0))
 
@@ -467,17 +466,16 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
     for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
         street_name = avenue_name(street_index)
         above_depth = crossroad_start - 2
-        below_depth = crossroad_start + street_span + 1
         if above_depth >= 0:
-            add_house("left", above_depth, f"[#8 {street_name}]", 0, lateral_offset=-4)
-            add_house("left", above_depth, f"[#6 {street_name}]", 1, lateral_offset=-10)
+            # Keep all avenue houses on the north side instead of splitting by parity.
+            add_house("left", above_depth, f"[#6 {street_name}]", 3, lateral_offset=-16)
+            add_house("left", above_depth, f"[#7 {street_name}]", 2, lateral_offset=-10)
+            add_house("left", above_depth, f"[#8 {street_name}]", 1, lateral_offset=-4)
+            add_house("left", above_depth, f"[#9 {street_name}]", 0, lateral_offset=2)
             add_house("right", above_depth, f"[#10 {street_name}]", 0, lateral_offset=0)
-            add_house("right", above_depth, f"[#12 {street_name}]", 1, lateral_offset=6)
-        if below_depth < LANDSCAPE_TOTAL_GROUND_ROWS:
-            add_house("left", below_depth, f"[#9 {street_name}]", 0, lateral_offset=0)
-            add_house("left", below_depth, f"[#7 {street_name}]", 1, lateral_offset=-6)
-            add_house("right", below_depth, f"[#11 {street_name}]", 0, lateral_offset=4)
-            add_house("right", below_depth, f"[#13 {street_name}]", 1, lateral_offset=10)
+            add_house("right", above_depth, f"[#11 {street_name}]", 1, lateral_offset=6)
+            add_house("right", above_depth, f"[#12 {street_name}]", 2, lateral_offset=12)
+            add_house("right", above_depth, f"[#13 {street_name}]", 3, lateral_offset=18)
         street_index += 1
     return sprites
 
@@ -485,7 +483,7 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
 def build_world_treeline_sprites(
     objects_data: object,
     colors_data: object,
-    center_object_id: str = "house",
+    center_object_id: str = "house_02",
 ) -> List[dict]:
     if not isinstance(objects_data, dict):
         return []
@@ -1670,4 +1668,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
