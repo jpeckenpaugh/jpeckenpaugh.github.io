@@ -17,6 +17,9 @@ SIDE_STEP_COLUMNS = 2
 TRAVEL_WORLD_WIDTH = 320
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
 MUSHROOM_HOUSE_LABEL = "[#10 Ave A]"
+WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
+WALK_FRAME_STEP_SECONDS = 0.5
+WALK_RESET_IDLE_SECONDS = 1.0
 
 
 def current_address_label(position: int) -> str:
@@ -713,7 +716,12 @@ def main() -> None:
     target_landscape_position = landscape_position
     zones = world.build_scene_zones(sky_rows=world.landscape_sky_rows(landscape_position))
     sky_bottom_anchor = world.sky_bottom_anchor_for_position(landscape_position)
-    avatar_rows = world.build_player_sprite(players, avatar_ids[avatar_index], color_codes)
+    avatar_facing = "front"
+    walk_frame_index = 0
+    walk_frame_accum = 0.0
+    idle_reset_accum = 0.0
+    was_avatar_moving = False
+    avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, "idle")
     mushroom_rows = world.build_opponent_sprite(opponents, "mushroom_baby", color_codes)
     camera_x = clamp_camera_to_road(starting_camera_x(), avatar_rows, zones, landscape_position)
     target_camera_x = camera_x
@@ -799,6 +807,7 @@ def main() -> None:
             if key == "q":
                 break
             if key == "up":
+                avatar_facing = "back"
                 candidate = target_landscape_position - 1
                 if candidate < world.LANDSCAPE_STEP_ROWS:
                     candidate = world.LANDSCAPE_TOTAL_GROUND_ROWS
@@ -806,6 +815,7 @@ def main() -> None:
                 if is_camera_on_walkable_surface(camera_x, avatar_rows, candidate_zones, candidate):
                     target_landscape_position = candidate
             if key == "down":
+                avatar_facing = "front"
                 candidate = target_landscape_position + 1
                 if candidate > world.LANDSCAPE_TOTAL_GROUND_ROWS:
                     candidate = world.LANDSCAPE_STEP_ROWS
@@ -822,9 +832,13 @@ def main() -> None:
                     target_camera_x = candidate
             if key == "a":
                 avatar_index = (avatar_index + 1) % len(avatar_ids)
-                avatar_rows = world.build_player_sprite(players, avatar_ids[avatar_index], color_codes)
+                avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, "idle")
                 target_camera_x = clamp_camera_to_road(target_camera_x, avatar_rows, zones, landscape_position)
                 camera_x = clamp_camera_to_road(camera_x, avatar_rows, zones, landscape_position)
+                walk_frame_index = 0
+                walk_frame_accum = 0.0
+                idle_reset_accum = 0.0
+                was_avatar_moving = False
             if key == "c":
                 scene_index = (scene_index + 1) % len(WORLD_MODELS)
                 scene_label, center_object_id = WORLD_MODELS[scene_index]
@@ -836,6 +850,24 @@ def main() -> None:
                 target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
                 if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
                     mushroom_pose = clamp_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows, mushroom_pose)
+            avatar_is_moving = (camera_x != target_camera_x) or (landscape_position != target_landscape_position)
+            if avatar_is_moving:
+                if not was_avatar_moving:
+                    walk_frame_index = 1
+                    walk_frame_accum = 0.0
+                idle_reset_accum = 0.0
+                walk_frame_accum += dt
+                while walk_frame_accum >= WALK_FRAME_STEP_SECONDS:
+                    walk_frame_accum -= WALK_FRAME_STEP_SECONDS
+                    walk_frame_index = (walk_frame_index + 1) % len(WALK_FRAME_SEQUENCE)
+            else:
+                walk_frame_accum = 0.0
+                idle_reset_accum += dt
+                if idle_reset_accum >= WALK_RESET_IDLE_SECONDS:
+                    walk_frame_index = 0
+            avatar_phase = WALK_FRAME_SEQUENCE[walk_frame_index]
+            was_avatar_moving = avatar_is_moving
+            avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, avatar_phase)
 
             frame = render(
                 clouds=clouds,

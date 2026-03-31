@@ -686,6 +686,32 @@ def build_player_sprite(players_data: object, player_id: str, color_codes: Dict[
     return out
 
 
+def build_player_frame(
+    players_data: object,
+    player_id: str,
+    color_codes: Dict[str, str],
+    facing: str = "front",
+    phase: str = "idle",
+) -> List[List[str]]:
+    if not isinstance(players_data, dict):
+        return []
+    player = players_data.get(player_id, {})
+    if not isinstance(player, dict):
+        return []
+    facing_sets = player.get("facing_sets", {})
+    if isinstance(facing_sets, dict):
+        facing_payload = facing_sets.get(str(facing), {})
+        if isinstance(facing_payload, dict):
+            frame_payload = facing_payload.get(str(phase), {})
+            if isinstance(frame_payload, dict):
+                art = frame_payload.get("art", [])
+                mask = frame_payload.get("color_map", [])
+                rows = _colorize_object_rows(art, mask, color_codes)
+                if rows:
+                    return rows
+    return build_player_sprite(players_data, player_id, color_codes)
+
+
 def _sprite_size(rows: List[List[str]]) -> tuple[int, int]:
     if not rows:
         return (0, 0)
