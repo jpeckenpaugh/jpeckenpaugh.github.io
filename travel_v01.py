@@ -19,6 +19,7 @@ SIDE_STEP_COLUMNS = 1
 TRAVEL_WORLD_WIDTH = 1100
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
 AVE_A_MUSHROOM_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range(1, 11)]
+AVE_A_FAIRY_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range(11, 21)]
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
 WALK_FRAME_STEP_SECONDS = 0.5
 WALK_RESET_IDLE_SECONDS = 0.5
@@ -958,6 +959,10 @@ def main() -> None:
         label: world.build_house_mushroom_sprite(opponents, color_codes, house_number)
         for house_number, label in enumerate(AVE_A_MUSHROOM_HOUSE_LABELS, start=1)
     }
+    house_occupants.update({
+        label: world.build_house_fairy_sprite(opponents, color_codes, house_number)
+        for house_number, label in enumerate(AVE_A_FAIRY_HOUSE_LABELS, start=11)
+    })
     house_occupant_poses = {}
     for label, occupant_rows in house_occupants.items():
         target_house = house_sprite_by_label.get(label)

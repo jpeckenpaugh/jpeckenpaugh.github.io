@@ -464,6 +464,13 @@ def mushroom_palette_indices_for_house(house_number: int) -> tuple[int, int]:
     return accent_index, eye_index
 
 
+def fairy_palette_indices_for_house(house_number: int) -> tuple[int, int]:
+    house_index = max(0, min(19, int(house_number) - 1))
+    wing_index = HOUSE_ACCENT_PERMUTATION[(house_index + 5) % len(HOUSE_ACCENT_PERMUTATION)]
+    eye_index = HOUSE_ACCENT_PERMUTATION[(house_index + 11) % len(HOUSE_ACCENT_PERMUTATION)]
+    return wing_index, eye_index
+
+
 def _with_color_overrides(color_codes: Dict[str, str], overrides: Dict[str, str]) -> Dict[str, str]:
     updated = dict(color_codes)
     updated.update(overrides)
@@ -783,6 +790,23 @@ def build_house_mushroom_sprite(
         "b": _ansi_color_code(*eye_base),
     }
     return build_opponent_sprite(opponents_data, "mushroom_baby", _with_color_overrides(color_codes, overrides))
+
+
+def build_house_fairy_sprite(
+    opponents_data: object,
+    color_codes: Dict[str, str],
+    house_number: int,
+) -> List[List[str]]:
+    wing_index, eye_index = fairy_palette_indices_for_house(house_number)
+    wing_bright, wing_base = HOUSE_ACCENT_PALETTES[wing_index]
+    eye_bright, eye_base = HOUSE_ACCENT_PALETTES[eye_index]
+    overrides = {
+        "C": _ansi_color_code(*wing_bright),
+        "c": _ansi_color_code(*wing_base),
+        "B": _ansi_color_code(*eye_bright),
+        "b": _ansi_color_code(*eye_base),
+    }
+    return build_opponent_sprite(opponents_data, "fairy_baby", _with_color_overrides(color_codes, overrides))
 
 
 def build_player_sprite(players_data: object, player_id: str, color_codes: Dict[str, str]) -> List[List[str]]:

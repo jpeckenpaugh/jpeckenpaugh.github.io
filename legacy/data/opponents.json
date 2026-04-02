@@ -255,18 +255,71 @@
       },
       "arrival": "twirls into view",
       "art": [
-        "(''\\./'')",
-        " \\('_')/",
-        " /')'('\\",
-        "(_/'''\\_)",
-        "  wWwWw"
+        "(╭╮\\◠/╭╮)",
+        "╰\\(◎╷◎)/╯",
+        "╭/◟)◡(◞\\╮",
+        "(◵/▚▁▞\\◶)",
+        "  ╰╤═╤╯"
       ],
       "color_map": [
-        "uCCacaCCu",
-        " ucbabcu",
-        " uUcacUu",
-        "uuuaaauuu",
-        "  AaAaA"
+        "uCCcacCCu",
+        "ucSBaBScu",
+        "ucsaraScu",
+        "uacaaacau",
+        "  uAaAu"
+      ],
+      "art_variations": [
+        {
+          "label": "primary",
+          "art": [
+            "(╭╮\\◠/╭╮)",
+            "╰\\(◎╷◎)/╯",
+            "╭/◟)◡(◞\\╮",
+            "(◵/▚▁▞\\◶)",
+            "  ╰╤═╤╯"
+          ],
+          "color_map": [
+            "uCCcacCCu",
+            "ucSBaBScu",
+            "ucsaraScu",
+            "uacaaacau",
+            "  uAaAu"
+          ]
+        },
+        {
+          "label": "a",
+          "art": [
+            " (╮\\◠/╭)",
+            " ╰(◎╷◎)╯",
+            " ╭◟)◡(◞╮",
+            " (/▚▁▞\\)",
+            "  ╰╤═╤╯"
+          ],
+          "color_map": [
+            " uCcacCu",
+            " uSBaBSu",
+            " ucaaaSu",
+            " uacaaau",
+            "  uAaAu"
+          ]
+        },
+        {
+          "label": "b",
+          "art": [
+            "  (\\◠/)",
+            "  (◎╷◎)",
+            "  ╭)◡(╮",
+            "  (▚▁▞)",
+            "  ╰╤═╤╯"
+          ],
+          "color_map": [
+            "  ucacu",
+            "  uBaBu",
+            "  uaaau",
+            "  uaaau",
+            "  uAaAu"
+          ]
+        }
       ]
     },
     "fairy_teen": {
