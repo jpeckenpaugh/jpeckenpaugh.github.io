@@ -36,6 +36,9 @@ CROW_FLY_SPEED = 52.0
 CROW_FLY_VERTICAL_COMPENSATION = 2
 CROW_RELOCATE_MIN_SECONDS = 10.0
 CROW_RELOCATE_MAX_SECONDS = 15.0
+CROW_HIT_HIDE_SECONDS = 60.0
+CROW_MAX_HITS_BEFORE_HIDE = 3
+CROW_MIN_HIT_RELOCATE_DISTANCE = 10
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
 WALK_FRAME_STEP_SECONDS = 0.5
 WALK_RESET_IDLE_SECONDS = 0.5
@@ -476,6 +479,8 @@ def occupied_perch_ids(crow_states: List[dict], exclude_index: int | None = None
     for idx, crow in enumerate(crow_states):
         if exclude_index is not None and idx == exclude_index:
             continue
+        if str(crow.get("mode", "")) == "hidden":
+            continue
         perch = crow.get("perch", {})
         perch_id = str(perch.get("id", "")).strip() if isinstance(perch, dict) else ""
         if perch_id:
@@ -531,6 +536,8 @@ def spawn_intro_crows(
             "anim_accum": 0.0,
             "launch_delay": 0.0,
             "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
+            "hit_count": 0,
+            "hide_cooldown": 0.0,
         })
     if right_perches:
         occupied = occupied_perch_ids(states)
@@ -548,12 +555,154 @@ def spawn_intro_crows(
             "anim_accum": 0.0,
             "launch_delay": 1.0,
             "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
+            "hit_count": 0,
+            "hide_cooldown": 0.0,
         })
     return states
 
 
+def launch_crow_to_perch(perch: dict, crow_frames: Dict[str, List[List[str]]]) -> dict:
+    resting_rows = crow_frames.get("resting", [])
+    crow_width = max((len(row) for row in resting_rows), default=0)
+    perch_x = float(perch.get("perch_x", 0.0))
+    perch_y = float(perch.get("perch_y", 0.0))
+    start_x = float(-crow_width - 4) if perch_x < (world.SCREEN_W / 2) else float(world.SCREEN_W + 4)
+    start_y = float(max(0, int(perch_y) - (4 if perch_x < (world.SCREEN_W / 2) else 5)))
+    return {
+        "x": start_x,
+        "y": start_y,
+        "perch": perch,
+        "mode": "flying",
+        "anim_index": 0 if perch_x < (world.SCREEN_W / 2) else (1 % len(CROW_FLY_SEQUENCE)),
+        "anim_accum": 0.0,
+        "launch_delay": 0.0,
+        "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
+    }
+
+
+def redirect_crow_to_perch(crow: dict, perch: dict) -> dict:
+    updated = dict(crow)
+    updated["perch"] = perch
+    updated["mode"] = "flying"
+    updated["anim_index"] = 0
+    updated["anim_accum"] = 0.0
+    updated["launch_delay"] = 0.0
+    updated["move_cooldown"] = CROW_RELOCATE_MIN_SECONDS
+    return updated
+
+
+def crow_exit_target(crow: dict, crow_frames: Dict[str, List[List[str]]]) -> tuple[float, float]:
+    rows = crow_rows_for_state(crow, crow_frames)
+    crow_width = max((len(row) for row in rows), default=0)
+    x = float(crow.get("x", 0.0))
+    y = float(crow.get("y", 0.0))
+    if x < (world.SCREEN_W / 2):
+        return float(-crow_width - 4), y
+    return float(world.SCREEN_W + 4), y
+
+
+def crow_rows_for_state(crow: dict, crow_frames: Dict[str, List[List[str]]]) -> List[List[str]]:
+    if str(crow.get("mode", "resting")) == "resting":
+        return crow_frames.get("resting", [])
+    frame_label = CROW_FLY_SEQUENCE[int(crow.get("anim_index", 0)) % len(CROW_FLY_SEQUENCE)]
+    return crow_frames.get(frame_label, crow_frames.get("resting", []))
+
+
+def crow_screen_position(
+    crow: dict,
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    center_object_id: str,
+    camera_x: int,
+) -> tuple[float, float] | None:
+    if str(crow.get("mode", "")) == "hidden":
+        return None
+    if str(crow.get("mode", "resting")) == "resting":
+        return perch_screen_position(crow.get("perch", {}), zones, landscape_position, center_object_id, camera_x)
+    return float(crow.get("x", 0.0)), float(crow.get("y", 0.0))
+
+
+def handle_crow_hits(
+    crow_states: List[dict],
+    crow_frames: Dict[str, List[List[str]]],
+    thrown_pebbles: List[dict],
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    center_object_id: str,
+    camera_x: int,
+    visible_perches: List[dict],
+    rng: random.Random,
+) -> tuple[List[dict], List[dict]]:
+    if not crow_states or not thrown_pebbles:
+        return crow_states, thrown_pebbles
+    boxes: List[tuple[int, int, int, int] | None] = []
+    for crow in crow_states:
+        pos = crow_screen_position(crow, zones, landscape_position, center_object_id, camera_x)
+        rows = crow_rows_for_state(crow, crow_frames)
+        if pos is None or not rows:
+            boxes.append(None)
+            continue
+        x0 = int(round(pos[0]))
+        y0 = int(round(pos[1]))
+        width = max((len(row) for row in rows), default=0)
+        boxes.append((x0, y0, x0 + max(0, width - 1), y0 + max(0, len(rows) - 1)))
+
+    ground_start = world.landscape_ground_window_start(landscape_position)
+    updated_crows = [dict(crow) for crow in crow_states]
+    surviving_projectiles: List[dict] = []
+    for projectile in thrown_pebbles:
+        screen_x = int(round(float(projectile.get("world_x", 0.0)))) - int(camera_x)
+        world_row = int(round(float(projectile.get("world_row", 0.0))))
+        screen_y = int(zones["ground_bg"].y) + (world_row - ground_start)
+        hit_index = None
+        for idx, box in enumerate(boxes):
+            if box is None:
+                continue
+            x0, y0, x1, y1 = box
+            if x0 <= screen_x <= x1 and y0 <= screen_y <= y1:
+                hit_index = idx
+                break
+        if hit_index is None:
+            surviving_projectiles.append(projectile)
+            continue
+        crow = updated_crows[hit_index]
+        crow["hit_count"] = int(crow.get("hit_count", 0)) + 1
+        if int(crow.get("hit_count", 0)) >= CROW_MAX_HITS_BEFORE_HIDE:
+            exit_x, exit_y = crow_exit_target(crow, crow_frames)
+            crow["mode"] = "escaping"
+            crow["exit_x"] = exit_x
+            crow["exit_y"] = exit_y
+            crow["hide_cooldown"] = 0.0
+            crow["perch"] = {}
+            crow["launch_delay"] = 0.0
+            crow["anim_accum"] = 0.0
+        else:
+            occupied = occupied_perch_ids(updated_crows, exclude_index=hit_index)
+            current_pos = crow_screen_position(crow, zones, landscape_position, center_object_id, camera_x)
+            choices = []
+            for perch in visible_perches:
+                if str(perch.get("id", "")) in occupied:
+                    continue
+                if current_pos is not None:
+                    dx = float(perch.get("perch_x", 0.0)) - float(current_pos[0])
+                    dy = float(perch.get("perch_y", 0.0)) - float(current_pos[1])
+                    if (dx * dx + dy * dy) ** 0.5 < CROW_MIN_HIT_RELOCATE_DISTANCE:
+                        continue
+                choices.append(perch)
+            if not choices:
+                choices = [perch for perch in visible_perches if str(perch.get("id", "")) not in occupied]
+            if choices:
+                next_perch = choices[rng.randrange(len(choices))]
+                crow.update(redirect_crow_to_perch(crow, next_perch))
+                crow["hide_cooldown"] = 0.0
+        updated_crows[hit_index] = crow
+        boxes[hit_index] = None
+    return updated_crows, surviving_projectiles
+
+
 def update_intro_crows(
     crow_states: List[dict],
+    crow_frames: Dict[str, List[List[str]]],
     dt: float,
     zones: Dict[str, world.LayoutZone],
     landscape_position: int,
@@ -565,6 +714,42 @@ def update_intro_crows(
     updated: List[dict] = []
     for crow_index, crow in enumerate(crow_states):
         item = dict(crow)
+        if str(item.get("mode", "")) == "hidden":
+            item["hide_cooldown"] = max(0.0, float(item.get("hide_cooldown", 0.0)) - dt)
+            if float(item.get("hide_cooldown", 0.0)) <= 0.0 and visible_perches:
+                occupied = occupied_perch_ids(crow_states, exclude_index=crow_index)
+                choices = [perch for perch in visible_perches if str(perch.get("id", "")) not in occupied]
+                if choices:
+                    next_perch = choices[rng.randrange(len(choices))]
+                    item.update(launch_crow_to_perch(next_perch, crow_frames))
+                    item["hit_count"] = 0
+                    item["hide_cooldown"] = 0.0
+            updated.append(item)
+            continue
+        if str(item.get("mode", "")) == "escaping":
+            item["anim_accum"] = float(item.get("anim_accum", 0.0)) + dt
+            while float(item.get("anim_accum", 0.0)) >= CROW_FLY_STEP_SECONDS:
+                item["anim_accum"] = float(item.get("anim_accum", 0.0)) - CROW_FLY_STEP_SECONDS
+                item["anim_index"] = (int(item.get("anim_index", 0)) + 1) % len(CROW_FLY_SEQUENCE)
+            target_x = float(item.get("exit_x", item.get("x", 0.0)))
+            target_y = float(item.get("exit_y", item.get("y", 0.0)))
+            dx = target_x - float(item.get("x", 0.0))
+            dy = target_y - float(item.get("y", 0.0))
+            compensated_dy = dy * CROW_FLY_VERTICAL_COMPENSATION
+            distance = (dx * dx + compensated_dy * compensated_dy) ** 0.5
+            step = CROW_FLY_SPEED * dt
+            if distance <= max(1.0, step):
+                item["x"] = target_x
+                item["y"] = target_y
+                item["mode"] = "hidden"
+                item["hide_cooldown"] = CROW_HIT_HIDE_SECONDS
+                item["exit_x"] = target_x
+                item["exit_y"] = target_y
+            elif distance > 0:
+                item["x"] = float(item.get("x", 0.0)) + (dx / distance) * step
+                item["y"] = float(item.get("y", 0.0)) + (compensated_dy / distance) * step
+            updated.append(item)
+            continue
         target_pos = perch_screen_position(item.get("perch", {}), zones, landscape_position, center_object_id, camera_x)
         mode = str(item.get("mode", "flying"))
         if mode == "waiting":
@@ -1351,7 +1536,7 @@ def render(
                 color="\x1b[38;2;245;245;245m",
             )
     for crow in crow_states:
-        if str(crow.get("mode", "resting")) == "resting":
+        if str(crow.get("mode", "")) in {"resting", "hidden"}:
             continue
         frame_label = CROW_FLY_SEQUENCE[int(crow.get("anim_index", 0)) % len(CROW_FLY_SEQUENCE)]
         rows = crow_frames.get(frame_label, crow_frames.get("resting", []))
@@ -1658,7 +1843,19 @@ def main() -> None:
             )
             crow_states = update_intro_crows(
                 crow_states,
+                crow_frames,
                 dt,
+                zones,
+                landscape_position,
+                center_object_id,
+                camera_x,
+                current_visible_perches,
+                crow_motion_rng,
+            )
+            crow_states, thrown_pebbles = handle_crow_hits(
+                crow_states,
+                crow_frames,
+                thrown_pebbles,
                 zones,
                 landscape_position,
                 center_object_id,
