@@ -24,6 +24,12 @@ HOUSE_10_VIAL_LABEL = "[#10 Ave A]"
 FAIRY_FLAP_SEQUENCE = ["primary", "a", "b", "a", "primary"]
 FAIRY_FLAP_STEP_SECONDS = 0.12
 MUSHROOM_STEP_POSE_SECONDS = 0.18
+WALKING_MUSHROOM_SEQUENCE = ["a", "primary", "b", "primary"]
+WALKING_MUSHROOM_STEP_SECONDS = 0.20
+WALKING_MUSHROOM_SPEED = 4.0
+WALKING_FAIRY_SEQUENCE = ["primary", "a", "b", "a", "primary"]
+WALKING_FAIRY_STEP_SECONDS = 0.12
+WALKING_FAIRY_SPEED = 8.0
 CROW_FLY_SEQUENCE = ["a", "b", "c", "b"]
 CROW_FLY_STEP_SECONDS = 0.10
 CROW_FLY_SPEED = 52.0
@@ -903,6 +909,40 @@ def update_thrown_pebbles(projectiles: List[dict], dt: float) -> List[dict]:
     return updated
 
 
+def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
+    updated = dict(mushroom)
+    world_x = float(updated.get("world_x", 0.0)) + (WALKING_MUSHROOM_SPEED * dt)
+    width = max(1, int(updated.get("width", 1)))
+    if world_x > TRAVEL_WORLD_WIDTH:
+        world_x = 0.0 - max(0, width - 1)
+    updated["world_x"] = world_x
+    accum = float(updated.get("anim_accum", 0.0)) + dt
+    phase_index = int(updated.get("phase_index", 0))
+    while accum >= WALKING_MUSHROOM_STEP_SECONDS:
+        accum -= WALKING_MUSHROOM_STEP_SECONDS
+        phase_index = (phase_index + 1) % len(WALKING_MUSHROOM_SEQUENCE)
+    updated["anim_accum"] = accum
+    updated["phase_index"] = phase_index
+    return updated
+
+
+def update_walking_fairy(fairy: dict, dt: float) -> dict:
+    updated = dict(fairy)
+    world_x = float(updated.get("world_x", 0.0)) - (WALKING_FAIRY_SPEED * dt)
+    width = max(1, int(updated.get("width", 1)))
+    if world_x + width - 1 < 0:
+        world_x = float(TRAVEL_WORLD_WIDTH - 1)
+    updated["world_x"] = world_x
+    accum = float(updated.get("anim_accum", 0.0)) + dt
+    phase_index = int(updated.get("phase_index", 0))
+    while accum >= WALKING_FAIRY_STEP_SECONDS:
+        accum -= WALKING_FAIRY_STEP_SECONDS
+        phase_index = (phase_index + 1) % len(WALKING_FAIRY_SEQUENCE)
+    updated["anim_accum"] = accum
+    updated["phase_index"] = phase_index
+    return updated
+
+
 def border_tree_screen_x(side: str, width: int, column_band: int, column_jitter: int) -> int:
     band = max(0, min(2, int(column_band)))
     jitter = max(-1, min(1, int(column_jitter)))
@@ -1004,6 +1044,10 @@ def render(
     house_occupants: Dict[str, List[List[str]]],
     house_occupant_poses: Dict[str, dict],
     house_window_objects: Dict[str, List[dict]],
+    walking_mushroom_frames: Dict[str, List[List[str]]],
+    walking_mushroom: dict,
+    walking_fairy_frames: Dict[str, List[List[str]]],
+    walking_fairy: dict,
     collectible_pebbles: Dict[int, Dict[int, str]],
     thrown_pebbles: List[dict],
     pebble_count: int,
@@ -1229,6 +1273,50 @@ def render(
     draw_world_scene_sprites(draw_backside=False)
 
     avatar = build_avatar_placement(avatar_rows)
+    walker_rows = walking_mushroom_frames.get(
+        WALKING_MUSHROOM_SEQUENCE[int(walking_mushroom.get("phase_index", 0)) % len(WALKING_MUSHROOM_SEQUENCE)],
+        walking_mushroom_frames.get("primary", []),
+    )
+    if isinstance(walker_rows, list) and walker_rows:
+        ground_start = world.landscape_ground_window_start(landscape_position)
+        walker_world_row = int(walking_mushroom.get("world_row", 0))
+        walker_screen_y = int(ground_zone.y) + (walker_world_row - ground_start) - max(0, len(walker_rows) - 1)
+        walker_screen_x = int(round(float(walking_mushroom.get("world_x", 0.0)))) - int(camera_x)
+        if (
+            walker_screen_x + max((len(row) for row in walker_rows), default=0) > 0
+            and walker_screen_x < world.SCREEN_W
+            and walker_screen_y + len(walker_rows) > int(ground_zone.y)
+            and walker_screen_y <= int(ground_zone.y1)
+        ):
+            foreground_drawables.append({
+                "x": walker_screen_x,
+                "y": walker_screen_y,
+                "rows": walker_rows,
+                "base_y": walker_screen_y + max(0, len(walker_rows) - 1),
+                "z_bias": 12,
+            })
+    fairy_rows = walking_fairy_frames.get(
+        WALKING_FAIRY_SEQUENCE[int(walking_fairy.get("phase_index", 0)) % len(WALKING_FAIRY_SEQUENCE)],
+        walking_fairy_frames.get("primary", []),
+    )
+    if isinstance(fairy_rows, list) and fairy_rows:
+        ground_start = world.landscape_ground_window_start(landscape_position)
+        fairy_world_row = int(walking_fairy.get("world_row", 0))
+        fairy_screen_y = int(ground_zone.y) + (fairy_world_row - ground_start) - max(0, len(fairy_rows) - 1)
+        fairy_screen_x = int(round(float(walking_fairy.get("world_x", 0.0)))) - int(camera_x)
+        if (
+            fairy_screen_x + max((len(row) for row in fairy_rows), default=0) > 0
+            and fairy_screen_x < world.SCREEN_W
+            and fairy_screen_y + len(fairy_rows) > int(ground_zone.y)
+            and fairy_screen_y <= int(ground_zone.y1)
+        ):
+            foreground_drawables.append({
+                "x": fairy_screen_x,
+                "y": fairy_screen_y,
+                "rows": fairy_rows,
+                "base_y": fairy_screen_y + max(0, len(fairy_rows) - 1),
+                "z_bias": 13,
+            })
     foreground_drawables.append({
         "x": int(avatar["x"]),
         "y": int(avatar["y"]),
@@ -1408,6 +1496,46 @@ def main() -> None:
     vial_pose = centered_window_object_pose(vial_mask_rows, vial_rows, window_index=1) if isinstance(vial_mask_rows, list) else None
     if isinstance(vial_pose, dict) and isinstance(vial_rows, list) and vial_rows:
         house_window_objects[HOUSE_10_VIAL_LABEL] = [{"rows": vial_rows, "x0": int(vial_pose["x0"]), "y0": int(vial_pose["y0"])}]
+    walking_mushroom_frames = world.build_house_mushroom_frames(opponents, color_codes, 14)
+    walking_mushroom_house = house_sprite_by_label.get("[#8 Ave A]")
+    walking_mushroom = {
+        "world_x": 0.0,
+        "world_row": 30,
+        "phase_index": 0,
+        "anim_accum": 0.0,
+        "width": max((len(row) for row in walking_mushroom_frames.get("primary", [])), default=0),
+    }
+    if isinstance(walking_mushroom_house, dict):
+        house_x0, _house_y0, _backside = sprite_projection_for_scene(
+            walking_mushroom_house,
+            0,
+            world.landscape_hidden_ground_rows(START_TRAVEL_POSITION),
+            world.build_scene_zones(sky_rows=world.landscape_sky_rows(START_TRAVEL_POSITION))["ground_bg"],
+            center_object_id,
+        ) or (0, 0, False)
+        house_width = int(walking_mushroom_house.get("width", 0))
+        walking_mushroom["world_x"] = float(max(0, house_x0 + max(0, (house_width // 2) - 3)))
+        walking_mushroom["world_row"] = max(0, int(walking_mushroom_house.get("horizon_depth", 27)) + 8)
+    walking_fairy_frames = world.build_house_fairy_frames(opponents, color_codes, 16)
+    walking_fairy_house = house_sprite_by_label.get("[#12 Ave A]")
+    walking_fairy = {
+        "world_x": float(TRAVEL_WORLD_WIDTH - 1),
+        "world_row": 29,
+        "phase_index": 0,
+        "anim_accum": 0.0,
+        "width": max((len(row) for row in walking_fairy_frames.get("primary", [])), default=0),
+    }
+    if isinstance(walking_fairy_house, dict):
+        house_x0, _house_y0, _backside = sprite_projection_for_scene(
+            walking_fairy_house,
+            0,
+            world.landscape_hidden_ground_rows(START_TRAVEL_POSITION),
+            world.build_scene_zones(sky_rows=world.landscape_sky_rows(START_TRAVEL_POSITION))["ground_bg"],
+            center_object_id,
+        ) or (0, 0, False)
+        house_width = int(walking_fairy_house.get("width", 0))
+        walking_fairy["world_x"] = float(max(0, house_x0 + max(0, (house_width // 2) - 2)))
+        walking_fairy["world_row"] = max(0, int(walking_fairy_house.get("horizon_depth", 27)) + 4)
     crow_resting_rows = crow_frames.get("resting", [])
     crow_width = max((len(row) for row in crow_resting_rows), default=0)
     crow_states = spawn_intro_crows(
@@ -1467,6 +1595,8 @@ def main() -> None:
             throw_cooldown = max(0.0, throw_cooldown - dt)
             throw_pose_accum = max(0.0, throw_pose_accum - dt)
             thrown_pebbles = update_thrown_pebbles(thrown_pebbles, dt)
+            walking_mushroom = update_walking_mushroom(walking_mushroom, dt)
+            walking_fairy = update_walking_fairy(walking_fairy, dt)
             for label, frames in house_fairy_frames.items():
                 state = house_fairy_flap_states.get(label, {"active": False, "sequence_index": 0, "accum": 0.0})
                 if state.get("active"):
@@ -1695,6 +1825,10 @@ def main() -> None:
                 house_occupants=house_occupants,
                 house_occupant_poses=house_occupant_poses,
                 house_window_objects=house_window_objects,
+                walking_mushroom_frames=walking_mushroom_frames,
+                walking_mushroom=walking_mushroom,
+                walking_fairy_frames=walking_fairy_frames,
+                walking_fairy=walking_fairy,
                 collectible_pebbles=collectible_pebbles,
                 thrown_pebbles=thrown_pebbles,
                 pebble_count=pebble_count,
