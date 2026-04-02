@@ -775,6 +775,35 @@ def build_opponent_sprite(opponents_data: object, opponent_id: str, color_codes:
     return _colorize_object_rows(art, mask, color_codes)
 
 
+def build_opponent_art_variations(
+    opponents_data: object,
+    opponent_id: str,
+    color_codes: Dict[str, str],
+) -> Dict[str, List[List[str]]]:
+    if not isinstance(opponents_data, dict):
+        return {}
+    base_opponents = opponents_data.get("base_opponents", {})
+    if not isinstance(base_opponents, dict):
+        return {}
+    opponent = base_opponents.get(opponent_id, {})
+    if not isinstance(opponent, dict):
+        return {}
+    variations = opponent.get("art_variations", [])
+    if not isinstance(variations, list):
+        return {}
+    out: Dict[str, List[List[str]]] = {}
+    for entry in variations:
+        if not isinstance(entry, dict):
+            continue
+        label = str(entry.get("label", "")).strip()
+        if not label:
+            continue
+        rows = _colorize_object_rows(entry.get("art", []), entry.get("color_map", []), color_codes)
+        if rows:
+            out[label] = rows
+    return out
+
+
 def build_house_mushroom_sprite(
     opponents_data: object,
     color_codes: Dict[str, str],
@@ -807,6 +836,27 @@ def build_house_fairy_sprite(
         "b": _ansi_color_code(*eye_base),
     }
     return build_opponent_sprite(opponents_data, "fairy_baby", _with_color_overrides(color_codes, overrides))
+
+
+def build_house_fairy_frames(
+    opponents_data: object,
+    color_codes: Dict[str, str],
+    house_number: int,
+) -> Dict[str, List[List[str]]]:
+    wing_index, eye_index = fairy_palette_indices_for_house(house_number)
+    wing_bright, wing_base = HOUSE_ACCENT_PALETTES[wing_index]
+    eye_bright, eye_base = HOUSE_ACCENT_PALETTES[eye_index]
+    overrides = {
+        "C": _ansi_color_code(*wing_bright),
+        "c": _ansi_color_code(*wing_base),
+        "B": _ansi_color_code(*eye_bright),
+        "b": _ansi_color_code(*eye_base),
+    }
+    varied_codes = _with_color_overrides(color_codes, overrides)
+    frames = build_opponent_art_variations(opponents_data, "fairy_baby", varied_codes)
+    if "primary" not in frames:
+        frames["primary"] = build_opponent_sprite(opponents_data, "fairy_baby", varied_codes)
+    return frames
 
 
 def build_player_sprite(players_data: object, player_id: str, color_codes: Dict[str, str]) -> List[List[str]]:

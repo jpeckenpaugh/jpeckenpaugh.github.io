@@ -20,6 +20,8 @@ TRAVEL_WORLD_WIDTH = 1100
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
 AVE_A_MUSHROOM_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range(1, 11)]
 AVE_A_FAIRY_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range(11, 21)]
+FAIRY_FLAP_SEQUENCE = ["primary", "a", "b", "a", "primary"]
+FAIRY_FLAP_STEP_SECONDS = 0.12
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
 WALK_FRAME_STEP_SECONDS = 0.5
 WALK_RESET_IDLE_SECONDS = 0.5
@@ -959,10 +961,18 @@ def main() -> None:
         label: world.build_house_mushroom_sprite(opponents, color_codes, house_number)
         for house_number, label in enumerate(AVE_A_MUSHROOM_HOUSE_LABELS, start=1)
     }
-    house_occupants.update({
-        label: world.build_house_fairy_sprite(opponents, color_codes, house_number)
+    house_fairy_frames = {
+        label: world.build_house_fairy_frames(opponents, color_codes, house_number)
         for house_number, label in enumerate(AVE_A_FAIRY_HOUSE_LABELS, start=11)
+    }
+    house_occupants.update({
+        label: frames.get("primary", [])
+        for label, frames in house_fairy_frames.items()
     })
+    house_fairy_flap_states = {
+        label: {"active": False, "sequence_index": 0, "accum": 0.0}
+        for label in AVE_A_FAIRY_HOUSE_LABELS
+    }
     house_occupant_poses = {}
     for label, occupant_rows in house_occupants.items():
         target_house = house_sprite_by_label.get(label)
@@ -1005,6 +1015,22 @@ def main() -> None:
             throw_cooldown = max(0.0, throw_cooldown - dt)
             throw_pose_accum = max(0.0, throw_pose_accum - dt)
             thrown_pebbles = update_thrown_pebbles(thrown_pebbles, dt)
+            for label, frames in house_fairy_frames.items():
+                state = house_fairy_flap_states.get(label, {"active": False, "sequence_index": 0, "accum": 0.0})
+                if state.get("active"):
+                    state["accum"] = float(state.get("accum", 0.0)) + dt
+                    while float(state.get("accum", 0.0)) >= FAIRY_FLAP_STEP_SECONDS and state.get("active"):
+                        state["accum"] = float(state.get("accum", 0.0)) - FAIRY_FLAP_STEP_SECONDS
+                        next_index = int(state.get("sequence_index", 0)) + 1
+                        if next_index >= len(FAIRY_FLAP_SEQUENCE):
+                            state["active"] = False
+                            state["sequence_index"] = 0
+                            state["accum"] = 0.0
+                            break
+                        state["sequence_index"] = next_index
+                    house_fairy_flap_states[label] = state
+                phase = FAIRY_FLAP_SEQUENCE[int(state.get("sequence_index", 0))]
+                house_occupants[label] = frames.get(phase, frames.get("primary", []))
 
             if landscape_position != target_landscape_position:
                 camera_accum += dt
@@ -1037,13 +1063,17 @@ def main() -> None:
                     target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
                     target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
                     if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
-                        house_occupant_poses[label] = step_house_occupant_pose(
+                        prior_pose = house_occupant_poses.get(label, {"x0": 0, "floor_offset": 1})
+                        updated_pose = step_house_occupant_pose(
                             target_art_rows,
                             target_mask_rows,
                             occupant_rows,
-                            house_occupant_poses.get(label, {"x0": 0, "floor_offset": 1}),
+                            prior_pose,
                             mushroom_motion_rng,
                         )
+                        house_occupant_poses[label] = updated_pose
+                        if label in house_fairy_frames and updated_pose != prior_pose:
+                            house_fairy_flap_states[label] = {"active": True, "sequence_index": 0, "accum": 0.0}
             for cloud in clouds:
                 speed = float(cloud.get("speed", 1.0))
                 cloud["x"] = float(cloud.get("x", 0.0)) - (speed * dt)
