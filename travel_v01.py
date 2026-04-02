@@ -18,8 +18,8 @@ TRAVEL_WORLD_WIDTH = 320
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
 MUSHROOM_HOUSE_LABEL = "[#10 Ave A]"
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
-WALK_FRAME_STEP_SECONDS = 0.5
-WALK_RESET_IDLE_SECONDS = 1.0
+WALK_FRAME_STEP_SECONDS = 0.1
+WALK_RESET_IDLE_SECONDS = 0.1
 
 
 def current_address_label(position: int) -> str:
@@ -717,9 +717,11 @@ def main() -> None:
     zones = world.build_scene_zones(sky_rows=world.landscape_sky_rows(landscape_position))
     sky_bottom_anchor = world.sky_bottom_anchor_for_position(landscape_position)
     avatar_facing = "front"
+    avatar_forward_facing = "front"
     walk_frame_index = 0
     walk_frame_accum = 0.0
-    idle_reset_accum = 0.0
+    idle_reset_accum = WALK_RESET_IDLE_SECONDS
+    last_walk_step_phase = "step_b"
     was_avatar_moving = False
     avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, "idle")
     mushroom_rows = world.build_opponent_sprite(opponents, "mushroom_baby", color_codes)
@@ -808,6 +810,7 @@ def main() -> None:
                 break
             if key == "up":
                 avatar_facing = "back"
+                avatar_forward_facing = "back"
                 candidate = target_landscape_position - 1
                 if candidate < world.LANDSCAPE_STEP_ROWS:
                     candidate = world.LANDSCAPE_TOTAL_GROUND_ROWS
@@ -816,6 +819,7 @@ def main() -> None:
                     target_landscape_position = candidate
             if key == "down":
                 avatar_facing = "front"
+                avatar_forward_facing = "front"
                 candidate = target_landscape_position + 1
                 if candidate > world.LANDSCAPE_TOTAL_GROUND_ROWS:
                     candidate = world.LANDSCAPE_STEP_ROWS
@@ -823,10 +827,12 @@ def main() -> None:
                 if is_camera_on_walkable_surface(camera_x, avatar_rows, candidate_zones, candidate):
                     target_landscape_position = candidate
             if key == "left":
+                avatar_facing = "left"
                 candidate = max(0, target_camera_x - SIDE_STEP_COLUMNS)
                 if is_camera_on_walkable_surface(candidate, avatar_rows, zones, landscape_position):
                     target_camera_x = candidate
             if key == "right":
+                avatar_facing = "right"
                 candidate = min(TRAVEL_WORLD_WIDTH - world.SCREEN_W, target_camera_x + SIDE_STEP_COLUMNS)
                 if is_camera_on_walkable_surface(candidate, avatar_rows, zones, landscape_position):
                     target_camera_x = candidate
@@ -837,7 +843,7 @@ def main() -> None:
                 camera_x = clamp_camera_to_road(camera_x, avatar_rows, zones, landscape_position)
                 walk_frame_index = 0
                 walk_frame_accum = 0.0
-                idle_reset_accum = 0.0
+                idle_reset_accum = WALK_RESET_IDLE_SECONDS
                 was_avatar_moving = False
             if key == "c":
                 scene_index = (scene_index + 1) % len(WORLD_MODELS)
@@ -853,7 +859,7 @@ def main() -> None:
             avatar_is_moving = (camera_x != target_camera_x) or (landscape_position != target_landscape_position)
             if avatar_is_moving:
                 if not was_avatar_moving:
-                    walk_frame_index = 1
+                    walk_frame_index = 3 if last_walk_step_phase == "step_a" else 1
                     walk_frame_accum = 0.0
                 idle_reset_accum = 0.0
                 walk_frame_accum += dt
@@ -861,11 +867,15 @@ def main() -> None:
                     walk_frame_accum -= WALK_FRAME_STEP_SECONDS
                     walk_frame_index = (walk_frame_index + 1) % len(WALK_FRAME_SEQUENCE)
             else:
-                walk_frame_accum = 0.0
+                if was_avatar_moving and WALK_FRAME_SEQUENCE[walk_frame_index] in {"step_a", "step_b"}:
+                    last_walk_step_phase = WALK_FRAME_SEQUENCE[walk_frame_index]
                 idle_reset_accum += dt
                 if idle_reset_accum >= WALK_RESET_IDLE_SECONDS:
                     walk_frame_index = 0
+                    walk_frame_accum = 0.0
             avatar_phase = WALK_FRAME_SEQUENCE[walk_frame_index]
+            if avatar_phase in {"step_a", "step_b"}:
+                last_walk_step_phase = avatar_phase
             was_avatar_moving = avatar_is_moving
             avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, avatar_phase)
 
