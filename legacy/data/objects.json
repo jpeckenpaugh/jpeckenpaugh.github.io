@@ -462,6 +462,30 @@
         ],
         "align": 0
     },
+    "small_vial": {
+        "art": [
+            "▂▂",
+            "┟┧",
+            "┗┛"
+        ],
+        "color_mask": [
+            "qq",
+            "bb",
+            "bb"
+        ],
+        "align": 0
+    },
+    "vials": {
+        "art": [
+            "┟╁╁╁┧",
+            "╇╇╇╇╇"
+        ],
+        "color_mask": [
+            "bbbbb",
+            "bbbbb"
+        ],
+        "align": 0
+    },
     "potion_large": {
         "art": [
             "  .___,",

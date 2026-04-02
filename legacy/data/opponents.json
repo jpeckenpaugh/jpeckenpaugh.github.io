@@ -69,20 +69,78 @@
       "arrival": "flutters into view",
       "desc": "A scrappy fledgling with a sharp beak.",
       "art": [
-        "  _\\|      __     |/_",
-        "_-  \\_   _/\"->   _/  -_",
-        "-_    `-'(   )`-'    _-",
-        " `=.__.=-(   )-=.__.='",
-        "         |/-\\|",
-        "         Y   Y"
+        " ▁▁",
+        "(\"▁▻",
+        "(╭╮)",
+        " ◠◠"
       ],
       "color_map": [
-        "  sss      ss     sss",
-        "ss!!ss   ssbyy   ss!!ss",
-        "ss!!!!ssss!!!ssss!!!!ss",
-        " sssssssss!!!sssssssss",
-        "         sssss",
-        "         y   y"
+        " sS",
+        "sssa",
+        "sSSs",
+        " yY"
+      ],
+      "art_variations": [
+        {
+          "label": "resting",
+          "art": [
+            " ▁▁",
+            "(\"▁▻",
+            "(╭╮)",
+            " ◠◠"
+          ],
+          "color_map": [
+            " sS",
+            "sssa",
+            "sSSs",
+            " yY"
+          ]
+        },
+        {
+          "label": "a",
+          "art": [
+            "╻┄╮▁ ╭┄╻",
+            "╰╲(\"▁▻╯╱╯",
+            "  (╭╮)",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "sSsSsSsS",
+            "ssssssaSs",
+            "  sSSs",
+            "   yY"
+          ]
+        },
+        {
+          "label": "b",
+          "art": [
+            "   ▁▁",
+            "╻┄(▁\"▻┄╻",
+            "╰┄╮╭╮╭┄╯",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "   sS",
+            "sSsssaSs",
+            "sSsSSSsS",
+            "   yY"
+          ]
+        },
+        {
+          "label": "c",
+          "art": [
+            "   ▁▁",
+            "  (▁\"▻",
+            "╻╱(╭╮)╲╻",
+            "╰┄╯◠◠╰┄╯"
+          ],
+          "color_map": [
+            "   sS",
+            "  sssa",
+            "sSsSSsSs",
+            "sSsYysSs"
+          ]
+        }
       ],
       "variation": 0.06,
       "jitter_stability": false,

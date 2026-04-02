@@ -20,8 +20,15 @@ TRAVEL_WORLD_WIDTH = 1100
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
 AVE_A_MUSHROOM_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range(1, 11)]
 AVE_A_FAIRY_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range(11, 21)]
+HOUSE_10_VIAL_LABEL = "[#10 Ave A]"
 FAIRY_FLAP_SEQUENCE = ["primary", "a", "b", "a", "primary"]
 FAIRY_FLAP_STEP_SECONDS = 0.12
+CROW_FLY_SEQUENCE = ["a", "b", "c", "b"]
+CROW_FLY_STEP_SECONDS = 0.10
+CROW_FLY_SPEED = 52.0
+CROW_FLY_VERTICAL_COMPENSATION = 2
+CROW_RELOCATE_MIN_SECONDS = 10.0
+CROW_RELOCATE_MAX_SECONDS = 15.0
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
 WALK_FRAME_STEP_SECONDS = 0.5
 WALK_RESET_IDLE_SECONDS = 0.5
@@ -69,45 +76,63 @@ def draw_label(canvas: List[List[str]], text: str, x0: int, y0: int, color: str 
 
 
 def first_window_bounds(mask_rows: List[str]) -> tuple[int, int, int, int] | None:
+    bounds = all_window_component_bounds(mask_rows)
+    return bounds[0] if bounds else None
+
+
+def all_window_component_bounds(mask_rows: List[str]) -> List[tuple[int, int, int, int]]:
     coords: List[tuple[int, int]] = []
     for y, row in enumerate(mask_rows):
         for x, ch in enumerate(str(row)):
             if ch == "?":
                 coords.append((x, y))
     if not coords:
-        return None
+        return []
     coord_set = set(coords)
-    seed = min(coords, key=lambda item: (item[0], item[1]))
-    stack = [seed]
-    visited = {seed}
-    component: List[tuple[int, int]] = []
-    while stack:
-        x, y = stack.pop()
-        component.append((x, y))
-        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-            if (nx, ny) in coord_set and (nx, ny) not in visited:
-                visited.add((nx, ny))
-                stack.append((nx, ny))
-    min_x = min(x for x, _ in component)
-    max_x = max(x for x, _ in component)
-    min_y = min(y for _, y in component)
-    max_y = max(y for _, y in component)
-    return (min_x, max_x, min_y, max_y)
+    out: List[tuple[int, int, int, int]] = []
+    while coord_set:
+        seed = min(coord_set, key=lambda item: (item[0], item[1]))
+        stack = [seed]
+        component: List[tuple[int, int]] = []
+        coord_set.remove(seed)
+        while stack:
+            x, y = stack.pop()
+            component.append((x, y))
+            for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                if (nx, ny) in coord_set:
+                    coord_set.remove((nx, ny))
+                    stack.append((nx, ny))
+        min_x = min(x for x, _ in component)
+        max_x = max(x for x, _ in component)
+        min_y = min(y for _, y in component)
+        max_y = max(y for _, y in component)
+        out.append((min_x, max_x, min_y, max_y))
+    out.sort(key=lambda item: (item[0], item[2]))
+    return out
 
 
 def all_window_bounds(mask_rows: List[str]) -> tuple[int, int, int, int] | None:
-    coords: List[tuple[int, int]] = []
-    for y, row in enumerate(mask_rows):
-        for x, ch in enumerate(str(row)):
-            if ch == "?":
-                coords.append((x, y))
-    if not coords:
+    bounds = all_window_component_bounds(mask_rows)
+    if not bounds:
         return None
-    min_x = min(x for x, _ in coords)
-    max_x = max(x for x, _ in coords)
-    min_y = min(y for _, y in coords)
-    max_y = max(y for _, y in coords)
+    min_x = min(bound[0] for bound in bounds)
+    max_x = max(bound[1] for bound in bounds)
+    min_y = min(bound[2] for bound in bounds)
+    max_y = max(bound[3] for bound in bounds)
     return (min_x, max_x, min_y, max_y)
+
+
+def centered_window_object_pose(mask_rows: List[str], object_rows: List[List[str]], window_index: int = 0) -> dict | None:
+    bounds = all_window_component_bounds(mask_rows)
+    if window_index < 0 or window_index >= len(bounds):
+        return None
+    min_x, max_x, _min_y, max_y = bounds[window_index]
+    obj_h = len(object_rows)
+    obj_w = max((len(row) for row in object_rows), default=0)
+    return {
+        "x0": min_x + max(0, ((max_x - min_x + 1) - obj_w) // 2),
+        "y0": max_y - max(0, obj_h - 1),
+    }
 
 
 def house_row_spans(art_rows: List[str]) -> List[tuple[int, int] | None]:
@@ -199,6 +224,7 @@ def draw_house_sprite(
     drawable: dict,
     occupant_rows: List[List[str]] | None = None,
     occupant_pose: dict | None = None,
+    window_objects: List[dict] | None = None,
 ) -> None:
     rows = drawable.get("rows", [])
     if not isinstance(rows, list):
@@ -250,6 +276,335 @@ def draw_house_sprite(
                 continue
             if cell != " ":
                 canvas[screen_y][screen_x] = cell
+    if isinstance(window_objects, list):
+        for item in window_objects:
+            item_rows = item.get("rows", [])
+            if isinstance(item_rows, list):
+                draw_sprite(
+                    canvas,
+                    item_rows,
+                    x0 + int(item.get("x0", 0)),
+                    y0 + int(item.get("y0", 0)),
+                )
+
+
+def sprite_projection_for_scene(
+    sprite: dict,
+    camera_x: int,
+    hidden_ground_rows: int,
+    ground_zone: world.LayoutZone,
+    center_object_id: str,
+) -> tuple[int, int, bool] | None:
+    rows = sprite.get("rows", [])
+    if not isinstance(rows, list):
+        return None
+    width = int(sprite.get("width", len(rows[0]) if rows else 0))
+    height = int(sprite.get("height", len(rows)))
+    if "anchor_offset" in sprite:
+        offset = min(world.TREELINE_ROWS - 1, max(0, int(sprite.get("anchor_offset", 0))))
+        sprite_is_backside, y_base = world.horizon_depth_state(offset, hidden_ground_rows, ground_zone.y)
+        y_base = max(ground_zone.y, y_base)
+        y_offset = 1 if center_object_id in {"house", "house_02"} else 0
+        x0 = int(sprite.get("x", 0)) - camera_x
+        y0 = y_base - max(0, height - 1) + y_offset
+        return x0, y0, sprite_is_backside
+    horizon_depth = max(0, int(sprite.get("horizon_depth", 0)))
+    if world.crossroad_row_phase(horizon_depth) is not None:
+        return None
+    sprite_is_backside, y_base = world.horizon_depth_state(horizon_depth, hidden_ground_rows, ground_zone.y)
+    y_base = max(ground_zone.y, y_base)
+    road = road_geometry_for_horizon_distance(max(0, y_base - ground_zone.y))
+    road_anchor = str(sprite.get("road_anchor", "")).strip()
+    if road_anchor == "start":
+        x0 = int(road.get("start", 0)) + int(sprite.get("road_offset", 0)) - camera_x
+    elif road_anchor == "end":
+        x0 = int(road.get("end", TRAVEL_WORLD_WIDTH - 1)) + int(sprite.get("road_offset", 0)) - camera_x
+    elif "side" in sprite:
+        side = str(sprite.get("side", "left"))
+        side_slot = max(0, int(sprite.get("side_slot", 0)))
+        side_offset = int(sprite.get("side_offset", 0))
+        side_gap = width + 12
+        if side == "left":
+            x0 = int(road.get("start", 0)) - width - 8 - (side_slot * side_gap) + side_offset - camera_x
+        else:
+            x0 = int(road.get("end", TRAVEL_WORLD_WIDTH - 1)) + 8 + (side_slot * side_gap) + side_offset - camera_x
+    else:
+        x0 = int(sprite.get("x", 0)) - camera_x
+    y0 = y_base - max(0, height - 1)
+    if str(sprite.get("label", "")).strip():
+        y0 += 1
+    return x0, y0, sprite_is_backside
+
+
+def sprite_top_left_for_scene(
+    sprite: dict,
+    camera_x: int,
+    hidden_ground_rows: int,
+    ground_zone: world.LayoutZone,
+    center_object_id: str,
+) -> tuple[int, int] | None:
+    projection = sprite_projection_for_scene(sprite, camera_x, hidden_ground_rows, ground_zone, center_object_id)
+    if projection is None:
+        return None
+    x0, y0, backside = projection
+    if backside:
+        return None
+    return x0, y0
+
+
+def visible_crow_perches(
+    world_treeline_sprites: List[dict],
+    border_treeline_sprites: List[dict],
+    crossroad_house_sprites: List[dict],
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    center_object_id: str,
+    camera_x: int,
+    crow_width: int,
+    crow_height: int,
+) -> List[dict]:
+    hidden_ground_rows = world.landscape_hidden_ground_rows(landscape_position)
+    ground_zone = zones["ground_bg"]
+    out: List[dict] = []
+    blocked_tree_lines: set[int] = set()
+    for house in crossroad_house_sprites:
+        rows = house.get("rows", [])
+        if not isinstance(rows, list):
+            continue
+        label = str(house.get("label", "")).strip()
+        if not label:
+            continue
+        projection = sprite_projection_for_scene(house, camera_x, hidden_ground_rows, ground_zone, center_object_id)
+        if projection is None:
+            continue
+        _x0, y0, backside = projection
+        if backside:
+            continue
+        height = int(house.get("height", len(rows)))
+        base_y = y0 + max(0, height - 1)
+        blocked_tree_lines.add(base_y)
+        blocked_tree_lines.add(base_y + 1)
+    roadside_tree_sprites = [
+        sprite
+        for sprite in crossroad_house_sprites
+        if not str(sprite.get("label", "")).strip()
+    ]
+    for sprite in list(world_treeline_sprites) + list(border_treeline_sprites) + roadside_tree_sprites:
+        rows = sprite.get("rows", [])
+        if not isinstance(rows, list):
+            continue
+        top_left = sprite_top_left_for_scene(sprite, camera_x, hidden_ground_rows, ground_zone, center_object_id)
+        if top_left is None:
+            continue
+        x0, y0 = top_left
+        width = int(sprite.get("width", len(rows[0]) if rows else 0))
+        height = int(sprite.get("height", len(rows)))
+        base_y = y0 + max(0, height - 1)
+        if base_y in blocked_tree_lines:
+            continue
+        if x0 + width <= 0 or x0 >= world.SCREEN_W:
+            continue
+        if y0 + height <= 0 or y0 >= world.SCREEN_H:
+            continue
+        local_x = max(0, (width // 2) - (crow_width // 2))
+        local_y = max(0, min(2, height // 4))
+        perch_x = x0 + local_x
+        perch_y = y0 + local_y
+        if perch_x < 0 or perch_x + crow_width > world.SCREEN_W:
+            continue
+        if perch_y < 0 or perch_y >= world.SCREEN_H:
+            continue
+        out.append({
+            "id": f"tree:{id(sprite)}",
+            "kind": "tree",
+            "sprite": sprite,
+            "local_x": local_x,
+            "local_y": local_y,
+            "perch_x": perch_x,
+            "perch_y": perch_y,
+        })
+    for house in crossroad_house_sprites:
+        rows = house.get("rows", [])
+        if not isinstance(rows, list):
+            continue
+        label = str(house.get("label", "")).strip()
+        if not label:
+            continue
+        projection = sprite_projection_for_scene(house, camera_x, hidden_ground_rows, ground_zone, center_object_id)
+        if projection is None:
+            continue
+        x0, y0, backside = projection
+        if backside:
+            continue
+        width = int(house.get("width", len(rows[0]) if rows else 0))
+        height = int(house.get("height", len(rows)))
+        if x0 + width <= 0 or x0 >= world.SCREEN_W:
+            continue
+        if y0 + height <= 0 or y0 >= world.SCREEN_H:
+            continue
+        foot_row_targets = [row for row in (0, 1) if row < height]
+        for foot_row in foot_row_targets:
+            local_y = foot_row - max(0, crow_height - 1)
+            for local_x in range(0, max(1, width - crow_width + 1), max(2, crow_width)):
+                perch_x = x0 + local_x
+                perch_y = y0 + local_y
+                if perch_x < 0 or perch_x + crow_width > world.SCREEN_W:
+                    continue
+                if perch_y < 0 or perch_y >= world.SCREEN_H:
+                    continue
+                out.append({
+                    "id": f"house:{label}:{local_x}:{local_y}",
+                    "kind": "house",
+                    "sprite": house,
+                    "local_x": local_x,
+                    "local_y": local_y,
+                    "perch_x": perch_x,
+                    "perch_y": perch_y,
+                })
+    return out
+
+
+def occupied_perch_ids(crow_states: List[dict], exclude_index: int | None = None) -> set[str]:
+    occupied: set[str] = set()
+    for idx, crow in enumerate(crow_states):
+        if exclude_index is not None and idx == exclude_index:
+            continue
+        perch = crow.get("perch", {})
+        perch_id = str(perch.get("id", "")).strip() if isinstance(perch, dict) else ""
+        if perch_id:
+            occupied.add(perch_id)
+    return occupied
+
+
+def perch_screen_position(
+    perch: dict,
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    center_object_id: str,
+    camera_x: int,
+) -> tuple[float, float] | None:
+    sprite = perch.get("sprite")
+    if not isinstance(sprite, dict):
+        return None
+    hidden_ground_rows = world.landscape_hidden_ground_rows(landscape_position)
+    ground_zone = zones["ground_bg"]
+    projection = sprite_projection_for_scene(sprite, camera_x, hidden_ground_rows, ground_zone, center_object_id)
+    if projection is None:
+        return None
+    x0, y0, backside = projection
+    return (
+        float(x0 + int(perch.get("local_x", 0))),
+        float(y0 + int(perch.get("local_y", 0))),
+    )
+
+
+def spawn_intro_crows(
+    perches: List[dict],
+    crow_frames: Dict[str, List[List[str]]],
+) -> List[dict]:
+    resting_rows = crow_frames.get("resting", [])
+    if not resting_rows or not perches:
+        return []
+    crow_width = max((len(row) for row in resting_rows), default=0)
+    states: List[dict] = []
+    left_perches = [p for p in perches if float(p.get("perch_x", 0)) < (world.SCREEN_W / 2)]
+    right_perches = [p for p in perches if float(p.get("perch_x", 0)) >= (world.SCREEN_W / 2)]
+    rng_left = random.Random(7317)
+    rng_right = random.Random(7318)
+    if left_perches:
+        perch = left_perches[rng_left.randrange(len(left_perches))]
+        start_x = float(-crow_width - 4)
+        start_y = float(max(0, int(perch["perch_y"]) - 4))
+        states.append({
+            "x": start_x,
+            "y": start_y,
+            "perch": perch,
+            "mode": "flying",
+            "anim_index": 0,
+            "anim_accum": 0.0,
+            "launch_delay": 0.0,
+            "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
+        })
+    if right_perches:
+        occupied = occupied_perch_ids(states)
+        available_right = [p for p in right_perches if str(p.get("id", "")) not in occupied]
+        perch_pool = available_right if available_right else right_perches
+        perch = perch_pool[rng_right.randrange(len(perch_pool))]
+        start_x = float(world.SCREEN_W + 4)
+        start_y = float(max(0, int(perch["perch_y"]) - 5))
+        states.append({
+            "x": start_x,
+            "y": start_y,
+            "perch": perch,
+            "mode": "waiting",
+            "anim_index": 1 % len(CROW_FLY_SEQUENCE),
+            "anim_accum": 0.0,
+            "launch_delay": 1.0,
+            "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
+        })
+    return states
+
+
+def update_intro_crows(
+    crow_states: List[dict],
+    dt: float,
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    center_object_id: str,
+    camera_x: int,
+    visible_perches: List[dict],
+    rng: random.Random,
+) -> List[dict]:
+    updated: List[dict] = []
+    for crow_index, crow in enumerate(crow_states):
+        item = dict(crow)
+        target_pos = perch_screen_position(item.get("perch", {}), zones, landscape_position, center_object_id, camera_x)
+        mode = str(item.get("mode", "flying"))
+        if mode == "waiting":
+            item["launch_delay"] = max(0.0, float(item.get("launch_delay", 0.0)) - dt)
+            if float(item.get("launch_delay", 0.0)) <= 0.0:
+                item["mode"] = "flying"
+        if str(item.get("mode", "flying")) == "flying":
+            item["anim_accum"] = float(item.get("anim_accum", 0.0)) + dt
+            while float(item.get("anim_accum", 0.0)) >= CROW_FLY_STEP_SECONDS:
+                item["anim_accum"] = float(item.get("anim_accum", 0.0)) - CROW_FLY_STEP_SECONDS
+                item["anim_index"] = (int(item.get("anim_index", 0)) + 1) % len(CROW_FLY_SEQUENCE)
+            target_x, target_y = target_pos if target_pos is not None else (float(item.get("x", 0.0)), float(item.get("y", 0.0)))
+            dx = target_x - float(item.get("x", 0.0))
+            dy = target_y - float(item.get("y", 0.0))
+            compensated_dy = dy * CROW_FLY_VERTICAL_COMPENSATION
+            distance = (dx * dx + compensated_dy * compensated_dy) ** 0.5
+            step = CROW_FLY_SPEED * dt
+            if distance <= max(1.0, step):
+                item["x"] = target_x
+                item["y"] = target_y
+                item["mode"] = "resting"
+                item["anim_index"] = 0
+                item["anim_accum"] = 0.0
+            elif distance > 0:
+                item["x"] = float(item.get("x", 0.0)) + (dx / distance) * step
+                item["y"] = float(item.get("y", 0.0)) + (compensated_dy / distance) * step
+        elif str(item.get("mode", "resting")) == "resting" and target_pos is not None:
+            item["x"], item["y"] = target_pos
+            item["move_cooldown"] = float(item.get("move_cooldown", CROW_RELOCATE_MIN_SECONDS)) - dt
+            if float(item.get("move_cooldown", 0.0)) <= 0.0 and visible_perches:
+                current_perch = item.get("perch", {})
+                occupied = occupied_perch_ids(crow_states, exclude_index=crow_index)
+                choices = [
+                    perch
+                    for perch in visible_perches
+                    if str(perch.get("id", "")) != str(current_perch.get("id", ""))
+                    and str(perch.get("id", "")) not in occupied
+                ]
+                if choices:
+                    next_perch = choices[rng.randrange(len(choices))]
+                    item["perch"] = next_perch
+                    item["mode"] = "flying"
+                    item["anim_index"] = 0
+                    item["anim_accum"] = 0.0
+                item["move_cooldown"] = rng.uniform(CROW_RELOCATE_MIN_SECONDS, CROW_RELOCATE_MAX_SECONDS)
+        updated.append(item)
+    return updated
 
 
 def build_avatar_placement(rows: List[List[str]]) -> dict:
@@ -647,6 +1002,7 @@ def render(
     avatar_facing: str,
     house_occupants: Dict[str, List[List[str]]],
     house_occupant_poses: Dict[str, dict],
+    house_window_objects: Dict[str, List[dict]],
     collectible_pebbles: Dict[int, Dict[int, str]],
     thrown_pebbles: List[dict],
     pebble_count: int,
@@ -656,6 +1012,8 @@ def render(
     scene_label: str,
     center_object_id: str,
     camera_x: int,
+    crow_frames: Dict[str, List[List[str]]],
+    crow_states: List[dict],
 ) -> str:
     canvas = [[" " for _ in range(world.SCREEN_W)] for _ in range(world.SCREEN_H)]
     sky_zone = zones["sky_bg"]
@@ -772,6 +1130,39 @@ def render(
                 "label_x": (x0 + max(0, (width - len(label)) // 2) - 1) if label else x0,
             })
 
+        for crow in crow_states:
+            if str(crow.get("mode", "resting")) != "resting":
+                continue
+            perch = crow.get("perch", {})
+            if not isinstance(perch, dict):
+                continue
+            sprite = perch.get("sprite", {})
+            if not isinstance(sprite, dict):
+                continue
+            projection = sprite_projection_for_scene(sprite, camera_x, hidden_ground_rows, ground_zone, center_object_id)
+            if projection is None:
+                continue
+            perch_x, perch_y = perch_screen_position(perch, zones, landscape_position, center_object_id, camera_x) or (None, None)
+            if perch_x is None or perch_y is None:
+                continue
+            _x0, _y0, sprite_is_backside = projection
+            if sprite_is_backside != draw_backside:
+                continue
+            rows = crow_frames.get("resting", [])
+            if not isinstance(rows, list) or not rows:
+                continue
+            tree_rows = sprite.get("rows", [])
+            tree_height = int(sprite.get("height", len(tree_rows) if isinstance(tree_rows, list) else 0))
+            tree_base_y = int(_y0) + max(0, tree_height - 1)
+            target.append({
+                "x": int(round(perch_x)),
+                "y": int(round(perch_y)),
+                "rows": rows,
+                "base_y": tree_base_y,
+                "horizon_depth": int(sprite.get("horizon_depth", sprite.get("anchor_offset", 0))),
+                "z_bias": 25,
+            })
+
     for cloud in clouds:
         template = cloud["template"]
         x0 = int(cloud["x"]) - camera_x
@@ -796,7 +1187,13 @@ def render(
             label = str(drawable.get("label", "")).strip()
             occupant_rows = house_occupants.get(label, [])
             occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
-            draw_house_sprite(canvas, drawable, occupant_rows=occupant_rows, occupant_pose=occupant_pose)
+            draw_house_sprite(
+                canvas,
+                drawable,
+                occupant_rows=occupant_rows,
+                occupant_pose=occupant_pose,
+                window_objects=house_window_objects.get(label, []),
+            )
         elif isinstance(rows, list):
             draw_sprite(canvas, rows, int(drawable.get("x", 0)), int(drawable.get("y", 0)))
         label = str(drawable.get("label", "")).strip()
@@ -846,7 +1243,13 @@ def render(
             label = str(drawable.get("label", "")).strip()
             occupant_rows = house_occupants.get(label, [])
             occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
-            draw_house_sprite(canvas, drawable, occupant_rows=occupant_rows, occupant_pose=occupant_pose)
+            draw_house_sprite(
+                canvas,
+                drawable,
+                occupant_rows=occupant_rows,
+                occupant_pose=occupant_pose,
+                window_objects=house_window_objects.get(label, []),
+            )
         elif isinstance(rows, list):
             draw_sprite(canvas, rows, int(drawable.get("x", 0)), int(drawable.get("y", 0)))
         label = str(drawable.get("label", "")).strip()
@@ -857,6 +1260,18 @@ def render(
                 int(drawable.get("label_x", 0)),
                 int(drawable.get("label_y", 0)),
                 color="\x1b[38;2;245;245;245m",
+            )
+    for crow in crow_states:
+        if str(crow.get("mode", "resting")) == "resting":
+            continue
+        frame_label = CROW_FLY_SEQUENCE[int(crow.get("anim_index", 0)) % len(CROW_FLY_SEQUENCE)]
+        rows = crow_frames.get(frame_label, crow_frames.get("resting", []))
+        if isinstance(rows, list) and rows:
+            draw_sprite(
+                canvas,
+                rows,
+                int(round(float(crow.get("x", 0.0)))),
+                int(round(float(crow.get("y", 0.0)))),
             )
 
     ground_start = world.landscape_ground_window_start(landscape_position)
@@ -952,11 +1367,15 @@ def main() -> None:
     world_treeline_sprites = [recenter_sprite_x(sprite) for sprite in world.build_world_treeline_sprites(objects, colors, center_object_id)]
     border_treeline_sprites = [recenter_border_sprite_x(sprite) for sprite in world.build_border_treeline_sprites(objects, colors)]
     crossroad_house_sprites = world.build_crossroad_house_sprites(objects, colors)
+    crow_frames = world.build_opponent_art_variations(opponents, "baby_crow", color_codes)
+    if "resting" not in crow_frames:
+        crow_frames["resting"] = world.build_opponent_sprite(opponents, "baby_crow", color_codes)
     house_sprite_by_label = {
         str(sprite.get("label", "")).strip(): sprite
         for sprite in crossroad_house_sprites
         if str(sprite.get("label", "")).strip()
     }
+    vials_sprite = world.build_world_object_sprite(objects, colors, "vials")
     house_occupants = {
         label: world.build_house_mushroom_sprite(opponents, color_codes, house_number)
         for house_number, label in enumerate(AVE_A_MUSHROOM_HOUSE_LABELS, start=1)
@@ -973,6 +1392,29 @@ def main() -> None:
         label: {"active": False, "sequence_index": 0, "accum": 0.0}
         for label in AVE_A_FAIRY_HOUSE_LABELS
     }
+    house_window_objects: Dict[str, List[dict]] = {}
+    vial_house = house_sprite_by_label.get(HOUSE_10_VIAL_LABEL)
+    vial_rows = vials_sprite.get("rows", []) if isinstance(vials_sprite, dict) else []
+    vial_mask_rows = vial_house.get("mask_rows", []) if isinstance(vial_house, dict) else []
+    vial_pose = centered_window_object_pose(vial_mask_rows, vial_rows, window_index=1) if isinstance(vial_mask_rows, list) else None
+    if isinstance(vial_pose, dict) and isinstance(vial_rows, list) and vial_rows:
+        house_window_objects[HOUSE_10_VIAL_LABEL] = [{"rows": vial_rows, "x0": int(vial_pose["x0"]), "y0": int(vial_pose["y0"])}]
+    crow_resting_rows = crow_frames.get("resting", [])
+    crow_width = max((len(row) for row in crow_resting_rows), default=0)
+    crow_states = spawn_intro_crows(
+        visible_crow_perches(
+            world_treeline_sprites,
+            border_treeline_sprites,
+            crossroad_house_sprites,
+            zones,
+            landscape_position,
+            center_object_id,
+            camera_x,
+            crow_width,
+            len(crow_resting_rows),
+        ),
+        crow_frames,
+    )
     house_occupant_poses = {}
     for label, occupant_rows in house_occupants.items():
         target_house = house_sprite_by_label.get(label)
@@ -984,6 +1426,7 @@ def main() -> None:
             else {"x0": 0, "floor_offset": 1}
         )
     mushroom_motion_rng = random.Random()
+    crow_motion_rng = random.Random(9471)
     mushroom_motion_accum = 0.0
 
     posix_stdin_restore: tuple[int, list] | None = None
@@ -1055,6 +1498,27 @@ def main() -> None:
                     camera_x += direction * min(SIDE_STEP_COLUMNS, abs(target_camera_x - camera_x))
             else:
                 strafe_accum = 0.0
+            current_visible_perches = visible_crow_perches(
+                world_treeline_sprites,
+                border_treeline_sprites,
+                crossroad_house_sprites,
+                zones,
+                landscape_position,
+                center_object_id,
+                camera_x,
+                crow_width,
+                len(crow_resting_rows),
+            )
+            crow_states = update_intro_crows(
+                crow_states,
+                dt,
+                zones,
+                landscape_position,
+                center_object_id,
+                camera_x,
+                current_visible_perches,
+                crow_motion_rng,
+            )
             mushroom_motion_accum += dt
             while mushroom_motion_accum >= 1.0:
                 mushroom_motion_accum -= 1.0
@@ -1143,6 +1607,7 @@ def main() -> None:
                             occupant_rows,
                             house_occupant_poses.get(label, {"x0": 0, "floor_offset": 1}),
                         )
+                crow_states = []
             if key == "t" and pebble_count > 0 and throw_cooldown <= 0.0:
                 throw_phase = throw_pose_for_facing(avatar_facing)
                 throw_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, throw_phase)
@@ -1203,6 +1668,7 @@ def main() -> None:
                 avatar_facing=avatar_facing,
                 house_occupants=house_occupants,
                 house_occupant_poses=house_occupant_poses,
+                house_window_objects=house_window_objects,
                 collectible_pebbles=collectible_pebbles,
                 thrown_pebbles=thrown_pebbles,
                 pebble_count=pebble_count,
@@ -1212,6 +1678,8 @@ def main() -> None:
                 scene_label=scene_label,
                 center_object_id=center_object_id,
                 camera_x=camera_x,
+                crow_frames=crow_frames,
+                crow_states=crow_states,
             )
             print(world.ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)
