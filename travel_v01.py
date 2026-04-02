@@ -18,8 +18,8 @@ TRAVEL_WORLD_WIDTH = 320
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
 MUSHROOM_HOUSE_LABEL = "[#10 Ave A]"
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
-WALK_FRAME_STEP_SECONDS = 0.1
-WALK_RESET_IDLE_SECONDS = 0.1
+WALK_FRAME_STEP_SECONDS = 0.5
+WALK_RESET_IDLE_SECONDS = 0.5
 
 
 def current_address_label(position: int) -> str:
