@@ -13,10 +13,12 @@ ADDRESS_LANDSCAPE_POSITIONS = {
     "#1 Ave A": 50,
 }
 CAMERA_STEP_SECONDS = 0.02
-SIDE_STEP_COLUMNS = 4
+SIDE_STEP_SECONDS = 0.01
+SIDE_TARGET_COLUMNS = 2
+SIDE_STEP_COLUMNS = 1
 TRAVEL_WORLD_WIDTH = 1100
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
-MUSHROOM_HOUSE_LABEL = "[#10 Ave A]"
+AVE_A_MUSHROOM_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range(1, 11)]
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
 WALK_FRAME_STEP_SECONDS = 0.5
 WALK_RESET_IDLE_SECONDS = 0.5
@@ -640,8 +642,8 @@ def render(
     crossroad_house_sprites: List[dict],
     avatar_rows: List[List[str]],
     avatar_facing: str,
-    mushroom_rows: List[List[str]],
-    mushroom_pose: dict,
+    house_occupants: Dict[str, List[List[str]]],
+    house_occupant_poses: Dict[str, dict],
     collectible_pebbles: Dict[int, Dict[int, str]],
     thrown_pebbles: List[dict],
     pebble_count: int,
@@ -727,9 +729,6 @@ def render(
             rows = sprite.get("rows", [])
             if not isinstance(rows, list):
                 continue
-            side = str(sprite.get("side", "left"))
-            side_slot = max(0, int(sprite.get("side_slot", 0)))
-            side_offset = int(sprite.get("side_offset", 0))
             width = int(sprite.get("width", len(rows[0]) if rows else 0))
             height = int(sprite.get("height", len(rows)))
             horizon_depth = max(0, int(sprite.get("horizon_depth", 0)))
@@ -739,11 +738,20 @@ def render(
             y_base = max(ground_zone.y, y_base)
             distance_from_horizon = max(0, y_base - ground_zone.y)
             road = road_geometry_for_horizon_distance(distance_from_horizon)
-            side_gap = width + 12
-            if side == "left":
-                x0 = int(road.get("start", 0)) - width - 8 - (side_slot * side_gap) + side_offset - camera_x
+            road_anchor = str(sprite.get("road_anchor", "")).strip()
+            if road_anchor == "start":
+                x0 = int(road.get("start", 0)) + int(sprite.get("road_offset", 0)) - camera_x
+            elif road_anchor == "end":
+                x0 = int(road.get("end", TRAVEL_WORLD_WIDTH - 1)) + int(sprite.get("road_offset", 0)) - camera_x
             else:
-                x0 = int(road.get("end", TRAVEL_WORLD_WIDTH - 1)) + 8 + (side_slot * side_gap) + side_offset - camera_x
+                side = str(sprite.get("side", "left"))
+                side_slot = max(0, int(sprite.get("side_slot", 0)))
+                side_offset = int(sprite.get("side_offset", 0))
+                side_gap = width + 12
+                if side == "left":
+                    x0 = int(road.get("start", 0)) - width - 8 - (side_slot * side_gap) + side_offset - camera_x
+                else:
+                    x0 = int(road.get("end", TRAVEL_WORLD_WIDTH - 1)) + 8 + (side_slot * side_gap) + side_offset - camera_x
             y0 = y_base - max(0, height - 1) + 1
             label = str(sprite.get("label", "")).strip()
             target.append({
@@ -782,8 +790,9 @@ def render(
     for drawable in backside_drawables:
         rows = drawable.get("rows", [])
         if isinstance(rows, list) and drawable.get("house_sprite"):
-            occupant_rows = mushroom_rows if str(drawable.get("label", "")).strip() == MUSHROOM_HOUSE_LABEL else []
-            occupant_pose = mushroom_pose if occupant_rows else None
+            label = str(drawable.get("label", "")).strip()
+            occupant_rows = house_occupants.get(label, [])
+            occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
             draw_house_sprite(canvas, drawable, occupant_rows=occupant_rows, occupant_pose=occupant_pose)
         elif isinstance(rows, list):
             draw_sprite(canvas, rows, int(drawable.get("x", 0)), int(drawable.get("y", 0)))
@@ -831,8 +840,9 @@ def render(
     for drawable in foreground_drawables:
         rows = drawable.get("rows", [])
         if isinstance(rows, list) and drawable.get("house_sprite"):
-            occupant_rows = mushroom_rows if str(drawable.get("label", "")).strip() == MUSHROOM_HOUSE_LABEL else []
-            occupant_pose = mushroom_pose if occupant_rows else None
+            label = str(drawable.get("label", "")).strip()
+            occupant_rows = house_occupants.get(label, [])
+            occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
             draw_house_sprite(canvas, drawable, occupant_rows=occupant_rows, occupant_pose=occupant_pose)
         elif isinstance(rows, list):
             draw_sprite(canvas, rows, int(drawable.get("x", 0)), int(drawable.get("y", 0)))
@@ -915,7 +925,6 @@ def main() -> None:
     last_walk_step_phase = "step_b"
     was_avatar_moving = False
     avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, "idle")
-    mushroom_rows = world.build_opponent_sprite(opponents, "mushroom_baby", color_codes)
     camera_x = clamp_camera_to_road(starting_camera_x(), avatar_rows, zones, landscape_position)
     target_camera_x = camera_x
     clouds = spawn_clouds_wide(templates)
@@ -940,14 +949,25 @@ def main() -> None:
     world_treeline_sprites = [recenter_sprite_x(sprite) for sprite in world.build_world_treeline_sprites(objects, colors, center_object_id)]
     border_treeline_sprites = [recenter_border_sprite_x(sprite) for sprite in world.build_border_treeline_sprites(objects, colors)]
     crossroad_house_sprites = world.build_crossroad_house_sprites(objects, colors)
-    target_house = next((sprite for sprite in crossroad_house_sprites if str(sprite.get("label", "")).strip() == MUSHROOM_HOUSE_LABEL), None)
-    target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
-    target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
-    mushroom_pose = (
-        default_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows)
-        if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list)
-        else {"x0": 0, "floor_offset": 1}
-    )
+    house_sprite_by_label = {
+        str(sprite.get("label", "")).strip(): sprite
+        for sprite in crossroad_house_sprites
+        if str(sprite.get("label", "")).strip()
+    }
+    house_occupants = {
+        label: world.build_house_mushroom_sprite(opponents, color_codes, house_number)
+        for house_number, label in enumerate(AVE_A_MUSHROOM_HOUSE_LABELS, start=1)
+    }
+    house_occupant_poses = {}
+    for label, occupant_rows in house_occupants.items():
+        target_house = house_sprite_by_label.get(label)
+        target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
+        target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
+        house_occupant_poses[label] = (
+            default_house_occupant_pose(target_art_rows, target_mask_rows, occupant_rows)
+            if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list)
+            else {"x0": 0, "floor_offset": 1}
+        )
     mushroom_motion_rng = random.Random()
     mushroom_motion_accum = 0.0
 
@@ -971,6 +991,7 @@ def main() -> None:
     try:
         last_tick = time.monotonic()
         camera_accum = 0.0
+        strafe_accum = 0.0
         while True:
             now = time.monotonic()
             dt = max(0.0, min(0.2, now - last_tick))
@@ -996,13 +1017,28 @@ def main() -> None:
                 camera_accum = 0.0
 
             if camera_x != target_camera_x:
-                direction = 1 if target_camera_x > camera_x else -1
-                camera_x += direction * min(SIDE_STEP_COLUMNS, abs(target_camera_x - camera_x))
+                strafe_accum += dt
+                while camera_x != target_camera_x and strafe_accum >= SIDE_STEP_SECONDS:
+                    strafe_accum -= SIDE_STEP_SECONDS
+                    direction = 1 if target_camera_x > camera_x else -1
+                    camera_x += direction * min(SIDE_STEP_COLUMNS, abs(target_camera_x - camera_x))
+            else:
+                strafe_accum = 0.0
             mushroom_motion_accum += dt
             while mushroom_motion_accum >= 1.0:
                 mushroom_motion_accum -= 1.0
-                if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
-                    mushroom_pose = step_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows, mushroom_pose, mushroom_motion_rng)
+                for label, occupant_rows in house_occupants.items():
+                    target_house = house_sprite_by_label.get(label)
+                    target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
+                    target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
+                    if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
+                        house_occupant_poses[label] = step_house_occupant_pose(
+                            target_art_rows,
+                            target_mask_rows,
+                            occupant_rows,
+                            house_occupant_poses.get(label, {"x0": 0, "floor_offset": 1}),
+                            mushroom_motion_rng,
+                        )
             for cloud in clouds:
                 speed = float(cloud.get("speed", 1.0))
                 cloud["x"] = float(cloud.get("x", 0.0)) - (speed * dt)
@@ -1033,12 +1069,12 @@ def main() -> None:
                     target_landscape_position = candidate
             if key == "left":
                 avatar_facing = "left"
-                candidate = max(0, target_camera_x - SIDE_STEP_COLUMNS)
+                candidate = max(0, target_camera_x - SIDE_TARGET_COLUMNS)
                 if is_camera_on_walkable_surface(candidate, avatar_rows, zones, landscape_position):
                     target_camera_x = candidate
             if key == "right":
                 avatar_facing = "right"
-                candidate = min(TRAVEL_WORLD_WIDTH - world.SCREEN_W, target_camera_x + SIDE_STEP_COLUMNS)
+                candidate = min(TRAVEL_WORLD_WIDTH - world.SCREEN_W, target_camera_x + SIDE_TARGET_COLUMNS)
                 if is_camera_on_walkable_surface(candidate, avatar_rows, zones, landscape_position):
                     target_camera_x = candidate
             if key == "a":
@@ -1056,11 +1092,22 @@ def main() -> None:
                 world_treeline_sprites = [recenter_sprite_x(sprite) for sprite in world.build_world_treeline_sprites(objects, colors, center_object_id)]
                 border_treeline_sprites = [recenter_border_sprite_x(sprite) for sprite in world.build_border_treeline_sprites(objects, colors)]
                 crossroad_house_sprites = world.build_crossroad_house_sprites(objects, colors)
-                target_house = next((sprite for sprite in crossroad_house_sprites if str(sprite.get("label", "")).strip() == MUSHROOM_HOUSE_LABEL), None)
-                target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
-                target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
-                if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
-                    mushroom_pose = clamp_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows, mushroom_pose)
+                house_sprite_by_label = {
+                    str(sprite.get("label", "")).strip(): sprite
+                    for sprite in crossroad_house_sprites
+                    if str(sprite.get("label", "")).strip()
+                }
+                for label, occupant_rows in house_occupants.items():
+                    target_house = house_sprite_by_label.get(label)
+                    target_art_rows = target_house.get("art", []) if isinstance(target_house, dict) else []
+                    target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
+                    if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
+                        house_occupant_poses[label] = clamp_house_occupant_pose(
+                            target_art_rows,
+                            target_mask_rows,
+                            occupant_rows,
+                            house_occupant_poses.get(label, {"x0": 0, "floor_offset": 1}),
+                        )
             if key == "t" and pebble_count > 0 and throw_cooldown <= 0.0:
                 throw_phase = throw_pose_for_facing(avatar_facing)
                 throw_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, throw_phase)
@@ -1119,8 +1166,8 @@ def main() -> None:
                 crossroad_house_sprites=crossroad_house_sprites,
                 avatar_rows=avatar_rows,
                 avatar_facing=avatar_facing,
-                mushroom_rows=mushroom_rows,
-                mushroom_pose=mushroom_pose,
+                house_occupants=house_occupants,
+                house_occupant_poses=house_occupant_poses,
                 collectible_pebbles=collectible_pebbles,
                 thrown_pebbles=thrown_pebbles,
                 pebble_count=pebble_count,

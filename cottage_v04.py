@@ -3,7 +3,6 @@ import random
 import re
 import time
 import textwrap
-import colorsys
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -414,6 +413,31 @@ def _colorize_object_rows(art_rows: object, mask_rows: object, color_codes: Dict
     return out
 
 
+HOUSE_ACCENT_PALETTES: List[tuple[tuple[int, int, int], tuple[int, int, int]]] = [
+    ((250, 95, 95), (209, 46, 46)),
+    ((250, 132, 95), (214, 82, 40)),
+    ((250, 170, 95), (214, 116, 36)),
+    ((250, 208, 95), (206, 152, 32)),
+    ((242, 250, 95), (201, 209, 46)),
+    ((186, 242, 95), (141, 194, 44)),
+    ((128, 240, 88), (83, 191, 40)),
+    ((95, 250, 151), (46, 209, 105)),
+    ((95, 242, 190), (45, 190, 144)),
+    ((95, 238, 228), (44, 187, 176)),
+    ((95, 228, 250), (42, 178, 201)),
+    ((95, 196, 250), (44, 146, 204)),
+    ((95, 146, 250), (46, 100, 209)),
+    ((118, 118, 250), (68, 68, 210)),
+    ((156, 110, 250), (108, 62, 208)),
+    ((198, 108, 250), (149, 58, 206)),
+    ((247, 95, 250), (206, 46, 209)),
+    ((250, 95, 192), (210, 46, 149)),
+    ((250, 110, 148), (209, 58, 106)),
+    ((245, 186, 92), (201, 143, 44)),
+]
+HOUSE_ACCENT_PERMUTATION: List[int] = [0, 10, 5, 15, 2, 12, 7, 17, 4, 14, 9, 19, 1, 11, 6, 16, 3, 13, 8, 18]
+
+
 def _ansi_color_code(r: int, g: int, b: int) -> str:
     return f"\x1b[38;2;{max(0, min(255, int(r)))};{max(0, min(255, int(g)))};{max(0, min(255, int(b)))}m"
 
@@ -421,11 +445,28 @@ def _ansi_color_code(r: int, g: int, b: int) -> str:
 def _house_accent_color_codes(base_color_codes: Dict[str, str], house_number: int) -> Dict[str, str]:
     updated = dict(base_color_codes)
     house_index = max(0, min(19, int(house_number) - 1))
-    hue = (house_index / 19.0) * 0.83 if 19 > 0 else 0.0
-    bright_rgb = colorsys.hsv_to_rgb(hue, 0.62, 0.98)
-    base_rgb = colorsys.hsv_to_rgb(hue, 0.78, 0.82)
-    updated["B"] = _ansi_color_code(*(round(channel * 255) for channel in bright_rgb))
-    updated["b"] = _ansi_color_code(*(round(channel * 255) for channel in base_rgb))
+    palette_index = HOUSE_ACCENT_PERMUTATION[house_index]
+    bright_rgb, base_rgb = HOUSE_ACCENT_PALETTES[palette_index]
+    updated["B"] = _ansi_color_code(*bright_rgb)
+    updated["b"] = _ansi_color_code(*base_rgb)
+    return updated
+
+
+def house_palette_index(house_number: int) -> int:
+    house_index = max(0, min(19, int(house_number) - 1))
+    return HOUSE_ACCENT_PERMUTATION[house_index]
+
+
+def mushroom_palette_indices_for_house(house_number: int) -> tuple[int, int]:
+    house_index = max(0, min(19, int(house_number) - 1))
+    accent_index = HOUSE_ACCENT_PERMUTATION[(house_index + 7) % len(HOUSE_ACCENT_PERMUTATION)]
+    eye_index = HOUSE_ACCENT_PERMUTATION[(house_index + 13) % len(HOUSE_ACCENT_PERMUTATION)]
+    return accent_index, eye_index
+
+
+def _with_color_overrides(color_codes: Dict[str, str], overrides: Dict[str, str]) -> Dict[str, str]:
+    updated = dict(color_codes)
+    updated.update(overrides)
     return updated
 
 
@@ -472,6 +513,23 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
     house_art = house_payload.get("art", [])
     house_mask = house_payload.get("color_mask", [])
     color_codes = _build_color_codes(colors_data)
+    tree_ids = [obj_id for obj_id in ["tree_large", "tree_large_2", "tree_large_3"] if isinstance(objects_data.get(obj_id), dict)]
+    tree_rng = random.Random(88241)
+
+    def build_tree_sprite(obj_id: str) -> dict | None:
+        payload = objects_data.get(obj_id, {})
+        if not isinstance(payload, dict):
+            return None
+        art = payload.get("art", [])
+        mask = payload.get("color_mask", [])
+        rows = _colorize_object_rows(art, mask, color_codes)
+        if not rows:
+            return None
+        return {
+            "width": len(rows[0]),
+            "height": len(rows),
+            "rows": rows,
+        }
 
     def add_house(side: str, horizon_depth: int, label: str, house_number: int, side_slot: int, lateral_offset: int = 0) -> None:
         accent_codes = _house_accent_color_codes(color_codes, house_number)
@@ -491,6 +549,37 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
             "mask_rows": list(house_mask) if isinstance(house_mask, list) else [],
         })
 
+    def house_left_offset(side: str, side_slot: int, lateral_offset: int) -> int:
+        side_gap = house_width + 12
+        if side == "left":
+            return -house_width - 8 - (side_slot * side_gap) + lateral_offset
+        return 8 + (side_slot * side_gap) + lateral_offset
+
+    def add_interhouse_tree(side: str, horizon_depth: int, left_house_number: int, left_slot: int, left_offset: int, right_slot: int, right_offset: int) -> None:
+        if not tree_ids:
+            return
+        tree_id = tree_ids[tree_rng.randrange(len(tree_ids))]
+        tree_sprite = build_tree_sprite(tree_id)
+        if tree_sprite is None:
+            return
+        tree_width = int(tree_sprite.get("width", 0))
+        left_x = house_left_offset(side, left_slot, left_offset)
+        right_x = house_left_offset(side, right_slot, right_offset)
+        gap_start = left_x + house_width
+        gap_width = max(0, right_x - gap_start)
+        tree_x = gap_start + max(0, (gap_width - tree_width) // 2)
+        sprites.append({
+            "side": side,
+            "road_anchor": "start" if side == "left" else "end",
+            "road_offset": int(tree_x),
+            "horizon_depth": max(0, min(LANDSCAPE_TOTAL_GROUND_ROWS - 1, int(horizon_depth))),
+            "street_name": street_name,
+            "main_street": MAIN_STREET_NAME,
+            "width": tree_width,
+            "height": int(tree_sprite.get("height", 0)),
+            "rows": tree_sprite.get("rows", []),
+        })
+
     for crossroad_start in range(CROSSROAD_INTERVAL_ROWS, LANDSCAPE_TOTAL_GROUND_ROWS, CROSSROAD_INTERVAL_ROWS):
         street_name = avenue_name(street_index)
         above_depth = crossroad_start - 3
@@ -500,10 +589,18 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
                 slot = 10 - house_number
                 lateral_offset = -18 + ((house_number - 1) * 2)
                 add_house("left", above_depth, f"[#{house_number} {street_name}]", house_number, slot, lateral_offset=lateral_offset)
+                if house_number < 10:
+                    next_slot = 10 - (house_number + 1)
+                    next_offset = -18 + (house_number * 2)
+                    add_interhouse_tree("left", above_depth, house_number, slot, lateral_offset, next_slot, next_offset)
             for house_number in range(11, 21):
                 slot = house_number - 11
                 lateral_offset = (house_number - 11) * 2
                 add_house("right", above_depth, f"[#{house_number} {street_name}]", house_number, slot, lateral_offset=lateral_offset)
+                if house_number < 20:
+                    next_slot = (house_number + 1) - 11
+                    next_offset = (house_number + 1 - 11) * 2
+                    add_interhouse_tree("right", above_depth, house_number, slot, lateral_offset, next_slot, next_offset)
         street_index += 1
     return sprites
 
@@ -669,6 +766,23 @@ def build_opponent_sprite(opponents_data: object, opponent_id: str, color_codes:
     art = opponent.get("art", [])
     mask = opponent.get("color_map", [])
     return _colorize_object_rows(art, mask, color_codes)
+
+
+def build_house_mushroom_sprite(
+    opponents_data: object,
+    color_codes: Dict[str, str],
+    house_number: int,
+) -> List[List[str]]:
+    accent_index, eye_index = mushroom_palette_indices_for_house(house_number)
+    accent_bright, accent_base = HOUSE_ACCENT_PALETTES[accent_index]
+    eye_bright, eye_base = HOUSE_ACCENT_PALETTES[eye_index]
+    overrides = {
+        "G": _ansi_color_code(*accent_bright),
+        "g": _ansi_color_code(*accent_base),
+        "B": _ansi_color_code(*eye_bright),
+        "b": _ansi_color_code(*eye_base),
+    }
+    return build_opponent_sprite(opponents_data, "mushroom_baby", _with_color_overrides(color_codes, overrides))
 
 
 def build_player_sprite(players_data: object, player_id: str, color_codes: Dict[str, str]) -> List[List[str]]:
