@@ -20,6 +20,11 @@ MUSHROOM_HOUSE_LABEL = "[#10 Ave A]"
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
 WALK_FRAME_STEP_SECONDS = 0.5
 WALK_RESET_IDLE_SECONDS = 0.5
+COLLECTIBLE_PEBBLE_DENSITY = 0.035
+THROWN_PEBBLE_SPEED_X = 56.0
+THROWN_PEBBLE_SPEED_Y = 28.0
+THROW_COOLDOWN_SECONDS = 1.0
+THROW_POSE_SECONDS = 0.18
 
 
 def current_address_label(position: int) -> str:
@@ -365,6 +370,52 @@ def build_ground_rows_wide(
     return rows
 
 
+def _pebble_palette(objects_data: object) -> tuple[List[str], List[str]]:
+    pebble_glyphs: List[str] = ["o", "O"]
+    pebble_keys: List[str] = ["Z", "z", "X", "x", "L", "l"]
+    if isinstance(objects_data, dict):
+        scatter_obj = objects_data.get("battle_ground", {}) or objects_data.get("pebble", {})
+        dynamic = scatter_obj.get("dynamic", {}) if isinstance(scatter_obj, dict) else {}
+        dyn_glyphs = dynamic.get("glyphs", []) if isinstance(dynamic, dict) else []
+        dyn_keys = dynamic.get("color_keys", []) if isinstance(dynamic, dict) else []
+        if isinstance(dyn_glyphs, list) and dyn_glyphs:
+            pebble_glyphs = [str(g)[:1] or "o" for g in dyn_glyphs]
+        if isinstance(dyn_keys, list) and dyn_keys:
+            pebble_keys = [str(k)[:1] or "Z" for k in dyn_keys]
+    return pebble_glyphs, pebble_keys
+
+
+def build_collectible_road_pebbles(
+    row_count: int,
+    objects_data: object,
+    color_codes: Dict[str, str],
+    density: float = COLLECTIBLE_PEBBLE_DENSITY,
+) -> Dict[int, Dict[int, str]]:
+    rng = __import__("random").Random(9051702)
+    glyphs, keys = _pebble_palette(objects_data)
+    density = max(0.0, min(0.2, float(density)))
+    pebbles: Dict[int, Dict[int, str]] = {}
+    for world_row in range(max(0, row_count)):
+        crossroad_phase = world.crossroad_row_phase(world_row)
+        if crossroad_phase is None:
+            road = road_geometry_for_horizon_distance(world_row)
+            x_start = int(road.get("start", 0))
+            x_end = int(road.get("end", TRAVEL_WORLD_WIDTH - 1))
+        else:
+            x_start = 0
+            x_end = TRAVEL_WORLD_WIDTH - 1
+        row_pebbles: Dict[int, str] = {}
+        for world_x in range(x_start, x_end + 1):
+            if rng.random() >= density:
+                continue
+            glyph = rng.choice(glyphs)
+            key = rng.choice(keys)
+            row_pebbles[world_x] = world._colorize_glyph(glyph, key, color_codes)
+        if row_pebbles:
+            pebbles[world_row] = row_pebbles
+    return pebbles
+
+
 def road_geometry_for_horizon_distance(distance_from_horizon: int) -> dict:
     road_width = world.road_width_for_horizon_distance(distance_from_horizon)
     road_half = road_width // 2
@@ -380,6 +431,107 @@ def road_geometry_for_horizon_distance(distance_from_horizon: int) -> dict:
         "left_push": left_push,
         "right_push": right_push,
     }
+
+
+def collect_overlapping_pebbles(
+    collectible_pebbles: Dict[int, Dict[int, str]],
+    avatar_rows: List[List[str]],
+    camera_x: int,
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+) -> int:
+    if not collectible_pebbles:
+        return 0
+    avatar = build_avatar_placement(avatar_rows)
+    ground_zone = zones["ground_bg"]
+    ground_start = world.landscape_ground_window_start(landscape_position)
+    covered: set[tuple[int, int]] = set()
+    for dy, row in enumerate(avatar_rows):
+        screen_y = int(avatar["y"]) + dy
+        if screen_y < int(ground_zone.y) or screen_y > int(ground_zone.y1):
+            continue
+        world_row = ground_start + (screen_y - int(ground_zone.y))
+        for dx, cell in enumerate(row):
+            if cell == " ":
+                continue
+            world_x = int(camera_x) + int(avatar["x"]) + dx
+            covered.add((world_row, world_x))
+    collected = 0
+    for world_row, world_x in covered:
+        row_pebbles = collectible_pebbles.get(world_row)
+        if not row_pebbles or world_x not in row_pebbles:
+            continue
+        del row_pebbles[world_x]
+        collected += 1
+        if not row_pebbles:
+            collectible_pebbles.pop(world_row, None)
+    return collected
+
+
+def spawn_thrown_pebble(
+    avatar_rows: List[List[str]],
+    camera_x: int,
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    facing: str,
+) -> dict:
+    avatar = build_avatar_placement(avatar_rows)
+    hand_offsets = {
+        "front": (1, 4),
+        "back": (5, 4),
+        "left": (1, 4),
+        "right": (4, 4),
+    }
+    hand_x, hand_y = hand_offsets.get(facing, hand_offsets["front"])
+    hand_x = max(0, min(max(0, int(avatar["width"]) - 1), hand_x))
+    hand_y = max(0, min(max(0, int(avatar["height"]) - 1), hand_y))
+    ground_start = world.landscape_ground_window_start(landscape_position)
+    world_x = int(camera_x) + int(avatar["x"]) + hand_x
+    screen_y = int(avatar["y"]) + hand_y
+    world_row = ground_start + max(0, screen_y - int(zones["ground_bg"].y))
+    dx = 0.0
+    dy = 0.0
+    if facing == "left":
+        dx = -THROWN_PEBBLE_SPEED_X
+    elif facing == "right":
+        dx = THROWN_PEBBLE_SPEED_X
+    elif facing == "back":
+        dy = -THROWN_PEBBLE_SPEED_Y
+    else:
+        dy = THROWN_PEBBLE_SPEED_Y
+    return {
+        "world_x": float(world_x),
+        "world_row": float(world_row),
+        "vx": dx,
+        "vy": dy,
+        "cell": "\x1b[38;2;185;185;185mo" + world.ANSI_RESET,
+    }
+
+
+def throw_pose_for_facing(facing: str) -> str:
+    if facing in {"front", "back"}:
+        return "step_a"
+    return "step_b"
+
+
+def update_thrown_pebbles(projectiles: List[dict], dt: float) -> List[dict]:
+    updated: List[dict] = []
+    max_row = max(0, world.LANDSCAPE_TOTAL_GROUND_ROWS - 1)
+    for item in projectiles:
+        world_x = float(item.get("world_x", 0.0)) + (float(item.get("vx", 0.0)) * dt)
+        world_row = float(item.get("world_row", 0.0)) + (float(item.get("vy", 0.0)) * dt)
+        if world_x < 0 or world_x >= TRAVEL_WORLD_WIDTH:
+            continue
+        if world_row < 0 or world_row > max_row:
+            continue
+        updated.append({
+            "world_x": world_x,
+            "world_row": world_row,
+            "vx": float(item.get("vx", 0.0)),
+            "vy": float(item.get("vy", 0.0)),
+            "cell": str(item.get("cell", "o")),
+        })
+    return updated
 
 
 def border_tree_screen_x(side: str, width: int, column_band: int, column_jitter: int) -> int:
@@ -479,8 +631,13 @@ def render(
     border_treeline_sprites: List[dict],
     crossroad_house_sprites: List[dict],
     avatar_rows: List[List[str]],
+    avatar_facing: str,
     mushroom_rows: List[List[str]],
     mushroom_pose: dict,
+    collectible_pebbles: Dict[int, Dict[int, str]],
+    thrown_pebbles: List[dict],
+    pebble_count: int,
+    throw_cooldown: float,
     address_label: str,
     scene_label: str,
     center_object_id: str,
@@ -644,6 +801,11 @@ def render(
         for x, cell in enumerate(viewport_cells):
             if cell != " ":
                 canvas[y][x] = cell
+        row_pebbles = collectible_pebbles.get(src_index, {})
+        for world_x, cell in row_pebbles.items():
+            screen_x = int(world_x) - int(camera_x)
+            if 0 <= screen_x < world.SCREEN_W:
+                canvas[y][screen_x] = cell
 
     draw_world_scene_sprites(draw_backside=False)
 
@@ -675,10 +837,26 @@ def render(
                 color="\x1b[38;2;245;245;245m",
             )
 
+    ground_start = world.landscape_ground_window_start(landscape_position)
+    for projectile in thrown_pebbles:
+        screen_x = int(round(float(projectile.get("world_x", 0.0)))) - int(camera_x)
+        world_row = int(round(float(projectile.get("world_row", 0.0))))
+        screen_y = int(ground_zone.y) + (world_row - ground_start)
+        if 0 <= screen_x < world.SCREEN_W and int(ground_zone.y) <= screen_y <= int(ground_zone.y1):
+            canvas[screen_y][screen_x] = str(projectile.get("cell", "o"))
+    if avatar_facing == "back":
+        draw_sprite(canvas, avatar_rows, int(avatar["x"]), int(avatar["y"]))
+
     header = f"[travel][scene:{scene_label}][address:{address_label}]"
-    controls = "[up/down travel][left/right strafe][a avatar][c scene][q quit]"
+    controls = "[up/down travel][left/right strafe][t throw][a avatar][c scene][q quit]"
+    pebble_label = f"Pebbles: {max(0, int(pebble_count))}"
+    throw_label = "Throw: ready" if throw_cooldown <= 0 else f"Throw: {throw_cooldown:.1f}s"
     if len(header) <= world.SCREEN_W:
         draw_label(canvas, header, max(0, (world.SCREEN_W - len(header)) // 2), 0)
+    if len(pebble_label) <= world.SCREEN_W:
+        draw_label(canvas, pebble_label, max(0, world.SCREEN_W - len(pebble_label) - 1), 1, color="\x1b[38;2;235;220;170m")
+    if len(throw_label) <= world.SCREEN_W:
+        draw_label(canvas, throw_label, max(0, world.SCREEN_W - len(throw_label) - 1), 2, color="\x1b[38;2;205;205;255m")
     if len(controls) <= world.SCREEN_W:
         draw_label(canvas, controls, max(0, (world.SCREEN_W - len(controls)) // 2), world.SCREEN_H - 1)
 
@@ -734,6 +912,15 @@ def main() -> None:
         color_codes=color_codes,
         pebble_density=0.07,
     )
+    collectible_pebbles = build_collectible_road_pebbles(
+        row_count=world.LANDSCAPE_TOTAL_GROUND_ROWS,
+        objects_data=objects,
+        color_codes=color_codes,
+    )
+    pebble_count = 0
+    thrown_pebbles: List[dict] = []
+    throw_cooldown = 0.0
+    throw_pose_accum = 0.0
     scene_index = 0
     scene_label, center_object_id = WORLD_MODELS[scene_index]
     world_treeline_sprites = [recenter_sprite_x(sprite) for sprite in world.build_world_treeline_sprites(objects, colors, center_object_id)]
@@ -774,6 +961,9 @@ def main() -> None:
             now = time.monotonic()
             dt = max(0.0, min(0.2, now - last_tick))
             last_tick = now
+            throw_cooldown = max(0.0, throw_cooldown - dt)
+            throw_pose_accum = max(0.0, throw_pose_accum - dt)
+            thrown_pebbles = update_thrown_pebbles(thrown_pebbles, dt)
 
             if landscape_position != target_landscape_position:
                 camera_accum += dt
@@ -856,6 +1046,21 @@ def main() -> None:
                 target_mask_rows = target_house.get("mask_rows", []) if isinstance(target_house, dict) else []
                 if isinstance(target_art_rows, list) and isinstance(target_mask_rows, list) and target_art_rows and target_mask_rows:
                     mushroom_pose = clamp_house_occupant_pose(target_art_rows, target_mask_rows, mushroom_rows, mushroom_pose)
+            if key == "t" and pebble_count > 0 and throw_cooldown <= 0.0:
+                throw_phase = throw_pose_for_facing(avatar_facing)
+                throw_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, throw_phase)
+                thrown_pebbles.append(
+                    spawn_thrown_pebble(
+                        throw_rows,
+                        camera_x,
+                        zones,
+                        landscape_position,
+                        avatar_facing,
+                    )
+                )
+                pebble_count -= 1
+                throw_cooldown = THROW_COOLDOWN_SECONDS
+                throw_pose_accum = THROW_POSE_SECONDS
             avatar_is_moving = (camera_x != target_camera_x) or (landscape_position != target_landscape_position)
             if avatar_is_moving:
                 if not was_avatar_moving:
@@ -874,10 +1079,19 @@ def main() -> None:
                     walk_frame_index = 0
                     walk_frame_accum = 0.0
             avatar_phase = WALK_FRAME_SEQUENCE[walk_frame_index]
+            if throw_pose_accum > 0.0:
+                avatar_phase = throw_pose_for_facing(avatar_facing)
             if avatar_phase in {"step_a", "step_b"}:
                 last_walk_step_phase = avatar_phase
             was_avatar_moving = avatar_is_moving
             avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, avatar_phase)
+            pebble_count += collect_overlapping_pebbles(
+                collectible_pebbles,
+                avatar_rows,
+                camera_x,
+                zones,
+                landscape_position,
+            )
 
             frame = render(
                 clouds=clouds,
@@ -889,8 +1103,13 @@ def main() -> None:
                 border_treeline_sprites=border_treeline_sprites,
                 crossroad_house_sprites=crossroad_house_sprites,
                 avatar_rows=avatar_rows,
+                avatar_facing=avatar_facing,
                 mushroom_rows=mushroom_rows,
                 mushroom_pose=mushroom_pose,
+                collectible_pebbles=collectible_pebbles,
+                thrown_pebbles=thrown_pebbles,
+                pebble_count=pebble_count,
+                throw_cooldown=throw_cooldown,
                 address_label=current_address_label(landscape_position),
                 scene_label=scene_label,
                 center_object_id=center_object_id,
