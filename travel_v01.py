@@ -27,9 +27,13 @@ MUSHROOM_STEP_POSE_SECONDS = 0.18
 WALKING_MUSHROOM_SEQUENCE = ["a", "primary", "b", "primary"]
 WALKING_MUSHROOM_STEP_SECONDS = 0.20
 WALKING_MUSHROOM_SPEED = 4.0
+WALKING_MUSHROOM_BURROW_STEP_SECONDS = 0.14
+WALKING_MUSHROOM_FROWN_SECONDS = 1.0
 WALKING_FAIRY_SEQUENCE = ["primary", "a", "b", "a", "primary"]
 WALKING_FAIRY_STEP_SECONDS = 0.12
 WALKING_FAIRY_SPEED = 8.0
+WALKING_FAIRY_SCARED_SPEED = 32.0
+WALKING_FAIRY_FROWN_SECONDS = 1.0
 CROW_FLY_SEQUENCE = ["a", "b", "c", "b"]
 CROW_FLY_STEP_SECONDS = 0.10
 CROW_FLY_SPEED = 52.0
@@ -1096,6 +1100,31 @@ def update_thrown_pebbles(projectiles: List[dict], dt: float) -> List[dict]:
 
 def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
     updated = dict(mushroom)
+    total_rows = max(0, int(updated.get("total_rows", 0)))
+    if bool(updated.get("frowning", False)):
+        frown_accum = max(0.0, float(updated.get("frown_accum", 0.0)) - dt)
+        updated["frown_accum"] = frown_accum
+        if frown_accum <= 0.0:
+            updated["frowning"] = False
+            updated["burrowing"] = True
+            updated["burrow_accum"] = 0.0
+            updated["visible_rows"] = max(0, total_rows - 1)
+        return updated
+    if bool(updated.get("burrowing", False)):
+        burrow_accum = float(updated.get("burrow_accum", 0.0)) + dt
+        visible_rows = int(updated.get("visible_rows", total_rows))
+        while burrow_accum >= WALKING_MUSHROOM_BURROW_STEP_SECONDS and visible_rows > 0:
+            burrow_accum -= WALKING_MUSHROOM_BURROW_STEP_SECONDS
+            visible_rows -= 1
+        updated["burrow_accum"] = burrow_accum
+        updated["visible_rows"] = visible_rows
+        if visible_rows <= 0:
+            width = max(1, int(updated.get("width", 1)))
+            updated["world_x"] = 0.0 - max(0, width - 1)
+            updated["burrowing"] = False
+            updated["burrow_accum"] = 0.0
+            updated["visible_rows"] = total_rows
+        return updated
     world_x = float(updated.get("world_x", 0.0)) + (WALKING_MUSHROOM_SPEED * dt)
     width = max(1, int(updated.get("width", 1)))
     if world_x > TRAVEL_WORLD_WIDTH:
@@ -1113,10 +1142,26 @@ def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
 
 def update_walking_fairy(fairy: dict, dt: float) -> dict:
     updated = dict(fairy)
-    world_x = float(updated.get("world_x", 0.0)) - (WALKING_FAIRY_SPEED * dt)
+    if bool(updated.get("frowning", False)):
+        frown_accum = max(0.0, float(updated.get("frown_accum", 0.0)) - dt)
+        updated["frown_accum"] = frown_accum
+        if frown_accum <= 0.0:
+            updated["frowning"] = False
+            updated["scared"] = True
+        return updated
+    scared = bool(updated.get("scared", False))
+    speed = WALKING_FAIRY_SCARED_SPEED if scared else WALKING_FAIRY_SPEED
+    direction = int(updated.get("scared_direction", -1)) if scared else -1
+    world_x = float(updated.get("world_x", 0.0)) + (direction * speed * dt)
     width = max(1, int(updated.get("width", 1)))
-    if world_x + width - 1 < 0:
+    if direction < 0 and world_x + width - 1 < 0:
         world_x = float(TRAVEL_WORLD_WIDTH - 1)
+        updated["scared"] = False
+        updated["scared_direction"] = -1
+    elif direction > 0 and world_x > TRAVEL_WORLD_WIDTH:
+        world_x = 0.0 - max(0, width - 1)
+        updated["scared"] = False
+        updated["scared_direction"] = -1
     updated["world_x"] = world_x
     accum = float(updated.get("anim_accum", 0.0)) + dt
     phase_index = int(updated.get("phase_index", 0))
@@ -1126,6 +1171,131 @@ def update_walking_fairy(fairy: dict, dt: float) -> dict:
     updated["anim_accum"] = accum
     updated["phase_index"] = phase_index
     return updated
+
+
+def walking_fairy_rows(
+    walking_fairy: dict,
+    walking_fairy_frames: Dict[str, List[List[str]]],
+) -> List[List[str]]:
+    rows = walking_fairy_frames.get(
+        WALKING_FAIRY_SEQUENCE[int(walking_fairy.get("phase_index", 0)) % len(WALKING_FAIRY_SEQUENCE)],
+        walking_fairy_frames.get("primary", []),
+    )
+    if not isinstance(rows, list) or not rows:
+        return []
+    if bool(walking_fairy.get("frowning", False)) or bool(walking_fairy.get("scared", False)):
+        out: List[List[str]] = []
+        for row in rows:
+            new_row = []
+            for cell in row:
+                text = str(cell)
+                new_row.append(text.replace("◡", "◠"))
+            out.append(new_row)
+        return out
+    return rows
+
+
+def walking_mushroom_rows(
+    walking_mushroom: dict,
+    walking_mushroom_frames: Dict[str, List[List[str]]],
+) -> List[List[str]]:
+    rows = walking_mushroom_frames.get(
+        WALKING_MUSHROOM_SEQUENCE[int(walking_mushroom.get("phase_index", 0)) % len(WALKING_MUSHROOM_SEQUENCE)],
+        walking_mushroom_frames.get("primary", []),
+    )
+    if not isinstance(rows, list) or not rows:
+        return []
+    draw_rows = list(rows[:max(0, int(walking_mushroom.get("visible_rows", len(rows))))])
+    if bool(walking_mushroom.get("frowning", False)):
+        out: List[List[str]] = []
+        for row in draw_rows:
+            new_row = []
+            for cell in row:
+                text = str(cell)
+                new_row.append(text.replace("◡", "◠"))
+            out.append(new_row)
+        return out
+    return draw_rows
+
+
+def handle_walking_fairy_hits(
+    walking_fairy: dict,
+    walking_fairy_frames: Dict[str, List[List[str]]],
+    thrown_pebbles: List[dict],
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    camera_x: int,
+    player_world_x: int,
+) -> tuple[dict, List[dict]]:
+    fairy_rows = walking_fairy_rows(walking_fairy, walking_fairy_frames)
+    if not fairy_rows or not thrown_pebbles:
+        return walking_fairy, thrown_pebbles
+    ground_start = world.landscape_ground_window_start(landscape_position)
+    fairy_world_row = int(walking_fairy.get("world_row", 0))
+    fairy_screen_y = int(zones["ground_bg"].y) + (fairy_world_row - ground_start) - max(0, len(fairy_rows) - 1)
+    fairy_screen_x = int(round(float(walking_fairy.get("world_x", 0.0)))) - int(camera_x)
+    fairy_width = max((len(row) for row in fairy_rows), default=0)
+    fairy_box = (
+        fairy_screen_x,
+        fairy_screen_y,
+        fairy_screen_x + max(0, fairy_width - 1),
+        fairy_screen_y + max(0, len(fairy_rows) - 1),
+    )
+    surviving: List[dict] = []
+    updated = dict(walking_fairy)
+    hit = False
+    for projectile in thrown_pebbles:
+        screen_x = int(round(float(projectile.get("world_x", 0.0)))) - int(camera_x)
+        world_row = int(round(float(projectile.get("world_row", 0.0))))
+        screen_y = int(zones["ground_bg"].y) + (world_row - ground_start)
+        if fairy_box[0] <= screen_x <= fairy_box[2] and fairy_box[1] <= screen_y <= fairy_box[3] and not hit:
+            hit = True
+            if not bool(updated.get("frowning", False)) and not bool(updated.get("scared", False)):
+                updated["frowning"] = True
+                updated["frown_accum"] = WALKING_FAIRY_FROWN_SECONDS
+                updated["scared_direction"] = 1 if float(updated.get("world_x", 0.0)) >= float(player_world_x) else -1
+            continue
+        surviving.append(projectile)
+    return updated, surviving
+
+
+def handle_walking_mushroom_hits(
+    walking_mushroom: dict,
+    walking_mushroom_frames: Dict[str, List[List[str]]],
+    thrown_pebbles: List[dict],
+    zones: Dict[str, world.LayoutZone],
+    landscape_position: int,
+    camera_x: int,
+) -> tuple[dict, List[dict]]:
+    mushroom_rows = walking_mushroom_rows(walking_mushroom, walking_mushroom_frames)
+    if not mushroom_rows or not thrown_pebbles:
+        return walking_mushroom, thrown_pebbles
+    ground_start = world.landscape_ground_window_start(landscape_position)
+    mushroom_world_row = int(walking_mushroom.get("world_row", 0))
+    mushroom_screen_y = int(zones["ground_bg"].y) + (mushroom_world_row - ground_start) - max(0, len(mushroom_rows) - 1)
+    mushroom_screen_x = int(round(float(walking_mushroom.get("world_x", 0.0)))) - int(camera_x)
+    mushroom_width = max((len(row) for row in mushroom_rows), default=0)
+    mushroom_box = (
+        mushroom_screen_x,
+        mushroom_screen_y,
+        mushroom_screen_x + max(0, mushroom_width - 1),
+        mushroom_screen_y + max(0, len(mushroom_rows) - 1),
+    )
+    surviving: List[dict] = []
+    updated = dict(walking_mushroom)
+    hit = False
+    for projectile in thrown_pebbles:
+        screen_x = int(round(float(projectile.get("world_x", 0.0)))) - int(camera_x)
+        world_row = int(round(float(projectile.get("world_row", 0.0))))
+        screen_y = int(zones["ground_bg"].y) + (world_row - ground_start)
+        if mushroom_box[0] <= screen_x <= mushroom_box[2] and mushroom_box[1] <= screen_y <= mushroom_box[3] and not hit:
+            hit = True
+            if not bool(updated.get("frowning", False)) and not bool(updated.get("burrowing", False)):
+                updated["frowning"] = True
+                updated["frown_accum"] = WALKING_MUSHROOM_FROWN_SECONDS
+            continue
+        surviving.append(projectile)
+    return updated, surviving
 
 
 def border_tree_screen_x(side: str, width: int, column_band: int, column_jitter: int) -> int:
@@ -1458,32 +1628,26 @@ def render(
     draw_world_scene_sprites(draw_backside=False)
 
     avatar = build_avatar_placement(avatar_rows)
-    walker_rows = walking_mushroom_frames.get(
-        WALKING_MUSHROOM_SEQUENCE[int(walking_mushroom.get("phase_index", 0)) % len(WALKING_MUSHROOM_SEQUENCE)],
-        walking_mushroom_frames.get("primary", []),
-    )
-    if isinstance(walker_rows, list) and walker_rows:
+    walker_draw_rows = walking_mushroom_rows(walking_mushroom, walking_mushroom_frames)
+    if isinstance(walker_draw_rows, list) and walker_draw_rows:
         ground_start = world.landscape_ground_window_start(landscape_position)
         walker_world_row = int(walking_mushroom.get("world_row", 0))
-        walker_screen_y = int(ground_zone.y) + (walker_world_row - ground_start) - max(0, len(walker_rows) - 1)
+        walker_screen_y = int(ground_zone.y) + (walker_world_row - ground_start) - max(0, len(walker_draw_rows) - 1)
         walker_screen_x = int(round(float(walking_mushroom.get("world_x", 0.0)))) - int(camera_x)
         if (
-            walker_screen_x + max((len(row) for row in walker_rows), default=0) > 0
+            walker_screen_x + max((len(row) for row in walker_draw_rows), default=0) > 0
             and walker_screen_x < world.SCREEN_W
-            and walker_screen_y + len(walker_rows) > int(ground_zone.y)
+            and walker_screen_y + len(walker_draw_rows) > int(ground_zone.y)
             and walker_screen_y <= int(ground_zone.y1)
         ):
             foreground_drawables.append({
                 "x": walker_screen_x,
                 "y": walker_screen_y,
-                "rows": walker_rows,
-                "base_y": walker_screen_y + max(0, len(walker_rows) - 1),
+                "rows": walker_draw_rows,
+                "base_y": walker_screen_y + max(0, len(walker_draw_rows) - 1),
                 "z_bias": 12,
             })
-    fairy_rows = walking_fairy_frames.get(
-        WALKING_FAIRY_SEQUENCE[int(walking_fairy.get("phase_index", 0)) % len(WALKING_FAIRY_SEQUENCE)],
-        walking_fairy_frames.get("primary", []),
-    )
+    fairy_rows = walking_fairy_rows(walking_fairy, walking_fairy_frames)
     if isinstance(fairy_rows, list) and fairy_rows:
         ground_start = world.landscape_ground_window_start(landscape_position)
         fairy_world_row = int(walking_fairy.get("world_row", 0))
@@ -1682,13 +1846,19 @@ def main() -> None:
     if isinstance(vial_pose, dict) and isinstance(vial_rows, list) and vial_rows:
         house_window_objects[HOUSE_10_VIAL_LABEL] = [{"rows": vial_rows, "x0": int(vial_pose["x0"]), "y0": int(vial_pose["y0"])}]
     walking_mushroom_frames = world.build_house_mushroom_frames(opponents, color_codes, 14)
-    walking_mushroom_house = house_sprite_by_label.get("[#8 Ave A]")
+    walking_mushroom_house = house_sprite_by_label.get("[#9 Ave A]")
     walking_mushroom = {
         "world_x": 0.0,
         "world_row": 30,
         "phase_index": 0,
         "anim_accum": 0.0,
         "width": max((len(row) for row in walking_mushroom_frames.get("primary", [])), default=0),
+        "total_rows": len(walking_mushroom_frames.get("primary", [])),
+        "visible_rows": len(walking_mushroom_frames.get("primary", [])),
+        "burrowing": False,
+        "burrow_accum": 0.0,
+        "frowning": False,
+        "frown_accum": 0.0,
     }
     if isinstance(walking_mushroom_house, dict):
         house_x0, _house_y0, _backside = sprite_projection_for_scene(
@@ -1709,6 +1879,10 @@ def main() -> None:
         "phase_index": 0,
         "anim_accum": 0.0,
         "width": max((len(row) for row in walking_fairy_frames.get("primary", [])), default=0),
+        "scared": False,
+        "scared_direction": -1,
+        "frowning": False,
+        "frown_accum": 0.0,
     }
     if isinstance(walking_fairy_house, dict):
         house_x0, _house_y0, _backside = sprite_projection_for_scene(
@@ -1862,6 +2036,23 @@ def main() -> None:
                 camera_x,
                 current_visible_perches,
                 crow_motion_rng,
+            )
+            walking_mushroom, thrown_pebbles = handle_walking_mushroom_hits(
+                walking_mushroom,
+                walking_mushroom_frames,
+                thrown_pebbles,
+                zones,
+                landscape_position,
+                camera_x,
+            )
+            walking_fairy, thrown_pebbles = handle_walking_fairy_hits(
+                walking_fairy,
+                walking_fairy_frames,
+                thrown_pebbles,
+                zones,
+                landscape_position,
+                camera_x,
+                avatar_feet_world_x(avatar_rows, camera_x),
             )
             mushroom_motion_accum += dt
             while mushroom_motion_accum >= 1.0:
