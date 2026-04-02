@@ -445,6 +445,53 @@
         "qQgGgQq",
         "qSBbBSq",
         "  srs  "
+      ],
+      "art_variations": [
+        {
+          "label": "primary",
+          "art": [
+            " ╭───╮ ",
+            "╭╯┉┉┉╰╮",
+            "╰(◎─◎)╯",
+            "  )◡(  "
+          ],
+          "color_map": [
+            " qQqQq ",
+            "qQgGgQq",
+            "qSBbBSq",
+            "  srs  "
+          ]
+        },
+        {
+          "label": "a",
+          "art": [
+            " ╭───╮ ",
+            "╭╯┉┉┉╰╮",
+            "╰(◎─◎◞╯",
+            "  ╯◡(  "
+          ],
+          "color_map": [
+            " qQqQq ",
+            "qQgGgQq",
+            "qSBbBSq",
+            "  srs  "
+          ]
+        },
+        {
+          "label": "b",
+          "art": [
+            " ╭───╮ ",
+            "╭╯┉┉┉╰╮",
+            "╰◟◎─◎)╯",
+            "  )◡╰  "
+          ],
+          "color_map": [
+            " qQqQq ",
+            "qQgGgQq",
+            "qSBbBSq",
+            "  srs  "
+          ]
+        }
       ]
     },
     "mushroom_teen": {

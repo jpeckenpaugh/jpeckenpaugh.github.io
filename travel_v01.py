@@ -23,6 +23,7 @@ AVE_A_FAIRY_HOUSE_LABELS = [f"[#{house_number} Ave A]" for house_number in range
 HOUSE_10_VIAL_LABEL = "[#10 Ave A]"
 FAIRY_FLAP_SEQUENCE = ["primary", "a", "b", "a", "primary"]
 FAIRY_FLAP_STEP_SECONDS = 0.12
+MUSHROOM_STEP_POSE_SECONDS = 0.18
 CROW_FLY_SEQUENCE = ["a", "b", "c", "b"]
 CROW_FLY_STEP_SECONDS = 0.10
 CROW_FLY_SPEED = 52.0
@@ -1376,9 +1377,13 @@ def main() -> None:
         if str(sprite.get("label", "")).strip()
     }
     vials_sprite = world.build_world_object_sprite(objects, colors, "vials")
-    house_occupants = {
-        label: world.build_house_mushroom_sprite(opponents, color_codes, house_number)
+    house_mushroom_frames = {
+        label: world.build_house_mushroom_frames(opponents, color_codes, house_number)
         for house_number, label in enumerate(AVE_A_MUSHROOM_HOUSE_LABELS, start=1)
+    }
+    house_occupants = {
+        label: frames.get("primary", [])
+        for label, frames in house_mushroom_frames.items()
     }
     house_fairy_frames = {
         label: world.build_house_fairy_frames(opponents, color_codes, house_number)
@@ -1391,6 +1396,10 @@ def main() -> None:
     house_fairy_flap_states = {
         label: {"active": False, "sequence_index": 0, "accum": 0.0}
         for label in AVE_A_FAIRY_HOUSE_LABELS
+    }
+    house_mushroom_step_states = {
+        label: {"active": False, "accum": 0.0, "next_variant": "a"}
+        for label in AVE_A_MUSHROOM_HOUSE_LABELS
     }
     house_window_objects: Dict[str, List[dict]] = {}
     vial_house = house_sprite_by_label.get(HOUSE_10_VIAL_LABEL)
@@ -1474,6 +1483,14 @@ def main() -> None:
                     house_fairy_flap_states[label] = state
                 phase = FAIRY_FLAP_SEQUENCE[int(state.get("sequence_index", 0))]
                 house_occupants[label] = frames.get(phase, frames.get("primary", []))
+            for label, frames in house_mushroom_frames.items():
+                state = house_mushroom_step_states.get(label, {"active": False, "accum": 0.0, "next_variant": "a"})
+                if state.get("active"):
+                    state["accum"] = max(0.0, float(state.get("accum", 0.0)) - dt)
+                    if float(state.get("accum", 0.0)) <= 0.0:
+                        state["active"] = False
+                        house_occupants[label] = frames.get("primary", [])
+                house_mushroom_step_states[label] = state
 
             if landscape_position != target_landscape_position:
                 camera_accum += dt
@@ -1536,6 +1553,15 @@ def main() -> None:
                             mushroom_motion_rng,
                         )
                         house_occupant_poses[label] = updated_pose
+                        if label in house_mushroom_frames and updated_pose != prior_pose:
+                            state = house_mushroom_step_states.get(label, {"active": False, "accum": 0.0, "next_variant": "a"})
+                            variant = str(state.get("next_variant", "a"))
+                            frames = house_mushroom_frames[label]
+                            house_occupants[label] = frames.get(variant, frames.get("primary", []))
+                            state["active"] = True
+                            state["accum"] = MUSHROOM_STEP_POSE_SECONDS
+                            state["next_variant"] = "b" if variant == "a" else "a"
+                            house_mushroom_step_states[label] = state
                         if label in house_fairy_frames and updated_pose != prior_pose:
                             house_fairy_flap_states[label] = {"active": True, "sequence_index": 0, "accum": 0.0}
             for cloud in clouds:

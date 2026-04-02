@@ -821,6 +821,27 @@ def build_house_mushroom_sprite(
     return build_opponent_sprite(opponents_data, "mushroom_baby", _with_color_overrides(color_codes, overrides))
 
 
+def build_house_mushroom_frames(
+    opponents_data: object,
+    color_codes: Dict[str, str],
+    house_number: int,
+) -> Dict[str, List[List[str]]]:
+    accent_index, eye_index = mushroom_palette_indices_for_house(house_number)
+    accent_bright, accent_base = HOUSE_ACCENT_PALETTES[accent_index]
+    eye_bright, eye_base = HOUSE_ACCENT_PALETTES[eye_index]
+    overrides = {
+        "G": _ansi_color_code(*accent_bright),
+        "g": _ansi_color_code(*accent_base),
+        "B": _ansi_color_code(*eye_bright),
+        "b": _ansi_color_code(*eye_base),
+    }
+    varied_codes = _with_color_overrides(color_codes, overrides)
+    frames = build_opponent_art_variations(opponents_data, "mushroom_baby", varied_codes)
+    if "primary" not in frames:
+        frames["primary"] = build_opponent_sprite(opponents_data, "mushroom_baby", varied_codes)
+    return frames
+
+
 def build_house_fairy_sprite(
     opponents_data: object,
     color_codes: Dict[str, str],
