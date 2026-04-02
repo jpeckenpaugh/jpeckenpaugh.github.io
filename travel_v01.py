@@ -13,8 +13,8 @@ ADDRESS_LANDSCAPE_POSITIONS = {
     "#1 Ave A": 50,
 }
 CAMERA_STEP_SECONDS = 0.02
-SIDE_STEP_COLUMNS = 2
-TRAVEL_WORLD_WIDTH = 320
+SIDE_STEP_COLUMNS = 4
+TRAVEL_WORLD_WIDTH = 1100
 WORLD_MODELS = list(world.WORLD_SCENE_VARIANTS)
 MUSHROOM_HOUSE_LABEL = "[#10 Ave A]"
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
@@ -25,6 +25,10 @@ THROWN_PEBBLE_SPEED_X = 56.0
 THROWN_PEBBLE_SPEED_Y = 28.0
 THROW_COOLDOWN_SECONDS = 1.0
 THROW_POSE_SECONDS = 0.18
+DARK_GOLD_PEBBLE_COLORS = [
+    "\x1b[38;2;224;186;72m",
+    "\x1b[38;2;198;156;48m",
+]
 
 
 def current_address_label(position: int) -> str:
@@ -385,6 +389,11 @@ def _pebble_palette(objects_data: object) -> tuple[List[str], List[str]]:
     return pebble_glyphs, pebble_keys
 
 
+def _dark_gold_pebble_cell(glyph: str, variant: int = 0) -> str:
+    color = DARK_GOLD_PEBBLE_COLORS[max(0, int(variant)) % len(DARK_GOLD_PEBBLE_COLORS)]
+    return f"{color}{(str(glyph)[:1] or 'o')}{world.ANSI_RESET}"
+
+
 def build_collectible_road_pebbles(
     row_count: int,
     objects_data: object,
@@ -409,8 +418,7 @@ def build_collectible_road_pebbles(
             if rng.random() >= density:
                 continue
             glyph = rng.choice(glyphs)
-            key = rng.choice(keys)
-            row_pebbles[world_x] = world._colorize_glyph(glyph, key, color_codes)
+            row_pebbles[world_x] = _dark_gold_pebble_cell(glyph, rng.randrange(len(DARK_GOLD_PEBBLE_COLORS)))
         if row_pebbles:
             pebbles[world_row] = row_pebbles
     return pebbles
@@ -504,7 +512,7 @@ def spawn_thrown_pebble(
         "world_row": float(world_row),
         "vx": dx,
         "vy": dy,
-        "cell": "\x1b[38;2;185;185;185mo" + world.ANSI_RESET,
+        "cell": _dark_gold_pebble_cell("o", 0),
     }
 
 
@@ -638,6 +646,7 @@ def render(
     thrown_pebbles: List[dict],
     pebble_count: int,
     throw_cooldown: float,
+    game_time_seconds: float,
     address_label: str,
     scene_label: str,
     center_object_id: str,
@@ -851,12 +860,16 @@ def render(
     controls = "[up/down travel][left/right strafe][t throw][a avatar][c scene][q quit]"
     pebble_label = f"Pebbles: {max(0, int(pebble_count))}"
     throw_label = "Throw: ready" if throw_cooldown <= 0 else f"Throw: {throw_cooldown:.1f}s"
+    total_seconds = max(0, int(game_time_seconds))
+    game_time_label = f"Time: {total_seconds // 60:02d}:{total_seconds % 60:02d}"
     if len(header) <= world.SCREEN_W:
         draw_label(canvas, header, max(0, (world.SCREEN_W - len(header)) // 2), 0)
     if len(pebble_label) <= world.SCREEN_W:
         draw_label(canvas, pebble_label, max(0, world.SCREEN_W - len(pebble_label) - 1), 1, color="\x1b[38;2;235;220;170m")
     if len(throw_label) <= world.SCREEN_W:
         draw_label(canvas, throw_label, max(0, world.SCREEN_W - len(throw_label) - 1), 2, color="\x1b[38;2;205;205;255m")
+    if len(game_time_label) <= world.SCREEN_W:
+        draw_label(canvas, game_time_label, max(0, world.SCREEN_W - len(game_time_label) - 1), 3, color="\x1b[38;2;200;235;200m")
     if len(controls) <= world.SCREEN_W:
         draw_label(canvas, controls, max(0, (world.SCREEN_W - len(controls)) // 2), world.SCREEN_H - 1)
 
@@ -920,6 +933,7 @@ def main() -> None:
     pebble_count = 0
     thrown_pebbles: List[dict] = []
     throw_cooldown = 0.0
+    game_time_seconds = 0.0
     throw_pose_accum = 0.0
     scene_index = 0
     scene_label, center_object_id = WORLD_MODELS[scene_index]
@@ -961,6 +975,7 @@ def main() -> None:
             now = time.monotonic()
             dt = max(0.0, min(0.2, now - last_tick))
             last_tick = now
+            game_time_seconds += dt
             throw_cooldown = max(0.0, throw_cooldown - dt)
             throw_pose_accum = max(0.0, throw_pose_accum - dt)
             thrown_pebbles = update_thrown_pebbles(thrown_pebbles, dt)
@@ -1110,6 +1125,7 @@ def main() -> None:
                 thrown_pebbles=thrown_pebbles,
                 pebble_count=pebble_count,
                 throw_cooldown=throw_cooldown,
+                game_time_seconds=game_time_seconds,
                 address_label=current_address_label(landscape_position),
                 scene_label=scene_label,
                 center_object_id=center_object_id,

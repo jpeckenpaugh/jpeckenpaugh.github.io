@@ -3,6 +3,7 @@ import random
 import re
 import time
 import textwrap
+import colorsys
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -413,6 +414,21 @@ def _colorize_object_rows(art_rows: object, mask_rows: object, color_codes: Dict
     return out
 
 
+def _ansi_color_code(r: int, g: int, b: int) -> str:
+    return f"\x1b[38;2;{max(0, min(255, int(r)))};{max(0, min(255, int(g)))};{max(0, min(255, int(b)))}m"
+
+
+def _house_accent_color_codes(base_color_codes: Dict[str, str], house_number: int) -> Dict[str, str]:
+    updated = dict(base_color_codes)
+    house_index = max(0, min(19, int(house_number) - 1))
+    hue = (house_index / 19.0) * 0.83 if 19 > 0 else 0.0
+    bright_rgb = colorsys.hsv_to_rgb(hue, 0.62, 0.98)
+    base_rgb = colorsys.hsv_to_rgb(hue, 0.78, 0.82)
+    updated["B"] = _ansi_color_code(*(round(channel * 255) for channel in bright_rgb))
+    updated["b"] = _ansi_color_code(*(round(channel * 255) for channel in base_rgb))
+    return updated
+
+
 def build_world_object_sprite(objects_data: object, colors_data: object, object_id: str) -> dict | None:
     if not isinstance(objects_data, dict):
         return None
@@ -455,8 +471,11 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
     house_width = int(base_house.get("width", 0))
     house_art = house_payload.get("art", [])
     house_mask = house_payload.get("color_mask", [])
+    color_codes = _build_color_codes(colors_data)
 
-    def add_house(side: str, horizon_depth: int, label: str, side_slot: int, lateral_offset: int = 0) -> None:
+    def add_house(side: str, horizon_depth: int, label: str, house_number: int, side_slot: int, lateral_offset: int = 0) -> None:
+        accent_codes = _house_accent_color_codes(color_codes, house_number)
+        rows = _colorize_object_rows(house_art, house_mask, accent_codes)
         sprites.append({
             "side": side,
             "side_slot": max(0, int(side_slot)),
@@ -466,8 +485,8 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
             "main_street": MAIN_STREET_NAME,
             "label": label,
             "width": house_width,
-            "height": int(base_house.get("height", 0)),
-            "rows": base_house.get("rows", []),
+            "height": len(rows) if rows else int(base_house.get("height", 0)),
+            "rows": rows if rows else base_house.get("rows", []),
             "art": list(house_art) if isinstance(house_art, list) else [],
             "mask_rows": list(house_mask) if isinstance(house_mask, list) else [],
         })
@@ -477,14 +496,14 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
         above_depth = crossroad_start - 3
         if above_depth >= 0:
             # Keep all avenue houses on the north side instead of splitting by parity.
-            add_house("left", above_depth, f"[#6 {street_name}]", 3, lateral_offset=-16)
-            add_house("left", above_depth, f"[#7 {street_name}]", 2, lateral_offset=-10)
-            add_house("left", above_depth, f"[#8 {street_name}]", 1, lateral_offset=-4)
-            add_house("left", above_depth, f"[#9 {street_name}]", 0, lateral_offset=2)
-            add_house("right", above_depth, f"[#10 {street_name}]", 0, lateral_offset=0)
-            add_house("right", above_depth, f"[#11 {street_name}]", 1, lateral_offset=6)
-            add_house("right", above_depth, f"[#12 {street_name}]", 2, lateral_offset=12)
-            add_house("right", above_depth, f"[#13 {street_name}]", 3, lateral_offset=18)
+            for house_number in range(1, 11):
+                slot = 10 - house_number
+                lateral_offset = -18 + ((house_number - 1) * 2)
+                add_house("left", above_depth, f"[#{house_number} {street_name}]", house_number, slot, lateral_offset=lateral_offset)
+            for house_number in range(11, 21):
+                slot = house_number - 11
+                lateral_offset = (house_number - 11) * 2
+                add_house("right", above_depth, f"[#{house_number} {street_name}]", house_number, slot, lateral_offset=lateral_offset)
         street_index += 1
     return sprites
 
