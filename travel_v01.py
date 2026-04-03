@@ -34,6 +34,9 @@ WALKING_FAIRY_STEP_SECONDS = 0.12
 WALKING_FAIRY_SPEED = 8.0
 WALKING_FAIRY_SCARED_SPEED = 32.0
 WALKING_FAIRY_FROWN_SECONDS = 1.0
+BLINK_INTERVAL_MIN_SECONDS = 4.0
+BLINK_INTERVAL_MAX_SECONDS = 6.0
+BLINK_STEP_SECONDS = 0.08
 CROW_FLY_SEQUENCE = ["a", "b", "c", "b"]
 CROW_FLY_STEP_SECONDS = 0.10
 CROW_FLY_SPEED = 52.0
@@ -221,14 +224,15 @@ def step_house_occupant_pose(art_rows: List[str], mask_rows: List[str], occupant
         return clamp_house_occupant_pose(art_rows, mask_rows, occupant_rows, pose)
     updated = dict(pose)
     direction = rng.choice(["left", "right", "up", "down"])
+    distance = rng.randint(1, 3)
     if direction == "left":
-        updated["x0"] = int(updated.get("x0", 0)) - 1
+        updated["x0"] = int(updated.get("x0", 0)) - distance
     elif direction == "right":
-        updated["x0"] = int(updated.get("x0", 0)) + 1
+        updated["x0"] = int(updated.get("x0", 0)) + distance
     elif direction == "up":
-        updated["floor_offset"] = int(updated.get("floor_offset", 0)) + 1
+        updated["floor_offset"] = int(updated.get("floor_offset", 0)) + distance
     else:
-        updated["floor_offset"] = int(updated.get("floor_offset", 0)) - 1
+        updated["floor_offset"] = int(updated.get("floor_offset", 0)) - distance
     updated = clamp_house_occupant_pose(art_rows, mask_rows, occupant_rows, updated)
     return updated if can_place_house_occupant_pose(art_rows, occupant_rows, updated) else pose
 
@@ -300,6 +304,191 @@ def draw_house_sprite(
                     x0 + int(item.get("x0", 0)),
                     y0 + int(item.get("y0", 0)),
                 )
+
+
+def mushroom_frame_label_for_facing(facing: str, phase: str) -> str:
+    normalized = str(facing).strip().lower()
+    if normalized == "back":
+        return "back_primary" if phase == "primary" else f"back_{phase}"
+    return phase
+
+
+def make_blink_state(seed: int, open_choices: List[str]) -> dict:
+    rng = random.Random(seed)
+    choices = [str(choice)[:1] for choice in open_choices if str(choice)]
+    if not choices:
+        choices = ["◉"]
+    return {
+        "rng": rng,
+        "open_eye": choices[rng.randrange(len(choices))],
+        "phase": "open",
+        "phase_timer": 0.0,
+        "blinks_remaining": 0,
+        "next_blink": rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS),
+    }
+
+
+def update_blink_state(state: dict, dt: float) -> dict:
+    updated = dict(state)
+    rng = updated.get("rng")
+    if not isinstance(rng, random.Random):
+        rng = random.Random(0)
+        updated["rng"] = rng
+    phase = str(updated.get("phase", "open"))
+    if phase == "open" and int(updated.get("blinks_remaining", 0)) <= 0:
+        updated["next_blink"] = float(updated.get("next_blink", BLINK_INTERVAL_MIN_SECONDS)) - dt
+        if float(updated.get("next_blink", 0.0)) <= 0.0:
+            updated["blinks_remaining"] = rng.choice([1, 2])
+            updated["phase"] = "half_1"
+            updated["phase_timer"] = BLINK_STEP_SECONDS
+        return updated
+
+    updated["phase_timer"] = float(updated.get("phase_timer", 0.0)) - dt
+    if float(updated.get("phase_timer", 0.0)) > 0.0:
+        return updated
+    phase = str(updated.get("phase", "open"))
+    if phase == "half_1":
+        updated["phase"] = "closed"
+        updated["phase_timer"] = BLINK_STEP_SECONDS
+    elif phase == "closed":
+        updated["phase"] = "half_2"
+        updated["phase_timer"] = BLINK_STEP_SECONDS
+    elif phase == "half_2":
+        remaining = max(0, int(updated.get("blinks_remaining", 1)) - 1)
+        updated["blinks_remaining"] = remaining
+        if remaining > 0:
+            updated["phase"] = "half_1"
+            updated["phase_timer"] = BLINK_STEP_SECONDS
+        else:
+            updated["phase"] = "open"
+            updated["phase_timer"] = 0.0
+            updated["next_blink"] = rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS)
+    else:
+        updated["phase"] = "open"
+        updated["phase_timer"] = 0.0
+        updated["blinks_remaining"] = 0
+        updated["next_blink"] = rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS)
+    return updated
+
+
+def _visible_cell_glyph(cell: str) -> str:
+    text = str(cell)
+    idx = 0
+    while idx < len(text):
+        if text[idx] == "\x1b":
+            end = text.find("m", idx)
+            if end == -1:
+                break
+            idx = end + 1
+            continue
+        return text[idx]
+    return ""
+
+
+def _replace_visible_cell_glyph(cell: str, glyph: str) -> str:
+    text = str(cell)
+    idx = 0
+    while idx < len(text):
+        if text[idx] == "\x1b":
+            end = text.find("m", idx)
+            if end == -1:
+                return text
+            idx = end + 1
+            continue
+        return text[:idx] + str(glyph)[:1] + text[idx + 1:]
+    return text
+
+
+def apply_blink_to_rows(rows: List[List[str]], blink_state: dict | None) -> List[List[str]]:
+    if not isinstance(rows, list) or not rows or not isinstance(blink_state, dict):
+        return rows
+    phase = str(blink_state.get("phase", "open"))
+    if phase == "open":
+        target = str(blink_state.get("open_eye", "◉"))[:1] or "◉"
+    elif phase in {"half_1", "half_2"}:
+        target = "◓"
+    elif phase == "closed":
+        target = "●"
+    else:
+        target = str(blink_state.get("open_eye", "◉"))[:1] or "◉"
+    out: List[List[str]] = []
+    for row in rows:
+        new_row: List[str] = []
+        for cell in row:
+            glyph = _visible_cell_glyph(cell)
+            if glyph in {"◎", "◉", "◓", "●"}:
+                new_row.append(_replace_visible_cell_glyph(cell, target))
+            else:
+                new_row.append(cell)
+        out.append(new_row)
+    return out
+
+
+def make_crow_blink_state(seed: int) -> dict:
+    rng = random.Random(seed)
+    return {
+        "rng": rng,
+        "phase": "open",
+        "phase_timer": 0.0,
+        "blinks_remaining": 0,
+        "next_blink": rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS),
+    }
+
+
+def update_crow_blink_state(state: dict, dt: float) -> dict:
+    updated = dict(state)
+    rng = updated.get("rng")
+    if not isinstance(rng, random.Random):
+        rng = random.Random(0)
+        updated["rng"] = rng
+    phase = str(updated.get("phase", "open"))
+    if phase == "open" and int(updated.get("blinks_remaining", 0)) <= 0:
+        updated["next_blink"] = float(updated.get("next_blink", BLINK_INTERVAL_MIN_SECONDS)) - dt
+        if float(updated.get("next_blink", 0.0)) <= 0.0:
+            updated["blinks_remaining"] = rng.choice([1, 2])
+            updated["phase"] = "closed"
+            updated["phase_timer"] = BLINK_STEP_SECONDS
+        return updated
+    updated["phase_timer"] = float(updated.get("phase_timer", 0.0)) - dt
+    if float(updated.get("phase_timer", 0.0)) > 0.0:
+        return updated
+    phase = str(updated.get("phase", "open"))
+    if phase == "closed":
+        remaining = max(0, int(updated.get("blinks_remaining", 1)) - 1)
+        updated["blinks_remaining"] = remaining
+        if remaining > 0:
+            updated["phase"] = "open_between"
+            updated["phase_timer"] = BLINK_STEP_SECONDS
+        else:
+            updated["phase"] = "open"
+            updated["phase_timer"] = 0.0
+            updated["next_blink"] = rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS)
+    elif phase == "open_between":
+        updated["phase"] = "closed"
+        updated["phase_timer"] = BLINK_STEP_SECONDS
+    else:
+        updated["phase"] = "open"
+        updated["phase_timer"] = 0.0
+        updated["blinks_remaining"] = 0
+        updated["next_blink"] = rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS)
+    return updated
+
+
+def apply_crow_blink_to_rows(rows: List[List[str]], blink_state: dict | None) -> List[List[str]]:
+    if not isinstance(rows, list) or not rows or not isinstance(blink_state, dict):
+        return rows
+    target = "^" if str(blink_state.get("phase", "open")) == "closed" else "\""
+    out: List[List[str]] = []
+    for row in rows:
+        new_row: List[str] = []
+        for cell in row:
+            glyph = _visible_cell_glyph(cell)
+            if glyph in {"\"", "^"}:
+                new_row.append(_replace_visible_cell_glyph(cell, target))
+            else:
+                new_row.append(cell)
+        out.append(new_row)
+    return out
 
 
 def sprite_projection_for_scene(
@@ -542,6 +731,7 @@ def spawn_intro_crows(
             "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
             "hit_count": 0,
             "hide_cooldown": 0.0,
+            "blink_state": make_crow_blink_state(7319),
         })
     if right_perches:
         occupied = occupied_perch_ids(states)
@@ -561,6 +751,7 @@ def spawn_intro_crows(
             "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
             "hit_count": 0,
             "hide_cooldown": 0.0,
+            "blink_state": make_crow_blink_state(7320),
         })
     return states
 
@@ -718,6 +909,7 @@ def update_intro_crows(
     updated: List[dict] = []
     for crow_index, crow in enumerate(crow_states):
         item = dict(crow)
+        item["blink_state"] = update_crow_blink_state(item.get("blink_state", make_crow_blink_state(7400 + crow_index)), dt)
         if str(item.get("mode", "")) == "hidden":
             item["hide_cooldown"] = max(0.0, float(item.get("hide_cooldown", 0.0)) - dt)
             if float(item.get("hide_cooldown", 0.0)) <= 0.0 and visible_perches:
@@ -1397,12 +1589,15 @@ def render(
     avatar_rows: List[List[str]],
     avatar_facing: str,
     house_occupants: Dict[str, List[List[str]]],
+    house_blink_states: Dict[str, dict],
     house_occupant_poses: Dict[str, dict],
     house_window_objects: Dict[str, List[dict]],
     walking_mushroom_frames: Dict[str, List[List[str]]],
     walking_mushroom: dict,
+    walking_mushroom_blink: dict,
     walking_fairy_frames: Dict[str, List[List[str]]],
     walking_fairy: dict,
+    walking_fairy_blink: dict,
     collectible_pebbles: Dict[int, Dict[int, str]],
     thrown_pebbles: List[dict],
     pebble_count: int,
@@ -1412,6 +1607,7 @@ def render(
     scene_label: str,
     center_object_id: str,
     camera_x: int,
+    avatar_blink: dict,
     crow_frames: Dict[str, List[List[str]]],
     crow_states: List[dict],
 ) -> str:
@@ -1548,7 +1744,7 @@ def render(
             _x0, _y0, sprite_is_backside = projection
             if sprite_is_backside != draw_backside:
                 continue
-            rows = crow_frames.get("resting", [])
+            rows = apply_crow_blink_to_rows(crow_frames.get("resting", []), crow.get("blink_state"))
             if not isinstance(rows, list) or not rows:
                 continue
             tree_rows = sprite.get("rows", [])
@@ -1585,7 +1781,7 @@ def render(
         rows = drawable.get("rows", [])
         if isinstance(rows, list) and drawable.get("house_sprite"):
             label = str(drawable.get("label", "")).strip()
-            occupant_rows = house_occupants.get(label, [])
+            occupant_rows = apply_blink_to_rows(house_occupants.get(label, []), house_blink_states.get(label))
             occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
             draw_house_sprite(
                 canvas,
@@ -1627,8 +1823,9 @@ def render(
 
     draw_world_scene_sprites(draw_backside=False)
 
-    avatar = build_avatar_placement(avatar_rows)
-    walker_draw_rows = walking_mushroom_rows(walking_mushroom, walking_mushroom_frames)
+    avatar_display_rows = apply_blink_to_rows(avatar_rows, avatar_blink)
+    avatar = build_avatar_placement(avatar_display_rows)
+    walker_draw_rows = apply_blink_to_rows(walking_mushroom_rows(walking_mushroom, walking_mushroom_frames), walking_mushroom_blink)
     if isinstance(walker_draw_rows, list) and walker_draw_rows:
         ground_start = world.landscape_ground_window_start(landscape_position)
         walker_world_row = int(walking_mushroom.get("world_row", 0))
@@ -1647,7 +1844,7 @@ def render(
                 "base_y": walker_screen_y + max(0, len(walker_draw_rows) - 1),
                 "z_bias": 12,
             })
-    fairy_rows = walking_fairy_rows(walking_fairy, walking_fairy_frames)
+    fairy_rows = apply_blink_to_rows(walking_fairy_rows(walking_fairy, walking_fairy_frames), walking_fairy_blink)
     if isinstance(fairy_rows, list) and fairy_rows:
         ground_start = world.landscape_ground_window_start(landscape_position)
         fairy_world_row = int(walking_fairy.get("world_row", 0))
@@ -1669,7 +1866,7 @@ def render(
     foreground_drawables.append({
         "x": int(avatar["x"]),
         "y": int(avatar["y"]),
-        "rows": avatar_rows,
+        "rows": avatar_display_rows,
         "base_y": int(avatar["y"]) + max(0, int(avatar["height"]) - 1),
         "z_bias": 15,
     })
@@ -1679,7 +1876,7 @@ def render(
         rows = drawable.get("rows", [])
         if isinstance(rows, list) and drawable.get("house_sprite"):
             label = str(drawable.get("label", "")).strip()
-            occupant_rows = house_occupants.get(label, [])
+            occupant_rows = apply_blink_to_rows(house_occupants.get(label, []), house_blink_states.get(label))
             occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
             draw_house_sprite(
                 canvas,
@@ -1703,7 +1900,7 @@ def render(
         if str(crow.get("mode", "")) in {"resting", "hidden"}:
             continue
         frame_label = CROW_FLY_SEQUENCE[int(crow.get("anim_index", 0)) % len(CROW_FLY_SEQUENCE)]
-        rows = crow_frames.get(frame_label, crow_frames.get("resting", []))
+        rows = apply_crow_blink_to_rows(crow_frames.get(frame_label, crow_frames.get("resting", [])), crow.get("blink_state"))
         if isinstance(rows, list) and rows:
             draw_sprite(
                 canvas,
@@ -1720,7 +1917,7 @@ def render(
         if 0 <= screen_x < world.SCREEN_W and int(ground_zone.y) <= screen_y <= int(ground_zone.y1):
             canvas[screen_y][screen_x] = str(projectile.get("cell", "o"))
     if avatar_facing == "back":
-        draw_sprite(canvas, avatar_rows, int(avatar["x"]), int(avatar["y"]))
+        draw_sprite(canvas, avatar_display_rows, int(avatar["x"]), int(avatar["y"]))
 
     header = f"[travel][scene:{scene_label}][address:{address_label}]"
     controls = "[up/down travel][left/right strafe][t throw][a avatar][c scene][q quit]"
@@ -1834,8 +2031,12 @@ def main() -> None:
         label: {"active": False, "sequence_index": 0, "accum": 0.0}
         for label in AVE_A_FAIRY_HOUSE_LABELS
     }
+    house_blink_states = {
+        label: make_blink_state(8100 + idx, ["◎", "◉"])
+        for idx, label in enumerate(AVE_A_MUSHROOM_HOUSE_LABELS + AVE_A_FAIRY_HOUSE_LABELS)
+    }
     house_mushroom_step_states = {
-        label: {"active": False, "accum": 0.0, "next_variant": "a"}
+        label: {"active": False, "accum": 0.0, "next_variant": "a", "facing": "front"}
         for label in AVE_A_MUSHROOM_HOUSE_LABELS
     }
     house_window_objects: Dict[str, List[dict]] = {}
@@ -1845,7 +2046,7 @@ def main() -> None:
     vial_pose = centered_window_object_pose(vial_mask_rows, vial_rows, window_index=1) if isinstance(vial_mask_rows, list) else None
     if isinstance(vial_pose, dict) and isinstance(vial_rows, list) and vial_rows:
         house_window_objects[HOUSE_10_VIAL_LABEL] = [{"rows": vial_rows, "x0": int(vial_pose["x0"]), "y0": int(vial_pose["y0"])}]
-    walking_mushroom_frames = world.build_house_mushroom_frames(opponents, color_codes, 14)
+    walking_mushroom_frames = world.build_house_mushroom_frames(opponents, color_codes, 14, band_pattern="╺◇╸")
     walking_mushroom_house = house_sprite_by_label.get("[#9 Ave A]")
     walking_mushroom = {
         "world_x": 0.0,
@@ -1860,6 +2061,7 @@ def main() -> None:
         "frowning": False,
         "frown_accum": 0.0,
     }
+    walking_mushroom_blink = make_blink_state(9001, ["◎", "◉"])
     if isinstance(walking_mushroom_house, dict):
         house_x0, _house_y0, _backside = sprite_projection_for_scene(
             walking_mushroom_house,
@@ -1884,6 +2086,8 @@ def main() -> None:
         "frowning": False,
         "frown_accum": 0.0,
     }
+    walking_fairy_blink = make_blink_state(9002, ["◎", "◉"])
+    avatar_blink = make_blink_state(9003, ["◎"])
     if isinstance(walking_fairy_house, dict):
         house_x0, _house_y0, _backside = sprite_projection_for_scene(
             walking_fairy_house,
@@ -1954,6 +2158,11 @@ def main() -> None:
             throw_cooldown = max(0.0, throw_cooldown - dt)
             throw_pose_accum = max(0.0, throw_pose_accum - dt)
             thrown_pebbles = update_thrown_pebbles(thrown_pebbles, dt)
+            for label, state in list(house_blink_states.items()):
+                house_blink_states[label] = update_blink_state(state, dt)
+            walking_mushroom_blink = update_blink_state(walking_mushroom_blink, dt)
+            walking_fairy_blink = update_blink_state(walking_fairy_blink, dt)
+            avatar_blink = update_blink_state(avatar_blink, dt)
             walking_mushroom = update_walking_mushroom(walking_mushroom, dt)
             walking_fairy = update_walking_fairy(walking_fairy, dt)
             for label, frames in house_fairy_frames.items():
@@ -1973,12 +2182,13 @@ def main() -> None:
                 phase = FAIRY_FLAP_SEQUENCE[int(state.get("sequence_index", 0))]
                 house_occupants[label] = frames.get(phase, frames.get("primary", []))
             for label, frames in house_mushroom_frames.items():
-                state = house_mushroom_step_states.get(label, {"active": False, "accum": 0.0, "next_variant": "a"})
+                state = house_mushroom_step_states.get(label, {"active": False, "accum": 0.0, "next_variant": "a", "facing": "front"})
                 if state.get("active"):
                     state["accum"] = max(0.0, float(state.get("accum", 0.0)) - dt)
                     if float(state.get("accum", 0.0)) <= 0.0:
                         state["active"] = False
-                        house_occupants[label] = frames.get("primary", [])
+                        idle_label = mushroom_frame_label_for_facing(state.get("facing", "front"), "primary")
+                        house_occupants[label] = frames.get(idle_label, frames.get("primary", []))
                 house_mushroom_step_states[label] = state
 
             if landscape_position != target_landscape_position:
@@ -2072,10 +2282,17 @@ def main() -> None:
                         )
                         house_occupant_poses[label] = updated_pose
                         if label in house_mushroom_frames and updated_pose != prior_pose:
-                            state = house_mushroom_step_states.get(label, {"active": False, "accum": 0.0, "next_variant": "a"})
+                            state = house_mushroom_step_states.get(label, {"active": False, "accum": 0.0, "next_variant": "a", "facing": "front"})
+                            prior_floor = int(prior_pose.get("floor_offset", 1))
+                            updated_floor = int(updated_pose.get("floor_offset", 1))
+                            if updated_floor > prior_floor:
+                                state["facing"] = "back"
+                            elif updated_floor < prior_floor:
+                                state["facing"] = "front"
                             variant = str(state.get("next_variant", "a"))
                             frames = house_mushroom_frames[label]
-                            house_occupants[label] = frames.get(variant, frames.get("primary", []))
+                            variant_label = mushroom_frame_label_for_facing(state.get("facing", "front"), variant)
+                            house_occupants[label] = frames.get(variant_label, frames.get(variant, frames.get("primary", [])))
                             state["active"] = True
                             state["accum"] = MUSHROOM_STEP_POSE_SECONDS
                             state["next_variant"] = "b" if variant == "a" else "a"
@@ -2211,12 +2428,15 @@ def main() -> None:
                 avatar_rows=avatar_rows,
                 avatar_facing=avatar_facing,
                 house_occupants=house_occupants,
+                house_blink_states=house_blink_states,
                 house_occupant_poses=house_occupant_poses,
                 house_window_objects=house_window_objects,
                 walking_mushroom_frames=walking_mushroom_frames,
                 walking_mushroom=walking_mushroom,
+                walking_mushroom_blink=walking_mushroom_blink,
                 walking_fairy_frames=walking_fairy_frames,
                 walking_fairy=walking_fairy,
+                walking_fairy_blink=walking_fairy_blink,
                 collectible_pebbles=collectible_pebbles,
                 thrown_pebbles=thrown_pebbles,
                 pebble_count=pebble_count,
@@ -2226,6 +2446,7 @@ def main() -> None:
                 scene_label=scene_label,
                 center_object_id=center_object_id,
                 camera_x=camera_x,
+                avatar_blink=avatar_blink,
                 crow_frames=crow_frames,
                 crow_states=crow_states,
             )

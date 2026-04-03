@@ -491,6 +491,51 @@
             "qSBbBSq",
             "  srs  "
           ]
+        },
+        {
+          "label": "back_primary",
+          "art": [
+            " ╭───╮ ",
+            "╭╯┉┉┉╰╮",
+            "╰◟───◞╯",
+            "  ) (  "
+          ],
+          "color_map": [
+            " qQqQq ",
+            "qQgGgQq",
+            "qSQqQsQ",
+            "  s s  "
+          ]
+        },
+        {
+          "label": "back_a",
+          "art": [
+            " ╭───╮ ",
+            "╭╯┉┉┉╰╮",
+            "╰◟───◞╯",
+            "  ) ╰  "
+          ],
+          "color_map": [
+            " qQqQq ",
+            "qQgGgQq",
+            "qSQqQsQ",
+            "  s s  "
+          ]
+        },
+        {
+          "label": "back_b",
+          "art": [
+            " ╭───╮ ",
+            "╭╯┉┉┉╰╮",
+            "╰◟───◞╯",
+            "  ╯ (  "
+          ],
+          "color_map": [
+            " qQqQq ",
+            "qQgGgQq",
+            "qSQqQsQ",
+            "  s s  "
+          ]
         }
       ]
     },

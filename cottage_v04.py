@@ -804,28 +804,68 @@ def build_opponent_art_variations(
     return out
 
 
+MUSHROOM_HAT_BAND_PATTERNS = [
+    "┄┄┄",
+    "┅┅┅",
+    "┈┈┈",
+    "┉┉┉",
+    "╌╌╌",
+    "╍╍╍",
+    "═══",
+    "───",
+    "━━━",
+    "░░░",
+    "▒▒▒",
+    "▓▓▓",
+    "▚▞▚",
+    "◇◆◇",
+    "◚◛◚",
+    "▵▿▵",
+    "▫▨▫",
+    "▭▱▭",
+    "╺◇╸",
+    "╶◆╴",
+    "▞▨▚",
+    "◃◊▹",
+    "▁▂▁",
+    "╼╪╾",
+]
+
+
+def _mushroom_hat_band_pattern(house_number: int) -> str:
+    rng = random.Random(44001 + int(house_number))
+    return MUSHROOM_HAT_BAND_PATTERNS[rng.randrange(len(MUSHROOM_HAT_BAND_PATTERNS))]
+
+
+def _apply_mushroom_hat_band(art_rows: object, band_pattern: str) -> List[str]:
+    if not isinstance(art_rows, list):
+        return []
+    pattern = str(band_pattern)
+    if len(pattern) != 3:
+        return [str(row) for row in art_rows]
+    out: List[str] = []
+    for idx, raw in enumerate(art_rows):
+        line = str(raw)
+        if idx == 1 and len(line) >= 5:
+            line = f"{line[:2]}{pattern}{line[5:]}"
+        out.append(line)
+    return out
+
+
 def build_house_mushroom_sprite(
     opponents_data: object,
     color_codes: Dict[str, str],
     house_number: int,
+    band_pattern: str | None = None,
 ) -> List[List[str]]:
-    accent_index, eye_index = mushroom_palette_indices_for_house(house_number)
-    accent_bright, accent_base = HOUSE_ACCENT_PALETTES[accent_index]
-    eye_bright, eye_base = HOUSE_ACCENT_PALETTES[eye_index]
-    overrides = {
-        "G": _ansi_color_code(*accent_bright),
-        "g": _ansi_color_code(*accent_base),
-        "B": _ansi_color_code(*eye_bright),
-        "b": _ansi_color_code(*eye_base),
-    }
-    return build_opponent_sprite(opponents_data, "mushroom_baby", _with_color_overrides(color_codes, overrides))
-
-
-def build_house_mushroom_frames(
-    opponents_data: object,
-    color_codes: Dict[str, str],
-    house_number: int,
-) -> Dict[str, List[List[str]]]:
+    if not isinstance(opponents_data, dict):
+        return []
+    base_opponents = opponents_data.get("base_opponents", {})
+    if not isinstance(base_opponents, dict):
+        return []
+    mushroom = base_opponents.get("mushroom_baby", {})
+    if not isinstance(mushroom, dict):
+        return []
     accent_index, eye_index = mushroom_palette_indices_for_house(house_number)
     accent_bright, accent_base = HOUSE_ACCENT_PALETTES[accent_index]
     eye_bright, eye_base = HOUSE_ACCENT_PALETTES[eye_index]
@@ -836,9 +876,61 @@ def build_house_mushroom_frames(
         "b": _ansi_color_code(*eye_base),
     }
     varied_codes = _with_color_overrides(color_codes, overrides)
-    frames = build_opponent_art_variations(opponents_data, "mushroom_baby", varied_codes)
+    pattern = band_pattern or _mushroom_hat_band_pattern(house_number)
+    return _colorize_object_rows(
+        _apply_mushroom_hat_band(mushroom.get("art", []), pattern),
+        mushroom.get("color_map", []),
+        varied_codes,
+    )
+
+
+def build_house_mushroom_frames(
+    opponents_data: object,
+    color_codes: Dict[str, str],
+    house_number: int,
+    band_pattern: str | None = None,
+) -> Dict[str, List[List[str]]]:
+    if not isinstance(opponents_data, dict):
+        return {}
+    base_opponents = opponents_data.get("base_opponents", {})
+    if not isinstance(base_opponents, dict):
+        return {}
+    mushroom = base_opponents.get("mushroom_baby", {})
+    if not isinstance(mushroom, dict):
+        return {}
+    accent_index, eye_index = mushroom_palette_indices_for_house(house_number)
+    accent_bright, accent_base = HOUSE_ACCENT_PALETTES[accent_index]
+    eye_bright, eye_base = HOUSE_ACCENT_PALETTES[eye_index]
+    overrides = {
+        "G": _ansi_color_code(*accent_bright),
+        "g": _ansi_color_code(*accent_base),
+        "B": _ansi_color_code(*eye_bright),
+        "b": _ansi_color_code(*eye_base),
+    }
+    varied_codes = _with_color_overrides(color_codes, overrides)
+    pattern = band_pattern or _mushroom_hat_band_pattern(house_number)
+    frames: Dict[str, List[List[str]]] = {}
+    variations = mushroom.get("art_variations", [])
+    if isinstance(variations, list):
+        for entry in variations:
+            if not isinstance(entry, dict):
+                continue
+            label = str(entry.get("label", "")).strip()
+            if not label:
+                continue
+            rows = _colorize_object_rows(
+                _apply_mushroom_hat_band(entry.get("art", []), pattern),
+                entry.get("color_map", []),
+                varied_codes,
+            )
+            if rows:
+                frames[label] = rows
     if "primary" not in frames:
-        frames["primary"] = build_opponent_sprite(opponents_data, "mushroom_baby", varied_codes)
+        frames["primary"] = _colorize_object_rows(
+            _apply_mushroom_hat_band(mushroom.get("art", []), pattern),
+            mushroom.get("color_map", []),
+            varied_codes,
+        )
     return frames
 
 
