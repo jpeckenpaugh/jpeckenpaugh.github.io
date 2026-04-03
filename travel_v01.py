@@ -29,6 +29,7 @@ WALKING_MUSHROOM_STEP_SECONDS = 0.20
 WALKING_MUSHROOM_SPEED = 4.0
 WALKING_MUSHROOM_BURROW_STEP_SECONDS = 0.14
 WALKING_MUSHROOM_FROWN_SECONDS = 1.0
+WALKING_MUSHROOM_BURROW_BLINK_SECONDS = 1.0
 WALKING_FAIRY_SEQUENCE = ["primary", "a", "b", "a", "primary"]
 WALKING_FAIRY_STEP_SECONDS = 0.12
 WALKING_FAIRY_SPEED = 8.0
@@ -424,6 +425,34 @@ def apply_blink_to_rows(rows: List[List[str]], blink_state: dict | None) -> List
     return out
 
 
+def apply_eye_glyph_to_rows(rows: List[List[str]], target: str) -> List[List[str]]:
+    if not isinstance(rows, list) or not rows:
+        return rows
+    glyph_target = str(target)[:1] or "◓"
+    out: List[List[str]] = []
+    for row in rows:
+        new_row: List[str] = []
+        for cell in row:
+            glyph = _visible_cell_glyph(cell)
+            if glyph in {"◎", "◉", "◓", "●"}:
+                new_row.append(_replace_visible_cell_glyph(cell, glyph_target))
+            else:
+                new_row.append(cell)
+        out.append(new_row)
+    return out
+
+
+def apply_forced_double_blink_rows(rows: List[List[str]], total_seconds: float, remaining_seconds: float) -> List[List[str]]:
+    if not isinstance(rows, list) or not rows:
+        return rows
+    total = max(0.001, float(total_seconds))
+    remaining = max(0.0, min(total, float(remaining_seconds)))
+    progress = 1.0 - (remaining / total)
+    phase_index = min(4, max(0, int(progress * 5.0)))
+    target = ["◓", "●", "◓", "●", "◓"][phase_index]
+    return apply_eye_glyph_to_rows(rows, target)
+
+
 def make_crow_blink_state(seed: int) -> dict:
     rng = random.Random(seed)
     return {
@@ -590,9 +619,14 @@ def visible_crow_perches(
     roadside_tree_sprites = [
         sprite
         for sprite in crossroad_house_sprites
-        if not str(sprite.get("label", "")).strip()
+        if bool(sprite.get("perchable_tree"))
     ]
-    for sprite in list(world_treeline_sprites) + list(border_treeline_sprites) + roadside_tree_sprites:
+    tree_perch_sources = [
+        sprite
+        for sprite in list(world_treeline_sprites) + list(border_treeline_sprites) + roadside_tree_sprites
+        if bool(sprite.get("perchable_tree"))
+    ]
+    for sprite in tree_perch_sources:
         rows = sprite.get("rows", [])
         if not isinstance(rows, list):
             continue
@@ -631,7 +665,7 @@ def visible_crow_perches(
         if not isinstance(rows, list):
             continue
         label = str(house.get("label", "")).strip()
-        if not label:
+        if not label or not bool(house.get("perchable_house", bool(label))):
             continue
         projection = sprite_projection_for_scene(house, camera_x, hidden_ground_rows, ground_zone, center_object_id)
         if projection is None:
@@ -720,6 +754,7 @@ def spawn_intro_crows(
         perch = left_perches[rng_left.randrange(len(left_perches))]
         start_x = float(-crow_width - 4)
         start_y = float(max(0, int(perch["perch_y"]) - 4))
+        facing = resolve_crow_facing(start_x, start_y, float(perch.get("perch_x", start_x)), float(perch.get("perch_y", start_y)), {})
         states.append({
             "x": start_x,
             "y": start_y,
@@ -732,6 +767,8 @@ def spawn_intro_crows(
             "hit_count": 0,
             "hide_cooldown": 0.0,
             "blink_state": make_crow_blink_state(7319),
+            "depth_facing": str(facing.get("depth_facing", "front")),
+            "lateral_facing": str(facing.get("lateral_facing", "right")),
         })
     if right_perches:
         occupied = occupied_perch_ids(states)
@@ -740,6 +777,7 @@ def spawn_intro_crows(
         perch = perch_pool[rng_right.randrange(len(perch_pool))]
         start_x = float(world.SCREEN_W + 4)
         start_y = float(max(0, int(perch["perch_y"]) - 5))
+        facing = resolve_crow_facing(start_x, start_y, float(perch.get("perch_x", start_x)), float(perch.get("perch_y", start_y)), {})
         states.append({
             "x": start_x,
             "y": start_y,
@@ -752,8 +790,23 @@ def spawn_intro_crows(
             "hit_count": 0,
             "hide_cooldown": 0.0,
             "blink_state": make_crow_blink_state(7320),
+            "depth_facing": str(facing.get("depth_facing", "front")),
+            "lateral_facing": str(facing.get("lateral_facing", "right")),
         })
     return states
+
+
+def resolve_crow_facing(origin_x: float, origin_y: float, target_x: float, target_y: float, current_crow: dict | None = None) -> dict:
+    facing = dict(current_crow) if isinstance(current_crow, dict) else {}
+    if target_y < origin_y:
+        facing["depth_facing"] = "back"
+    elif target_y > origin_y:
+        facing["depth_facing"] = "front"
+    if target_x < origin_x:
+        facing["lateral_facing"] = "left"
+    elif target_x > origin_x:
+        facing["lateral_facing"] = "right"
+    return facing
 
 
 def launch_crow_to_perch(perch: dict, crow_frames: Dict[str, List[List[str]]]) -> dict:
@@ -763,6 +816,7 @@ def launch_crow_to_perch(perch: dict, crow_frames: Dict[str, List[List[str]]]) -
     perch_y = float(perch.get("perch_y", 0.0))
     start_x = float(-crow_width - 4) if perch_x < (world.SCREEN_W / 2) else float(world.SCREEN_W + 4)
     start_y = float(max(0, int(perch_y) - (4 if perch_x < (world.SCREEN_W / 2) else 5)))
+    facing = resolve_crow_facing(start_x, start_y, perch_x, perch_y, {})
     return {
         "x": start_x,
         "y": start_y,
@@ -772,11 +826,35 @@ def launch_crow_to_perch(perch: dict, crow_frames: Dict[str, List[List[str]]]) -
         "anim_accum": 0.0,
         "launch_delay": 0.0,
         "move_cooldown": CROW_RELOCATE_MIN_SECONDS,
+        "depth_facing": str(facing.get("depth_facing", "front")),
+        "lateral_facing": str(facing.get("lateral_facing", "right")),
     }
+
+
+def crow_rest_label(crow: dict) -> str:
+    depth = str(crow.get("depth_facing", "front"))
+    lateral = str(crow.get("lateral_facing", "right"))
+    if depth == "back":
+        return "back_left" if lateral == "left" else "back_right"
+    return "front_left" if lateral == "left" else "front_right"
+
+
+def crow_fly_label(crow: dict, phase_label: str) -> str:
+    depth = str(crow.get("depth_facing", "front"))
+    lateral = str(crow.get("lateral_facing", "right"))
+    if depth == "back":
+        return f"back_{phase_label}"
+    side = "left" if lateral == "left" else "right"
+    return f"front_{side}_{phase_label}"
 
 
 def redirect_crow_to_perch(crow: dict, perch: dict) -> dict:
     updated = dict(crow)
+    origin_x = float(updated.get("x", 0.0))
+    origin_y = float(updated.get("y", 0.0))
+    target_x = float(perch.get("perch_x", origin_x))
+    target_y = float(perch.get("perch_y", origin_y))
+    updated.update(resolve_crow_facing(origin_x, origin_y, target_x, target_y, updated))
     updated["perch"] = perch
     updated["mode"] = "flying"
     updated["anim_index"] = 0
@@ -798,9 +876,11 @@ def crow_exit_target(crow: dict, crow_frames: Dict[str, List[List[str]]]) -> tup
 
 def crow_rows_for_state(crow: dict, crow_frames: Dict[str, List[List[str]]]) -> List[List[str]]:
     if str(crow.get("mode", "resting")) == "resting":
-        return crow_frames.get("resting", [])
+        label = crow_rest_label(crow)
+        return crow_frames.get(label, crow_frames.get("resting", []))
     frame_label = CROW_FLY_SEQUENCE[int(crow.get("anim_index", 0)) % len(CROW_FLY_SEQUENCE)]
-    return crow_frames.get(frame_label, crow_frames.get("resting", []))
+    label = crow_fly_label(crow, frame_label)
+    return crow_frames.get(label, crow_frames.get(frame_label, crow_frames.get("resting", [])))
 
 
 def crow_screen_position(
@@ -864,6 +944,7 @@ def handle_crow_hits(
         crow["hit_count"] = int(crow.get("hit_count", 0)) + 1
         if int(crow.get("hit_count", 0)) >= CROW_MAX_HITS_BEFORE_HIDE:
             exit_x, exit_y = crow_exit_target(crow, crow_frames)
+            crow.update(resolve_crow_facing(float(crow.get("x", 0.0)), float(crow.get("y", 0.0)), exit_x, exit_y, crow))
             crow["mode"] = "escaping"
             crow["exit_x"] = exit_x
             crow["exit_y"] = exit_y
@@ -986,10 +1067,7 @@ def update_intro_crows(
                 ]
                 if choices:
                     next_perch = choices[rng.randrange(len(choices))]
-                    item["perch"] = next_perch
-                    item["mode"] = "flying"
-                    item["anim_index"] = 0
-                    item["anim_accum"] = 0.0
+                    item = redirect_crow_to_perch(item, next_perch)
                 item["move_cooldown"] = rng.uniform(CROW_RELOCATE_MIN_SECONDS, CROW_RELOCATE_MAX_SECONDS)
         updated.append(item)
     return updated
@@ -1298,9 +1376,17 @@ def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
         updated["frown_accum"] = frown_accum
         if frown_accum <= 0.0:
             updated["frowning"] = False
+            updated["burrow_blinking"] = True
+            updated["burrow_blink_accum"] = WALKING_MUSHROOM_BURROW_BLINK_SECONDS
+            updated["visible_rows"] = max(0, total_rows - 1)
+        return updated
+    if bool(updated.get("burrow_blinking", False)):
+        burrow_blink_accum = max(0.0, float(updated.get("burrow_blink_accum", 0.0)) - dt)
+        updated["burrow_blink_accum"] = burrow_blink_accum
+        if burrow_blink_accum <= 0.0:
+            updated["burrow_blinking"] = False
             updated["burrowing"] = True
             updated["burrow_accum"] = 0.0
-            updated["visible_rows"] = max(0, total_rows - 1)
         return updated
     if bool(updated.get("burrowing", False)):
         burrow_accum = float(updated.get("burrow_accum", 0.0)) + dt
@@ -1398,7 +1484,7 @@ def walking_mushroom_rows(
     if not isinstance(rows, list) or not rows:
         return []
     draw_rows = list(rows[:max(0, int(walking_mushroom.get("visible_rows", len(rows))))])
-    if bool(walking_mushroom.get("frowning", False)):
+    if bool(walking_mushroom.get("frowning", False)) or bool(walking_mushroom.get("burrow_blinking", False)):
         out: List[List[str]] = []
         for row in draw_rows:
             new_row = []
@@ -1482,7 +1568,11 @@ def handle_walking_mushroom_hits(
         screen_y = int(zones["ground_bg"].y) + (world_row - ground_start)
         if mushroom_box[0] <= screen_x <= mushroom_box[2] and mushroom_box[1] <= screen_y <= mushroom_box[3] and not hit:
             hit = True
-            if not bool(updated.get("frowning", False)) and not bool(updated.get("burrowing", False)):
+            if (
+                not bool(updated.get("frowning", False))
+                and not bool(updated.get("burrow_blinking", False))
+                and not bool(updated.get("burrowing", False))
+            ):
                 updated["frowning"] = True
                 updated["frown_accum"] = WALKING_MUSHROOM_FROWN_SECONDS
             continue
@@ -1744,7 +1834,7 @@ def render(
             _x0, _y0, sprite_is_backside = projection
             if sprite_is_backside != draw_backside:
                 continue
-            rows = apply_crow_blink_to_rows(crow_frames.get("resting", []), crow.get("blink_state"))
+            rows = apply_crow_blink_to_rows(crow_rows_for_state(crow, crow_frames), crow.get("blink_state"))
             if not isinstance(rows, list) or not rows:
                 continue
             tree_rows = sprite.get("rows", [])
@@ -1825,7 +1915,21 @@ def render(
 
     avatar_display_rows = apply_blink_to_rows(avatar_rows, avatar_blink)
     avatar = build_avatar_placement(avatar_display_rows)
-    walker_draw_rows = apply_blink_to_rows(walking_mushroom_rows(walking_mushroom, walking_mushroom_frames), walking_mushroom_blink)
+    walker_draw_rows = walking_mushroom_rows(walking_mushroom, walking_mushroom_frames)
+    if bool(walking_mushroom.get("frowning", False)):
+        walker_draw_rows = apply_forced_double_blink_rows(
+            walker_draw_rows,
+            WALKING_MUSHROOM_FROWN_SECONDS,
+            float(walking_mushroom.get("frown_accum", 0.0)),
+        )
+    elif bool(walking_mushroom.get("burrow_blinking", False)):
+        walker_draw_rows = apply_forced_double_blink_rows(
+            walker_draw_rows,
+            WALKING_MUSHROOM_BURROW_BLINK_SECONDS,
+            float(walking_mushroom.get("burrow_blink_accum", 0.0)),
+        )
+    else:
+        walker_draw_rows = apply_blink_to_rows(walker_draw_rows, walking_mushroom_blink)
     if isinstance(walker_draw_rows, list) and walker_draw_rows:
         ground_start = world.landscape_ground_window_start(landscape_position)
         walker_world_row = int(walking_mushroom.get("world_row", 0))
@@ -1844,7 +1948,15 @@ def render(
                 "base_y": walker_screen_y + max(0, len(walker_draw_rows) - 1),
                 "z_bias": 12,
             })
-    fairy_rows = apply_blink_to_rows(walking_fairy_rows(walking_fairy, walking_fairy_frames), walking_fairy_blink)
+    fairy_rows = walking_fairy_rows(walking_fairy, walking_fairy_frames)
+    if bool(walking_fairy.get("frowning", False)):
+        fairy_rows = apply_forced_double_blink_rows(
+            fairy_rows,
+            WALKING_FAIRY_FROWN_SECONDS,
+            float(walking_fairy.get("frown_accum", 0.0)),
+        )
+    else:
+        fairy_rows = apply_blink_to_rows(fairy_rows, walking_fairy_blink)
     if isinstance(fairy_rows, list) and fairy_rows:
         ground_start = world.landscape_ground_window_start(landscape_position)
         fairy_world_row = int(walking_fairy.get("world_row", 0))
@@ -1899,8 +2011,7 @@ def render(
     for crow in crow_states:
         if str(crow.get("mode", "")) in {"resting", "hidden"}:
             continue
-        frame_label = CROW_FLY_SEQUENCE[int(crow.get("anim_index", 0)) % len(CROW_FLY_SEQUENCE)]
-        rows = apply_crow_blink_to_rows(crow_frames.get(frame_label, crow_frames.get("resting", [])), crow.get("blink_state"))
+        rows = apply_crow_blink_to_rows(crow_rows_for_state(crow, crow_frames), crow.get("blink_state"))
         if isinstance(rows, list) and rows:
             draw_sprite(
                 canvas,
@@ -2058,6 +2169,8 @@ def main() -> None:
         "visible_rows": len(walking_mushroom_frames.get("primary", [])),
         "burrowing": False,
         "burrow_accum": 0.0,
+        "burrow_blinking": False,
+        "burrow_blink_accum": 0.0,
         "frowning": False,
         "frown_accum": 0.0,
     }

@@ -140,6 +140,201 @@
             "sSsSSsSs",
             "sSsYysSs"
           ]
+        },
+        {
+          "label": "front_right",
+          "art": [
+            " ▂▁",
+            "(\"▁▻",
+            "(╭╮)",
+            " ◠◠"
+          ],
+          "color_map": [
+            " sS",
+            "sssa",
+            "sSSs",
+            " yY"
+          ]
+        },
+        {
+          "label": "front_left",
+          "art": [
+            " ▁▂",
+            "◅▁\")",
+            "(╭╮)",
+            " ◠◠"
+          ],
+          "color_map": [
+            " sS",
+            "asss",
+            "sSSs",
+            " yY"
+          ]
+        },
+        {
+          "label": "front_right_a",
+          "art": [
+            "╻┄╮▁ ╭┄╻",
+            "╰╲(\"▻╯╱╯",
+            "  (╭╮)",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "sSsSsSsS",
+            "sssssaSs",
+            "  sSSs",
+            "   yY"
+          ]
+        },
+        {
+          "label": "front_right_b",
+          "art": [
+            "   ▂▁",
+            "╻┄(▁\"▻┄╻",
+            "╰┄╮╭╮╭┄╯",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "   sS",
+            "sSsssaSs",
+            "sSsSSSsS",
+            "   yY"
+          ]
+        },
+        {
+          "label": "front_right_c",
+          "art": [
+            "   ▂▁",
+            "  (▁\"▻",
+            "╻╱(╭╮)╲╻",
+            "╰┄╯◠◠╰┄╯"
+          ],
+          "color_map": [
+            "   sS",
+            "  sssa",
+            "sSsSSsSs",
+            "sSsYysSs"
+          ]
+        },
+        {
+          "label": "front_left_a",
+          "art": [
+            "╻┄╮▁ ╭┄╻",
+            "╰╲◅\")╯╱╯",
+            "  (╭╮)",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "sSsSsSsS",
+            "ssassssS",
+            "  sSSs",
+            "   yY"
+          ]
+        },
+        {
+          "label": "front_left_b",
+          "art": [
+            "   ▁▂",
+            "╻┄◅\"▁)┄╻",
+            "╰┄╮╭╮╭┄╯",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "   sS",
+            "sSassssS",
+            "sSsSSSsS",
+            "   yY"
+          ]
+        },
+        {
+          "label": "front_left_c",
+          "art": [
+            "   ▁▂",
+            "  ◅\"▁)",
+            "╻╱(╭╮)╲╻",
+            "╰┄╯◠◠╰┄╯"
+          ],
+          "color_map": [
+            "   sS",
+            "  asss",
+            "sSsSSsSs",
+            "sSsYysSs"
+          ]
+        },
+        {
+          "label": "back_right",
+          "art": [
+            " ▂▁",
+            "(  ▻",
+            "(  )",
+            " ◠◠"
+          ],
+          "color_map": [
+            " sS",
+            "s!!a",
+            "s!!s",
+            " yY"
+          ]
+        },
+        {
+          "label": "back_left",
+          "art": [
+            " ▁▂",
+            "◅  )",
+            "(  )",
+            " ◠◠"
+          ],
+          "color_map": [
+            " sS",
+            "a!!s",
+            "s!!s",
+            " yY"
+          ]
+        },
+        {
+          "label": "back_a",
+          "art": [
+            "╻┄╮▁ ╭┄╻",
+            "╰╲( )╯╱╯",
+            "  (  )",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "sSsSsSsS",
+            "sss!ssss",
+            "  s!!s",
+            "   yY"
+          ]
+        },
+        {
+          "label": "back_b",
+          "art": [
+            "   ▂▁",
+            "╻┄(  )┄╻",
+            "╰┄╮  ╭┄╯",
+            "   ◠◠"
+          ],
+          "color_map": [
+            "   sS",
+            "sSss!ssS",
+            "sSs!!SsS",
+            "   yY"
+          ]
+        },
+        {
+          "label": "back_c",
+          "art": [
+            "   ▁▂",
+            "  (  )",
+            "╻╱(  )╲╻",
+            "╰┄╯◠◠╰┄╯"
+          ],
+          "color_map": [
+            "   sS",
+            "  s!!s",
+            "sSs!!sSs",
+            "sSsYysSs"
+          ]
         }
       ],
       "variation": 0.06,

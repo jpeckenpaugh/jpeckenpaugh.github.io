@@ -533,6 +533,8 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
         if not rows:
             return None
         return {
+            "object_id": obj_id,
+            "perchable_tree": True,
             "width": len(rows[0]),
             "height": len(rows),
             "rows": rows,
@@ -549,6 +551,7 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
             "street_name": street_name,
             "main_street": MAIN_STREET_NAME,
             "label": label,
+            "perchable_house": True,
             "width": house_width,
             "height": len(rows) if rows else int(base_house.get("height", 0)),
             "rows": rows if rows else base_house.get("rows", []),
@@ -582,6 +585,8 @@ def build_crossroad_house_sprites(objects_data: object, colors_data: object) -> 
             "horizon_depth": max(0, min(LANDSCAPE_TOTAL_GROUND_ROWS - 1, int(horizon_depth))),
             "street_name": street_name,
             "main_street": MAIN_STREET_NAME,
+            "object_id": tree_id,
+            "perchable_tree": True,
             "width": tree_width,
             "height": int(tree_sprite.get("height", 0)),
             "rows": tree_sprite.get("rows", []),
@@ -638,6 +643,7 @@ def build_world_treeline_sprites(
             return None
         width = len(rows[0])
         return {
+            "object_id": obj_id,
             "x": x,
             "width": width,
             "height": len(rows),
@@ -652,6 +658,7 @@ def build_world_treeline_sprites(
     center_w = int(center_sprite.get("width", 0))
     center_x = (SCREEN_W - center_w) // 2
     center_sprite["x"] = center_x
+    center_sprite["perchable_tree"] = False
     sprites.append(center_sprite)
 
     # Trees on left and right sides of the centered focal object.
@@ -667,6 +674,7 @@ def build_world_treeline_sprites(
         tw = int(probe.get("width", 0))
         left_x = left_cursor - tw
         probe["x"] = left_x
+        probe["perchable_tree"] = True
         if left_x + tw > 0:
             sprites.append(probe)
         left_cursor = left_x - rng.randint(1, 4)
@@ -676,6 +684,7 @@ def build_world_treeline_sprites(
         probe = make_sprite(tree_id, right_cursor, anchor_offset=rng.randint(0, TREELINE_ROWS - 1))
         if probe is None:
             continue
+        probe["perchable_tree"] = True
         if int(probe.get("x", 0)) < SCREEN_W:
             sprites.append(probe)
         right_cursor = int(probe.get("x", 0)) + int(probe.get("width", 0)) + rng.randint(1, 4)
@@ -706,6 +715,8 @@ def build_border_treeline_sprites(objects_data: object, colors_data: object) -> 
             return None
         width = len(rows[0])
         return {
+            "object_id": obj_id,
+            "perchable_tree": True,
             "side": side,
             "side_column": max(0, min(2, int(column_band))),
             "side_jitter": max(-1, min(1, int(column_jitter))),
