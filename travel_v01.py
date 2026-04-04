@@ -31,8 +31,10 @@ WALKING_MUSHROOM_BURROW_STEP_SECONDS = 0.14
 WALKING_MUSHROOM_FROWN_SECONDS = 1.0
 WALKING_MUSHROOM_BURROW_BLINK_SECONDS = 1.0
 WALKING_MUSHROOM_HIDE_SECONDS = 5.0
-WALKING_MUSHROOM_EMERGE_HOLD_SECONDS = 1.0
+WALKING_MUSHROOM_EMERGE_HOLD_SECONDS = 3.0
 WALKING_MUSHROOM_EMERGE_BLINK_SECONDS = 1.0
+WALKING_MUSHROOM_RETRY_RETREAT_STEPS = 5
+WALKING_MUSHROOM_RETRY_RETREAT_STEP_SECONDS = 0.25
 WALKING_FAIRY_SEQUENCE = ["primary", "a", "b", "a", "primary"]
 WALKING_FAIRY_STEP_SECONDS = 0.12
 WALKING_FAIRY_SPEED = 8.0
@@ -464,6 +466,7 @@ def make_crow_blink_state(seed: int) -> dict:
         "phase_timer": 0.0,
         "blinks_remaining": 0,
         "next_blink": rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS),
+        "flip_count": 0,
     }
 
 
@@ -480,6 +483,8 @@ def update_crow_blink_state(state: dict, dt: float) -> dict:
             updated["blinks_remaining"] = rng.choice([1, 2])
             updated["phase"] = "closed"
             updated["phase_timer"] = BLINK_STEP_SECONDS
+            if rng.random() < 0.75:
+                updated["flip_count"] = int(updated.get("flip_count", 0)) + 1
         return updated
     updated["phase_timer"] = float(updated.get("phase_timer", 0.0)) - dt
     if float(updated.get("phase_timer", 0.0)) > 0.0:
@@ -498,11 +503,23 @@ def update_crow_blink_state(state: dict, dt: float) -> dict:
     elif phase == "open_between":
         updated["phase"] = "closed"
         updated["phase_timer"] = BLINK_STEP_SECONDS
+        if rng.random() < 0.75:
+            updated["flip_count"] = int(updated.get("flip_count", 0)) + 1
     else:
         updated["phase"] = "open"
         updated["phase_timer"] = 0.0
         updated["blinks_remaining"] = 0
         updated["next_blink"] = rng.uniform(BLINK_INTERVAL_MIN_SECONDS, BLINK_INTERVAL_MAX_SECONDS)
+    return updated
+
+
+def apply_crow_head_flip_from_blink(crow: dict, previous_blink_state: dict | None, next_blink_state: dict | None) -> dict:
+    updated = dict(crow)
+    prev_count = int(previous_blink_state.get("flip_count", 0)) if isinstance(previous_blink_state, dict) else 0
+    next_count = int(next_blink_state.get("flip_count", 0)) if isinstance(next_blink_state, dict) else 0
+    flip_delta = max(0, next_count - prev_count)
+    if flip_delta % 2 == 1:
+        updated["lateral_facing"] = "left" if str(updated.get("lateral_facing", "right")) == "right" else "right"
     return updated
 
 
@@ -993,7 +1010,9 @@ def update_intro_crows(
     updated: List[dict] = []
     for crow_index, crow in enumerate(crow_states):
         item = dict(crow)
-        item["blink_state"] = update_crow_blink_state(item.get("blink_state", make_crow_blink_state(7400 + crow_index)), dt)
+        previous_blink_state = item.get("blink_state", make_crow_blink_state(7400 + crow_index))
+        item["blink_state"] = update_crow_blink_state(previous_blink_state, dt)
+        item = apply_crow_head_flip_from_blink(item, previous_blink_state, item.get("blink_state"))
         if str(item.get("mode", "")) == "hidden":
             item["hide_cooldown"] = max(0.0, float(item.get("hide_cooldown", 0.0)) - dt)
             if float(item.get("hide_cooldown", 0.0)) <= 0.0 and visible_perches:
@@ -1371,9 +1390,30 @@ def update_thrown_pebbles(projectiles: List[dict], dt: float) -> List[dict]:
     return updated
 
 
-def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
+def update_walking_mushroom(mushroom: dict, dt: float, player_world_x: int, player_world_row: int) -> dict:
     updated = dict(mushroom)
     total_rows = max(0, int(updated.get("total_rows", 0)))
+    distance_x = abs(float(updated.get("world_x", 0.0)) - float(player_world_x))
+    distance_y = abs(float(updated.get("world_row", 0.0)) - float(player_world_row))
+    player_is_close = max(distance_x, distance_y) <= 30.0
+    if (
+        bool(updated.get("is_startled", False))
+        and player_is_close
+        and not bool(updated.get("frowning", False))
+        and not bool(updated.get("burrow_blinking", False))
+        and not bool(updated.get("burrowing", False))
+        and not bool(updated.get("retry_retreat_burrowing", False))
+        and not bool(updated.get("retry_retreating", False))
+        and not bool(updated.get("hidden_wait", False))
+        and not bool(updated.get("emerging_rows", False))
+        and not bool(updated.get("emerging_hold", False))
+        and not bool(updated.get("emerging_blink", False))
+    ):
+        updated["frowning"] = True
+        updated["frown_accum"] = WALKING_MUSHROOM_FROWN_SECONDS
+        updated["home_world_x"] = float(updated.get("world_x", 0.0))
+        updated["emergence_retry_used"] = False
+        return updated
     if bool(updated.get("frowning", False)):
         frown_accum = max(0.0, float(updated.get("frown_accum", 0.0)) - dt)
         updated["frown_accum"] = frown_accum
@@ -1406,6 +1446,42 @@ def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
             updated["visible_rows"] = 0
             updated["hidden_wait"] = True
             updated["hidden_wait_accum"] = WALKING_MUSHROOM_HIDE_SECONDS
+            updated["emergence_retry_used"] = False
+        return updated
+    if bool(updated.get("retry_retreat_burrowing", False)):
+        burrow_accum = float(updated.get("burrow_accum", 0.0)) + dt
+        visible_rows = int(updated.get("visible_rows", total_rows))
+        while burrow_accum >= WALKING_MUSHROOM_BURROW_STEP_SECONDS and visible_rows > 1:
+            burrow_accum -= WALKING_MUSHROOM_BURROW_STEP_SECONDS
+            visible_rows -= 1
+        updated["burrow_accum"] = burrow_accum
+        updated["visible_rows"] = visible_rows
+        if visible_rows <= 1:
+            updated["retry_retreat_burrowing"] = False
+            updated["retry_retreating"] = True
+            updated["retry_retreat_step_accum"] = 0.0
+            updated["retry_retreat_steps_remaining"] = WALKING_MUSHROOM_RETRY_RETREAT_STEPS
+            updated["visible_rows"] = 1
+        return updated
+    if bool(updated.get("retry_retreating", False)):
+        step_accum = float(updated.get("retry_retreat_step_accum", 0.0)) + dt
+        steps_remaining = max(0, int(updated.get("retry_retreat_steps_remaining", 0)))
+        direction = -1 if int(updated.get("retry_retreat_direction", 1)) < 0 else 1
+        width = max(1, int(updated.get("width", 1)))
+        while step_accum >= WALKING_MUSHROOM_RETRY_RETREAT_STEP_SECONDS and steps_remaining > 0:
+            step_accum -= WALKING_MUSHROOM_RETRY_RETREAT_STEP_SECONDS
+            next_x = float(updated.get("world_x", 0.0)) + direction
+            updated["world_x"] = max(0.0 - max(0, width - 1), min(float(TRAVEL_WORLD_WIDTH - 1), next_x))
+            steps_remaining -= 1
+        updated["retry_retreat_step_accum"] = step_accum
+        updated["retry_retreat_steps_remaining"] = steps_remaining
+        updated["visible_rows"] = 1
+        if steps_remaining <= 0:
+            updated["retry_retreating"] = False
+            updated["home_world_x"] = float(updated.get("world_x", 0.0))
+            updated["visible_rows"] = 1
+            updated["emerging_rows"] = True
+            updated["emerge_row_accum"] = 0.0
         return updated
     if bool(updated.get("hidden_wait", False)):
         hidden_wait_accum = max(0.0, float(updated.get("hidden_wait_accum", 0.0)) - dt)
@@ -1414,7 +1490,24 @@ def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
         updated["world_x"] = float(updated.get("home_world_x", updated.get("world_x", 0.0)))
         if hidden_wait_accum <= 0.0:
             updated["hidden_wait"] = False
-            updated["visible_rows"] = max(0, min(3, total_rows))
+            updated["emergence_retry_used"] = False
+            updated["emerging_rows"] = True
+            updated["emerge_row_accum"] = 0.0
+            updated["visible_rows"] = 0
+        return updated
+    if bool(updated.get("emerging_rows", False)):
+        emerge_row_accum = float(updated.get("emerge_row_accum", 0.0)) + dt
+        visible_rows = int(updated.get("visible_rows", 0))
+        target_rows = max(0, min(3, total_rows))
+        while emerge_row_accum >= WALKING_MUSHROOM_BURROW_STEP_SECONDS and visible_rows < target_rows:
+            emerge_row_accum -= WALKING_MUSHROOM_BURROW_STEP_SECONDS
+            visible_rows += 1
+        updated["emerge_row_accum"] = emerge_row_accum
+        updated["visible_rows"] = visible_rows
+        updated["world_x"] = float(updated.get("home_world_x", updated.get("world_x", 0.0)))
+        if visible_rows >= target_rows:
+            updated["emerging_rows"] = False
+            updated["emerge_row_accum"] = 0.0
             updated["emerging_hold"] = True
             updated["emerge_hold_accum"] = WALKING_MUSHROOM_EMERGE_HOLD_SECONDS
         return updated
@@ -1424,9 +1517,26 @@ def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
         updated["visible_rows"] = max(0, min(3, total_rows))
         updated["world_x"] = float(updated.get("home_world_x", updated.get("world_x", 0.0)))
         if emerge_hold_accum <= 0.0:
-            updated["emerging_hold"] = False
-            updated["emerging_blink"] = True
-            updated["emerge_blink_accum"] = WALKING_MUSHROOM_EMERGE_BLINK_SECONDS
+            distance_x = abs(float(updated.get("home_world_x", updated.get("world_x", 0.0))) - float(player_world_x))
+            distance_y = abs(float(updated.get("world_row", 0.0)) - float(player_world_row))
+            if max(distance_x, distance_y) <= 30.0:
+                updated["emerging_hold"] = False
+                if not bool(updated.get("emergence_retry_used", False)):
+                    updated["emergence_retry_used"] = True
+                    updated["retry_retreat_burrowing"] = True
+                    updated["burrow_accum"] = 0.0
+                    updated["retry_retreat_direction"] = -1 if float(player_world_x) >= float(updated.get("world_x", 0.0)) else 1
+                    updated["visible_rows"] = max(0, min(3, total_rows))
+                else:
+                    updated["burrowing"] = True
+                    updated["burrow_accum"] = 0.0
+                    updated["visible_rows"] = max(0, min(3, total_rows))
+            else:
+                updated["emerging_hold"] = False
+                updated["emerging_blink"] = True
+                updated["emerge_blink_accum"] = WALKING_MUSHROOM_EMERGE_BLINK_SECONDS
+                if bool(updated.get("emergence_retry_used", False)):
+                    updated["walk_direction"] = -1 if float(player_world_x) >= float(updated.get("world_x", 0.0)) else 1
         return updated
     if bool(updated.get("emerging_blink", False)):
         emerge_blink_accum = max(0.0, float(updated.get("emerge_blink_accum", 0.0)) - dt)
@@ -1436,11 +1546,15 @@ def update_walking_mushroom(mushroom: dict, dt: float) -> dict:
         if emerge_blink_accum <= 0.0:
             updated["emerging_blink"] = False
             updated["visible_rows"] = total_rows
+            updated["emergence_retry_used"] = False
         return updated
-    world_x = float(updated.get("world_x", 0.0)) + (WALKING_MUSHROOM_SPEED * dt)
+    walk_direction = -1 if int(updated.get("walk_direction", 1)) < 0 else 1
+    world_x = float(updated.get("world_x", 0.0)) + (walk_direction * WALKING_MUSHROOM_SPEED * dt)
     width = max(1, int(updated.get("width", 1)))
-    if world_x > TRAVEL_WORLD_WIDTH:
+    if walk_direction > 0 and world_x > TRAVEL_WORLD_WIDTH:
         world_x = 0.0 - max(0, width - 1)
+    elif walk_direction < 0 and world_x + width - 1 < 0:
+        world_x = float(TRAVEL_WORLD_WIDTH - 1)
     updated["world_x"] = world_x
     accum = float(updated.get("anim_accum", 0.0)) + dt
     phase_index = int(updated.get("phase_index", 0))
@@ -1613,6 +1727,7 @@ def handle_walking_mushroom_hits(
                 updated["frowning"] = True
                 updated["frown_accum"] = WALKING_MUSHROOM_FROWN_SECONDS
                 updated["home_world_x"] = float(updated.get("world_x", 0.0))
+                updated["is_startled"] = True
             continue
         surviving.append(projectile)
     return updated, surviving
@@ -2213,6 +2328,7 @@ def main() -> None:
         "world_x": 0.0,
         "world_row": 30,
         "home_world_x": 0.0,
+        "walk_direction": 1,
         "phase_index": 0,
         "anim_accum": 0.0,
         "width": max((len(row) for row in walking_mushroom_frames.get("primary", [])), default=0),
@@ -2222,14 +2338,23 @@ def main() -> None:
         "burrow_accum": 0.0,
         "burrow_blinking": False,
         "burrow_blink_accum": 0.0,
+        "retry_retreat_burrowing": False,
+        "retry_retreating": False,
+        "retry_retreat_direction": 1,
+        "retry_retreat_steps_remaining": 0,
+        "retry_retreat_step_accum": 0.0,
         "hidden_wait": False,
         "hidden_wait_accum": 0.0,
+        "emerging_rows": False,
+        "emerge_row_accum": 0.0,
         "emerging_hold": False,
         "emerge_hold_accum": 0.0,
         "emerging_blink": False,
         "emerge_blink_accum": 0.0,
+        "emergence_retry_used": False,
         "frowning": False,
         "frown_accum": 0.0,
+        "is_startled": False,
     }
     walking_mushroom_blink = make_blink_state(9001, ["◎", "◉"])
     if isinstance(walking_mushroom_house, dict):
@@ -2334,7 +2459,9 @@ def main() -> None:
             walking_mushroom_blink = update_blink_state(walking_mushroom_blink, dt)
             walking_fairy_blink = update_blink_state(walking_fairy_blink, dt)
             avatar_blink = update_blink_state(avatar_blink, dt)
-            walking_mushroom = update_walking_mushroom(walking_mushroom, dt)
+            player_world_x = int(camera_x) + int(build_avatar_placement(avatar_rows)["x"]) + max(0, int(build_avatar_placement(avatar_rows)["width"]) // 2)
+            player_world_row = world.landscape_ground_window_start(landscape_position) + avatar_feet_distance_from_horizon(avatar_rows, zones)
+            walking_mushroom = update_walking_mushroom(walking_mushroom, dt, player_world_x, player_world_row)
             walking_fairy = update_walking_fairy(walking_fairy, dt)
             for label, frames in house_fairy_frames.items():
                 state = house_fairy_flap_states.get(label, {"active": False, "sequence_index": 0, "accum": 0.0})
