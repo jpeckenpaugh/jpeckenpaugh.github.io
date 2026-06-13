@@ -157,6 +157,36 @@ def read_key_nonblocking() -> str | None:
     return base_read_key_nonblocking()
 
 
+def _enable_terminal_input_mode() -> tuple[int, list] | None:
+    if os.name == "nt" or not sys.stdin.isatty():
+        return None
+    try:
+        import termios
+        import tty
+
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        tty.setcbreak(fd)
+        raw = termios.tcgetattr(fd)
+        raw[3] &= ~termios.ECHO
+        termios.tcsetattr(fd, termios.TCSADRAIN, raw)
+        return (fd, old)
+    except Exception:
+        return None
+
+
+def _restore_terminal_input_mode(state: tuple[int, list] | None) -> None:
+    if state is None:
+        return
+    try:
+        import termios
+
+        fd, old = state
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    except Exception:
+        pass
+
+
 def _load_audio_catalog(music_path: str) -> tuple[set[str], set[str], set[str]]:
     songs: set[str] = set()
     sequences: set[str] = set()
@@ -5248,6 +5278,7 @@ def main() -> None:
             end["hawk"] = {"x": hx, "y": hy, "rows": hrows}
         return (start, end)
 
+    terminal_restore = _enable_terminal_input_mode()
     print(ANSI_HIDE_CURSOR + ANSI_CLEAR, end="", flush=True)
     try:
         last_tick = time.monotonic()
@@ -6956,6 +6987,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        _restore_terminal_input_mode(terminal_restore)
         try:
             if audio is not None:
                 audio.stop()
@@ -6966,4 +6998,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

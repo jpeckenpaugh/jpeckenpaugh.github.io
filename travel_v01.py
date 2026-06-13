@@ -1,16 +1,39 @@
 import os
+import math
 import random
 import sys
 import time
 from typing import Dict, List
 
 import cottage_v04 as world
+from prototype.world_story.ui_box import UIBoxSpec, draw_ui_box, draw_ui_box_animated
+from ui_v08 import (
+    _action_enabled_flags as ui08_action_enabled_flags,
+    _actor_action_options as ui08_actor_action_options,
+    _alive_indices as ui08_alive_indices,
+    _alive_secondary_target_indices as ui08_alive_secondary_target_indices,
+    _battle_action_log_lines as ui08_battle_action_log_lines,
+    _battle_log_enqueue as ui08_battle_log_enqueue,
+    _battle_log_start as ui08_battle_log_start,
+    _battle_log_tick as ui08_battle_log_tick,
+    _battle_log_visible_lines as ui08_battle_log_visible_lines,
+    _build_battle_round_actions as ui08_build_battle_round_actions,
+    _first_alive as ui08_first_alive,
+    _hawking_owner as ui08_hawking_owner,
+    _next_alive_index as ui08_next_alive_index,
+    _next_enabled_option_index as ui08_next_enabled_option_index,
+    _reset_battle_command_picks as ui08_reset_battle_command_picks,
+    _restore_party_post_battle as ui08_restore_party_post_battle,
+    _spell_targeting_meta as ui08_spell_targeting_meta,
+)
 
 
 TITLE_LANDSCAPE_POSITION = 5
 START_TRAVEL_POSITION = 15
 ADDRESS_LANDSCAPE_POSITIONS = {
     "#1 Ave A": 50,
+    "Ave B": 60,
+    "Ave C": 90,
 }
 CAMERA_STEP_SECONDS = 0.02
 SIDE_STEP_SECONDS = 0.01
@@ -52,6 +75,8 @@ CROW_RELOCATE_MAX_SECONDS = 15.0
 CROW_HIT_HIDE_SECONDS = 60.0
 CROW_MAX_HITS_BEFORE_HIDE = 3
 CROW_MIN_HIT_RELOCATE_DISTANCE = 10
+STORY_MESSAGE_OPEN_SECONDS = 0.56
+STORY_MESSAGE_CLOSE_SECONDS = 0.36
 WALK_FRAME_SEQUENCE = ["idle", "step_a", "idle", "step_b"]
 WALK_FRAME_STEP_SECONDS = 0.5
 WALK_RESET_IDLE_SECONDS = 0.5
@@ -67,7 +92,463 @@ DARK_GOLD_PEBBLE_COLORS = [
 
 
 def current_address_label(position: int) -> str:
-    return "#1 Ave A" if int(position) >= ADDRESS_LANDSCAPE_POSITIONS["#1 Ave A"] else "Main Street"
+    pos = int(position)
+    if pos >= ADDRESS_LANDSCAPE_POSITIONS["Ave C"]:
+        return "Ave C"
+    if pos >= ADDRESS_LANDSCAPE_POSITIONS["Ave B"]:
+        return "Ave B"
+    return "#1 Ave A" if pos >= ADDRESS_LANDSCAPE_POSITIONS["#1 Ave A"] else "Main Street"
+
+
+WORLD_STORY_TRIGGERS = [
+    {
+        "id": "knock_mushy_10_ave_a",
+        "stage": "find_mushy",
+        "row": 30,
+        "x": 515,
+        "row_radius": 7,
+        "x_radius": 85,
+        "address": "#10 Ave A",
+        "prompt": "[A Knock]",
+        "title": "Mushy",
+        "body": "You knock on #10 Ave A. Mushy opens the door around the vials cooling in the window. \"Hey you! Crow war is on. I could use a kind human with a magic staff.\"",
+        "battle_after": "mushy_crow",
+        "next_stage": "find_sharoom",
+        "objective": "Knock on Sharoom's door at #9 Ave A.",
+        "battle_objective": "Mushy joined. Defeat the Baby Crow in the street.",
+    },
+    {
+        "id": "knock_sharoom_9_ave_a",
+        "stage": "find_sharoom",
+        "row": 30,
+        "x": 469,
+        "row_radius": 7,
+        "x_radius": 85,
+        "address": "#9 Ave A",
+        "prompt": "[A Knock]",
+        "title": "Sharoom",
+        "body": "You knock on #9 Ave A. Sharoom answers with a healer's satchel already packed. \"Sure I will join your team. Let me know when you need a Healing Touch.\"",
+        "next_stage": "find_roomy",
+        "objective": "Knock on Roomy's door at #8 Ave A.",
+    },
+    {
+        "id": "knock_roomy_8_ave_a",
+        "stage": "find_roomy",
+        "row": 30,
+        "x": 423,
+        "row_radius": 7,
+        "x_radius": 85,
+        "address": "#8 Ave A",
+        "prompt": "[A Knock]",
+        "title": "Roomy",
+        "body": "You knock on #8 Ave A. Roomy bounces out into the street. \"I have been working on Concentric. It can recover MP in longer battles.\"",
+        "next_stage": "find_hawking",
+        "objective": "The team is gathered. Step back into the wide street for Hawking.",
+    },
+    {
+        "id": "avenue_a_hawking",
+        "stage": "find_hawking",
+        "row": 35,
+        "x": None,
+        "row_radius": 8,
+        "x_radius": 120,
+        "prompt": "[A Challenge]",
+        "title": "Hawking",
+        "body": "A huge shadow crosses the street. \"I am the Hawk King. Why don't you try picking on someone your own size?\"",
+        "next_stage": "find_fairies",
+        "objective": "Hawking left a feather. Stay in the wide street for the fairy roadblock.",
+    },
+    {
+        "id": "avenue_a_fairies",
+        "stage": "find_fairies",
+        "row": 36,
+        "x": None,
+        "row_radius": 8,
+        "x_radius": 120,
+        "prompt": "[A Battle]",
+        "title": "Roomy",
+        "body": "Roomy looks up the street. \"Uh oh, here come those fairies...\"",
+        "next_stage": "complete",
+        "objective": "House-knock story trigger test complete. Explore or press Q to quit.",
+    },
+]
+
+
+def active_world_story_trigger(story_state: dict, player_world_x: int, player_world_row: int) -> dict | None:
+    stage = str(story_state.get("stage", "find_mushy"))
+    completed = story_state.get("completed", set())
+    for trigger in WORLD_STORY_TRIGGERS:
+        if str(trigger.get("stage", "")) != stage or trigger.get("id") in completed:
+            continue
+        trigger_x = trigger.get("x")
+        if trigger_x is None:
+            trigger_x = world_center_x()
+        row_radius = int(trigger.get("row_radius", 5))
+        x_radius = int(trigger.get("x_radius", 90))
+        if abs(int(player_world_row) - int(trigger.get("row", 0))) <= row_radius and abs(int(player_world_x) - int(trigger_x)) <= x_radius:
+            return trigger
+    return None
+
+
+def start_world_story_battle(kind: str) -> dict:
+    if kind == "mushy_crow":
+        flow = {
+            "kind": kind,
+            "screen": "story_battle_cmd_player",
+            "selected_name": "Player",
+            "battle_stage": 1,
+            "battle_primary_hp": [10],
+            "battle_primary_hp_max": [10],
+            "battle_primary_kind": ["baby_crow"],
+            "battle_secondary_hp": [20, 10],
+            "battle_secondary_hp_max": [20, 10],
+            "battle_secondary_mp": [0, 6],
+            "battle_secondary_mp_max": [0, 6],
+            "battle_staff_charges": 3,
+            "battle_summon_used": False,
+            "battle_round": 1,
+            "battle_hawk_birdcall_next_round": 1,
+            "battle_hawk_birdcall_gap": 2,
+            "battle_hawk_birdcall_uses": 0,
+            "battle_hawk_summoned_slots": [False],
+            "unlock_summon_hawking": False,
+            "hawking_feather_owner": "",
+            "battle_player_cmd_idx": 0,
+            "battle_mushy_cmd_idx": 0,
+            "battle_sharoom_cmd_idx": 0,
+            "battle_roomy_cmd_idx": 0,
+            "battle_player_action": "Attack",
+            "battle_mushy_action": "Attack",
+            "battle_sharoom_action": "Attack",
+            "battle_roomy_action": "Attack",
+            "battle_secondary_boost_atk": [0, 0],
+            "battle_secondary_boost_def": [0, 0],
+            "battle_mushy_spell_target": 0,
+            "battle_mushy_spell_target_mode": "single",
+            "battle_sharoom_spell_target": 0,
+            "battle_sharoom_spell_target_mode": "single",
+            "battle_player_target": 0,
+            "battle_mushy_target": 0,
+            "battle_sharoom_target": 0,
+            "battle_roomy_target": 0,
+            "battle_target_cursor": 0,
+            "battle_queue": [],
+            "battle_queue_index": 0,
+            "battle_action_t": 0.0,
+            "battle_melt_index": None,
+            "battle_melt_t": 0.0,
+            "battle_log_committed": [],
+            "battle_log_pending": [],
+            "battle_log_active": None,
+            "battle_log_active_chars": 0,
+            "battle_magic_spark_level": 1,
+            "story_reward_stage_completed": 0,
+            "finished": False,
+            "victory": False,
+            "scene_mushroom_house": HOUSE_10_VIAL_LABEL,
+            "scene_crow_index": 0,
+            "reward_stage": "find_sharoom",
+            "reward_objective": "Crow defeated. Knock on Sharoom's door at #9 Ave A.",
+            "complete_trigger": "knock_mushy_10_ave_a",
+        }
+        ui08_battle_log_start(flow, 1)
+        ui08_reset_battle_command_picks(flow, 1)
+        return flow
+    return {}
+
+
+def world_story_battle_actor_name(flow: dict, actor_key: str) -> str:
+    key = str(actor_key).strip().lower()
+    if key == "player":
+        return str(flow.get("selected_name", "Player")).strip() or "Player"
+    if key == "mushy":
+        return "Mushy"
+    if key == "sharoom":
+        return "Sharoom"
+    if key == "roomy":
+        return "Roomy"
+    return key.title() or "Actor"
+
+
+def apply_world_story_battle_reward(flow: dict) -> None:
+    stage_completed = int(flow.get("story_reward_stage_completed", flow.get("battle_stage", 1)))
+    sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+    sec_mp_max = [int(v) for v in flow.get("battle_secondary_mp_max", sec_mp)]
+    player_idx = 1 if len(sec_mp_max) >= 3 else 0
+    while len(sec_mp) <= player_idx:
+        sec_mp.append(0)
+    while len(sec_mp_max) <= player_idx:
+        sec_mp_max.append(0)
+    sec_mp_max[player_idx] = max(0, int(sec_mp_max[player_idx])) + 2
+    for idx in range(min(len(sec_mp), len(sec_mp_max))):
+        sec_mp[idx] = max(0, int(sec_mp_max[idx]))
+    flow["battle_secondary_mp"] = sec_mp
+    flow["battle_secondary_mp_max"] = sec_mp_max
+    if stage_completed >= 2:
+        flow["battle_magic_spark_level"] = max(2, int(flow.get("battle_magic_spark_level", 1)))
+
+
+def finish_world_story_battle(flow: dict, victory: bool) -> None:
+    if bool(flow.get("finished", False)):
+        return
+    flow["finished"] = True
+    flow["victory"] = bool(victory)
+    if victory:
+        flow["battle_staff_charges"] = 3
+        ui08_restore_party_post_battle(flow)
+        flow["story_reward_stage_completed"] = int(flow.get("battle_stage", 1))
+        apply_world_story_battle_reward(flow)
+        ui08_battle_log_enqueue(flow, ["Victory! Mushy joins the team. Press A to continue."])
+    else:
+        ui08_battle_log_enqueue(flow, ["The party falls. Press A to retry."])
+
+
+def apply_world_story_battle_action(flow: dict, action: dict) -> None:
+    pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
+    sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+    action_kind = str(action.get("kind", "physical"))
+
+    def apply_hp_transition(t_side: str, t_idx: int, pre_hp: int, post_hp: int, surrender_on_zero: bool) -> None:
+        if t_side == "primary" and 0 <= t_idx < len(pri_hp):
+            pri_hp[t_idx] = max(0, int(post_hp))
+            flow["battle_primary_hp"] = pri_hp
+            summoned_slots = flow.get("battle_hawk_summoned_slots", [])
+            if pri_hp[t_idx] <= 0 and isinstance(summoned_slots, list) and 0 <= t_idx < len(summoned_slots):
+                summoned_slots[t_idx] = False
+                flow["battle_hawk_summoned_slots"] = summoned_slots
+            should_melt = action_kind not in ("flee", "summon") and not (int(flow.get("battle_stage", 1)) >= 4 and surrender_on_zero)
+            if int(pre_hp) > 0 and pri_hp[t_idx] <= 0 and should_melt:
+                flow["battle_melt_index"] = t_idx
+                flow["battle_melt_t"] = 0.0
+        elif t_side == "secondary" and 0 <= t_idx < len(sec_hp):
+            sec_hp[t_idx] = max(0, int(post_hp))
+            flow["battle_secondary_hp"] = sec_hp
+
+    hits = action.get("hits", [])
+    if isinstance(hits, list) and hits and str(action.get("target_side", "primary")) == "primary":
+        for hit in hits:
+            if isinstance(hit, dict):
+                apply_hp_transition(
+                    "primary",
+                    int(hit.get("target_index", -1)),
+                    int(hit.get("pre_hp", 0)),
+                    int(hit.get("post_hp", 0)),
+                    bool(hit.get("surrender_on_zero", False)),
+                )
+    elif ("pre_hp" in action) and ("post_hp" in action) and ("target_side" in action) and ("target_index" in action):
+        apply_hp_transition(
+            str(action.get("target_side", "primary")),
+            int(action.get("target_index", 0)),
+            int(action.get("pre_hp", 0)),
+            int(action.get("post_hp", 0)),
+            bool(action.get("surrender_on_zero", False)),
+        )
+
+    if action_kind in ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric"):
+        sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+        source_idx = int(action.get("source_index", 0))
+        if 0 <= source_idx < len(sec_mp):
+            sec_mp[source_idx] = max(0, int(action.get("post_mp", sec_mp[source_idx])))
+            flow["battle_secondary_mp"] = sec_mp
+        if action_kind == "spell":
+            flow["battle_staff_charges"] = max(0, int(action.get("post_charges", flow.get("battle_staff_charges", 0))))
+
+    effects = action.get("effects", [])
+    if isinstance(effects, list) and effects:
+        sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+        sec_mp = [int(v) for v in flow.get("battle_secondary_mp", [0, 6])]
+        sec_boost_atk = [int(v) for v in flow.get("battle_secondary_boost_atk", [0 for _ in sec_hp])]
+        sec_boost_def = [int(v) for v in flow.get("battle_secondary_boost_def", [0 for _ in sec_hp])]
+        if len(sec_boost_atk) < len(sec_hp):
+            sec_boost_atk.extend([0] * (len(sec_hp) - len(sec_boost_atk)))
+        if len(sec_boost_def) < len(sec_hp):
+            sec_boost_def.extend([0] * (len(sec_hp) - len(sec_boost_def)))
+        for eff in effects:
+            if not isinstance(eff, dict):
+                continue
+            eff_type = str(eff.get("type", ""))
+            idx = int(eff.get("index", -1))
+            val = int(eff.get("value", 0))
+            if eff_type == "set_secondary_hp" and 0 <= idx < len(sec_hp):
+                sec_hp[idx] = max(0, val)
+            elif eff_type == "set_secondary_mp" and 0 <= idx < len(sec_mp):
+                sec_mp[idx] = max(0, val)
+            elif eff_type == "set_secondary_boost_atk" and 0 <= idx < len(sec_boost_atk):
+                sec_boost_atk[idx] = max(0, val)
+            elif eff_type == "set_secondary_boost_def" and 0 <= idx < len(sec_boost_def):
+                sec_boost_def[idx] = max(0, val)
+            elif eff_type == "set_battle_summon_used":
+                flow["battle_summon_used"] = bool(val)
+        flow["battle_secondary_hp"] = sec_hp
+        flow["battle_secondary_mp"] = sec_mp
+        flow["battle_secondary_boost_atk"] = sec_boost_atk[: len(sec_hp)]
+        flow["battle_secondary_boost_def"] = sec_boost_def[: len(sec_hp)]
+
+    stage_now = int(flow.get("battle_stage", 1))
+    player_name = str(flow.get("selected_name", "Player")).strip() or "Player"
+    ui08_battle_log_enqueue(flow, ui08_battle_action_log_lines(action, stage_now, player_name))
+
+
+def tick_world_story_battle(flow: dict, dt: float) -> None:
+    ui08_battle_log_tick(flow, dt)
+    if bool(flow.get("finished", False)):
+        return
+    screen = str(flow.get("screen", "story_battle_cmd_player"))
+    if screen != "story_battle_resolve":
+        return
+    melt_index = flow.get("battle_melt_index")
+    if melt_index is not None:
+        flow["battle_melt_t"] = float(flow.get("battle_melt_t", 0.0)) + dt
+        if float(flow.get("battle_melt_t", 0.0)) >= 0.8:
+            flow["battle_melt_index"] = None
+            flow["battle_melt_t"] = 0.0
+        return
+
+    queue = flow.get("battle_queue", [])
+    if not isinstance(queue, list):
+        queue = []
+        flow["battle_queue"] = queue
+    qidx = int(flow.get("battle_queue_index", 0))
+    pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
+    sec_hp = [int(v) for v in flow.get("battle_secondary_hp", [20, 10])]
+    if qidx >= len(queue):
+        if not ui08_alive_indices(sec_hp):
+            finish_world_story_battle(flow, False)
+        elif not ui08_alive_indices(pri_hp):
+            finish_world_story_battle(flow, True)
+        else:
+            flow["battle_target_cursor"] = ui08_first_alive(pri_hp, 0)
+            ui08_reset_battle_command_picks(flow, int(flow.get("battle_stage", 1)))
+            flow["screen"] = "story_battle_cmd_player"
+        return
+
+    action = queue[qidx]
+    if not isinstance(action, dict):
+        flow["battle_queue_index"] = qidx + 1
+        flow["battle_action_t"] = 0.0
+        return
+    action_kind = str(action.get("kind", "physical"))
+    cast_kinds = ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric", "birdcall", "flee")
+    duration = 2.4 if action_kind == "summon" else (1.2 if action_kind in cast_kinds else 0.9)
+    flow["battle_action_t"] = float(flow.get("battle_action_t", 0.0)) + dt
+    if float(flow.get("battle_action_t", 0.0)) >= duration:
+        apply_world_story_battle_action(flow, action)
+        flow["battle_queue_index"] = qidx + 1
+        flow["battle_action_t"] = 0.0
+
+
+def begin_world_story_battle_resolve(flow: dict) -> None:
+    flow["battle_queue"] = ui08_build_battle_round_actions(flow)
+    flow["battle_queue_index"] = 0
+    flow["battle_action_t"] = 0.0
+    flow["battle_melt_index"] = None
+    flow["battle_melt_t"] = 0.0
+    flow["screen"] = "story_battle_resolve"
+
+
+def handle_world_story_battle_key(flow: dict, key: str | None) -> dict | str | None:
+    if key is None:
+        return flow
+    if bool(flow.get("finished", False)):
+        if key == "a":
+            return "victory" if bool(flow.get("victory", False)) else start_world_story_battle(str(flow.get("kind", "mushy_crow")))
+        return flow
+
+    screen = str(flow.get("screen", "story_battle_cmd_player"))
+    confirm = key in ("a", "\r", "\n")
+    back = key == "s"
+    if screen == "story_battle_resolve":
+        return flow
+
+    if screen == "story_battle_cmd_player":
+        actor_key = "player"
+        next_screen = "story_battle_cmd_mushy"
+        back_screen = ""
+        target_key = "battle_player_target"
+    elif screen == "story_battle_cmd_mushy":
+        actor_key = "mushy"
+        next_screen = ""
+        back_screen = "story_battle_cmd_player"
+        target_key = "battle_mushy_target"
+    else:
+        actor_key = ""
+        next_screen = ""
+        back_screen = ""
+        target_key = ""
+
+    if actor_key:
+        pri_hp = [int(v) for v in flow.get("battle_primary_hp", [10])]
+        options = ui08_actor_action_options(actor_key, bool(flow.get("unlock_summon_hawking", False)), ui08_hawking_owner(flow))
+        idx_key = f"battle_{actor_key}_cmd_idx"
+        cmd_idx = int(flow.get(idx_key, 0)) % max(1, len(options))
+        enabled = ui08_action_enabled_flags(flow, actor_key, options)
+        if enabled and not enabled[cmd_idx] and any(enabled):
+            cmd_idx = next((i for i, value in enumerate(enabled) if value), cmd_idx)
+            flow[idx_key] = cmd_idx
+        cursor = int(flow.get("battle_target_cursor", 0))
+        pick = options[cmd_idx] if options else "Attack"
+        if key == "up":
+            flow[idx_key] = ui08_next_enabled_option_index(enabled, cmd_idx, -1)
+        elif key == "down":
+            flow[idx_key] = ui08_next_enabled_option_index(enabled, cmd_idx, 1)
+        elif key == "left" and enabled[cmd_idx] and pick in ("Attack", "Magic Spark", "Summon Hawking"):
+            magic_level = max(1, int(flow.get("battle_magic_spark_level", 1)))
+            if pick != "Magic Spark" or magic_level < 2:
+                flow["battle_target_cursor"] = ui08_next_alive_index(pri_hp, cursor, -1)
+        elif key == "right" and enabled[cmd_idx] and pick in ("Attack", "Magic Spark", "Summon Hawking"):
+            magic_level = max(1, int(flow.get("battle_magic_spark_level", 1)))
+            if pick != "Magic Spark" or magic_level < 2:
+                flow["battle_target_cursor"] = ui08_next_alive_index(pri_hp, cursor, 1)
+        elif confirm:
+            if not enabled[cmd_idx]:
+                return flow
+            flow[f"battle_{actor_key}_action"] = pick
+            meta = ui08_spell_targeting_meta(actor_key, pick)
+            if pick in ("Attack", "Magic Spark", "Summon Hawking"):
+                flow[target_key] = int(flow.get("battle_target_cursor", 0))
+            if isinstance(meta, dict) and str(meta.get("side")) == "ally":
+                targets = ui08_alive_secondary_target_indices(flow, actor_key, pick, int(flow.get("battle_stage", 1)))
+                flow["battle_ally_select_actor"] = actor_key
+                flow["battle_ally_action"] = pick
+                flow["battle_ally_desc"] = str(meta.get("desc", ""))
+                flow["battle_ally_supports_all"] = bool(meta.get("supports_all", False))
+                flow["battle_ally_target_mode"] = str(meta.get("default_mode", "single"))
+                flow["battle_ally_target_cursor"] = targets[0] if targets else 0
+                flow["screen"] = "story_battle_ally_target"
+            elif next_screen:
+                flow["battle_target_cursor"] = ui08_first_alive(pri_hp, int(flow.get(target_key, 0)))
+                flow["screen"] = next_screen
+            else:
+                begin_world_story_battle_resolve(flow)
+        elif back and back_screen:
+            flow["screen"] = back_screen
+        return flow
+
+    if screen == "story_battle_ally_target":
+        actor_key = str(flow.get("battle_ally_select_actor", "mushy")).strip().lower()
+        action_name = str(flow.get("battle_ally_action", ""))
+        supports_all = bool(flow.get("battle_ally_supports_all", False))
+        targets = ui08_alive_secondary_target_indices(flow, actor_key, action_name, int(flow.get("battle_stage", 1)))
+        mode = str(flow.get("battle_ally_target_mode", "single")).strip().lower()
+        cursor = int(flow.get("battle_ally_target_cursor", targets[0] if targets else 0))
+        if supports_all and key in ("up", "down"):
+            flow["battle_ally_target_mode"] = "all" if mode == "single" else "single"
+        elif mode == "single" and targets and key == "left":
+            pos = targets.index(cursor) if cursor in targets else 0
+            flow["battle_ally_target_cursor"] = targets[(pos - 1) % len(targets)]
+        elif mode == "single" and targets and key == "right":
+            pos = targets.index(cursor) if cursor in targets else 0
+            flow["battle_ally_target_cursor"] = targets[(pos + 1) % len(targets)]
+        elif confirm:
+            if actor_key == "mushy":
+                flow["battle_mushy_spell_target_mode"] = mode
+                flow["battle_mushy_spell_target"] = int(flow.get("battle_ally_target_cursor", 0))
+                begin_world_story_battle_resolve(flow)
+        elif back:
+            flow["screen"] = f"story_battle_cmd_{actor_key}" if actor_key else "story_battle_cmd_player"
+        return flow
+
+    return flow
 
 
 def world_center_x() -> int:
@@ -96,6 +577,347 @@ def draw_label(canvas: List[List[str]], text: str, x0: int, y0: int, color: str 
         x = x0 + idx
         if 0 <= x < world.SCREEN_W:
             canvas[y0][x] = f"{color}{ch}{world.ANSI_RESET}" if color else ch
+
+
+def hp_bar(value: int, total: int, width: int = 10) -> str:
+    total = max(1, int(total))
+    value = max(0, min(total, int(value)))
+    filled = max(0, min(width, round((value / total) * width)))
+    return "[" + ("#" * filled) + ("-" * (width - filled)) + "]"
+
+
+def sprite_width(rows: List[List[str]]) -> int:
+    return max((len(row) for row in rows if isinstance(row, list)), default=0)
+
+
+def draw_battle_sprite_centered(canvas: List[List[str]], rows: List[List[str]], center_x: int, base_y: int) -> tuple[int, int, int, int]:
+    if not isinstance(rows, list) or not rows:
+        return (int(center_x), int(base_y), int(center_x), int(base_y))
+    width = sprite_width(rows)
+    height = len(rows)
+    x0 = int(center_x) - (width // 2)
+    y0 = int(base_y) - max(0, height - 1)
+    draw_sprite(canvas, rows, x0, y0)
+    return (x0, y0, x0 + max(0, width - 1), y0 + max(0, height - 1))
+
+
+def battle_actor_center(box: tuple[int, int, int, int] | None) -> tuple[int, int] | None:
+    if box is None:
+        return None
+    x0, y0, x1, y1 = box
+    return ((int(x0) + int(x1)) // 2, (int(y0) + int(y1)) // 2)
+
+
+def draw_spark_cell(canvas: List[List[str]], x: int, y: int, ch: str = "*", phase: int = 0) -> None:
+    if not (0 <= y < len(canvas) and 0 <= x < len(canvas[y])):
+        return
+    palette = [
+        "\x1b[38;2;255;245;140m",
+        "\x1b[38;2;255;255;235m",
+        "\x1b[38;2;125;190;255m",
+        "\x1b[38;2;255;180;100m",
+    ]
+    canvas[y][x] = f"{palette[int(phase) % len(palette)]}{ch}{world.ANSI_RESET}"
+
+
+def draw_magic_spark_effect(canvas: List[List[str]], source: tuple[int, int], targets: List[tuple[int, int]], progress: float) -> None:
+    if not targets:
+        return
+    p = max(0.0, min(1.0, float(progress)))
+    for target_index, target in enumerate(targets):
+        local_p = max(0.0, min(1.0, p + (target_index * 0.10)))
+        sx, sy = source
+        tx, ty = target
+        travel = min(1.0, local_p / 0.68)
+        arc = math.sin(travel * math.pi) * -3.0
+        x = int(round(sx + ((tx - sx) * travel)))
+        y = int(round(sy + ((ty - sy) * travel) + arc))
+        draw_spark_cell(canvas, x, y, "*", target_index + int(local_p * 10))
+        if local_p >= 0.68:
+            impact = min(1.0, (local_p - 0.68) / 0.32)
+            radius = 1 + int(impact * 2.0)
+            for dx, dy, ch in ((0, -radius, "*"), (radius, 0, "*"), (0, radius, "*"), (-radius, 0, "*"), (0, 0, "✦")):
+                draw_spark_cell(canvas, tx + dx, ty + dy, ch, target_index + dx + dy)
+
+
+def draw_hit_burst(canvas: List[List[str]], target: tuple[int, int], progress: float) -> None:
+    p = max(0.0, min(1.0, float(progress)))
+    tx, ty = target
+    radius = 1 + int(p * 2.0)
+    color = "\x1b[38;2;255;235;235m" if int(p * 10) % 2 == 0 else "\x1b[38;2;255;100;100m"
+    for dx, dy, ch in ((0, 0, "X"), (-radius, 0, "<"), (radius, 0, ">"), (0, -radius, "^"), (0, radius, "v")):
+        x = tx + dx
+        y = ty + dy
+        if 0 <= y < len(canvas) and 0 <= x < len(canvas[y]):
+            canvas[y][x] = f"{color}{ch}{world.ANSI_RESET}"
+
+
+def draw_support_aura(canvas: List[List[str]], target: tuple[int, int], progress: float) -> None:
+    p = max(0.0, min(1.0, float(progress)))
+    tx, ty = target
+    radius = 1 + int(math.sin(p * math.pi) * 3.0)
+    color = "\x1b[38;2;145;255;170m"
+    for dx, dy, ch in ((0, -radius, "◠"), (radius, 0, ")"), (0, radius, "◡"), (-radius, 0, "(")):
+        x = tx + dx
+        y = ty + dy
+        if 0 <= y < len(canvas) and 0 <= x < len(canvas[y]):
+            canvas[y][x] = f"{color}{ch}{world.ANSI_RESET}"
+
+
+def world_story_action_duration(action_kind: str) -> float:
+    cast_kinds = ("spell", "summon", "mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric", "birdcall", "flee")
+    return 2.4 if action_kind == "summon" else (1.2 if action_kind in cast_kinds else 0.9)
+
+
+def draw_world_story_action_effects(
+    canvas: List[List[str]],
+    battle: dict,
+    actor_boxes: Dict[tuple[str, int], tuple[int, int, int, int]],
+) -> None:
+    if str(battle.get("screen", "")) != "story_battle_resolve":
+        return
+    queue = battle.get("battle_queue", [])
+    qidx = int(battle.get("battle_queue_index", 0))
+    if not isinstance(queue, list) or qidx < 0 or qidx >= len(queue) or not isinstance(queue[qidx], dict):
+        return
+    action = queue[qidx]
+    kind = str(action.get("kind", "physical"))
+    duration = world_story_action_duration(kind)
+    progress = min(1.0, float(battle.get("battle_action_t", 0.0)) / max(0.001, duration))
+    source_side = str(action.get("source_side", "secondary"))
+    source_index = int(action.get("source_index", 0))
+    source = battle_actor_center(actor_boxes.get((source_side, source_index)))
+    target_side = str(action.get("target_side", "primary"))
+    target_index = int(action.get("target_index", 0))
+    target = battle_actor_center(actor_boxes.get((target_side, target_index)))
+    if source is None or target is None:
+        return
+    if kind == "spell":
+        target_points: List[tuple[int, int]] = []
+        raw_indices = action.get("target_indices", [])
+        if isinstance(raw_indices, list) and raw_indices:
+            for raw_index in raw_indices:
+                point = battle_actor_center(actor_boxes.get((target_side, int(raw_index))))
+                if point is not None:
+                    target_points.append(point)
+        else:
+            target_points.append(target)
+        draw_magic_spark_effect(canvas, source, target_points, progress)
+    elif kind == "physical":
+        if progress >= 0.45:
+            draw_hit_burst(canvas, target, min(1.0, (progress - 0.45) / 0.55))
+    elif kind in ("mushroom_tea", "healing_touch_single", "healing_touch_team", "concentric"):
+        target_points = [target]
+        if kind in ("healing_touch_team", "concentric"):
+            target_points = []
+            for item in action.get("heals", action.get("restores", [])):
+                if isinstance(item, dict):
+                    point = battle_actor_center(actor_boxes.get(("secondary", int(item.get("index", 0)))))
+                    if point is not None:
+                        target_points.append(point)
+        for point in target_points:
+            draw_support_aura(canvas, point, progress)
+
+
+def draw_world_story_battle_overlay(
+    canvas: List[List[str]],
+    battle: dict,
+    game_time_seconds: float,
+    player_rows: List[List[str]] | None = None,
+    mushy_rows: List[List[str]] | None = None,
+    crow_rows: List[List[str]] | None = None,
+) -> None:
+    if not isinstance(battle, dict) or not battle:
+        return
+    title = "ON-STREET BATTLE"
+    draw_label(canvas, title, max(0, (world.SCREEN_W - len(title)) // 2), 4, color="\x1b[38;2;255;185;135m")
+    stage = int(battle.get("battle_stage", 1))
+    party_keys = ["player", "mushy"] if stage < 3 else ["sharoom", "player", "mushy"]
+    if stage >= 4:
+        party_keys.append("roomy")
+    party_hp = [int(v) for v in battle.get("battle_secondary_hp", [20, 10])]
+    party_hp_max = [int(v) for v in battle.get("battle_secondary_hp_max", party_hp)]
+    party_mp = [int(v) for v in battle.get("battle_secondary_mp", [0, 6])]
+    party_mp_max = [int(v) for v in battle.get("battle_secondary_mp_max", party_mp)]
+    enemy_hp = [int(v) for v in battle.get("battle_primary_hp", [10])]
+    enemy_hp_max = [int(v) for v in battle.get("battle_primary_hp_max", enemy_hp)]
+    enemy_kinds = [str(v).strip().lower() for v in battle.get("battle_primary_kind", ["baby_crow"])]
+
+    party_sprite_rows = {
+        "player": player_rows or [],
+        "mushy": mushy_rows or [],
+    }
+    enemy_sprite_rows = {
+        "baby_crow": crow_rows or [],
+    }
+    actor_boxes: Dict[tuple[str, int], tuple[int, int, int, int]] = {}
+
+    for idx, actor_key in enumerate(party_keys):
+        hp = party_hp[idx] if idx < len(party_hp) else 0
+        hp_total = party_hp_max[idx] if idx < len(party_hp_max) else max(1, hp)
+        mp = party_mp[idx] if idx < len(party_mp) else 0
+        mp_total = party_mp_max[idx] if idx < len(party_mp_max) else max(1, mp)
+        x = 18 + (idx * 18)
+        y = 20 + (idx % 2)
+        if hp > 0:
+            rows = party_sprite_rows.get(actor_key, [])
+            if rows:
+                actor_boxes[("secondary", idx)] = draw_battle_sprite_centered(canvas, rows, x, y)
+            else:
+                marker = {"sharoom": "S", "roomy": "R"}.get(actor_key, "?")
+                draw_label(canvas, marker, x, y, color="\x1b[38;2;130;185;255m")
+                actor_boxes[("secondary", idx)] = (x, y, x, y)
+        draw_label(canvas, world_story_battle_actor_name(battle, actor_key)[:10], x - 5, y + 1)
+        draw_label(canvas, hp_bar(hp, hp_total, 10), x - 6, y + 2, color="\x1b[38;2;150;235;160m")
+        draw_label(canvas, f"MP {mp}/{mp_total}", x - 5, y + 3, color="\x1b[38;2;150;190;255m")
+    target_cursor = int(battle.get("battle_target_cursor", 0))
+    for idx, hp in enumerate(enemy_hp):
+        hp_total = enemy_hp_max[idx] if idx < len(enemy_hp_max) else max(1, hp)
+        kind = enemy_kinds[idx] if idx < len(enemy_kinds) else "baby_crow"
+        enemy_name = "Hawking" if kind == "hawk" else ("Baby Fairy" if kind == "fairy_baby" else "Baby Crow")
+        x = 67 + (idx * 12)
+        y = 17 + (idx % 2)
+        if idx == target_cursor and not bool(battle.get("finished", False)) and str(battle.get("screen", "")).startswith("story_battle_cmd"):
+            draw_label(canvas, "v", x, y - 1, color="\x1b[38;2;255;245;120m")
+        if hp > 0:
+            rows = enemy_sprite_rows.get(kind, [])
+            if rows:
+                actor_boxes[("primary", idx)] = draw_battle_sprite_centered(canvas, rows, x, y)
+            else:
+                draw_label(canvas, "c", x, y, color="\x1b[38;2;245;130;110m")
+                actor_boxes[("primary", idx)] = (x, y, x, y)
+        draw_label(canvas, enemy_name[:10], x - 5, y + 1)
+        draw_label(canvas, hp_bar(hp, hp_total, 10), x - 5, y + 2, color="\x1b[38;2;245;130;110m")
+
+    draw_world_story_action_effects(canvas, battle, actor_boxes)
+
+    if bool(battle.get("finished", False)):
+        label = "Victory" if bool(battle.get("victory", False)) else "Retry"
+        spec = UIBoxSpec(
+            role="battle_select",
+            border_style="heavy",
+            title=label,
+            body_text="Mushy joins the team." if bool(battle.get("victory", False)) else "The party falls. Try again?",
+            actions=["[ A / Continue ]"],
+            x=2,
+            y=5,
+            max_body_width=30,
+            body_align="center",
+            wrap_mode="balanced",
+        )
+        draw_ui_box_animated(canvas, spec, 1.0, blink_on=bool((int(game_time_seconds * 2.0) % 2) == 0))
+    else:
+        screen = str(battle.get("screen", "story_battle_cmd_player"))
+        if screen == "story_battle_cmd_player":
+            actor_key = "player"
+            options = ui08_actor_action_options(actor_key, bool(battle.get("unlock_summon_hawking", False)), ui08_hawking_owner(battle))
+            cursor = int(battle.get("battle_player_cmd_idx", 0)) % max(1, len(options))
+            enabled = ui08_action_enabled_flags(battle, actor_key, options)
+            body_lines = []
+            for idx, option in enumerate(options):
+                marker = ">" if idx == cursor else " "
+                disabled = "" if enabled[idx] else " (no MP)"
+                body_lines.append(f"{marker} {option}{disabled}")
+            body_lines.append("")
+            body_lines.append(f"Mycostaff charges: {int(battle.get('battle_staff_charges', 0))}")
+            spec = UIBoxSpec(
+                role="battle_select",
+                border_style="heavy",
+                title=world_story_battle_actor_name(battle, actor_key),
+                body_text="\n".join(body_lines),
+                actions=["[ A / Confirm ]", "[ ←/→ Target ]"],
+                x=2,
+                y=5,
+                max_body_width=30,
+                preserve_body_whitespace=True,
+                wrap_mode="normal",
+                blink_body_rows=[cursor],
+            )
+            draw_ui_box_animated(canvas, spec, 1.0, blink_on=bool((int(game_time_seconds * 3.0) % 2) == 0))
+        elif screen == "story_battle_cmd_mushy":
+            actor_key = "mushy"
+            options = ui08_actor_action_options(actor_key, bool(battle.get("unlock_summon_hawking", False)), ui08_hawking_owner(battle))
+            cursor = int(battle.get("battle_mushy_cmd_idx", 0)) % max(1, len(options))
+            enabled = ui08_action_enabled_flags(battle, actor_key, options)
+            body_lines = []
+            for idx, option in enumerate(options):
+                marker = ">" if idx == cursor else " "
+                disabled = "" if enabled[idx] else " (no MP)"
+                body_lines.append(f"{marker} {option}{disabled}")
+            spec = UIBoxSpec(
+                role="battle_select",
+                border_style="heavy",
+                title=world_story_battle_actor_name(battle, actor_key),
+                body_text="\n".join(body_lines),
+                actions=["[ A / Confirm ]", "[ S / Back ]"],
+                x=2,
+                y=5,
+                max_body_width=30,
+                preserve_body_whitespace=True,
+                wrap_mode="normal",
+                blink_body_rows=[cursor],
+            )
+            draw_ui_box_animated(canvas, spec, 1.0, blink_on=bool((int(game_time_seconds * 3.0) % 2) == 0))
+        elif screen == "story_battle_ally_target":
+            actor_key = str(battle.get("battle_ally_select_actor", "mushy"))
+            action_name = str(battle.get("battle_ally_action", "Mushroom Tea"))
+            targets = ui08_alive_secondary_target_indices(battle, actor_key, action_name, stage)
+            cursor = int(battle.get("battle_ally_target_cursor", targets[0] if targets else 0))
+            body_lines = []
+            blink_rows = []
+            for idx in targets:
+                key = party_keys[idx] if idx < len(party_keys) else f"ally{idx + 1}"
+                marker = ">" if idx == cursor else " "
+                if idx == cursor:
+                    blink_rows.append(len(body_lines))
+                body_lines.append(f"{marker} {world_story_battle_actor_name(battle, key)}")
+            spec = UIBoxSpec(
+                role="battle_select",
+                border_style="heavy",
+                title=action_name,
+                body_text="\n".join(body_lines),
+                actions=["[ A / Confirm ]", "[ S / Back ]"],
+                x=2,
+                y=5,
+                max_body_width=30,
+                preserve_body_whitespace=True,
+                wrap_mode="normal",
+                blink_body_rows=blink_rows,
+            )
+            draw_ui_box_animated(canvas, spec, 1.0, blink_on=bool((int(game_time_seconds * 3.0) % 2) == 0))
+        else:
+            queue = battle.get("battle_queue", [])
+            qidx = int(battle.get("battle_queue_index", 0))
+            action_name = "Resolving round"
+            if isinstance(queue, list) and qidx < len(queue) and isinstance(queue[qidx], dict):
+                action_name = str(queue[qidx].get("kind", "action")).replace("_", " ").title()
+            spec = UIBoxSpec(
+                role="battle_select",
+                border_style="heavy",
+                title=action_name,
+                body_text="Resolving actions...",
+                x=2,
+                y=5,
+                max_body_width=30,
+                body_align="center",
+            )
+            draw_ui_box_animated(canvas, spec, 1.0, blink_on=bool((int(game_time_seconds * 2.0) % 2) == 0))
+
+    log_lines = ui08_battle_log_visible_lines(battle)
+    if log_lines:
+        log_spec = UIBoxSpec(
+            role="battle_log",
+            border_style="single",
+            title="Battle Log",
+            body_text="\n".join(str(line) for line in log_lines[-5:]),
+            x=55,
+            y=20,
+            max_body_width=40,
+            preserve_body_whitespace=True,
+            wrap_mode="normal",
+            border_gradient=True,
+        )
+        draw_ui_box(canvas, log_spec, blink_on=True)
 
 
 def first_window_bounds(mask_rows: List[str]) -> tuple[int, int, int, int] | None:
@@ -1853,8 +2675,16 @@ def render(
     avatar_blink: dict,
     crow_frames: Dict[str, List[List[str]]],
     crow_states: List[dict],
+    story_objective: str = "",
+    story_prompt: str = "",
+    story_message: dict | None = None,
+    story_message_progress: float = 1.0,
+    story_battle: dict | None = None,
 ) -> str:
     canvas = [[" " for _ in range(world.SCREEN_W)] for _ in range(world.SCREEN_H)]
+    battle_uses_scene_actors = isinstance(story_battle, dict) and bool(story_battle) and str(story_battle.get("kind", "")) == "mushy_crow"
+    battle_mushroom_house = str(story_battle.get("scene_mushroom_house", HOUSE_10_VIAL_LABEL)) if isinstance(story_battle, dict) else HOUSE_10_VIAL_LABEL
+    battle_crow_index = int(story_battle.get("scene_crow_index", 0)) if isinstance(story_battle, dict) else -1
     sky_zone = zones["sky_bg"]
     ground_zone = zones["ground_bg"]
     sky_layer_bottom = int(sky_bottom_anchor)
@@ -1969,7 +2799,9 @@ def render(
                 "label_x": (x0 + max(0, (width - len(label)) // 2) - 1) if label else x0,
             })
 
-        for crow in crow_states:
+        for crow_index, crow in enumerate(crow_states):
+            if battle_uses_scene_actors and crow_index == battle_crow_index:
+                continue
             if str(crow.get("mode", "resting")) != "resting":
                 continue
             perch = crow.get("perch", {})
@@ -2024,7 +2856,7 @@ def render(
         rows = drawable.get("rows", [])
         if isinstance(rows, list) and drawable.get("house_sprite"):
             label = str(drawable.get("label", "")).strip()
-            occupant_rows = apply_blink_to_rows(house_occupants.get(label, []), house_blink_states.get(label))
+            occupant_rows = [] if (battle_uses_scene_actors and label == battle_mushroom_house) else apply_blink_to_rows(house_occupants.get(label, []), house_blink_states.get(label))
             occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
             draw_house_sprite(
                 canvas,
@@ -2140,20 +2972,21 @@ def render(
                 "base_y": fairy_screen_y + max(0, len(fairy_rows) - 1),
                 "z_bias": 13,
             })
-    foreground_drawables.append({
-        "x": int(avatar["x"]),
-        "y": int(avatar["y"]),
-        "rows": avatar_display_rows,
-        "base_y": int(avatar["y"]) + max(0, int(avatar["height"]) - 1),
-        "z_bias": 15,
-    })
+    if not battle_uses_scene_actors:
+        foreground_drawables.append({
+            "x": int(avatar["x"]),
+            "y": int(avatar["y"]),
+            "rows": avatar_display_rows,
+            "base_y": int(avatar["y"]) + max(0, int(avatar["height"]) - 1),
+            "z_bias": 15,
+        })
 
     foreground_drawables.sort(key=lambda item: (int(item.get("base_y", 0)), int(item.get("z_bias", 0)), int(item.get("y", 0)), int(item.get("x", 0))))
     for drawable in foreground_drawables:
         rows = drawable.get("rows", [])
         if isinstance(rows, list) and drawable.get("house_sprite"):
             label = str(drawable.get("label", "")).strip()
-            occupant_rows = apply_blink_to_rows(house_occupants.get(label, []), house_blink_states.get(label))
+            occupant_rows = [] if (battle_uses_scene_actors and label == battle_mushroom_house) else apply_blink_to_rows(house_occupants.get(label, []), house_blink_states.get(label))
             occupant_pose = house_occupant_poses.get(label) if occupant_rows else None
             draw_house_sprite(
                 canvas,
@@ -2173,7 +3006,9 @@ def render(
                 int(drawable.get("label_y", 0)),
                 color="\x1b[38;2;245;245;245m",
             )
-    for crow in crow_states:
+    for crow_index, crow in enumerate(crow_states):
+        if battle_uses_scene_actors and crow_index == battle_crow_index:
+            continue
         if str(crow.get("mode", "")) in {"resting", "hidden"}:
             continue
         rows = apply_crow_blink_to_rows(crow_rows_for_state(crow, crow_frames), crow.get("blink_state"))
@@ -2192,30 +3027,66 @@ def render(
         screen_y = int(ground_zone.y) + (world_row - ground_start)
         if 0 <= screen_x < world.SCREEN_W and int(ground_zone.y) <= screen_y <= int(ground_zone.y1):
             canvas[screen_y][screen_x] = str(projectile.get("cell", "o"))
-    if avatar_facing == "back":
+    if avatar_facing == "back" and not battle_uses_scene_actors:
         draw_sprite(canvas, avatar_display_rows, int(avatar["x"]), int(avatar["y"]))
+    if isinstance(story_battle, dict) and story_battle:
+        battle_mushy_rows = apply_blink_to_rows(house_occupants.get(battle_mushroom_house, []), house_blink_states.get(battle_mushroom_house))
+        battle_crow_rows = crow_frames.get("resting", crow_frames.get("primary", []))
+        if 0 <= battle_crow_index < len(crow_states):
+            battle_crow = crow_states[battle_crow_index]
+            battle_crow_rows = apply_crow_blink_to_rows(crow_rows_for_state(battle_crow, crow_frames), battle_crow.get("blink_state"))
+        draw_world_story_battle_overlay(
+            canvas,
+            story_battle,
+            game_time_seconds,
+            player_rows=avatar_display_rows,
+            mushy_rows=battle_mushy_rows,
+            crow_rows=battle_crow_rows,
+        )
 
-    header = f"[travel][scene:{scene_label}][address:{address_label}]"
-    controls = "[up/down travel][left/right strafe][t throw][a avatar][c scene][q quit]"
+    controls = "[up/down travel][left/right strafe][t throw][a interact][q quit]"
     pebble_label = f"Pebbles: {max(0, int(pebble_count))}"
     throw_label = "Throw: ready" if throw_cooldown <= 0 else f"Throw: {throw_cooldown:.1f}s"
     total_seconds = max(0, int(game_time_seconds))
     game_time_label = f"Time: {total_seconds // 60:02d}:{total_seconds % 60:02d}"
-    if len(header) <= world.SCREEN_W:
-        draw_label(canvas, header, max(0, (world.SCREEN_W - len(header)) // 2), 0)
     if len(pebble_label) <= world.SCREEN_W:
         draw_label(canvas, pebble_label, max(0, world.SCREEN_W - len(pebble_label) - 1), 1, color="\x1b[38;2;235;220;170m")
     if len(throw_label) <= world.SCREEN_W:
         draw_label(canvas, throw_label, max(0, world.SCREEN_W - len(throw_label) - 1), 2, color="\x1b[38;2;205;205;255m")
     if len(game_time_label) <= world.SCREEN_W:
         draw_label(canvas, game_time_label, max(0, world.SCREEN_W - len(game_time_label) - 1), 3, color="\x1b[38;2;200;235;200m")
+    if story_objective:
+        objective = f"Objective: {story_objective}"
+        draw_label(canvas, objective[:world.SCREEN_W], 0, 1, color="\x1b[38;2;255;230;150m")
+    if story_prompt:
+        draw_label(canvas, story_prompt[:world.SCREEN_W], max(0, (world.SCREEN_W - len(story_prompt)) // 2), world.SCREEN_H - 3, color="\x1b[38;2;255;245;170m")
+    if isinstance(story_message, dict) and story_message.get("body"):
+        spec = UIBoxSpec(
+            role="quest_dialog",
+            border_style=str(story_message.get("border_style", "heavy")),
+            title=str(story_message.get("title", "Story")),
+            body_text=str(story_message.get("body", "")),
+            actions=["[ A / Continue ]"],
+            center_x=world.SCREEN_W // 2,
+            center_y=world.SCREEN_H - 8,
+            max_body_width=64,
+            body_align="left",
+            wrap_mode="balanced",
+            anchor="center",
+        )
+        draw_ui_box_animated(
+            canvas,
+            spec,
+            progress=story_message_progress,
+            blink_on=bool((int(game_time_seconds * 2.0) % 2) == 0),
+        )
     if len(controls) <= world.SCREEN_W:
         draw_label(canvas, controls, max(0, (world.SCREEN_W - len(controls)) // 2), world.SCREEN_H - 1)
 
     return "\n".join("".join(row) for row in canvas)
 
 
-def main() -> None:
+def main(world_story_mode: bool = False) -> None:
     base = os.getcwd()
     objects = world.load_json(os.path.join(base, "legacy", "data", "objects.json"))
     colors = world.load_json(os.path.join(base, "legacy", "data", "colors.json"))
@@ -2424,6 +3295,15 @@ def main() -> None:
     mushroom_motion_rng = random.Random()
     crow_motion_rng = random.Random(9471)
     mushroom_motion_accum = 0.0
+    world_story_battle: dict | None = None
+    world_story_state = {
+        "stage": "find_mushy",
+        "completed": set(),
+        "objective": "Travel to Avenue A and knock on Mushy's door at #10 Ave A.",
+        "message": None,
+        "message_t": 0.0,
+        "message_phase": "closed",
+    }
 
     posix_stdin_restore: tuple[int, list] | None = None
     if os.name != "nt" and sys.stdin.isatty():
@@ -2451,6 +3331,21 @@ def main() -> None:
             dt = max(0.0, min(0.2, now - last_tick))
             last_tick = now
             game_time_seconds += dt
+            if world_story_mode and world_story_state.get("message"):
+                phase = str(world_story_state.get("message_phase", "opening"))
+                world_story_state["message_t"] = float(world_story_state.get("message_t", 0.0)) + dt
+                if phase == "opening" and float(world_story_state.get("message_t", 0.0)) >= STORY_MESSAGE_OPEN_SECONDS:
+                    world_story_state["message_phase"] = "open"
+                    world_story_state["message_t"] = STORY_MESSAGE_OPEN_SECONDS
+                elif phase == "closing" and float(world_story_state.get("message_t", 0.0)) >= STORY_MESSAGE_CLOSE_SECONDS:
+                    closing_message = world_story_state.get("message")
+                    world_story_state["message"] = None
+                    world_story_state["message_t"] = 0.0
+                    world_story_state["message_phase"] = "closed"
+                    if isinstance(closing_message, dict) and closing_message.get("battle_after"):
+                        world_story_battle = start_world_story_battle(str(closing_message.get("battle_after", "")))
+            if world_story_mode and isinstance(world_story_battle, dict) and world_story_battle:
+                tick_world_story_battle(world_story_battle, dt)
             throw_cooldown = max(0.0, throw_cooldown - dt)
             throw_pose_accum = max(0.0, throw_pose_accum - dt)
             thrown_pebbles = update_thrown_pebbles(thrown_pebbles, dt)
@@ -2461,6 +3356,7 @@ def main() -> None:
             avatar_blink = update_blink_state(avatar_blink, dt)
             player_world_x = int(camera_x) + int(build_avatar_placement(avatar_rows)["x"]) + max(0, int(build_avatar_placement(avatar_rows)["width"]) // 2)
             player_world_row = world.landscape_ground_window_start(landscape_position) + avatar_feet_distance_from_horizon(avatar_rows, zones)
+            story_trigger = active_world_story_trigger(world_story_state, player_world_x, player_world_row) if world_story_mode and not world_story_battle else None
             walking_mushroom = update_walking_mushroom(walking_mushroom, dt, player_world_x, player_world_row)
             walking_fairy = update_walking_fairy(walking_fairy, dt)
             for label, frames in house_fairy_frames.items():
@@ -2607,6 +3503,22 @@ def main() -> None:
             key = world.read_key_nonblocking()
             if key == "q":
                 break
+            if world_story_mode and world_story_state.get("message") and key != "a":
+                key = None
+            if world_story_mode and world_story_battle:
+                result = handle_world_story_battle_key(world_story_battle, key)
+                if result == "victory":
+                    completed = world_story_state.get("completed", set())
+                    if not isinstance(completed, set):
+                        completed = set(completed)
+                    completed.add(str(world_story_battle.get("complete_trigger", "")))
+                    world_story_state["completed"] = completed
+                    world_story_state["stage"] = str(world_story_battle.get("reward_stage", "find_sharoom"))
+                    world_story_state["objective"] = str(world_story_battle.get("reward_objective", "Knock on Sharoom's door at #9 Ave A."))
+                    world_story_battle = None
+                elif isinstance(result, dict):
+                    world_story_battle = result
+                key = None
             if key == "up":
                 avatar_facing = "back"
                 avatar_forward_facing = "back"
@@ -2636,15 +3548,40 @@ def main() -> None:
                 if is_camera_on_walkable_surface(candidate, avatar_rows, zones, landscape_position):
                     target_camera_x = candidate
             if key == "a":
-                avatar_index = (avatar_index + 1) % len(avatar_ids)
-                avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, "idle")
-                target_camera_x = clamp_camera_to_road(target_camera_x, avatar_rows, zones, landscape_position)
-                camera_x = clamp_camera_to_road(camera_x, avatar_rows, zones, landscape_position)
-                walk_frame_index = 0
-                walk_frame_accum = 0.0
-                idle_reset_accum = WALK_RESET_IDLE_SECONDS
-                was_avatar_moving = False
-            if key == "c":
+                if world_story_mode and world_story_state.get("message"):
+                    if str(world_story_state.get("message_phase", "open")) != "closing":
+                        world_story_state["message_phase"] = "closing"
+                        world_story_state["message_t"] = 0.0
+                elif story_trigger is not None:
+                    if story_trigger.get("battle_after"):
+                        world_story_state["stage"] = f"pending_{story_trigger.get('id', 'battle')}"
+                        world_story_state["objective"] = str(story_trigger.get("battle_objective", story_trigger.get("objective", "")))
+                    else:
+                        completed = world_story_state.get("completed", set())
+                        if not isinstance(completed, set):
+                            completed = set(completed)
+                        completed.add(str(story_trigger.get("id", "")))
+                        world_story_state["completed"] = completed
+                        world_story_state["stage"] = str(story_trigger.get("next_stage", world_story_state.get("stage", "")))
+                        world_story_state["objective"] = str(story_trigger.get("objective", world_story_state.get("objective", "")))
+                    world_story_state["message"] = {
+                        "title": str(story_trigger.get("title", "Story")),
+                        "body": str(story_trigger.get("body", "")),
+                        "border_style": "double" if str(story_trigger.get("prompt", "")).lower().find("knock") >= 0 else "heavy",
+                        "battle_after": str(story_trigger.get("battle_after", "")),
+                    }
+                    world_story_state["message_t"] = 0.0
+                    world_story_state["message_phase"] = "opening"
+                elif not world_story_mode:
+                    avatar_index = (avatar_index + 1) % len(avatar_ids)
+                    avatar_rows = world.build_player_frame(players, avatar_ids[avatar_index], color_codes, avatar_facing, "idle")
+                    target_camera_x = clamp_camera_to_road(target_camera_x, avatar_rows, zones, landscape_position)
+                    camera_x = clamp_camera_to_road(camera_x, avatar_rows, zones, landscape_position)
+                    walk_frame_index = 0
+                    walk_frame_accum = 0.0
+                    idle_reset_accum = WALK_RESET_IDLE_SECONDS
+                    was_avatar_moving = False
+            if key == "c" and not world_story_mode:
                 scene_index = (scene_index + 1) % len(WORLD_MODELS)
                 scene_label, center_object_id = WORLD_MODELS[scene_index]
                 world_treeline_sprites = [recenter_sprite_x(sprite) for sprite in world.build_world_treeline_sprites(objects, colors, center_object_id)]
@@ -2747,6 +3684,15 @@ def main() -> None:
                 avatar_blink=avatar_blink,
                 crow_frames=crow_frames,
                 crow_states=crow_states,
+                story_objective=str(world_story_state.get("objective", "")) if world_story_mode else "",
+                story_prompt=(f"{story_trigger.get('prompt', '[A Interact]')} {story_trigger.get('address', story_trigger.get('title', 'Story'))}" if story_trigger is not None and not world_story_state.get("message") else ""),
+                story_message=world_story_state.get("message") if world_story_mode else None,
+                story_message_progress=(
+                    max(0.0, 1.0 - (float(world_story_state.get("message_t", 0.0)) / STORY_MESSAGE_CLOSE_SECONDS))
+                    if str(world_story_state.get("message_phase", "closed")) == "closing"
+                    else min(1.0, float(world_story_state.get("message_t", 0.0)) / STORY_MESSAGE_OPEN_SECONDS)
+                ) if world_story_mode else 1.0,
+                story_battle=world_story_battle if world_story_mode else None,
             )
             print(world.ANSI_HOME + frame, end="", flush=True)
             time.sleep(0.05)

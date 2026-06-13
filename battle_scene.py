@@ -316,7 +316,7 @@ def read_key_nonblocking() -> str | None:
         fd = sys.stdin.fileno()
         deadline = time.monotonic() + max(0.0, float(timeout_sec))
         seq = ""
-        while len(seq) < 3:
+        while len(seq) < 8:
             remaining = deadline - time.monotonic()
             if remaining <= 0.0:
                 break

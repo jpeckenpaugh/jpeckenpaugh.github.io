@@ -9,7 +9,7 @@ class InputAdapter:
     def _read_posix_escape_sequence(self, fd: int, timeout_seconds: float = 0.015) -> Optional[str]:
         deadline = time.monotonic() + max(0.0, float(timeout_seconds))
         seq = ""
-        while len(seq) < 3:
+        while len(seq) < 8:
             remaining = deadline - time.monotonic()
             if remaining <= 0.0:
                 break
